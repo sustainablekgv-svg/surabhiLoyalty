@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,14 +20,31 @@ import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { AdminStats } from '@/components/admin/AdminStats';
-import { StaffManagement } from '@/components/admin/Staffmanagement'
+import { StaffManagement } from '@/components/admin/Staffmanagement';
 import { UserManagement } from '@/components/admin/UserManagement';
 import { GoSevaPool } from '@/components/admin/GoSevaPool';
 
 const AdminDashboard = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, login } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  // Auto-login for preview if no user is logged in
+  useEffect(() => {
+    const initializeUser = async () => {
+      if (!user) {
+        try {
+          await login('9999999999', 'password123');
+        } catch (error) {
+          console.error('Auto-login failed:', error);
+        }
+      }
+      setIsInitializing(false);
+    };
+
+    initializeUser();
+  }, [user, login]);
 
   const handleLogout = () => {
     logout();
@@ -36,9 +52,27 @@ const AdminDashboard = () => {
     toast.success('Logged out successfully');
   };
 
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!user || user.role !== 'admin') {
-    navigate('/');
-    return null;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h2>
+          <p className="text-gray-600 mb-4">You need to be logged in as an admin to view this page.</p>
+          <Button onClick={() => navigate('/')}>Go to Login</Button>
+        </div>
+      </div>
+    );
   }
 
   return (

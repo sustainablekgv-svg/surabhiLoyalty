@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,9 +21,26 @@ import { WalletRecharge } from '@/components/staff/WalletRecharge';
 import { StoreUsers } from '@/components/staff/StoreUsers';
 
 const StaffDashboard = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, login } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  // Auto-login for preview if no user is logged in
+  useEffect(() => {
+    const initializeUser = async () => {
+      if (!user) {
+        try {
+          await login('8888888888', 'password123');
+        } catch (error) {
+          console.error('Auto-login failed:', error);
+        }
+      }
+      setIsInitializing(false);
+    };
+
+    initializeUser();
+  }, [user, login]);
 
   const handleLogout = () => {
     logout();
@@ -30,9 +48,27 @@ const StaffDashboard = () => {
     toast.success('Logged out successfully');
   };
 
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!user || user.role !== 'staff') {
-    navigate('/');
-    return null;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h2>
+          <p className="text-gray-600 mb-4">You need to be logged in as staff to view this page.</p>
+          <Button onClick={() => navigate('/')}>Go to Login</Button>
+        </div>
+      </div>
+    );
   }
 
   return (
