@@ -13,16 +13,18 @@ import {
   DollarSign,
   Gift,
   Settings,
-  LogOut
+  LogOut,
+  ShoppingCart
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { AdminStats } from '@/components/admin/AdminStats';
-import { StaffManagement } from '@/components/admin/Staffmanagement';
+import { StaffManagement } from '@/components/admin/StaffManagement';
 import { UserManagement } from '@/components/admin/UserManagement';
 import { GoSevaPool } from '@/components/admin/GoSevaPool';
+import { SalesManagement } from '@/components/admin/SalesManagement';
 
 const AdminDashboard = () => {
   const { user, logout, login } = useAuth();
@@ -86,7 +88,7 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-4 mb-8">
+          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-5 mb-8">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               <span className="hidden sm:inline">Overview</span>
@@ -99,9 +101,13 @@ const AdminDashboard = () => {
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Users</span>
             </TabsTrigger>
+            <TabsTrigger value="sales" className="flex items-center gap-2">
+              <ShoppingCart className="h-4 w-4" />
+              <span className="hidden sm:inline">Sales</span>
+            </TabsTrigger>
             <TabsTrigger value="goseva" className="flex items-center gap-2">
               <Heart className="h-4 w-4" />
-              <span className="hidden sm:inline">Go Seva</span>
+              <span className="hidden sm:inline">Seva</span>
             </TabsTrigger>
           </TabsList>
 
@@ -140,7 +146,7 @@ const AdminDashboard = () => {
                           <p className="text-xs text-gray-600">12 minutes ago</p>
                         </div>
                       </div>
-                      <Badge variant="secondary">₹500</Badge>
+                      <Badge variant="secondary">₹2000</Badge>
                     </div>
                     
                     <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
@@ -153,7 +159,7 @@ const AdminDashboard = () => {
                           <p className="text-xs text-gray-600">25 minutes ago</p>
                         </div>
                       </div>
-                      <Badge variant="secondary">37.5 Coins</Badge>
+                      <Badge variant="secondary">150 Coins</Badge>
                     </div>
                   </div>
                 </CardContent>
@@ -170,22 +176,22 @@ const AdminDashboard = () => {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                       <div>
-                        <p className="font-medium text-sm">Store Location 1</p>
-                        <p className="text-xs text-gray-600">Downtown Branch</p>
+                        <p className="font-medium text-sm">Downtown Branch</p>
+                        <p className="text-xs text-gray-600">23 transactions today</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-blue-600">₹15,240</p>
+                        <p className="font-bold text-blue-600">₹25,240</p>
                         <p className="text-xs text-gray-600">Today's Sales</p>
                       </div>
                     </div>
                     
                     <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
                       <div>
-                        <p className="font-medium text-sm">Store Location 2</p>
-                        <p className="text-xs text-gray-600">Mall Branch</p>
+                        <p className="font-medium text-sm">Mall Branch</p>
+                        <p className="text-xs text-gray-600">18 transactions today</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-purple-600">₹22,890</p>
+                        <p className="font-bold text-purple-600">₹18,890</p>
                         <p className="text-xs text-gray-600">Today's Sales</p>
                       </div>
                     </div>
@@ -201,6 +207,10 @@ const AdminDashboard = () => {
 
           <TabsContent value="users">
             <UserManagement />
+          </TabsContent>
+
+          <TabsContent value="sales">
+            <SalesManagement />
           </TabsContent>
 
           <TabsContent value="goseva">

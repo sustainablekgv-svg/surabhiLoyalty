@@ -4,8 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Coins, Shield, Users, Phone, Lock, Eye, EyeOff } from 'lucide-react';
+import { Coins, Shield, Users, Phone, Lock, Eye, EyeOff, UserCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -13,17 +14,31 @@ const Index = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     mobile: '',
-    password: ''
+    password: '',
+    role: ''
   });
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.role) {
+      toast.error('Please select your role');
+      return;
+    }
+    
     try {
       const user = await login(formData.mobile, formData.password);
+      
+      // Check if user role matches selected role
+      if (user.role !== formData.role) {
+        toast.error(`Access denied. You are not registered as ${formData.role}`);
+        return;
+      }
+      
       toast.success('Login successful!');
-
+      
       // Redirect based on user role
       if (user.role === 'admin') {
         navigate('/admin/dashboard');
@@ -43,7 +58,7 @@ const Index = () => {
       return;
     }
     // Implement forgot password functionality
-    toast.success('Password reset link sent to your email');
+    toast.success('Password reset link sent to your registered email');
   };
 
   return (
@@ -56,7 +71,7 @@ const Index = () => {
               <Coins className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Loyalty Rewards</h1>
+              <h1 className="text-xl font-bold text-gray-900">Surabhi Loyalty</h1>
               <p className="text-sm text-gray-600">Retail Business Platform</p>
             </div>
           </div>
@@ -75,93 +90,117 @@ const Index = () => {
                 Sign in to access your loyalty rewards
               </CardDescription>
             </CardHeader>
-
+            
             <CardContent>
-              <Tabs defaultValue="login" className="w-full">
-                <TabsList className="grid w-full grid-cols-1">
-                  <TabsTrigger value="login" className="data-[state=active]:bg-purple-100">
-                    Sign In
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="login" className="space-y-4 mt-6">
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="mobile" className="text-sm font-medium text-gray-700">
-                        Mobile Number
-                      </Label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          id="mobile"
-                          type="tel"
-                          placeholder="Enter your mobile number"
-                          value={formData.mobile}
-                          onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
-                          className="pl-10 h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                          required
-                        />
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="role" className="text-sm font-medium text-gray-700">
+                    Select Your Role
+                  </Label>
+                  <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
+                    <SelectTrigger className="h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500">
+                      <div className="flex items-center gap-2">
+                        <UserCircle className="h-4 w-4 text-gray-400" />
+                        <SelectValue placeholder="Choose your role" />
                       </div>
-                    </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="customer">
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-green-600" />
+                          <span>Customer</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="staff">
+                        <div className="flex items-center gap-2">
+                          <Shield className="h-4 w-4 text-blue-600" />
+                          <span>Staff</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="admin">
+                        <div className="flex items-center gap-2">
+                          <Shield className="h-4 w-4 text-red-600" />
+                          <span>Admin</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                        Password
-                      </Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          id="password"
-                          type={showPassword ? 'text' : 'password'}
-                          placeholder="Enter your password"
-                          value={formData.password}
-                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                          className="pl-10 pr-10 h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={handleForgotPassword}
-                        className="text-sm text-purple-600 hover:text-purple-700 font-medium"
-                      >
-                        Forgot Password?
-                      </button>
-                    </div>
-
-                    <Button
-                      type="submit"
-                      disabled={isLoading}
-                      className="w-full h-12 bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white font-medium rounded-lg transition-all duration-200"
+                <div className="space-y-2">
+                  <Label htmlFor="mobile" className="text-sm font-medium text-gray-700">
+                    Mobile Number
+                  </Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="mobile"
+                      type="tel"
+                      placeholder="Enter your mobile number"
+                      value={formData.mobile}
+                      onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
+                      className="pl-10 h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+                    Password
+                  </Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Enter your password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className="pl-10 pr-10 h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
                     >
-                      {isLoading ? 'Signing In...' : 'Sign In'}
-                    </Button>
-                  </form>
-                </TabsContent>
-              </Tabs>
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+                
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full h-12 bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white font-medium rounded-lg transition-all duration-200"
+                >
+                  {isLoading ? 'Signing In...' : 'Sign In'}
+                </Button>
+              </form>
             </CardContent>
           </Card>
-
+          
           {/* Features Section */}
           <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="text-center p-4 bg-white/60 rounded-lg backdrop-blur-sm">
               <div className="bg-purple-100 p-3 rounded-full w-fit mx-auto mb-2">
                 <Coins className="h-6 w-6 text-purple-600" />
               </div>
-              <h3 className="font-medium text-gray-900">Loyalty Rewards</h3>
+              <h3 className="font-medium text-gray-900">Surabhi Coins</h3>
               <p className="text-sm text-gray-600">Earn coins on every purchase</p>
             </div>
-
+            
             <div className="text-center p-4 bg-white/60 rounded-lg backdrop-blur-sm">
               <div className="bg-amber-100 p-3 rounded-full w-fit mx-auto mb-2">
                 <Users className="h-6 w-6 text-amber-600" />
@@ -169,13 +208,13 @@ const Index = () => {
               <h3 className="font-medium text-gray-900">Referral System</h3>
               <p className="text-sm text-gray-600">Earn from referrals</p>
             </div>
-
+            
             <div className="text-center p-4 bg-white/60 rounded-lg backdrop-blur-sm">
-              <div className="bg-green-100 p-3 rounded-full w-fit mx-auto mb-2">
-                <Shield className="h-6 w-6 text-green-600" />
+              <div className="bg-red-100 p-3 rounded-full w-fit mx-auto mb-2">
+                <Shield className="h-6 w-6 text-red-600" />
               </div>
-              <h3 className="font-medium text-gray-900">Secure Platform</h3>
-              <p className="text-sm text-gray-600">Your data is protected</p>
+              <h3 className="font-medium text-gray-900">Seva Pool</h3>
+              <p className="text-sm text-gray-600">Community contributions</p>
             </div>
           </div>
         </div>

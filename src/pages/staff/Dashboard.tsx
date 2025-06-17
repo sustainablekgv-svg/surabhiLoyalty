@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +9,8 @@ import {
   Wallet, 
   TrendingUp,
   LogOut,
-  Store
+  Store,
+  ShoppingCart
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -19,6 +19,7 @@ import { StaffStats } from '@/components/staff/StaffStats';
 import { UserRegistration } from '@/components/staff/UserRegistration';
 import { WalletRecharge } from '@/components/staff/WalletRecharge';
 import { StoreUsers } from '@/components/staff/StoreUsers';
+import { SalesManagement } from '@/components/staff/SalesManagement';
 
 const StaffDashboard = () => {
   const { user, logout, login } = useAuth();
@@ -87,18 +88,22 @@ const StaffDashboard = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-4 mb-8">
+          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-5 mb-8">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               <span className="hidden sm:inline">Overview</span>
             </TabsTrigger>
             <TabsTrigger value="register" className="flex items-center gap-2">
               <UserPlus className="h-4 w-4" />
-              <span className="hidden sm:inline">Register User</span>
+              <span className="hidden sm:inline">Register</span>
             </TabsTrigger>
             <TabsTrigger value="recharge" className="flex items-center gap-2">
               <Wallet className="h-4 w-4" />
               <span className="hidden sm:inline">Recharge</span>
+            </TabsTrigger>
+            <TabsTrigger value="sales" className="flex items-center gap-2">
+              <ShoppingCart className="h-4 w-4" />
+              <span className="hidden sm:inline">Sales</span>
             </TabsTrigger>
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -116,6 +121,10 @@ const StaffDashboard = () => {
 
           <TabsContent value="recharge">
             <WalletRecharge storeLocation={user.storeLocation || ''} />
+          </TabsContent>
+
+          <TabsContent value="sales">
+            <SalesManagement storeLocation={user.storeLocation || ''} />
           </TabsContent>
 
           <TabsContent value="users">

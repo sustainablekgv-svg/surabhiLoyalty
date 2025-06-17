@@ -255,7 +255,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                       <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
                         <div className="flex items-center gap-2">
                           <Heart className="h-4 w-4 text-red-600" />
-                          <span className="text-sm font-medium text-red-900">Go Seva Pool (2.5%)</span>
+                          <span className="text-sm font-medium text-red-900">Seva Pool (2.5%)</span>
                         </div>
                         <span className="font-bold text-red-600">₹{rewards.goSevaContribution}</span>
                       </div>

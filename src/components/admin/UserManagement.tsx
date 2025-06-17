@@ -159,7 +159,7 @@ export const UserManagement = () => {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Heart className="h-4 w-4 text-red-600" />
-              <span className="text-xs font-medium text-red-600">Go Seva Pool</span>
+              <span className="text-xs font-medium text-red-600">Seva Pool</span>
             </div>
             <p className="text-xl font-bold text-red-900">₹{totalStats.totalGoSevaContribution.toLocaleString()}</p>
           </CardContent>

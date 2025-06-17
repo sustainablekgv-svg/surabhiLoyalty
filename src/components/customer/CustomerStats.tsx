@@ -47,7 +47,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       borderColor: 'border-amber-200'
     },
     {
-      title: 'Go Seva Contribution',
+      title: 'Seva Contribution',
       value: `₹${customerData.goSevaContribution}`,
       description: 'Community welfare fund',
       icon: Heart,
@@ -69,7 +69,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
   return (
     <div className="space-y-6">
       {/* Loyalty Level Card */}
-      <Card className="shadow-xl border-0 bg-gradient-to-r from-purple-600 to-amber-500 text-white">
+      {/* <Card className="shadow-xl border-0 bg-gradient-to-r from-purple-600 to-amber-500 text-white">
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -97,7 +97,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
             <p className="text-xs text-purple-100">₹1,500 more to reach Gold level</p>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -4,7 +4,6 @@ import {
   Coins, 
   LogOut, 
   User,
-  Bell
 } from 'lucide-react';
 
 interface CustomerHeaderProps {
@@ -32,12 +31,12 @@ export const CustomerHeader = ({ user, onLogout }: CustomerHeaderProps) => {
           </div>
           
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" className="relative">
+            {/* <Button variant="ghost" size="sm" className="relative">
               <Bell className="h-5 w-5" />
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                 2
               </span>
-            </Button>
+            </Button> */}
             
             <div className="flex items-center gap-3">
               <div className="text-right">

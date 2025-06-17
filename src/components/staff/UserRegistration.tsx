@@ -254,7 +254,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                   <CheckCircle className="h-4 w-4 text-red-600" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-red-900">Go Seva Contribution</h3>
+                  <h3 className="font-medium text-red-900">Seva Contribution</h3>
                   <p className="text-sm text-red-700">2.5% of recharges go to community welfare</p>
                 </div>
               </div>

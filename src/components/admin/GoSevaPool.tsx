@@ -104,7 +104,7 @@ export const GoSevaPool = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Go Seva Pool Management</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Seva Pool Management</h2>
           <p className="text-gray-600">Manage community contribution pool and allocations</p>
         </div>
         
@@ -118,9 +118,9 @@ export const GoSevaPool = () => {
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Allocate Go Seva Funds</DialogTitle>
+                <DialogTitle>Allocate Seva Funds</DialogTitle>
                 <DialogDescription>
-                  Allocate funds from the Go Seva pool for community welfare
+                  Allocate funds from the Seva pool for community welfare
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">

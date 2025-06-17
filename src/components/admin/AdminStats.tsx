@@ -37,7 +37,7 @@ export const AdminStats = () => {
       bgColor: 'bg-purple-50'
     },
     {
-      title: 'Go Seva Pool',
+      title: 'Seva Pool',
       value: '₹11,473',
       change: 'Monthly',
       icon: Heart,
