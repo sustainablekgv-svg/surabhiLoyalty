@@ -84,130 +84,145 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!isAuthReady) {
-      toast.error('System is not ready yet. Please try again.');
-      return;
-    }
+  e.preventDefault();
 
-    // Validation
-    if (!formData.name || !formData.mobile || !formData.email || !formData.password) {
-      toast.error('Please fill all required fields');
-      return;
-    }
+  if (!isAuthReady) {
+    toast.error('System is not ready yet. Please try again.');
+    return;
+  }
 
-    if (!/^\d{10}$/.test(formData.mobile)) {
-      toast.error('Please enter a valid 10-digit mobile number');
-      return;
-    }
+  if (!formData.name || !formData.mobile || !formData.email || !formData.password) {
+    toast.error('Please fill all required fields');
+    return;
+  }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      toast.error('Please enter a valid email address');
-      return;
-    }
+  if (!/^\d{10}$/.test(formData.mobile)) {
+    toast.error('Please enter a valid 10-digit mobile number');
+    return;
+  }
 
-    if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters');
-      return;
-    }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    toast.error('Please enter a valid email address');
+    return;
+  }
 
-    if (formData.referredBy && !/^\d{10}$/.test(formData.referredBy)) {
-      toast.error('Referral number must be 10 digits');
-      return;
-    }
+  if (formData.password.length < 6) {
+    toast.error('Password must be at least 6 characters');
+    return;
+  }
 
-    setIsLoading(true);
-    const toastId = toast.loading('Registering user...');
+  if (formData.referredBy && !/^\d{10}$/.test(formData.referredBy)) {
+    toast.error('Referral number must be 10 digits');
+    return;
+  }
 
-    try {
-      // 1. Create auth user
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        formData.email,
-        formData.password
-      );
-      const newUserUid = userCredential.user.uid;
+  setIsLoading(true);
+  const toastId = toast.loading('Checking details...');
 
-      // 2. Prepare user data
-      const walletId = `WALLET-${newUserUid.substring(0, 8).toUpperCase()}`;
-      const newUserData: UserData = {
-        name: formData.name,
-        mobile: formData.mobile,
-        email: formData.email,
-        storeLocation,
-        walletBalance: 0,
-        genericCoins: 0,
-        surabhiCoins: 0,
-        sevaCoinsTotal: 0,
-        sevaCoinsCurrentMonth: 0,
-        createdAt: serverTimestamp(),
-        role: 'customer',
-        walletId,
-        ...(formData.referredBy && { referredBy: formData.referredBy })
-      };
+  try {
+    const customersCollection = collection(db, 'customers');
 
-      // 3. Save to Firestore
-      const customersCollection = collection(db, 'customers');
-      await setDoc(doc(customersCollection, newUserUid), newUserData);
-
-      // 4. Handle referral if exists
-      if (formData.referredBy) {
-        const referrerQuery = query(
-          customersCollection,
-          where('mobile', '==', formData.referredBy)
-        );
-        const referrerSnapshot = await getDocs(referrerQuery);
-
-        if (!referrerSnapshot.empty) {
-          const referrerDoc = referrerSnapshot.docs[0];
-          await updateDoc(doc(customersCollection, referrerDoc.id), {
-            referredUsers: arrayUnion({
-              uid: newUserUid,
-              referralDate: serverTimestamp()
-            })
-          });
-          toast.success(`User registered! Referral recorded.`, { id: toastId });
-        } else {
-          toast.success(`User registered! Referrer not found.`, { id: toastId });
-        }
-      } else {
-        toast.success('User registered successfully!', { id: toastId });
-      }
-
-      // Reset form
-      setFormData({
-        name: '',
-        mobile: '',
-        email: '',
-        password: '',
-        referredBy: ''
-      });
-
-    } catch (error: any) {
-      console.error('Registration error:', error);
-      let errorMessage = 'Registration failed. Please try again.';
-
-      switch (error.code) {
-        case 'auth/email-already-in-use':
-          errorMessage = 'This email is already registered.';
-          break;
-        case 'auth/weak-password':
-          errorMessage = 'Password should be at least 6 characters.';
-          break;
-        case 'auth/invalid-email':
-          errorMessage = 'Please enter a valid email address.';
-          break;
-        case 'permission-denied':
-          errorMessage = 'You dont have permission to perform this action.';
-          break;
-      }
-
-      toast.error(errorMessage, { id: toastId });
-    } finally {
+    // 🔍 Check if email already exists
+    const emailQuery = query(customersCollection, where('email', '==', formData.email));
+    const emailSnap = await getDocs(emailQuery);
+    if (!emailSnap.empty) {
+      toast.error('This email is already registered.', { id: toastId });
       setIsLoading(false);
+      return;
     }
-  };
+
+    // 🔍 Check if mobile number already exists
+    const mobileQuery = query(customersCollection, where('mobile', '==', formData.mobile));
+    const mobileSnap = await getDocs(mobileQuery);
+    if (!mobileSnap.empty) {
+      toast.error('This mobile number is already registered.', { id: toastId });
+      setIsLoading(false);
+      return;
+    }
+
+    // ✅ Proceed with registration
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      formData.email,
+      formData.password
+    );
+    const newUserUid = userCredential.user.uid;
+
+    const walletId = `WALLET-${newUserUid.substring(0, 8).toUpperCase()}`;
+    const newUserData: UserData = {
+      name: formData.name,
+      mobile: formData.mobile,
+      email: formData.email,
+      storeLocation,
+      walletBalance: 0,
+      genericCoins: 0,
+      surabhiCoins: 0,
+      sevaCoinsTotal: 0,
+      sevaCoinsCurrentMonth: 0,
+      createdAt: serverTimestamp(),
+      role: 'customer',
+      walletId,
+      ...(formData.referredBy && { referredBy: formData.referredBy })
+    };
+
+    await setDoc(doc(customersCollection, newUserUid), newUserData);
+
+    if (formData.referredBy) {
+      const referrerQuery = query(
+        customersCollection,
+        where('mobile', '==', formData.referredBy)
+      );
+      const referrerSnapshot = await getDocs(referrerQuery);
+
+      if (!referrerSnapshot.empty) {
+        const referrerDoc = referrerSnapshot.docs[0];
+        await updateDoc(doc(customersCollection, referrerDoc.id), {
+          referredUsers: arrayUnion({
+            uid: newUserUid,
+            referralDate: serverTimestamp()
+          })
+        });
+        toast.success(`User registered! Referral recorded.`, { id: toastId });
+      } else {
+        toast.success(`User registered! Referrer not found.`, { id: toastId });
+      }
+    } else {
+      toast.success('User registered successfully!', { id: toastId });
+    }
+
+    setFormData({
+      name: '',
+      mobile: '',
+      email: '',
+      password: '',
+      referredBy: ''
+    });
+
+  } catch (error: any) {
+    console.error('Registration error:', error);
+    let errorMessage = 'Registration failed. Please try again.';
+
+    switch (error.code) {
+      case 'auth/email-already-in-use':
+        errorMessage = 'This email is already registered.';
+        break;
+      case 'auth/weak-password':
+        errorMessage = 'Password should be at least 6 characters.';
+        break;
+      case 'auth/invalid-email':
+        errorMessage = 'Please enter a valid email address.';
+        break;
+      case 'permission-denied':
+        errorMessage = 'You don’t have permission to perform this action.';
+        break;
+    }
+
+    toast.error(errorMessage, { id: toastId });
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   const generatePassword = () => {
     if (!formData.name || !formData.mobile || !formData.email) {
