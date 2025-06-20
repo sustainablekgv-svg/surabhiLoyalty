@@ -31,26 +31,7 @@ import {
   serverTimestamp 
 } from 'firebase/firestore';
 
-interface UserData {
-  name: string;
-  mobile: string;
-  email: string;
-  storeLocation: string;
-  walletBalance: number;
-  genericCoins: number;
-  createdAt: any;
-  role: string;
-  walletId: string;
-  surabhiCoins: number;
-  sevaCoinsTotal: number;
-  sevaCoinsCurrentMonth: number;
-  referredBy?: string;
-  referredUsers?: { uid: string; referralDate: any }[];
-}
-
-interface UserRegistrationProps {
-  storeLocation: string;
-}
+import { Customer, UserRegistrationProps } from '@/types/types';
 
 export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -149,7 +130,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
     const newUserUid = userCredential.user.uid;
 
     const walletId = `WALLET-${newUserUid.substring(0, 8).toUpperCase()}`;
-    const newUserData: UserData = {
+    const newUserData: Customer = {
       name: formData.name,
       mobile: formData.mobile,
       email: formData.email,
@@ -161,6 +142,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
       sevaCoinsCurrentMonth: 0,
       createdAt: serverTimestamp(),
       role: 'customer',
+      registered:true,
       walletId,
       ...(formData.referredBy && { referredBy: formData.referredBy })
     };

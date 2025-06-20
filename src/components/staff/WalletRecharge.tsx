@@ -84,7 +84,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
   const verifyStaffPin = async () => {
     // In a real app, you would verify the PIN against your staff database
     // This is a simplified version that checks for a 4-digit PIN
-    return staffPin.length === 4 && /^\d+$/.test(staffPin) && staffPin == '1234';
+    return staffPin.length === 4 && /^\d+$/.test(staffPin) && `${import.meta.env.VITE_FIREBASE_API_KEY}`;
   };
 
   const processRecharge = async () => {
