@@ -1,24 +1,52 @@
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { 
-  UserPlus, 
-  Phone, 
-  Mail, 
+import { useState, useEffect } from 'react';
+import {
+  UserPlus,
+  Phone,
+  Mail,
   User,
   Lock,
   Eye,
   EyeOff,
-  CheckCircle
+  CheckCircle,
+  Link2,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { auth, db } from '@/lib/firebase'; // Import from your firebase config
+import { 
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  signInAnonymously,
+  User as FirebaseUser
+} from 'firebase/auth';
+import { 
+  doc, 
+  setDoc, 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  updateDoc, 
+  arrayUnion, 
+  serverTimestamp 
+} from 'firebase/firestore';
 
-import { UserData } from "@/types/types";
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+interface UserData {
+  name: string;
+  mobile: string;
+  email: string;
+  storeLocation: string;
+  walletBalance: number;
+  genericCoins: number;
+  createdAt: any;
+  role: string;
+  walletId: string;
+  surabhiCoins: number;
+  sevaCoinsTotal: number;
+  sevaCoinsCurrentMonth: number;
+  referredBy?: string;
+  referredUsers?: { uid: string; referralDate: any }[];
+}
 
 interface UserRegistrationProps {
   storeLocation: string;
@@ -31,288 +59,407 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
     name: '',
     mobile: '',
     email: '',
-    password: ''
+    password: '',
+    referredBy: ''
   });
+  const [isAuthReady, setIsAuthReady] = useState(false);
+
+  // Initialize auth state
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user: FirebaseUser | null) => {
+      if (user) {
+        toast.success('Authentication ready');
+      } else {
+        signInAnonymously(auth)
+          .then(() => toast.success('Anonymous session started'))
+          .catch(error => {
+            toast.error('Failed to start anonymous session');
+            console.error('Anonymous auth error:', error);
+          });
+      }
+      setIsAuthReady(true);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.mobile || !formData.email || !formData.password) {
-      toast.error('All fields are required including email');
+    if (!isAuthReady) {
+      toast.error('System is not ready yet. Please try again.');
       return;
     }
 
-    if (formData.mobile.length !== 10) {
+    // Validation
+    if (!formData.name || !formData.mobile || !formData.email || !formData.password) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+
+    if (!/^\d{10}$/.test(formData.mobile)) {
       toast.error('Please enter a valid 10-digit mobile number');
       return;
     }
 
-    if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters long');
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       toast.error('Please enter a valid email address');
       return;
     }
 
+    if (formData.password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
+    if (formData.referredBy && !/^\d{10}$/.test(formData.referredBy)) {
+      toast.error('Referral number must be 10 digits');
+      return;
+    }
+
     setIsLoading(true);
-    
+    const toastId = toast.loading('Registering user...');
+
     try {
-      // Create user with email and password
+      // 1. Create auth user
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formData.email,
         formData.password
       );
+      const newUserUid = userCredential.user.uid;
 
-      // Prepare user data for Firestore
-      const userData: UserData = {
+      // 2. Prepare user data
+      const walletId = `WALLET-${newUserUid.substring(0, 8).toUpperCase()}`;
+      const newUserData: UserData = {
         name: formData.name,
         mobile: formData.mobile,
         email: formData.email,
         storeLocation,
         walletBalance: 0,
-        coins: 0,
-        createdAt: new Date().toISOString(),
-        role: 'customer' // You can add roles if needed
+        genericCoins: 0,
+        surabhiCoins: 0,
+        sevaCoinsTotal: 0,
+        sevaCoinsCurrentMonth: 0,
+        createdAt: serverTimestamp(),
+        role: 'customer',
+        walletId,
+        ...(formData.referredBy && { referredBy: formData.referredBy })
       };
 
-      // Add user data to Firestore with UID as document ID
-      await setDoc(doc(db, 'customers', userCredential.user.uid), userData);
+      // 3. Save to Firestore
+      const customersCollection = collection(db, 'customers');
+      await setDoc(doc(customersCollection, newUserUid), newUserData);
 
-      toast.success(`User ${formData.name} registered successfully!`);
-      setFormData({ name: '', mobile: '', email: '', password: '' });
-    } catch (error: any) {
-      let errorMessage = 'Registration failed. Please try again.';
-      
-      if (error.code === 'auth/email-already-in-use') {
-        errorMessage = 'This email is already registered.';
-      } else if (error.code === 'auth/weak-password') {
-        errorMessage = 'Password should be at least 6 characters.';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Please enter a valid email address.';
+      // 4. Handle referral if exists
+      if (formData.referredBy) {
+        const referrerQuery = query(
+          customersCollection,
+          where('mobile', '==', formData.referredBy)
+        );
+        const referrerSnapshot = await getDocs(referrerQuery);
+
+        if (!referrerSnapshot.empty) {
+          const referrerDoc = referrerSnapshot.docs[0];
+          await updateDoc(doc(customersCollection, referrerDoc.id), {
+            referredUsers: arrayUnion({
+              uid: newUserUid,
+              referralDate: serverTimestamp()
+            })
+          });
+          toast.success(`User registered! Referral recorded.`, { id: toastId });
+        } else {
+          toast.success(`User registered! Referrer not found.`, { id: toastId });
+        }
+      } else {
+        toast.success('User registered successfully!', { id: toastId });
       }
-      
-      toast.error(errorMessage);
+
+      // Reset form
+      setFormData({
+        name: '',
+        mobile: '',
+        email: '',
+        password: '',
+        referredBy: ''
+      });
+
+    } catch (error: any) {
       console.error('Registration error:', error);
+      let errorMessage = 'Registration failed. Please try again.';
+
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          errorMessage = 'This email is already registered.';
+          break;
+        case 'auth/weak-password':
+          errorMessage = 'Password should be at least 6 characters.';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Please enter a valid email address.';
+          break;
+        case 'permission-denied':
+          errorMessage = 'You dont have permission to perform this action.';
+          break;
+      }
+
+      toast.error(errorMessage, { id: toastId });
     } finally {
       setIsLoading(false);
     }
   };
 
   const generatePassword = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    if (!formData.name || !formData.mobile || !formData.email) {
+      toast.error('Please fill name, mobile and email first');
+      return;
+    }
+
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
     let password = '';
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 12; i++) {
       password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     setFormData({ ...formData, password });
-    toast.success('Password generated successfully');
+    toast.success('Secure password generated!');
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="bg-blue-100 p-3 rounded-full">
-          <UserPlus className="h-6 w-6 text-blue-600" />
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-8">
+          <div className="bg-blue-100 p-3 rounded-full">
+            <UserPlus className="h-6 w-6 text-blue-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Customer Registration</h1>
+            <p className="text-gray-600">Register new customers for {storeLocation}</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">User Registration</h2>
-          <p className="text-gray-600">Register new customers for {storeLocation}</p>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5 text-blue-600" />
-              Customer Details
-            </CardTitle>
-            <CardDescription>
-              Enter customer information to create a new account (Email is mandatory)
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-sm font-medium text-gray-700">
-                  Full Name *
-                </Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="Enter customer name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="pl-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                    required
-                  />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Registration Form */}
+          <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
+            <div className="p-6 pb-4">
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <User className="h-5 w-5 text-blue-600" />
+                Customer Details
+              </h2>
+            </div>
+
+            <div className="p-6 pt-0">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Name Field */}
+                <div className="space-y-2">
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                    Full Name <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      id="name"
+                      type="text"
+                      placeholder="Enter customer name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="w-full pl-10 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="mobile" className="text-sm font-medium text-gray-700">
-                  Mobile Number *
-                </Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="mobile"
-                    type="tel"
-                    placeholder="Enter 10-digit mobile number"
-                    value={formData.mobile}
-                    onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
-                    className="pl-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                    maxLength={10}
-                    required
-                  />
+
+                {/* Mobile Field */}
+                <div className="space-y-2">
+                  <label htmlFor="mobile" className="block text-sm font-medium text-gray-700 w-40">
+                    Mobile Number <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      id="mobile"
+                      type="tel"
+                      placeholder="Enter 10-digit number"
+                      value={formData.mobile}
+                      onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
+                      className="w-full pl-10 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      maxLength={10}
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                  Email Address *
-                </Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Enter email address"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="pl-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                    required
-                  />
+
+                {/* Email Field */}
+                <div className="space-y-2">
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      id="email"
+                      type="email"
+                      placeholder="Enter email address"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full pl-10 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                    Password *
-                  </Label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={generatePassword}
-                    className="text-xs text-blue-600 hover:text-blue-700"
-                  >
-                    Generate Password
-                  </Button>
+
+                {/* Password Field */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                      Password <span className="text-red-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={generatePassword}
+                      disabled={!formData.name || !formData.mobile || !formData.email}
+                      className={`text-xs px-2 py-1 rounded ${
+                        !formData.name || !formData.mobile || !formData.email
+                          ? 'text-gray-400 cursor-not-allowed'
+                          : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+                      }`}
+                    >
+                      Generate Password
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Enter password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className="w-full pl-10 pr-10 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Enter password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="pl-10 pr-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                    required
-                  />
+
+                {/* Referral Field */}
+                <div className="space-y-2">
+                  <label htmlFor="referredBy" className="block text-sm font-medium text-gray-700">
+                    Referred By Mobile (Optional)
+                  </label>
+                  <div className="relative">
+                    <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      id="referredBy"
+                      type="tel"
+                      placeholder="Enter referrer's mobile number"
+                      value={formData.referredBy}
+                      onChange={(e) => setFormData({ ...formData, referredBy: e.target.value })}
+                      className="w-full pl-10 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      maxLength={10}
+                    />
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <div className="pt-2">
                   <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                    type="submit"
+                    disabled={isLoading || !isAuthReady}
+                    className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white font-medium rounded-lg transition-all duration-200 shadow-md disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin text-white" />
+                        <span>Registering...</span>
+                      </>
+                    ) : (
+                      'Register Customer'
+                    )}
                   </button>
                 </div>
-              </div>
-              
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <div className="flex items-center gap-2 text-sm text-blue-800">
-                  <CheckCircle className="h-4 w-4" />
-                  <span>Account will be created for: <strong>{storeLocation}</strong></span>
-                </div>
-              </div>
-              
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-lg transition-all duration-200"
-              >
-                {isLoading ? 'Registering User...' : 'Register Customer'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+              </form>
+            </div>
+          </div>
 
-        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              Registration Benefits
-            </CardTitle>
-            <CardDescription>
-              What customers get when they register
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg">
-                <div className="bg-purple-100 p-2 rounded-full mt-1">
-                  <CheckCircle className="h-4 w-4 text-purple-600" />
+          {/* Benefits Section */}
+          <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
+            <div className="p-6 pb-4">
+              <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                Registration Benefits
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                What customers get when they register
+              </p>
+            </div>
+
+            <div className="p-6 pt-0 space-y-4">
+              {/* Wallet Benefit */}
+              <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="bg-blue-100 p-2 rounded-full mt-1 flex-shrink-0">
+                  <CheckCircle className="h-4 w-4 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-purple-900">Recharge Wallet</h3>
-                  <p className="text-sm text-purple-700">Store money for future purchases with 1:1 value</p>
+                  <h3 className="font-medium text-blue-900">Digital Wallet</h3>
+                  <p className="text-sm text-blue-700">Secure storage for your money with 1:1 value</p>
                 </div>
               </div>
-              
-              <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-lg">
-                <div className="bg-amber-100 p-2 rounded-full mt-1">
+
+              {/* Coins Benefit */}
+              <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                <div className="bg-amber-100 p-2 rounded-full mt-1 flex-shrink-0">
                   <CheckCircle className="h-4 w-4 text-amber-600" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-amber-900">Surabhi Coins</h3>
+                  <h3 className="font-medium text-amber-900">Reward Coins</h3>
                   <p className="text-sm text-amber-700">Earn 10% coins on every wallet recharge</p>
                 </div>
               </div>
-              
-              <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
-                <div className="bg-green-100 p-2 rounded-full mt-1">
+
+              {/* Referral Benefit */}
+              <div className="flex items-start gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
+                <div className="bg-green-100 p-2 rounded-full mt-1 flex-shrink-0">
                   <CheckCircle className="h-4 w-4 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-green-900">Referral System</h3>
-                  <p className="text-sm text-amber-700">Earn 7.5% on referral purchases</p>
+                  <h3 className="font-medium text-green-900">Referral Program</h3>
+                  <p className="text-sm text-green-700">Earn bonus when you refer friends</p>
                 </div>
               </div>
-              
-              <div className="flex items-start gap-3 p-3 bg-red-50 rounded-lg">
-                <div className="bg-red-100 p-2 rounded-full mt-1">
-                  <CheckCircle className="h-4 w-4 text-red-600" />
+
+              {/* Seva Benefit */}
+              <div className="flex items-start gap-3 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                <div className="bg-purple-100 p-2 rounded-full mt-1 flex-shrink-0">
+                  <CheckCircle className="h-4 w-4 text-purple-600" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-red-900">Go Seva Contribution</h3>
-                  <p className="text-sm text-red-700">2.5% of recharges go to community welfare</p>
+                  <h3 className="font-medium text-purple-900">Community Support</h3>
+                  <p className="text-sm text-purple-700">2.5% of recharges support community welfare</p>
                 </div>
               </div>
+
+              {/* Important Notes */}
+              <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <h3 className="font-medium text-gray-900 mb-2">Important Notes:</h3>
+                <ul className="text-sm text-gray-700 space-y-1.5 pl-4 list-disc">
+                  <li>Email is required for account recovery</li>
+                  <li>Mobile number must be verified for transactions</li>
+                  <li>Each customer gets a unique Wallet ID</li>
+                  <li>Initial coins balance will be zero</li>
+                  <li>Referrals must be existing customers</li>
+                  <li>Password must be at least 6 characters</li>
+                </ul>
+              </div>
             </div>
-            
-            <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
-              <h3 className="font-medium text-gray-900 mb-2">Important Notes:</h3>
-              <ul className="text-sm text-gray-700 space-y-1">
-                <li>• Customer will receive login credentials</li>
-                <li>• Account is tied to {storeLocation}</li>
-                <li>• Password can be changed by customer</li>
-                <li>• Email is mandatory for password recovery</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

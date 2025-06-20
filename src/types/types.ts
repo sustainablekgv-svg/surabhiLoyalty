@@ -4,7 +4,17 @@ export interface UserData {
   email: string;
   storeLocation: string;
   walletBalance: number;
-  coins: number;
+  genericCoins: number;
   createdAt: string;
-  role?: string;
+  role: string;
+  walletId: string;
+  surabhiCoins: number;
+  sevaCoinsTotal: number;
+  sevaCoinsCurrentMonth: number;
+  referredBy?: string;
+  referredUsers?: { uid: string; referralDate: string; }[];
+}
+
+export interface UserRegistrationProps {
+  storeLocation: string;
 }
