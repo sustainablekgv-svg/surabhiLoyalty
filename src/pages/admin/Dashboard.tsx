@@ -107,7 +107,7 @@ const AdminDashboard = () => {
             </TabsTrigger>
             <TabsTrigger value="goseva" className="flex items-center gap-2">
               <Heart className="h-4 w-4" />
-              <span className="hidden sm:inline">Seva</span>
+              <span className="hidden sm:inline">Go Seva</span>
             </TabsTrigger>
           </TabsList>
 

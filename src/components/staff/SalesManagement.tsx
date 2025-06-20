@@ -237,7 +237,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                       <p className="font-bold">{selectedCustomer.surabhiCoins}</p>
                     </div>
                     <div>
-                      <p className="text-red-700">Seva Total</p>
+                      <p className="text-red-700">Go Seva Total</p>
                       <p className="font-bold">₹{selectedCustomer.goSevaContribution}</p>
                     </div>
                   </div>
@@ -333,7 +333,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                       )}
                       
                       <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-                        <span className="text-sm font-medium text-red-900">Seva Contribution</span>
+                        <span className="text-sm font-medium text-red-900">Go Seva Contribution</span>
                         <span className="font-bold text-red-600">₹{Math.floor(saleCalculation.goSevaContribution)}</span>
                       </div>
                     </div>

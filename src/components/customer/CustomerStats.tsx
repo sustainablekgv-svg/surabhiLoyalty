@@ -47,7 +47,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       borderColor: 'border-amber-200'
     },
     {
-      title: 'Seva Contribution',
+      title: 'Go Seva Contribution',
       value: `₹${customerData.goSevaContribution}`,
       description: 'Community welfare fund',
       icon: Heart,

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -213,7 +214,7 @@ const Index = () => {
               <div className="bg-red-100 p-3 rounded-full w-fit mx-auto mb-2">
                 <Shield className="h-6 w-6 text-red-600" />
               </div>
-              <h3 className="font-medium text-gray-900">Seva Pool</h3>
+              <h3 className="font-medium text-gray-900">Go Seva Pool</h3>
               <p className="text-sm text-gray-600">Community contributions</p>
             </div>
           </div>

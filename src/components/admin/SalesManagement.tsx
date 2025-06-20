@@ -142,7 +142,7 @@ export const SalesManagement = () => {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Users className="h-4 w-4 text-red-600" />
-              <span className="text-xs font-medium text-red-600">Seva Pool</span>
+              <span className="text-xs font-medium text-red-600">Go Seva Pool</span>
             </div>
             <p className="text-xl font-bold text-red-900">₹{totalStats.totalGoSevaContribution.toLocaleString()}</p>
           </CardContent>
@@ -227,7 +227,7 @@ export const SalesManagement = () => {
                       <span className="font-medium">Coins Earned:</span> {transaction.surabhiCoinsEarned}
                     </div>
                     <div className="text-red-600">
-                      <span className="font-medium">Seva:</span> ₹{transaction.goSevaContribution}
+                      <span className="font-medium">Go Seva:</span> ₹{transaction.goSevaContribution}
                     </div>
                   </div>
                   

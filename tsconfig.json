@@ -9,7 +9,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@/components/*":["./components/*"],
-      "@/lib/*":["./lib/*"]
+      "@/lib/*":["./lib/*"],
+      "@/types/*":["./types/*"]
     },
     "noImplicitAny": false,
     "noUnusedParameters": false,

@@ -56,7 +56,7 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
       id: '3',
       type: 'goseva_contribution',
       amount: 12.5,
-      description: 'Seva contribution (2.5%)',
+      description: 'Go Seva contribution (2.5%)',
       date: '2024-06-15T14:30:00',
       status: 'completed'
     },
@@ -125,7 +125,7 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
       case 'referral_bonus':
         return 'Referral Bonus';
       case 'goseva_contribution':
-        return 'Seva';
+        return 'Go Seva';
       default:
         return 'Transaction';
     }
@@ -200,7 +200,7 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Heart className="h-4 w-4 text-red-600" />
-              <span className="text-sm font-medium text-red-600">Seva Contribution</span>
+              <span className="text-sm font-medium text-red-600">Go Seva Contribution</span>
             </div>
             <p className="text-2xl font-bold text-red-900">₹{totalGoSevaContribution}</p>
             <p className="text-xs text-red-700">Total community contribution</p>
@@ -238,7 +238,7 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
                   <SelectItem value="recharge">Wallet Recharge</SelectItem>
                   <SelectItem value="surabhi_earn">Surabhi Coins</SelectItem>
                   <SelectItem value="referral_bonus">Referral Bonus</SelectItem>
-                  <SelectItem value="goseva_contribution">Seva</SelectItem>
+                  <SelectItem value="goseva_contribution">Go Seva</SelectItem>
                 </SelectContent>
               </Select>
               

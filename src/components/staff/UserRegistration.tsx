@@ -15,6 +15,11 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { UserData } from "@/types/types";
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+
 interface UserRegistrationProps {
   storeLocation: string;
 }
@@ -32,8 +37,8 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.mobile || !formData.password) {
-      toast.error('Please fill all required fields');
+    if (!formData.name || !formData.mobile || !formData.email || !formData.password) {
+      toast.error('All fields are required including email');
       return;
     }
 
@@ -47,16 +52,52 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
       return;
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      // Create user with email and password
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
+      );
+
+      // Prepare user data for Firestore
+      const userData: UserData = {
+        name: formData.name,
+        mobile: formData.mobile,
+        email: formData.email,
+        storeLocation,
+        walletBalance: 0,
+        coins: 0,
+        createdAt: new Date().toISOString(),
+        role: 'customer' // You can add roles if needed
+      };
+
+      // Add user data to Firestore with UID as document ID
+      await setDoc(doc(db, 'customers', userCredential.user.uid), userData);
+
       toast.success(`User ${formData.name} registered successfully!`);
       setFormData({ name: '', mobile: '', email: '', password: '' });
-    } catch (error) {
-      toast.error('Registration failed. Please try again.');
+    } catch (error: any) {
+      let errorMessage = 'Registration failed. Please try again.';
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already registered.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'Password should be at least 6 characters.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Please enter a valid email address.';
+      }
+      
+      toast.error(errorMessage);
+      console.error('Registration error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -92,7 +133,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
               Customer Details
             </CardTitle>
             <CardDescription>
-              Enter customer information to create a new account
+              Enter customer information to create a new account (Email is mandatory)
             </CardDescription>
           </CardHeader>
           
@@ -137,7 +178,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
               
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                  Email Address (Optional)
+                  Email Address *
                 </Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -148,6 +189,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="pl-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    required
                   />
                 </div>
               </div>
@@ -245,7 +287,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                 </div>
                 <div>
                   <h3 className="font-medium text-green-900">Referral System</h3>
-                  <p className="text-sm text-green-700">Earn 7.5% on referral purchases</p>
+                  <p className="text-sm text-amber-700">Earn 7.5% on referral purchases</p>
                 </div>
               </div>
               
@@ -254,7 +296,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                   <CheckCircle className="h-4 w-4 text-red-600" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-red-900">Seva Contribution</h3>
+                  <h3 className="font-medium text-red-900">Go Seva Contribution</h3>
                   <p className="text-sm text-red-700">2.5% of recharges go to community welfare</p>
                 </div>
               </div>
@@ -266,7 +308,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                 <li>• Customer will receive login credentials</li>
                 <li>• Account is tied to {storeLocation}</li>
                 <li>• Password can be changed by customer</li>
-                <li>• Email is used for password recovery</li>
+                <li>• Email is mandatory for password recovery</li>
               </ul>
             </div>
           </CardContent>
