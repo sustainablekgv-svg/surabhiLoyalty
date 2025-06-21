@@ -3,97 +3,147 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Users, 
-  Search, 
-  Phone, 
+import {
+  Users,
+  Search,
+  Phone,
   Wallet,
   Coins,
-  Heart,
-  TrendingUp,
   Eye,
-  Calendar,
   Filter,
   UserCheck,
   UserX,
-  Loader2
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  Star,
+  Calendar
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { db } from '@/lib/firebase'; // Your Firebase initialization file
-import { collection, query, where, getDocs } from 'firebase/firestore';
-
-import {Customer, StoreUsersProps} from "@/types/types"
-
+import { db } from '@/lib/firebase';
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { Customer, StoreUsersProps } from "@/types/types";
+import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
+  console.log("THe store location is", storeLocation);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [registrationFilter, setRegistrationFilter] = useState<'all' | 'registered' | 'unregistered'>('all');
+  const [sortField, setSortField] = useState<'name' | 'walletBalance' | 'surabhiCoins' | 'lastTransactionDate'>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [topCustomers, setTopCustomers] = useState<Customer[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Create a reference to the customers collection
-        const customersRef = collection(db, 'customers');
-        
-        // Create a query based on store location
-        const q = query(
-          customersRef, 
-          where('storeLocation', '==', storeLocation)
-        );
-        
-        // Execute the query
-        const querySnapshot = await getDocs(q);
-        
-        // Map the documents to our customer interface
-        const customersData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as unknown as Customer[];
-        
-        setCustomers(customersData);
-      } catch (err) {
-        console.error('Error fetching customers:', err);
-        setError('Failed to load customers. Please try again.');
-      } finally {
-        setLoading(false);
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const customersRef = collection(db, 'customers');
+      
+      // First query to get customers by store location
+      const q = query(
+        customersRef,
+        where('storeLocation', '==', storeLocation)
+      );
+
+      const querySnapshot = await getDocs(q);
+      const customersData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as unknown as Customer[];
+
+      // Sort locally by lastTransactionDate if needed
+      customersData.sort((a, b) => {
+        const dateA = a.lastTransactionDate ? new Date(a.lastTransactionDate).getTime() : 0;
+        const dateB = b.lastTransactionDate ? new Date(b.lastTransactionDate).getTime() : 0;
+        return dateB - dateA; // Descending order
+      });
+
+      setCustomers(customersData);
+
+      // Get top customers by wallet balance (local sort)
+      const topByWallet = [...customersData]
+        .sort((a, b) => (b.walletBalance || 0) - (a.walletBalance || 0))
+        .slice(0, 5);
+      setTopCustomers(topByWallet);
+
+    } catch (err) {
+      console.error('Error fetching customers:', err);
+      setError(`Failed to load customers. ${err instanceof Error ? err.message : 'Please try again.'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchCustomers();
+}, [storeLocation]);
+
+  const filteredCustomers = customers
+    .filter(customer => {
+      const matchesSearch =
+        customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.mobile.includes(searchTerm) ||
+        (customer.email && customer.email.toLowerCase().includes(searchTerm.toLowerCase()));
+
+      const matchesRegistration =
+        registrationFilter === 'all' ||
+        (registrationFilter === 'registered' && customer.registered) ||
+        (registrationFilter === 'unregistered' && !customer.registered);
+
+      return matchesSearch && matchesRegistration;
+    })
+    .sort((a, b) => {
+      let comparison = 0;
+      
+      if (sortField === 'name') {
+        comparison = a.name.localeCompare(b.name);
+      } else if (sortField === 'walletBalance') {
+        comparison = (a.walletBalance || 0) - (b.walletBalance || 0);
+      } else if (sortField === 'surabhiCoins') {
+        comparison = (a.surabhiCoins || 0) - (b.surabhiCoins || 0);
+      } else if (sortField === 'lastTransactionDate') {
+        const dateA = a.lastTransactionDate ? new Date(a.lastTransactionDate).getTime() : 0;
+        const dateB = b.lastTransactionDate ? new Date(b.lastTransactionDate).getTime() : 0;
+        comparison = dateA - dateB;
       }
-    };
-
-    fetchCustomers();
-  }, [storeLocation]);
-
-  const filteredCustomers = customers.filter(customer => {
-    // Search term filter
-    const matchesSearch = 
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.mobile.includes(searchTerm) ||
-      customer.email.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    // Status filter
-    const matchesStatus = statusFilter === 'all';
-    
-    // Registration filter
-    const matchesRegistration = 
-      registrationFilter === 'all' || 
-      (registrationFilter === 'registered' && customer.registered) ||
-      (registrationFilter === 'unregistered' && !customer.registered);
-    
-    return matchesSearch && matchesStatus && matchesRegistration;
-  });
+      
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
 
   const stats = {
     totalUsers: customers.length,
     registeredUsers: customers.filter(c => c.registered).length,
-    totalWallet: customers.reduce((sum, c) => sum + c.walletBalance, 0),
-    totalCoins: customers.reduce((sum, c) => sum + c.surabhiCoins, 0),
-    currentMonthCoins: customers.reduce((sum, c) => sum + c.sevaCoinsCurrentMonth, 0)
+    totalWallet: customers.reduce((sum, c) => sum + (c.walletBalance || 0), 0),
+    totalCoins: customers.reduce((sum, c) => sum + (c.surabhiCoins || 0), 0),
+    currentMonthCoins: customers.reduce((sum, c) => sum + (c.sevaCoinsCurrentMonth || 0), 0)
+  };
+
+  const handleSort = (field: typeof sortField) => {
+    if (field === sortField) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Never';
+    try {
+      return format(new Date(dateString), 'MMM dd, yyyy');
+    } catch {
+      return dateString;
+    }
+  };
+
+  const viewCustomerDetails = (customerId: string) => {
+    navigate(`/customers/${customerId}`);
   };
 
   if (loading) {
@@ -136,7 +186,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
             <p className="text-2xl font-bold text-blue-900">{stats.totalUsers}</p>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-green-50 border-green-200">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -146,7 +196,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
             <p className="text-2xl font-bold text-green-900">{stats.registeredUsers}</p>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-purple-50 border-purple-200">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -156,7 +206,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
             <p className="text-xl font-bold text-purple-900">₹{stats.totalWallet.toLocaleString()}</p>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-amber-50 border-amber-200">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -168,6 +218,48 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
         </Card>
       </div>
 
+      {/* Top Customers Section */}
+      {topCustomers.length > 0 && (
+        <Card className="shadow-lg border-0 bg-gradient-to-r from-blue-50 to-purple-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Star className="h-5 w-5 text-yellow-500" />
+              Top Customers by Wallet Balance
+            </CardTitle>
+            <CardDescription>
+              Our most valuable customers at {storeLocation}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              {topCustomers.map((customer, index) => (
+                <div 
+                  key={customer.mobile} 
+                  className="bg-white p-4 rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => viewCustomerDetails(customer.mobile)}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-medium text-gray-900 truncate">{customer.name}</h3>
+                    <Badge variant="secondary" className="ml-2">#{index + 1}</Badge>
+                  </div>
+                  <div className="flex items-center gap-2 text-purple-600 text-sm">
+                    <Wallet className="h-3 w-3" />
+                    <span>₹{(customer.walletBalance || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-amber-600 text-sm mt-1">
+                    <Coins className="h-3 w-3" />
+                    <span>{(customer.surabhiCoins || 0).toLocaleString()} coins</span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-2">
+                    Last active: {formatDate(customer.lastTransactionDate)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
         <CardHeader>
           <div className="flex flex-col gap-4">
@@ -178,7 +270,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                   {filteredCustomers.length} customers at {storeLocation}
                 </CardDescription>
               </div>
-              
+
               <div className="relative w-full sm:w-auto">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
@@ -195,19 +287,11 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                 <Filter className="h-4 w-4 text-gray-500" />
                 <span className="text-sm text-gray-500">Filters:</span>
               </div>
-              
-              {/* <Select value={statusFilter} onValueChange={(value: 'all' | 'active' | 'inactive') => setStatusFilter(value)}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select> */}
 
-              <Select value={registrationFilter} onValueChange={(value: 'all' | 'registered' | 'unregistered') => setRegistrationFilter(value)}>
+              <Select 
+                value={registrationFilter} 
+                onValueChange={(value: 'all' | 'registered' | 'unregistered') => setRegistrationFilter(value)}
+              >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Registration" />
                 </SelectTrigger>
@@ -220,74 +304,126 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent>
-          <div className="space-y-4">
-            {filteredCustomers.map((customer) => (
-              <div key={customer.mobile} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-4 bg-gray-50 rounded-lg gap-4">
-                <div className="flex-1 min-w-0 w-full lg:w-auto">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-3">
-                    <h3 className="font-medium text-gray-900">{customer.name}</h3>
-                    <div className="flex gap-2">
-                      {/* <Badge variant={customer.status === 'active' ? 'default' : 'secondary'}>
-                        {customer.status}
-                      </Badge> */}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-left text-sm text-gray-500 border-b">
+                  <th 
+                    className="pb-3 px-4 cursor-pointer"
+                    onClick={() => handleSort('name')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Name
+                      {sortField === 'name' && (
+                        sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+                      )}
+                    </div>
+                  </th>
+                  <th className="pb-3 px-4">Contact</th>
+                  <th 
+                    className="pb-3 px-4 cursor-pointer"
+                    onClick={() => handleSort('walletBalance')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Wallet
+                      {sortField === 'walletBalance' && (
+                        sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="pb-3 px-4 cursor-pointer"
+                    onClick={() => handleSort('surabhiCoins')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Coins
+                      {sortField === 'surabhiCoins' && (
+                        sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    className="pb-3 px-4 cursor-pointer"
+                    onClick={() => handleSort('lastTransactionDate')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Last Activity
+                      {sortField === 'lastTransactionDate' && (
+                        sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+                      )}
+                    </div>
+                  </th>
+                  <th className="pb-3 px-4">Status</th>
+                  <th className="pb-3 px-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {filteredCustomers.map((customer) => (
+                  <tr key={customer.mobile} className="hover:bg-gray-50">
+                    <td className="py-4 px-4">
+                      <div className="font-medium text-gray-900">{customer.name}</div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Phone className="h-4 w-4 text-gray-400" />
+                        <span>{customer.mobile}</span>
+                      </div>
+                      {customer.email && (
+                        <div className="text-xs text-gray-500 mt-1">{customer.email}</div>
+                      )}
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-2 text-purple-600">
+                        <Wallet className="h-4 w-4" />
+                        <span>₹{(customer.walletBalance || 0).toLocaleString()}</span>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-2 text-amber-600">
+                        <Coins className="h-4 w-4" />
+                        <span>{(customer.surabhiCoins || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="text-xs text-green-600 mt-1">
+                        +{(customer.sevaCoinsCurrentMonth || 0).toLocaleString()} this month
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="text-sm text-gray-500">
+                        {formatDate(customer.lastTransactionDate)}
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
                       <Badge variant={customer.registered ? 'default' : 'outline'}>
                         {customer.registered ? (
-                          <UserCheck className="h-3 w-3 mr-1" />
+                          <>
+                            <UserCheck className="h-3 w-3 mr-1" />
+                            Registered
+                          </>
                         ) : (
-                          <UserX className="h-3 w-3 mr-1" />
+                          <>
+                            <UserX className="h-3 w-3 mr-1" />
+                            Unregistered
+                          </>
                         )}
-                        {customer.registered ? 'Registered' : 'Unregistered'}
                       </Badge>
-                      {/* {customer.totalReferrals > 0 && (
-                        <Badge variant="outline" className="text-xs">
-                          {customer.totalReferrals} referrals
-                        </Badge>
-                      )} */}
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Phone className="h-3 w-3" />
-                      <span>{customer.mobile}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-purple-600">
-                      <Wallet className="h-3 w-3" />
-                      <span>₹{customer.walletBalance.toLocaleString()}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-amber-600">
-                      <Coins className="h-3 w-3" />
-                      <span>{customer.surabhiCoins} (Total)</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-green-600">
-                      <Coins className="h-3 w-3" />
-                      <span>{customer.sevaCoinsCurrentMonth} (This Month)</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                    {/* <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>Joined: {customer.createdAt}</span>
-                    </div> */}
-                    <div className="flex items-center gap-1">
-                      <TrendingUp className="h-3 w-3" />
-                      <span>Last: {customer.lastTransactionDate}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex gap-2 w-full lg:w-auto">
-                  <Button variant="outline" size="sm" className="flex-1 lg:flex-none">
-                    <Eye className="h-3 w-3 mr-1" />
-                    View Details
-                  </Button>
-                </div>
-              </div>
-            ))}
-            
+                    </td>
+                    <td className="py-4 px-4">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => viewCustomerDetails(customer.mobile)}
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        View
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
             {filteredCustomers.length === 0 && (
               <div className="text-center py-8 text-gray-500">
                 <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />

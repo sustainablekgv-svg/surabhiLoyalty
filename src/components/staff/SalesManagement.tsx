@@ -25,9 +25,9 @@ import { Customer, SalesManagementProps, SalesTransaction } from '@/types/types'
 export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [saleAmount, setSaleAmount] = useState('');
+  const [saleAmount, setSaleAmount] = useState<number | undefined>(undefined);
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'cash' | 'mixed'>('wallet');
-  const [surabhiCoinsToUse, setSurabhiCoinsToUse] = useState('');
+  const [surabhiCoinsToUse, setSurabhiCoinsToUse] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isNewCustomer, setIsNewCustomer] = useState(false);
@@ -40,7 +40,6 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     const today = new Date();
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     
-    // Check if customer's last transaction was in a previous month
     const lastTransactionDate = customer.lastTransactionDate ? 
       new Date(customer.lastTransactionDate) : new Date(0);
       
@@ -83,34 +82,32 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
   // Automatically set Surabhi coins to use all available coins when customer is selected
   useEffect(() => {
-    if (selectedCustomer && selectedCustomer.surabhiCoins > 0) {
-      setSurabhiCoinsToUse(Math.min(selectedCustomer.surabhiCoins, 
-        parseFloat(saleAmount) || 0).toString());
+    if (selectedCustomer && selectedCustomer.surabhiCoins > 0 && saleAmount) {
+      setSurabhiCoinsToUse(Math.min(selectedCustomer.surabhiCoins, saleAmount));
     } else {
-      setSurabhiCoinsToUse('0');
+      setSurabhiCoinsToUse(0);
     }
   }, [selectedCustomer, saleAmount]);
 
   const calculateSale = () => {
-    const amount = parseFloat(saleAmount) || 0;
-    if (amount <= 0) return null;
+    if (!saleAmount || saleAmount <= 0) return null;
     
     const coinsToUse = selectedCustomer 
-      ? Math.min(parseFloat(surabhiCoinsToUse) || 0, selectedCustomer.surabhiCoins || 0)
+      ? Math.min(surabhiCoinsToUse || 0, selectedCustomer.surabhiCoins || 0)
       : 0;
       
     let walletDeduction = 0;
     let cashPayment = 0;
     let surabhiCoinsEarned = 0;
     let goSevaContribution = 0;
-    const remainingAmount = amount - coinsToUse;
+    const remainingAmount = saleAmount - coinsToUse;
 
     if (selectedCustomer) {
       // Registered customer flow
       if (paymentMethod === 'wallet') {
         if (selectedCustomer.walletBalance >= remainingAmount) {
           walletDeduction = remainingAmount;
-          goSevaContribution = amount * 0.025; // 2.5% for registered
+          goSevaContribution = saleAmount * 0.025; // 2.5% for registered
           surabhiCoinsEarned = remainingAmount * 0.025; // 2.5% for wallet payments
         } else {
           // Insufficient wallet balance
@@ -119,24 +116,24 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       } else if (paymentMethod === 'cash') {
         cashPayment = remainingAmount;
         surabhiCoinsEarned = coinsToUse * 0.025 + cashPayment * 0.02; // 2.5% for coins, 2% for cash
-        goSevaContribution = amount * 0.025;
+        goSevaContribution = saleAmount * 0.025;
       } else if (paymentMethod === 'mixed') {
         const availableWallet = selectedCustomer.walletBalance || 0;
         walletDeduction = Math.min(availableWallet, remainingAmount);
         cashPayment = remainingAmount - walletDeduction;
         // 2.5% for wallet portion and coins, 2% for cash portion
         surabhiCoinsEarned = (coinsToUse + walletDeduction) * 0.025 + cashPayment * 0.02;
-        goSevaContribution = amount * 0.025;
+        goSevaContribution = saleAmount * 0.025;
       }
     } else {
       // Non-registered customer flow (cash only)
-      cashPayment = amount;
+      cashPayment = saleAmount;
       surabhiCoinsEarned = cashPayment * 0.015; // 1.5% for non-registered
       goSevaContribution = 0; // No Go Seva for non-registered
     }
 
     return {
-      totalAmount: amount,
+      totalAmount: saleAmount,
       surabhiCoinsUsed: coinsToUse,
       walletDeduction,
       cashPayment,
@@ -174,7 +171,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         name: newCustomerName,
         mobile: newCustomerMobile,
         walletBalance: 0,
-        surabhiCoins: Math.floor(parseFloat(saleAmount) * 0.015), // 1.5% for new customers
+        surabhiCoins: Math.floor(saleAmount * 0.015), // 1.5% for new customers
         sevaCoinsTotal: 0,
         sevaCoinsCurrentMonth: 0,
         registered: false,
@@ -191,16 +188,16 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         customerId: newCustomerMobile,
         customerName: newCustomerName,
         customerMobile: newCustomerMobile,
-        amount: parseFloat(saleAmount),
+        amount: saleAmount,
         paymentMethod: 'cash', // Force cash for new customers
         surabhiCoinsUsed: 0,
-        surabhiCoinsEarned: Math.floor(parseFloat(saleAmount) * 0.015),
+        surabhiCoinsEarned: Math.floor(saleAmount * 0.015),
         goSevaContribution: 0,
         storeLocation,
         processedBy: 'system',
         processedAt: new Date().toISOString(),
         walletDeduction: 0,
-        cashPayment: parseFloat(saleAmount),
+        cashPayment: saleAmount,
         paymentStatus: 'completed',
         isNewCustomer: true
       };
@@ -212,7 +209,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       // Reset form
       setNewCustomerName('');
       setNewCustomerMobile('');
-      setSaleAmount('');
+      setSaleAmount(undefined);
       setIsNewCustomer(false);
       setSearchTerm('');
     } catch (error) {
@@ -307,9 +304,9 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       toast.success(`Sale of ₹${saleAmount} completed successfully!`);
       
       // Reset form
-      setSaleAmount('');
+      setSaleAmount(undefined);
       setPaymentMethod('wallet');
-      setSurabhiCoinsToUse('');
+      setSurabhiCoinsToUse(0);
       setSelectedCustomer(null);
       setSearchTerm('');
     } catch (error) {
@@ -503,8 +500,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                         id="amount"
                         type="number"
                         placeholder="Enter sale amount"
-                        value={saleAmount}
-                        onChange={(e) => setSaleAmount(e.target.value)}
+                        value={saleAmount || ''}
+                        onChange={(e) => setSaleAmount(Number(e.target.value))}
                         className="pl-10 h-12"
                         min="1"
                       />
@@ -521,7 +518,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                           type="number"
                           placeholder="Enter coins to use"
                           value={surabhiCoinsToUse}
-                          onChange={(e) => setSurabhiCoinsToUse(e.target.value)}
+                          onChange={(e) => setSurabhiCoinsToUse(Number(e.target.value))}
                           className="pl-10 h-12"
                           max={selectedCustomer.surabhiCoins}
                           min="0"

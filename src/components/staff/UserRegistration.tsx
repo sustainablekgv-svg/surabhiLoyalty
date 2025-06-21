@@ -136,7 +136,6 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
       email: formData.email,
       storeLocation,
       walletBalance: 0,
-      genericCoins: 0,
       surabhiCoins: 0,
       sevaCoinsTotal: 0,
       sevaCoinsCurrentMonth: 0,

@@ -4,7 +4,6 @@ export interface Customer {
   email: string;
   storeLocation: string;
   walletBalance: number;
-  genericCoins: number;
   createdAt: import('firebase/firestore').FieldValue;
   role: string;
   walletId: string;

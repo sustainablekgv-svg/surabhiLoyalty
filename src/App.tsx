@@ -9,6 +9,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import StaffDashboard from "./pages/staff/Dashboard";
 import CustomerDashboard from "./pages/customer/Dashboard";
 import NotFound from "./pages/NotFound";
+import { CustomerDetails } from "./components/staff/CustomerDetails";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/staff/dashboard" element={<StaffDashboard />} />
             <Route path="/customer/dashboard" element={<CustomerDashboard />} />
+            <Route path="/customers/:customerId" element={<CustomerDetails />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
