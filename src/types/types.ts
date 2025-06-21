@@ -14,6 +14,7 @@ export interface Customer {
   referredUsers?: { uid: string; referralDate: string; }[];
   registered: Boolean;
   lastTransactionDate?: string;
+  customerPassword: string;
 }
 
 export interface UserRegistrationProps {
@@ -83,6 +84,7 @@ export interface StaffType {
   salesCount: number;
   staffPin: string;
   lastActive?: string;
+  staffPassword: string;
 }
 
 export interface StoreType {

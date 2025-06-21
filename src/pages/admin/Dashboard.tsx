@@ -22,7 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { AdminStats } from '@/components/admin/AdminStats';
 import { StaffManagement } from '@/components/admin/StaffManagement';
-import { UserManagement } from '@/components/admin/UserManagement';
+import { CustomerManagement } from '@/components/admin/CustomerManagement';
 import { GoSevaPool } from '@/components/admin/GoSevaPool';
 import { SalesManagement } from '@/components/admin/SalesManagement';
 
@@ -37,7 +37,7 @@ const AdminDashboard = () => {
     const initializeUser = async () => {
       if (!user) {
         try {
-          await login('9999999999', 'password123');
+          await login('9999999999', 'password123','staff');
         } catch (error) {
           console.error('Auto-login failed:', error);
         }
@@ -206,7 +206,7 @@ const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="users">
-            <UserManagement />
+            <CustomerManagement />
           </TabsContent>
 
           <TabsContent value="sales">

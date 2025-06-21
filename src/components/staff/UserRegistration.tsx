@@ -141,6 +141,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
       sevaCoinsCurrentMonth: 0,
       createdAt: serverTimestamp(),
       role: 'customer',
+      customerPassword: formData.password,
       registered:true,
       walletId,
       ...(formData.referredBy && { referredBy: formData.referredBy })

@@ -1,4 +1,15 @@
 import { useState, useEffect, createContext, useContext } from 'react';
+import { 
+  collection, 
+  query, 
+  where, 
+  getDocs,
+  doc,
+  getDoc
+} from 'firebase/firestore';
+import { auth } from '@/lib/firebase';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { db } from '@/lib/firebase';
 
 interface User {
   id: string;
@@ -12,84 +23,148 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (mobile: string, password: string) => Promise<User>;
-  logout: () => void;
+  login: (mobile: string, password: string, role: string) => Promise<User>;
+  logout: () => Promise<void>;
   isLoading: boolean;
   isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock authentication service
-const mockAuthService = {
-  login: async (mobile: string, password: string): Promise<User> => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock users for testing
-    const mockUsers: Record<string, User> = {
-      '9999999999': {
-        id: '1',
-        mobile: '9999999999',
-        role: 'admin',
-        name: 'Super Admin',
-        email: 'admin@example.com',
-        createdAt: new Date().toISOString()
-      },
-      '8888888888': {
-        id: '2',
-        mobile: '8888888888',
-        role: 'staff',
-        name: 'Store Manager',
-        email: 'staff@example.com',
-        storeLocation: 'Store 1',
-        createdAt: new Date().toISOString()
-      },
-      '7777777777': {
-        id: '3',
-        mobile: '7777777777',
-        role: 'customer',
-        name: 'John Doe',
-        email: 'customer@example.com',
-        createdAt: new Date().toISOString()
-      }
-    };
-    
-    const user = mockUsers[mobile];
-    if (!user || password !== 'password123') {
-      throw new Error('Invalid credentials');
-    }
-    
-    return user;
-  }
-};
-
 const useAuthLogic = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const login = async (mobile: string, password: string): Promise<User> => {
+  const login = async (mobile: string, password: string, role: string): Promise<User> => {
     setIsLoading(true);
     try {
-      const user = await mockAuthService.login(mobile, password);
-      setUser(user);
-      localStorage.setItem('user', JSON.stringify(user));
-      return user;
+      let userData: User | null = null;
+      
+      // Check the appropriate collection based on role
+      if (role === 'customer') {
+        const customersRef = collection(db, 'customers');
+        const q = query(customersRef, where('mobile', '==', mobile));
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+          throw new Error('No customer found with this mobile number');
+        }
+        
+        const customerDoc = querySnapshot.docs[0];
+        const customerData = customerDoc.data();
+        
+        // Verify password
+        if (customerData.customerPassword !== password) {
+          throw new Error('Invalid password');
+        }
+        
+        userData = {
+          id: customerDoc.id,
+          mobile: customerData.mobile,
+          role: 'customer',
+          name: customerData.name,
+          email: customerData.email,
+          storeLocation: customerData.storeLocation,
+          createdAt: customerData.createdAt?.toDate().toISOString() || new Date().toISOString()
+        };
+      } 
+      else if (role === 'staff' || role === 'admin') {
+        const staffRef = collection(db, 'staff');
+        const q = query(staffRef, where('mobile', '==', mobile));
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+          throw new Error('No staff member found with this mobile number');
+        }
+        
+        const staffDoc = querySnapshot.docs[0];
+        const staffData = staffDoc.data();
+        
+        // Verify password
+        if (staffData.staffPassword !== password) {
+          throw new Error('Invalid password');
+        }
+        
+        // Verify role matches
+        if (staffData.role !== role) {
+          throw new Error(`User is not registered as ${role}`);
+        }
+        
+        userData = {
+          id: staffDoc.id,
+          mobile: staffData.mobile,
+          role: staffData.role,
+          name: staffData.name,
+          email: staffData.email,
+          storeLocation: staffData.storeLocation,
+          createdAt: staffData.createdAt || new Date().toISOString()
+        };
+      } else {
+        throw new Error('Invalid role specified');
+      }
+      
+      if (!userData) {
+        throw new Error('Authentication failed');
+      }
+      
+      // Sign in with Firebase Auth if email exists (optional)
+      if (userData.email) {
+        try {
+          await signInWithEmailAndPassword(auth, userData.email, password);
+        } catch (error) {
+          console.warn('Firebase auth login failed, continuing with custom auth');
+        }
+      }
+      
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+      return userData;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Firebase logout error:', error);
+    }
     setUser(null);
     localStorage.removeItem('user');
   };
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    const initializeAuth = async () => {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        
+        // Verify the user still exists in the database
+        try {
+          let userDoc;
+          if (parsedUser.role === 'customer') {
+            userDoc = await getDoc(doc(db, 'customers', parsedUser.id));
+          } else {
+            userDoc = await getDoc(doc(db, 'staff', parsedUser.id));
+          }
+          
+          if (userDoc.exists()) {
+            setUser(parsedUser);
+          } else {
+            localStorage.removeItem('user');
+          }
+        } catch (error) {
+          console.error('Error verifying user:', error);
+          localStorage.removeItem('user');
+        }
+      }
+    };
+    
+    initializeAuth();
   }, []);
 
   return {

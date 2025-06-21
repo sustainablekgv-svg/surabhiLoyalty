@@ -31,7 +31,7 @@ const CustomerDashboard = () => {
     const initializeUser = async () => {
       if (!user) {
         try {
-          await login('7777777777', 'password123');
+          await login('7777777777', 'password123', 'customer');
         } catch (error) {
           console.error('Auto-login failed:', error);
         }
