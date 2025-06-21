@@ -110,3 +110,21 @@ export interface Transaction {
   timestamp: string;
   status: 'completed' | 'pending' | 'failed';
 }
+
+export interface SevaTransaction {
+  id: string;
+  type: 'contribution' | 'allocation';
+  amount: number;
+  description: string;
+  date: string;
+  customerId?: string;
+  customerName?: string;
+  monthYear: string; // Format: "YYYY-MM"
+}
+
+export interface SevaPool {
+  currentBalance: number;
+  totalContributions: number;
+  totalAllocations: number;
+  lastResetDate: string;
+}
