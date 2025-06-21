@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,20 +7,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { 
   ShoppingCart, 
   Search, 
-  Filter, 
   DollarSign,
   MapPin,
   Calendar,
   TrendingUp,
-  Users
+  Users,
+  Loader2,
+  RefreshCw,
+  Printer,
+  Eye
 } from 'lucide-react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { format } from 'date-fns';
 
-interface Transaction {
+export interface Transaction {
   id: string;
   customerName: string;
   mobile: string;
   storeLocation: string;
   amount: number;
+  staffInWork: string;
   paymentMethod: 'wallet' | 'cash' | 'mixed';
   surabhiCoinsUsed: number;
   surabhiCoinsEarned: number;
@@ -29,63 +36,117 @@ interface Transaction {
   status: 'completed' | 'pending' | 'failed';
 }
 
+export interface StoreType {
+  id: string;
+  name: string;
+  location: string;
+  address: string;
+  contactNumber: string;
+  status: 'active' | 'inactive';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export const SalesManagement = () => {
-  const [transactions] = useState<Transaction[]>([
-    {
-      id: '1',
-      customerName: 'John Doe',
-      mobile: '7777777777',
-      storeLocation: 'Downtown Branch',
-      amount: 2500,
-      paymentMethod: 'wallet',
-      surabhiCoinsUsed: 100,
-      surabhiCoinsEarned: 0,
-      goSevaContribution: 62.5,
-      timestamp: '2024-01-15T10:30:00Z',
-      status: 'completed'
-    },
-    {
-      id: '2',
-      customerName: 'Priya Sharma',
-      mobile: '6666666666',
-      storeLocation: 'Mall Branch',
-      amount: 1800,
-      paymentMethod: 'cash',
-      surabhiCoinsUsed: 0,
-      surabhiCoinsEarned: 90,
-      goSevaContribution: 45,
-      timestamp: '2024-01-15T14:20:00Z',
-      status: 'completed'
-    }
-  ]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [stores, setStores] = useState<StoreType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStore, setFilterStore] = useState('all');
   const [filterPayment, setFilterPayment] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
 
-  const storeLocations = [
-    'Downtown Branch',
-    'Mall Branch', 
-    'Airport Branch',
-    'Central Plaza'
-  ];
+  // Fetch transactions from Firestore
+  const fetchTransactions = async () => {
+    try {
+      const transactionsRef = collection(db, 'transactions');
+      const snapshot = await getDocs(transactionsRef);
+      const transactionsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        timestamp: doc.data().timestamp?.toDate().toISOString() || new Date().toISOString()
+      })) as Transaction[];
+      setTransactions(transactionsData);
+    } catch (err) {
+      console.error('Error fetching transactions:', err);
+      setError('Failed to load transactions');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  // Fetch stores from Firestore
+  const fetchStores = async () => {
+    try {
+      const storesRef = collection(db, 'stores');
+      const snapshot = await getDocs(storesRef);
+      const storesData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+        updatedAt: doc.data().updatedAt?.toDate() || new Date()
+      })) as StoreType[];
+      // Only include active stores in the filter options
+      setStores(storesData.filter(store => store.status === 'active'));
+    } catch (err) {
+      console.error('Error fetching stores:', err);
+      setError('Failed to load store locations');
+    }
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([fetchTransactions(), fetchStores()]);
+    };
+    loadData();
+  }, []);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchTransactions();
+  };
 
   const filteredTransactions = transactions.filter(transaction => {
     const matchesSearch = transaction.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          transaction.mobile.includes(searchTerm);
     const matchesStore = filterStore === 'all' || transaction.storeLocation === filterStore;
     const matchesPayment = filterPayment === 'all' || transaction.paymentMethod === filterPayment;
+    const matchesStatus = filterStatus === 'all' || transaction.status === filterStatus;
     
-    return matchesSearch && matchesStore && matchesPayment;
+    return matchesSearch && matchesStore && matchesPayment && matchesStatus;
   });
 
   const totalStats = {
     totalSales: transactions.reduce((sum, t) => sum + t.amount, 0),
     totalTransactions: transactions.length,
-    totalSurabhiCoinsUsed: transactions.reduce((sum, t) => sum + t.surabhiCoinsUsed, 0),
-    totalSurabhiCoinsEarned: transactions.reduce((sum, t) => sum + t.surabhiCoinsEarned, 0),
-    totalGoSevaContribution: transactions.reduce((sum, t) => sum + t.goSevaContribution, 0)
+    totalSurabhiCoinsUsed: transactions.reduce((sum, t) => sum + (t.surabhiCoinsUsed || 0), 0),
+    totalSurabhiCoinsEarned: transactions.reduce((sum, t) => sum + (t.surabhiCoinsEarned || 0), 0),
+    totalGoSevaContribution: transactions.reduce((sum, t) => sum + (t.goSevaContribution || 0), 0)
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <p className="text-red-500">{error}</p>
+        <Button variant="outline" onClick={handleRefresh}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -94,6 +155,14 @@ export const SalesManagement = () => {
           <h2 className="text-2xl font-bold text-gray-900">Sales Management</h2>
           <p className="text-gray-600">View and manage all sales transactions</p>
         </div>
+        <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+          {refreshing ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4" />
+          )}
+          <span className="ml-2">Refresh</span>
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -156,6 +225,8 @@ export const SalesManagement = () => {
               <CardTitle>Sales Transactions</CardTitle>
               <CardDescription>
                 {filteredTransactions.length} transactions found
+                {(searchTerm || filterStore !== 'all' || filterPayment !== 'all' || filterStatus !== 'all') && 
+                  ' (filtered)'}
               </CardDescription>
             </div>
             
@@ -176,9 +247,9 @@ export const SalesManagement = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Stores</SelectItem>
-                  {storeLocations.map((location) => (
-                    <SelectItem key={location} value={location}>
-                      {location}
+                  {stores.map((store) => (
+                    <SelectItem key={store.id} value={store.name}>
+                      {store.name} ({store.location})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -195,56 +266,111 @@ export const SalesManagement = () => {
                   <SelectItem value="mixed">Mixed</SelectItem>
                 </SelectContent>
               </Select>
+
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-full sm:w-40">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardHeader>
         
         <CardContent>
-          <div className="space-y-4">
-            {filteredTransactions.map((transaction) => (
-              <div key={transaction.id} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-4 bg-gray-50 rounded-lg gap-4">
-                <div className="flex-1 min-w-0 w-full lg:w-auto">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-3">
-                    <h3 className="font-medium text-gray-900">{transaction.customerName}</h3>
-                    <div className="flex gap-2">
-                      <Badge variant={transaction.status === 'completed' ? 'default' : 'secondary'}>
-                        {transaction.status}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {transaction.paymentMethod}
-                      </Badge>
+          {filteredTransactions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-500">
+              <Search className="h-8 w-8" />
+              <p>No transactions found</p>
+              {(searchTerm || filterStore !== 'all' || filterPayment !== 'all' || filterStatus !== 'all') && (
+                <Button variant="ghost" onClick={() => {
+                  setSearchTerm('');
+                  setFilterStore('all');
+                  setFilterPayment('all');
+                  setFilterStatus('all');
+                }}>
+                  Clear filters
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredTransactions.map((transaction) => {
+                const store = stores.find(s => s.name === transaction.storeLocation);
+                
+                return (
+                  <div key={transaction.id} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-4 bg-gray-50 rounded-lg gap-4 hover:bg-gray-100 transition-colors">
+                    <div className="flex-1 min-w-0 w-full lg:w-auto">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-3">
+                        <h3 className="font-medium text-gray-900">{transaction.customerName}</h3>
+                        <div className="flex gap-2 flex-wrap">
+                          <Badge variant={
+                            transaction.status === 'completed' ? 'default' : 
+                            transaction.status === 'pending' ? 'secondary' : 'destructive'
+                          }>
+                            {transaction.status}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {transaction.paymentMethod}
+                          </Badge>
+                          {transaction.staffInWork && (
+                            <Badge variant="outline" className="text-xs">
+                              Staff: {transaction.staffInWork}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                        <div className="text-gray-600">
+                          <span className="font-medium">Amount:</span> ₹{transaction.amount}
+                        </div>
+                        <div className="text-amber-600">
+                          <span className="font-medium">Coins Used:</span> {transaction.surabhiCoinsUsed || 0}
+                        </div>
+                        <div className="text-purple-600">
+                          <span className="font-medium">Coins Earned:</span> {transaction.surabhiCoinsEarned || 0}
+                        </div>
+                        <div className="text-red-600">
+                          <span className="font-medium">Go Seva:</span> ₹{transaction.goSevaContribution || 0}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          <span>
+                            {transaction.storeLocation}
+                            {store && ` (${store.location})`}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          <span>{format(new Date(transaction.timestamp), 'dd MMM yyyy, hh:mm a')}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2 w-full lg:w-auto">
+                      <Button variant="outline" size="sm" className="w-full lg:w-auto gap-2">
+                        <Eye className="h-4 w-4" />
+                        Details
+                      </Button>
+                      <Button variant="outline" size="sm" className="w-full lg:w-auto gap-2">
+                        <Printer className="h-4 w-4" />
+                        Receipt
+                      </Button>
                     </div>
                   </div>
-                  
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                    <div className="text-gray-600">
-                      <span className="font-medium">Amount:</span> ₹{transaction.amount}
-                    </div>
-                    <div className="text-amber-600">
-                      <span className="font-medium">Coins Used:</span> {transaction.surabhiCoinsUsed}
-                    </div>
-                    <div className="text-purple-600">
-                      <span className="font-medium">Coins Earned:</span> {transaction.surabhiCoinsEarned}
-                    </div>
-                    <div className="text-red-600">
-                      <span className="font-medium">Go Seva:</span> ₹{transaction.goSevaContribution}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                    <div className="flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      <span>{transaction.storeLocation}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>{new Date(transaction.timestamp).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

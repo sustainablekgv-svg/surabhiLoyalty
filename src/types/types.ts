@@ -98,3 +98,15 @@ export interface StoreType {
   updatedAt: Date;
 }
 
+export interface Transaction {
+  id: string;
+  customerName: string;
+  mobile: string;
+  storeLocation: string;
+  amount: number;
+  staffInWork: string;
+  paymentMethod: 'wallet' | 'cash' | 'mixed';
+  surabhiCoinsUsed: number;
+  timestamp: string;
+  status: 'completed' | 'pending' | 'failed';
+}
