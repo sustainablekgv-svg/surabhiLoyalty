@@ -8,29 +8,40 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # Checkout your code
       - uses: actions/checkout@v4
 
-      # Setup Node.js (needed for Firebase CLI)
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: "20"
 
-      # Install dependencies (if you have a package.json)
       - name: Install dependencies
         run: npm install
 
-      # Install Firebase CLI globally
+      - name: Create .env file
+        run: |
+          echo "VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }}" >> .env
+          echo "VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}" >> .env
+          echo "VITE_FIREBASE_PROJECT_ID=${{ secrets.VITE_FIREBASE_PROJECT_ID }}" >> .env
+          echo "VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}" >> .env
+          echo "VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}" >> .env
+          echo "VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }}" >> .env
+          echo "VITE_STAFF_PIN=${{ secrets.VITE_STAFF_PIN }}" >> .env
+          cat .env # For debugging (optional)
+
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
-      # Build your project (if needed)
       - name: Build
         run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_STAFF_PIN: ${{ secrets.VITE_STAFF_PIN }}
 
-      # Deploy ALL Firebase services
       - name: Deploy to Firebase
         run: firebase deploy --token ${{ secrets.FIREBASE_TOKEN }}
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}

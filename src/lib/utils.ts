@@ -1,15 +1,16 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import bcrypt from 'bcryptjs';
+import { SHA256 } from 'crypto-js';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export const hashPin = async (pin: string): Promise<string> => {
-  return await bcrypt.hash(pin, 10);
+
+export const hashPin = (pin: string): string => {
+  return SHA256(pin).toString();
 };
 
-export const verifyPin = async (pin: string, hashedPin: string): Promise<boolean> => {
-  return await bcrypt.compare(pin, hashedPin);
+export const verifyPin = (pin: string, hashedPin: string): boolean => {
+  return SHA256(pin).toString() === hashedPin;
 };
