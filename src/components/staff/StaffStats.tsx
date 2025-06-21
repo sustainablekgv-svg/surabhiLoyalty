@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Users, 
@@ -5,44 +6,126 @@ import {
   TrendingUp, 
   UserPlus,
   Wallet,
-  Activity
+  Activity,
+  Coins
 } from 'lucide-react';
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Customer } from '@/types/types';
+import { format } from 'date-fns';
 
 interface StaffStatsProps {
   storeLocation: string;
 }
 
 export const StaffStats = ({ storeLocation }: StaffStatsProps) => {
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch customers for this store location
+        const customersRef = collection(db, 'customers');
+        const customersQuery = query(
+          customersRef,
+          where('storeLocation', '==', storeLocation),
+          orderBy('createdAt', 'desc')
+        );
+        const customersSnapshot = await getDocs(customersQuery);
+        const customersData = customersSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as unknown as Customer[];
+        setCustomers(customersData);
+
+        // Fetch recent transactions (you'll need to implement this collection)
+        const transactionsRef = collection(db, 'sales');
+        const transactionsQuery = query(
+          transactionsRef,
+          where('storeLocation', '==', storeLocation),
+          orderBy('createdAt', 'desc'),
+          limit(5)
+        );
+        const transactionsSnapshot = await getDocs(transactionsQuery);
+        const transactionsData = transactionsSnapshot.docs.map(doc => doc.data());
+        setRecentTransactions(transactionsData);
+
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError('Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [storeLocation]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-8 text-red-500">
+        {error}
+      </div>
+    );
+  }
+
+  // Calculate stats from customer data
+  const totalCustomers = customers.length;
+  const registeredCustomers = customers.filter(c => c.registered).length;
+  const totalWalletBalance = customers.reduce((sum, c) => sum + (c.walletBalance || 0), 0);
+  const newCustomersThisWeek = customers.filter(c => {
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    return c.createdAt && new Date(c.createdAt.toString()) > oneWeekAgo;
+  }).length;
+
+  const topCustomers = [...customers]
+    .sort((a, b) => (b.walletBalance || 0) - (a.walletBalance || 0))
+    .slice(0, 3);
+
   const stats = [
     {
       title: 'Store Customers',
-      value: '156',
-      change: '+8 this week',
+      value: totalCustomers,
+      change: `${newCustomersThisWeek} new this week`,
       icon: Users,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50'
     },
     {
-      title: "Today's Recharges",
-      value: '₹12,450',
-      change: '23 transactions',
+      title: "Total Wallet Balance",
+      value: `₹${totalWalletBalance.toLocaleString()}`,
+      change: `${registeredCustomers} registered wallets`,
       icon: DollarSign,
       color: 'text-green-600',
       bgColor: 'bg-green-50'
     },
     {
       title: 'New Registrations',
-      value: '8',
+      value: newCustomersThisWeek,
       change: 'This week',
       icon: UserPlus,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50'
     },
     {
-      title: 'Active Wallets',
-      value: '142',
-      change: '91% of customers',
-      icon: Wallet,
+      title: 'Surabhi Coins',
+      value: customers.reduce((sum, c) => sum + (c.surabhiCoins || 0), 0),
+      change: `${customers.reduce((sum, c) => sum + (c.sevaCoinsCurrentMonth || 0), 0)} this month`,
+      icon: Coins,
       color: 'text-amber-600',
       bgColor: 'bg-amber-50'
     }
@@ -84,44 +167,28 @@ export const StaffStats = ({ storeLocation }: StaffStatsProps) => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="bg-green-100 p-2 rounded-full">
-                    <DollarSign className="h-4 w-4 text-green-600" />
+              {recentTransactions.length > 0 ? (
+                recentTransactions.map((transaction, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-green-100 p-2 rounded-full">
+                        <DollarSign className="h-4 w-4 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{transaction.type || 'Transaction'}</p>
+                        <p className="text-xs text-gray-600">
+                          {transaction.customerName} - {format(new Date(transaction.createdAt), 'MMM dd, hh:mm a')}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="font-bold text-green-600">₹{transaction.amount}</span>
                   </div>
-                  <div>
-                    <p className="font-medium text-sm">Wallet Recharge</p>
-                    <p className="text-xs text-gray-600">Amit Patel - 2 min ago</p>
-                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  No recent transactions found
                 </div>
-                <span className="font-bold text-green-600">₹500</span>
-              </div>
-              
-              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="bg-blue-100 p-2 rounded-full">
-                    <UserPlus className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">New Registration</p>
-                    <p className="text-xs text-gray-600">Sneha Gupta - 15 min ago</p>
-                  </div>
-                </div>
-                <span className="text-xs text-blue-600 font-medium">New</span>
-              </div>
-              
-              <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="bg-purple-100 p-2 rounded-full">
-                    <DollarSign className="h-4 w-4 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">Wallet Recharge</p>
-                    <p className="text-xs text-gray-600">Rahul Singh - 32 min ago</p>
-                  </div>
-                </div>
-                <span className="font-bold text-purple-600">₹1,200</span>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -129,47 +196,35 @@ export const StaffStats = ({ storeLocation }: StaffStatsProps) => {
         <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-amber-600" />
+              <Wallet className="h-5 w-5 text-amber-600" />
               Top Customers
             </CardTitle>
             <CardDescription>
-              Most active customers this month
+              Customers with highest wallet balances
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
-                <div>
-                  <p className="font-medium text-sm">Amit Patel</p>
-                  <p className="text-xs text-gray-600">5 transactions</p>
+              {topCustomers.length > 0 ? (
+                topCustomers.map((customer, index) => (
+                  <div key={customer.mobile} className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
+                    <div>
+                      <p className="font-medium text-sm">{customer.name}</p>
+                      <p className="text-xs text-gray-600">{customer.mobile}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-amber-600">₹{(customer.walletBalance || 0).toLocaleString()}</p>
+                      <p className="text-xs text-gray-600">
+                        {customer.surabhiCoins || 0} coins
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  No customer data available
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-amber-600">₹2,500</p>
-                  <p className="text-xs text-gray-600">Total recharge</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                <div>
-                  <p className="font-medium text-sm">Priya Sharma</p>
-                  <p className="text-xs text-gray-600">4 transactions</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-blue-600">₹1,800</p>
-                  <p className="text-xs text-gray-600">Total recharge</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                <div>
-                  <p className="font-medium text-sm">Rohit Kumar</p>
-                  <p className="text-xs text-gray-600">3 transactions</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-green-600">₹1,500</p>
-                  <p className="text-xs text-gray-600">Total recharge</p>
-                </div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>

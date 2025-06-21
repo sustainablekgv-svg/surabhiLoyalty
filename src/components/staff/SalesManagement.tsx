@@ -240,7 +240,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     try {
       // Check and reset monthly values if needed
       const updatedCustomer = checkAndResetMonthlyValues(selectedCustomer);
-      
+
       // Calculate new values
       const newWalletBalance = updatedCustomer.walletBalance - saleCalculation.walletDeduction;
       const newSurabhiCoins = updatedCustomer.surabhiCoins - saleCalculation.surabhiCoinsUsed + saleCalculation.surabhiCoinsEarned;

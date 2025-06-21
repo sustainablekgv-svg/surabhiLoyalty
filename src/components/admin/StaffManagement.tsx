@@ -1,259 +1,849 @@
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+// components/StaffStoreManagement.tsx
+import { useState, useEffect } from 'react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { 
-  UserPlus, 
-  Search, 
-  MapPin, 
-  Phone, 
-  Mail,
-  Edit,
-  Trash2
+  UserPlus, Search, MapPin, Phone, Mail, Edit, Trash2, 
+  User, Shield, Lock, AlertCircle, Store, PlusCircle 
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { 
+  collection, doc, setDoc, updateDoc, deleteDoc, getDocs,
+  query, where, serverTimestamp 
+} from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
-interface Staff {
+interface StoreType {
   id: string;
   name: string;
-  mobile: string;
-  email: string;
-  storeLocation: string;
-  createdAt: string;
+  location: string;
+  address: string;
+  contactNumber: string;
   status: 'active' | 'inactive';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface StaffType {
+  id: string;
+  name: string;
+  email: string;
+  mobile: string;
+  role: 'admin' | 'manager' | 'staff';
+  storeLocation: string;
+  status: 'active' | 'inactive';
+  createdAt: Date;
+  lastActive?: Date;
+  staffPin?: string;
+  salesCount?: number;
 }
 
 export const StaffManagement = () => {
-  const [staff, setStaff] = useState<Staff[]>([
-    {
-      id: '1',
-      name: 'Rajesh Kumar',
-      mobile: '9876543210',
-      email: 'rajesh@store.com',
-      storeLocation: 'Downtown Branch',
-      createdAt: '2024-01-15',
-      status: 'active'
-    },
-    {
-      id: '2',
-      name: 'Priya Sharma',
-      mobile: '8765432109',
-      email: 'priya@store.com',
-      storeLocation: 'Mall Branch',
-      createdAt: '2024-02-10',
-      status: 'active'
+  const [stores, setStores] = useState<StoreType[]>([]);
+  const [staff, setStaff] = useState<StaffType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'staff' | 'stores'>('staff');
+  
+  // Staff state
+  const [isStaffDialogOpen, setIsStaffDialogOpen] = useState(false);
+  const [currentStaff, setCurrentStaff] = useState<Partial<StaffType> | null>(null);
+  const [isDeleteStaffDialogOpen, setIsDeleteStaffDialogOpen] = useState(false);
+  
+  // Store state
+  const [isStoreDialogOpen, setIsStoreDialogOpen] = useState(false);
+  const [currentStore, setCurrentStore] = useState<Partial<StoreType> | null>(null);
+  const [isDeleteStoreDialogOpen, setIsDeleteStoreDialogOpen] = useState(false);
+  
+  // Admin verification
+  const [adminPin, setAdminPin] = useState('');
+
+  // Fetch data from Firestore
+  useEffect(() => {
+    const fetchData = async () => { 
+      setIsLoading(true);
+      try {
+        // Fetch stores
+        const storesSnapshot = await getDocs(collection(db, 'stores'));
+        const storesData = storesSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate(),
+          updatedAt: doc.data().updatedAt?.toDate()
+        })) as StoreType[];
+        setStores(storesData);
+
+        // Fetch staff
+        const staffSnapshot = await getDocs(collection(db, 'staff'));
+        const staffData = staffSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate(),
+          lastActive: doc.data().lastActive?.toDate()
+        })) as StaffType[];
+        setStaff(staffData);
+      } catch (error) {
+        toast.error('Error fetching data');
+        console.error('Error fetching data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Verify admin PIN
+  const verifyAdmin = () => {
+    return adminPin === '1234'; // In production, verify against hashed PIN in database
+  };
+
+  // Staff CRUD operations
+  const handleSaveStaff = async () => {
+    if (!verifyAdmin()) {
+      toast.error('Invalid admin PIN');
+      return;
     }
-  ]);
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [newStaff, setNewStaff] = useState({
-    name: '',
-    mobile: '',
-    email: '',
-    storeLocation: '',
-    password: ''
-  });
-
-  const storeLocations = [
-    'Downtown Branch',
-    'Mall Branch',
-    'Airport Branch',
-    'Central Plaza'
-  ];
-
-  const handleAddStaff = () => {
-    if (!newStaff.name || !newStaff.mobile || !newStaff.email || !newStaff.storeLocation) {
+    if (!currentStaff?.name || !currentStaff.email || !currentStaff.mobile || !currentStaff.role) {
       toast.error('Please fill all required fields');
       return;
     }
 
-    const staff_member: Staff = {
-      id: Date.now().toString(),
-      name: newStaff.name,
-      mobile: newStaff.mobile,
-      email: newStaff.email,
-      storeLocation: newStaff.storeLocation,
-      createdAt: new Date().toISOString().split('T')[0],
-      status: 'active'
-    };
+    try {
+      const staffData = {
+        name: currentStaff.name,
+        email: currentStaff.email,
+        mobile: currentStaff.mobile,
+        role: currentStaff.role,
+        status: currentStaff.status || 'active',
+        storeLocation: currentStaff.storeLocation || '',
+        staffPin: currentStaff.staffPin || '0000',
+        updatedAt: serverTimestamp(),
+        ...(currentStaff.id ? {} : { createdAt: serverTimestamp() })
+      };
 
-    setStaff([...staff, staff_member]);
-    setNewStaff({ name: '', mobile: '', email: '', storeLocation: '', password: '' });
-    setIsAddDialogOpen(false);
-    toast.success('Staff member added successfully');
+      if (currentStaff.id) {
+        // Update existing staff
+        await updateDoc(doc(db, 'staff', currentStaff.id), {
+          ...staffData,
+          createdAt: currentStaff.createdAt // Preserve original creation date
+        });
+        toast.success('Staff updated successfully');
+      } else {
+        // Create new staff
+        const newStaffRef = doc(collection(db, 'staff'));
+        await setDoc(newStaffRef, staffData);
+        toast.success('Staff created successfully');
+      }
+
+      // Refresh data
+      const staffSnapshot = await getDocs(collection(db, 'staff'));
+      const updatedStaff = staffSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate(),
+        lastActive: doc.data().lastActive?.toDate()
+      })) as StaffType[];
+      setStaff(updatedStaff);
+
+      setIsStaffDialogOpen(false);
+      setCurrentStaff(null);
+      setAdminPin('');
+    } catch (error) {
+      toast.error('Error saving staff');
+      console.error('Error saving staff:', error);
+    }
   };
 
-  const filteredStaff = staff.filter(member =>
-    member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    member.mobile.includes(searchTerm) ||
-    member.storeLocation.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleDeleteStaff = async () => {
+    if (!verifyAdmin()) {
+      toast.error('Invalid admin PIN');
+      return;
+    }
+
+    if (!currentStaff?.id) return;
+
+    try {
+      await deleteDoc(doc(db, 'staff', currentStaff.id));
+      toast.success('Staff deleted successfully');
+      
+      // Refresh data
+      const staffSnapshot = await getDocs(collection(db, 'staff'));
+      const updatedStaff = staffSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate(),
+        lastActive: doc.data().lastActive?.toDate()
+      })) as StaffType[];
+      setStaff(updatedStaff);
+
+      setIsDeleteStaffDialogOpen(false);
+      setCurrentStaff(null);
+      setAdminPin('');
+    } catch (error) {
+      toast.error('Error deleting staff');
+      console.error('Error deleting staff:', error);
+    }
+  };
+
+  // Store CRUD operations
+  const handleSaveStore = async () => {
+    if (!verifyAdmin()) {
+      toast.error('Invalid admin PIN');
+      return;
+    }
+
+    if (!currentStore?.name || !currentStore.location || !currentStore.address) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+
+    try {
+      const storeData = {
+        name: currentStore.name,
+        location: currentStore.location,
+        address: currentStore.address,
+        contactNumber: currentStore.contactNumber || '',
+        status: currentStore.status || 'active',
+        updatedAt: serverTimestamp(),
+        ...(currentStore.id ? {} : { createdAt: serverTimestamp() })
+      };
+
+      if (currentStore.id) {
+        // Update existing store
+        await updateDoc(doc(db, 'stores', currentStore.id), {
+          ...storeData,
+          createdAt: currentStore.createdAt // Preserve original creation date
+        });
+        toast.success('Store updated successfully');
+      } else {
+        // Create new store
+        const newStoreRef = doc(collection(db, 'stores'));
+        await setDoc(newStoreRef, storeData);
+        toast.success('Store created successfully');
+      }
+
+      // Refresh data
+      const storesSnapshot = await getDocs(collection(db, 'stores'));
+      const updatedStores = storesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate(),
+        updatedAt: doc.data().updatedAt?.toDate()
+      })) as StoreType[];
+      setStores(updatedStores);
+
+      setIsStoreDialogOpen(false);
+      setCurrentStore(null);
+      setAdminPin('');
+    } catch (error) {
+      toast.error('Error saving store');
+      console.error('Error saving store:', error);
+    }
+  };
+
+  const handleDeleteStore = async () => {
+    if (!verifyAdmin()) {
+      toast.error('Invalid admin PIN');
+      return;
+    }
+
+    if (!currentStore?.id) return;
+
+    // Check if store has assigned staff
+    const staffQuery = query(collection(db, 'staff'), where('storeLocation', '==', currentStore.id));
+    const staffSnapshot = await getDocs(staffQuery);
+    
+    if (!staffSnapshot.empty) {
+      toast.error('Cannot delete store with assigned staff');
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, 'stores', currentStore.id));
+      toast.success('Store deleted successfully');
+      
+      // Refresh data
+      const storesSnapshot = await getDocs(collection(db, 'stores'));
+      const updatedStores = storesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate(),
+        updatedAt: doc.data().updatedAt?.toDate()
+      })) as StoreType[];
+      setStores(updatedStores);
+
+      setIsDeleteStoreDialogOpen(false);
+      setCurrentStore(null);
+      setAdminPin('');
+    } catch (error) {
+      toast.error('Error deleting store');
+      console.error('Error deleting store:', error);
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+      <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Staff Management</h2>
-          <p className="text-gray-600">Manage store staff and their permissions</p>
+          <h1 className="text-2xl font-bold">System Configuration</h1>
+          <p className="text-muted-foreground">
+            Manage staff accounts and store locations
+          </p>
         </div>
         
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600">
-              <UserPlus className="h-4 w-4 mr-2" />
-              Add Staff
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Add New Staff Member</DialogTitle>
-              <DialogDescription>
-                Create a new staff account for store management
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  placeholder="Enter staff name"
-                  value={newStaff.name}
-                  onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })}
-                />
+        <div className="flex gap-2">
+          <Button 
+            variant={activeTab === 'staff' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('staff')}
+          >
+            <User className="h-4 w-4 mr-2" />
+            Staff Management
+          </Button>
+          <Button 
+            variant={activeTab === 'stores' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('stores')}
+          >
+            <Store className="h-4 w-4 mr-2" />
+            Store Management
+          </Button>
+        </div>
+      </div>
+
+      {activeTab === 'staff' ? (
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>Staff Members</CardTitle>
+                <CardDescription>
+                  {staff.length} staff members across {stores.length} stores
+                </CardDescription>
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="mobile">Mobile Number</Label>
-                <Input
-                  id="mobile"
-                  type="tel"
-                  placeholder="Enter mobile number"
-                  value={newStaff.mobile}
-                  onChange={(e) => setNewStaff({ ...newStaff, mobile: e.target.value })}
-                />
+              <Button onClick={() => {
+                setCurrentStaff({
+                  role: 'staff',
+                  status: 'active'
+                });
+                setIsStaffDialogOpen(true);
+              }}>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Add Staff
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Store</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {staff.map((member) => (
+                  <TableRow key={member.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {member.name}
+                        {member.role === 'admin' && (
+                          <Shield className="h-4 w-4 text-primary" />
+                        )}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {member.email}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={member.role === 'admin' ? 'default' : 'outline'}>
+                        {member.role}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {stores.find(s => s.id === member.storeLocation)?.name || 'Unassigned'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={member.status === 'active' ? 'default' : 'secondary'}>
+                        {member.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setCurrentStaff(member);
+                            setIsStaffDialogOpen(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700"
+                          onClick={() => {
+                            setCurrentStaff(member);
+                            setIsDeleteStaffDialogOpen(true);
+                          }}
+                          disabled={member.role === 'admin'}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Remove
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>Store Locations</CardTitle>
+                <CardDescription>
+                  Manage all store locations in the system
+                </CardDescription>
               </div>
-              
+              <Button onClick={() => {
+                setCurrentStore({
+                  status: 'active'
+                });
+                setIsStoreDialogOpen(true);
+              }}>
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Add Store
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Staff Count</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {stores.map((store) => (
+                  <TableRow key={store.id}>
+                    <TableCell className="font-medium">
+                      {store.name}
+                      <div className="text-sm text-muted-foreground">
+                        {store.contactNumber}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-4 w-4" />
+                        {store.location}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={store.status === 'active' ? 'default' : 'secondary'}>
+                        {store.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {staff.filter(s => s.storeLocation === store.id).length}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setCurrentStore(store);
+                            setIsStoreDialogOpen(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700"
+                          onClick={() => {
+                            setCurrentStore(store);
+                            setIsDeleteStoreDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Remove
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Staff Dialog */}
+      <Dialog open={isStaffDialogOpen} onOpenChange={setIsStaffDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {currentStaff?.id ? 'Edit Staff Member' : 'Add New Staff Member'}
+            </DialogTitle>
+            <DialogDescription>
+              {currentStaff?.id ? 'Update staff details' : 'Create a new staff account'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Full Name *</Label>
+              <Input
+                value={currentStaff?.name || ''}
+                onChange={(e) => setCurrentStaff({
+                  ...currentStaff,
+                  name: e.target.value
+                })}
+                placeholder="Enter staff name"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Email *</Label>
+              <Input
+                type="email"
+                value={currentStaff?.email || ''}
+                onChange={(e) => setCurrentStaff({
+                  ...currentStaff,
+                  email: e.target.value
+                })}
+                placeholder="Enter email address"
+                disabled={!!currentStaff?.id}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Mobile Number *</Label>
+              <Input
+                type="tel"
+                value={currentStaff?.mobile || ''}
+                onChange={(e) => setCurrentStaff({
+                  ...currentStaff,
+                  mobile: e.target.value.replace(/\D/g, '')
+                })}
+                placeholder="Enter mobile number"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter email address"
-                  value={newStaff.email}
-                  onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="store">Store Location</Label>
-                <Select value={newStaff.storeLocation} onValueChange={(value) => setNewStaff({ ...newStaff, storeLocation: value })}>
+                <Label>Role *</Label>
+                <Select
+                  value={currentStaff?.role || 'staff'}
+                  onValueChange={(value) => setCurrentStaff({
+                    ...currentStaff,
+                    role: value as 'admin' | 'manager' | 'staff',
+                    ...(value === 'admin' ? { storeLocation: 'All Locations' } : {})
+                  })}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select store location" />
+                    <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    {storeLocations.map((location) => (
-                      <SelectItem key={location} value={location}>
-                        {location}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="staff">Staff</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="password">Initial Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Set initial password"
-                  value={newStaff.password}
-                  onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })}
-                />
+                <Label>Status *</Label>
+                <Select
+                  value={currentStaff?.status || 'active'}
+                  onValueChange={(value) => setCurrentStaff({
+                    ...currentStaff,
+                    status: value as 'active' | 'inactive'
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              
-              <div className="flex gap-2 pt-4">
-                <Button onClick={handleAddStaff} className="flex-1">
-                  Add Staff
-                </Button>
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="flex-1">
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-            <div>
-              <CardTitle>Staff Members</CardTitle>
-              <CardDescription>
-                {staff.length} staff members across all locations
-              </CardDescription>
             </div>
             
-            <div className="relative w-full sm:w-auto">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <div className="space-y-2">
+              <Label>Assigned Store</Label>
+              <Select
+                value={currentStaff?.storeLocation || ''}
+                onValueChange={(value) => setCurrentStaff({
+                  ...currentStaff,
+                  storeLocation: value
+                })}
+                disabled={currentStaff?.role === 'admin'}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select store" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Unassigned</SelectItem>
+                  {stores.map(store => (
+                    <SelectItem key={store.id} value={store.id}>
+                      {store.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {!currentStaff?.id && (
+              <div className="space-y-2">
+                <Label>Staff PIN (4 digits) *</Label>
+                <Input
+                  type="password"
+                  value={currentStaff?.staffPin || ''}
+                  onChange={(e) => setCurrentStaff({
+                    ...currentStaff,
+                    staffPin: e.target.value.replace(/\D/g, '').slice(0, 4)
+                  })}
+                  placeholder="Enter 4-digit PIN"
+                  maxLength={4}
+                />
+              </div>
+            )}
+            
+            {(currentStaff?.role === 'admin' || !currentStaff?.id) && (
+              <div className="space-y-2">
+                <Label>Admin PIN Verification *</Label>
+                <Input
+                  type="password"
+                  value={adminPin}
+                  onChange={(e) => setAdminPin(e.target.value)}
+                  placeholder="Enter admin PIN to confirm"
+                />
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button onClick={handleSaveStaff}>
+              {currentStaff?.id ? 'Save Changes' : 'Create Staff'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Staff Dialog */}
+      <Dialog open={isDeleteStaffDialogOpen} onOpenChange={setIsDeleteStaffDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {currentStaff?.name}? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Admin PIN Verification *</Label>
               <Input
-                placeholder="Search staff..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-full sm:w-64"
+                type="password"
+                value={adminPin}
+                onChange={(e) => setAdminPin(e.target.value)}
+                placeholder="Enter admin PIN to confirm"
               />
             </div>
           </div>
-        </CardHeader>
-        
-        <CardContent>
+          
+          <DialogFooter>
+            <Button variant="destructive" onClick={handleDeleteStaff}>
+              Confirm Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Store Dialog */}
+      <Dialog open={isStoreDialogOpen} onOpenChange={setIsStoreDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {currentStore?.id ? 'Edit Store' : 'Add New Store'}
+            </DialogTitle>
+            <DialogDescription>
+              {currentStore?.id ? 'Update store details' : 'Create a new store location'}
+            </DialogDescription>
+          </DialogHeader>
+          
           <div className="space-y-4">
-            {filteredStaff.map((member) => (
-              <div key={member.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-gray-50 rounded-lg gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="font-medium text-gray-900">{member.name}</h3>
-                    <Badge variant={member.status === 'active' ? 'default' : 'secondary'}>
-                      {member.status}
-                    </Badge>
-                  </div>
-                  
-                  <div className="space-y-1 text-sm text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-3 w-3" />
-                      <span>{member.mobile}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-3 w-3" />
-                      <span>{member.email}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-3 w-3" />
-                      <span>{member.storeLocation}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    <Edit className="h-3 w-3 mr-1" />
-                    Edit
-                  </Button>
-                  <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                    <Trash2 className="h-3 w-3 mr-1" />
-                    Remove
-                  </Button>
-                </div>
+            <div className="space-y-2">
+              <Label>Store Name *</Label>
+              <Input
+                value={currentStore?.name || ''}
+                onChange={(e) => setCurrentStore({
+                  ...currentStore,
+                  name: e.target.value
+                })}
+                placeholder="Enter store name"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Location *</Label>
+              <Input
+                value={currentStore?.location || ''}
+                onChange={(e) => setCurrentStore({
+                  ...currentStore,
+                  location: e.target.value
+                })}
+                placeholder="Enter location"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Address *</Label>
+              <Input
+                value={currentStore?.address || ''}
+                onChange={(e) => setCurrentStore({
+                  ...currentStore,
+                  address: e.target.value
+                })}
+                placeholder="Enter full address"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Contact Number</Label>
+                <Input
+                  type="tel"
+                  value={currentStore?.contactNumber || ''}
+                  onChange={(e) => setCurrentStore({
+                    ...currentStore,
+                    contactNumber: e.target.value.replace(/\D/g, '')
+                  })}
+                  placeholder="Enter contact number"
+                />
               </div>
-            ))}
+              
+              <div className="space-y-2">
+                <Label>Status *</Label>
+                <Select
+                  value={currentStore?.status || 'active'}
+                  onValueChange={(value) => setCurrentStore({
+                    ...currentStore,
+                    status: value as 'active' | 'inactive'
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            {!currentStore?.id && (
+              <div className="space-y-2">
+                <Label>Admin PIN Verification *</Label>
+                <Input
+                  type="password"
+                  value={adminPin}
+                  onChange={(e) => setAdminPin(e.target.value)}
+                  placeholder="Enter admin PIN to confirm"
+                />
+              </div>
+            )}
           </div>
-        </CardContent>
-      </Card>
+          
+          <DialogFooter>
+            <Button onClick={handleSaveStore}>
+              {currentStore?.id ? 'Save Changes' : 'Create Store'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Store Dialog */}
+      <Dialog open={isDeleteStoreDialogOpen} onOpenChange={setIsDeleteStoreDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {currentStore?.name}? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Admin PIN Verification *</Label>
+              <Input
+                type="password"
+                value={adminPin}
+                onChange={(e) => setAdminPin(e.target.value)}
+                placeholder="Enter admin PIN to confirm"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="destructive" onClick={handleDeleteStore}>
+              Confirm Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

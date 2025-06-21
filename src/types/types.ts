@@ -70,3 +70,29 @@ export interface SalesTransaction  {
   originalTransactionId?: string;
   returnReason?: string;
 };
+
+export interface StaffType {
+  id: string;
+  name: string;
+  mobile: string;
+  email: string;
+  storeLocation: string;
+  role: 'admin' | 'staff';
+  createdAt: string;
+  status: 'active' | 'inactive';
+  salesCount: number;
+  staffPin: string;
+  lastActive?: string;
+}
+
+export interface StoreType {
+  id: string;
+  name: string;
+  location: string;
+  address: string;
+  contactNumber: string;
+  status: 'active' | 'inactive';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
