@@ -1,5 +1,5 @@
 // src/hooks/useAuth.ts
-import { auth } from '../firebase' // your initialized firebase app
+import { auth } from '../lib/firebase' // your initialized firebase app
 import {
   sendSignInLinkToEmail,
   isSignInWithEmailLink,

@@ -117,7 +117,7 @@ export interface SevaTransaction {
   amount: number;
   description: string;
   date: string;
-  customerId?: string;
+  customerMobile?: string;
   customerName?: string;
   monthYear: string; // Format: "YYYY-MM"
 }
