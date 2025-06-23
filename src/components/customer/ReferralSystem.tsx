@@ -9,7 +9,6 @@ import {
   Users, 
   Gift,
   TrendingUp,
-  Star,
   Phone,
   Calendar
 } from 'lucide-react';
@@ -18,6 +17,7 @@ import { toast } from 'sonner';
 interface ReferralSystemProps {
   userId: string;
   userName: string;
+  userMobile: string; // Added phone number prop
 }
 
 interface Referral {
@@ -30,7 +30,7 @@ interface Referral {
   status: 'active' | 'inactive';
 }
 
-export const ReferralSystem = ({ userId, userName }: ReferralSystemProps) => {
+export const ReferralSystem = ({ userId, userName, userMobile }: ReferralSystemProps) => {
   const [referrals] = useState<Referral[]>([
     {
       id: '1',
@@ -61,35 +61,34 @@ export const ReferralSystem = ({ userId, userName }: ReferralSystemProps) => {
     }
   ]);
 
-  const referralCode = `REF${userId.toUpperCase()}2024`;
   const totalReferrals = referrals.length;
   const totalBonusEarned = referrals.reduce((sum, ref) => sum + ref.bonusEarned, 0);
   const activeReferrals = referrals.filter(ref => ref.status === 'active').length;
 
-  const copyReferralCode = async () => {
+  const copyReferralNumber = async () => {
     try {
-      await navigator.clipboard.writeText(referralCode);
-      toast.success('Referral code copied to clipboard!');
+      await navigator.clipboard.writeText(userMobile);
+      toast.success('Referral number copied to clipboard!');
     } catch (err) {
-      toast.error('Failed to copy referral code');
+      toast.error('Failed to copy referral number');
     }
   };
 
-  const shareReferralCode = async () => {
-    const shareText = `Join ${userName}'s favorite loyalty program and start earning rewards! Use my referral code: ${referralCode}`;
+  const shareReferral = async () => {
+    const shareText = `Join ${userName}'s network and start earning rewards! Use my referral number when signing up: ${userMobile}`;
     
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Join Loyalty Rewards Program',
+          title: 'Join Our Rewards Program',
           text: shareText
         });
       } catch (err) {
         // Fallback to copying
-        copyReferralCode();
+        copyReferralNumber();
       }
     } else {
-      copyReferralCode();
+      copyReferralNumber();
     }
   };
 
@@ -100,8 +99,8 @@ export const ReferralSystem = ({ userId, userName }: ReferralSystemProps) => {
           <Share2 className="h-6 w-6 text-green-600" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Referral System</h2>
-          <p className="text-gray-600">Invite friends and earn 7.5% on their purchases</p>
+          <h2 className="text-2xl font-bold text-gray-900">Referral Program</h2>
+          <p className="text-gray-600">Invite friends and earn 7.5% Surabhi Coins on their purchases</p>
         </div>
       </div>
 
@@ -120,16 +119,16 @@ export const ReferralSystem = ({ userId, userName }: ReferralSystemProps) => {
           </CardContent>
         </Card>
         
-        <Card className="bg-green-50 border-green-200 shadow-lg">
+        <Card className="bg-amber-50 border-amber-200 shadow-lg">
           <CardContent className="p-6">
             <div className="flex items-center gap-3 mb-3">
-              <div className="bg-green-100 p-2 rounded-full">
-                <Gift className="h-5 w-5 text-green-600" />
+              <div className="bg-amber-100 p-2 rounded-full">
+                <Gift className="h-5 w-5 text-amber-600" />
               </div>
-              <span className="text-sm font-medium text-green-600">Total Bonus Earned</span>
+              <span className="text-sm font-medium text-amber-600">Total Bonus Earned</span>
             </div>
-            <div className="text-3xl font-bold text-green-900 mb-1">{totalBonusEarned}</div>
-            <div className="text-xs text-green-700">Surabhi Coins earned</div>
+            <div className="text-3xl font-bold text-amber-900 mb-1">{totalBonusEarned}</div>
+            <div className="text-xs text-amber-700">Lifetime Surabhi Coins</div>
           </CardContent>
         </Card>
         
@@ -142,36 +141,36 @@ export const ReferralSystem = ({ userId, userName }: ReferralSystemProps) => {
               <span className="text-sm font-medium text-purple-600">This Month</span>
             </div>
             <div className="text-3xl font-bold text-purple-900 mb-1">87.5</div>
-            <div className="text-xs text-purple-700">Bonus coins earned</div>
+            <div className="text-xs text-purple-700">Surabhi Coins earned</div>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Referral Code Card */}
-        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+        {/* Referral Number Card */}
+        <Card className="shadow-lg border-0 bg-white">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Star className="h-5 w-5 text-amber-600" />
-              Your Referral Code
+              <Phone className="h-5 w-5 text-green-600" />
+              Your Referral Number
             </CardTitle>
             <CardDescription>
-              Share this code with friends to earn rewards
+              Share your mobile number with friends to earn rewards
             </CardDescription>
           </CardHeader>
           
           <CardContent className="space-y-6">
-            <div className="p-4 bg-gradient-to-r from-purple-50 to-amber-50 rounded-lg border border-purple-200">
+            <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Your Referral Code</p>
-                  <p className="text-2xl font-bold text-purple-900 font-mono">{referralCode}</p>
+                  <p className="text-sm text-gray-600 mb-1">Your Referral Number</p>
+                  <p className="text-2xl font-bold text-green-900 font-mono">{userMobile}</p>
                 </div>
                 <Button
-                  onClick={copyReferralCode}
+                  onClick={copyReferralNumber}
                   variant="outline"
                   size="sm"
-                  className="border-purple-300 text-purple-600 hover:bg-purple-50"
+                  className="border-green-300 text-green-600 hover:bg-green-50"
                 >
                   <Copy className="h-4 w-4" />
                 </Button>
@@ -183,11 +182,11 @@ export const ReferralSystem = ({ userId, userName }: ReferralSystemProps) => {
               <div className="space-y-2 text-sm text-gray-600">
                 <div className="flex items-start gap-2">
                   <div className="bg-green-100 text-green-600 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">1</div>
-                  <p>Share your referral code with friends</p>
+                  <p>Share your mobile number with friends</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <div className="bg-green-100 text-green-600 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">2</div>
-                  <p>They register using your code</p>
+                  <p>They register using your number as referral</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <div className="bg-green-100 text-green-600 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">3</div>
@@ -197,24 +196,24 @@ export const ReferralSystem = ({ userId, userName }: ReferralSystemProps) => {
             </div>
             
             <Button
-              onClick={shareReferralCode}
+              onClick={shareReferral}
               className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
             >
               <Share2 className="h-4 w-4 mr-2" />
-              Share Referral Code
+              Share Referral Number
             </Button>
           </CardContent>
         </Card>
 
         {/* Referral List */}
-        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+        <Card className="shadow-lg border-0 bg-white">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5 text-blue-600" />
               Your Referrals
             </CardTitle>
             <CardDescription>
-              Friends you've successfully referred
+              Friends who joined using your referral number
             </CardDescription>
           </CardHeader>
           
@@ -242,8 +241,8 @@ export const ReferralSystem = ({ userId, userName }: ReferralSystemProps) => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-green-600">{referral.bonusEarned} coins</p>
-                      <p className="text-xs text-gray-500">Bonus earned</p>
+                      <p className="font-bold text-amber-600">{referral.bonusEarned} coins</p>
+                      <p className="text-xs text-gray-500">Surabhi Coins earned</p>
                     </div>
                   </div>
                 ))}
@@ -252,7 +251,7 @@ export const ReferralSystem = ({ userId, userName }: ReferralSystemProps) => {
               <div className="text-center py-8 text-gray-500">
                 <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                 <p className="text-lg font-medium mb-2">No referrals yet</p>
-                <p className="text-sm">Start sharing your referral code to earn bonus rewards!</p>
+                <p className="text-sm">Share your mobile number to start earning Surabhi Coins!</p>
               </div>
             )}
           </CardContent>

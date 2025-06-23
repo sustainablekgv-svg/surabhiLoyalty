@@ -27,54 +27,52 @@ import { GoSevaPool } from '@/components/admin/GoSevaPool';
 import { SalesManagement } from '@/components/admin/SalesManagement';
 
 const AdminDashboard = () => {
-  const { user, logout, login } = useAuth();
+  const { user, logout, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
-  const [isInitializing, setIsInitializing] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Auto-login for preview if no user is logged in
   useEffect(() => {
-    const initializeUser = async () => {
-      if (!user) {
-        try {
-          await login('9999999999', 'password123','staff');
-        } catch (error) {
-          console.error('Auto-login failed:', error);
-        }
-      }
-      setIsInitializing(false);
-    };
+    if (authLoading) {
+      return;
+    }
+    if (!user) {
+      navigate('/');
+      toast.error('Please login to access this page');
+      return;
+    }
+    if (user.role !== 'admin') {
+      navigate('/');
+      toast.error('Access restricted to admins only');
+      return;
+    }
+    setIsLoading(false);
+  }, [user, authLoading, navigate]);
 
-    initializeUser();
-  }, [user, login]);
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-    toast.success('Logged out successfully');
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+      toast.success('Logged out successfully');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Logout failed. Please try again.');
+    }
   };
 
-  if (isInitializing) {
+  if (isLoading || authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+          <p className="text-gray-600">Loading your dashboard...</p>
         </div>
       </div>
     );
   }
 
   if (!user || user.role !== 'admin') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h2>
-          <p className="text-gray-600 mb-4">You need to be logged in as an admin to view this page.</p>
-          <Button onClick={() => navigate('/')}>Go to Login</Button>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (

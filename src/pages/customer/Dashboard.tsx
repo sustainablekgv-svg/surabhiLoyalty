@@ -4,12 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  Wallet, 
-  Coins, 
-  Heart, 
-  Users,
   TrendingUp,
-  LogOut,
   Share2,
   History
 } from 'lucide-react';
@@ -21,79 +16,84 @@ import { ReferralSystem } from '@/components/customer/ReferralSystem';
 import { TransactionHistory } from '@/components/customer/TransactionHistory';
 
 const CustomerDashboard = () => {
-  const { user, logout, login } = useAuth();
+  const { user, logout, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
-  const [isInitializing, setIsInitializing] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Auto-login for preview if no user is logged in
+  // Handle authentication and authorization
   useEffect(() => {
-    const initializeUser = async () => {
-      if (!user) {
-        try {
-          await login('7777777777', 'password123', 'customer');
-        } catch (error) {
-          console.error('Auto-login failed:', error);
-        }
-      }
-      setIsInitializing(false);
-    };
+    if (authLoading) {
+      // Still loading auth state
+      return;
+    }
 
-    initializeUser();
-  }, [user, login]);
+    if (!user) {
+      // No user - redirect to login
+      navigate('/');
+      toast.error('Please login to access this page');
+      return;
+    }
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-    toast.success('Logged out successfully');
+    if (user.role !== 'customer') {
+      // User is not customer
+      navigate('/');
+      toast.error('Access restricted to customers only');
+      return;
+    }
+
+    // If we get here, user is authenticated customer
+    setIsLoading(false);
+  }, [user, authLoading, navigate]);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+      toast.success('Logged out successfully');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Logout failed. Please try again.');
+    }
   };
 
-  if (isInitializing) {
+  if (isLoading || authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+          <p className="text-gray-600">Loading your dashboard...</p>
         </div>
       </div>
     );
   }
 
+  // Final safety check before rendering
   if (!user || user.role !== 'customer') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h2>
-          <p className="text-gray-600 mb-4">You need to be logged in as a customer to view this page.</p>
-          <Button onClick={() => navigate('/')}>Go to Login</Button>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50">
       <CustomerHeader user={user} onLogout={handleLogout} />
-      
       <div className="container mx-auto px-4 py-6">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">My Rewards Dashboard</h1>
           <p className="text-gray-600">Track your coins, referrals, and transaction history</p>
         </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-3 mb-8">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              <span className="hidden sm:inline">Overview</span>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full-xl">
+          <TabsList className="grid w-full grid-cols-3 mb-8">
+            <TabsTrigger value="overview" className="flex flex-col items-center gap-1 py-3">
+              <TrendingUp className="h-5 w-5" />
+              <span className="text-xs">Overview</span>
             </TabsTrigger>
-            <TabsTrigger value="referrals" className="flex items-center gap-2">
-              <Share2 className="h-4 w-4" />
-              <span className="hidden sm:inline">Referrals</span>
+            <TabsTrigger value="referrals" className="flex flex-col items-center gap-1 py-3">
+              <Share2 className="h-5 w-5" />
+              <span className="text-xs">Referrals</span>
             </TabsTrigger>
-            <TabsTrigger value="history" className="flex items-center gap-2">
-              <History className="h-4 w-4" />
-              <span className="hidden sm:inline">History</span>
+            <TabsTrigger value="history" className="flex flex-col items-center gap-1 py-3">
+              <History className="h-5 w-5" />
+              <span className="text-xs">History</span>
             </TabsTrigger>
           </TabsList>
 
@@ -102,7 +102,7 @@ const CustomerDashboard = () => {
           </TabsContent>
 
           <TabsContent value="referrals">
-            <ReferralSystem userId={user.id} userName={user.name || ''} />
+            <ReferralSystem userId={user.id} userName={user.name || ''} userMobile={user.mobile} />
           </TabsContent>
 
           <TabsContent value="history">

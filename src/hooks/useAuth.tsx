@@ -31,9 +31,15 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const INACTIVITY_TIMEOUT_MINUTES = 30; // 30 minutes
+
 const useAuthLogic = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  const updateLastActive = () => {
+    localStorage.setItem('lastActive', Date.now().toString());
+  };
 
   const login = async (mobile: string, password: string, role: string): Promise<User> => {
     setIsLoading(true);
@@ -118,6 +124,7 @@ const useAuthLogic = () => {
       
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
+      updateLastActive();
       return userData;
     } catch (error) {
       console.error('Login error:', error);
@@ -135,15 +142,23 @@ const useAuthLogic = () => {
     }
     setUser(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('lastActive');
   };
 
   useEffect(() => {
     const initializeAuth = async () => {
       const storedUser = localStorage.getItem('user');
-      if (storedUser) {
+      const lastActive = localStorage.getItem('lastActive');
+      const now = Date.now();
+      let isInactive = false;
+      if (lastActive) {
+        const inactiveMinutes = (now - parseInt(lastActive, 10)) / (1000 * 60);
+        if (inactiveMinutes > INACTIVITY_TIMEOUT_MINUTES) {
+          isInactive = true;
+        }
+      }
+      if (storedUser && !isInactive) {
         const parsedUser = JSON.parse(storedUser);
-        
-        // Verify the user still exists in the database
         try {
           let userDoc;
           if (parsedUser.role === 'customer') {
@@ -151,20 +166,35 @@ const useAuthLogic = () => {
           } else {
             userDoc = await getDoc(doc(db, 'staff', parsedUser.id));
           }
-          
           if (userDoc.exists()) {
             setUser(parsedUser);
+            updateLastActive();
           } else {
             localStorage.removeItem('user');
+            localStorage.removeItem('lastActive');
           }
         } catch (error) {
           console.error('Error verifying user:', error);
           localStorage.removeItem('user');
+          localStorage.removeItem('lastActive');
         }
+      } else if (isInactive) {
+        setUser(null);
+        localStorage.removeItem('user');
+        localStorage.removeItem('lastActive');
       }
     };
-    
     initializeAuth();
+    // Listen for activity to update lastActive
+    const activityHandler = () => updateLastActive();
+    window.addEventListener('mousemove', activityHandler);
+    window.addEventListener('keydown', activityHandler);
+    window.addEventListener('click', activityHandler);
+    return () => {
+      window.removeEventListener('mousemove', activityHandler);
+      window.removeEventListener('keydown', activityHandler);
+      window.removeEventListener('click', activityHandler);
+    };
   }, []);
 
   return {

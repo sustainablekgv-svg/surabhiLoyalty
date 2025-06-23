@@ -7,30 +7,73 @@ import {
   TrendingUp, 
   Gift,
   Target,
-  Star,
-  Award
+  Phone,
+  User
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Customer } from '@/types/types';
 
 interface CustomerStatsProps {
   userId: string;
 }
 
 export const CustomerStats = ({ userId }: CustomerStatsProps) => {
-  // Mock data - in real app, this would come from API
-  const customerData = {
-    rechargeWallet: 2500,
-    surabhiCoins: 250,
-    goSevaContribution: 125,
-    totalReferrals: 3,
-    memberSince: '2024-01-15',
-    loyaltyLevel: 'Silver',
-    nextLevelProgress: 65
-  };
+  const [customerData, setCustomerData] = useState<Customer | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCustomerData = async () => {
+      try {
+        const docRef = doc(db, 'customers', userId);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          setCustomerData(docSnap.data() as Customer);
+        } else {
+          setError('No customer data found');
+        }
+      } catch (err) {
+        setError('Failed to fetch customer data');
+        console.error('Error fetching customer data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCustomerData();
+  }, [userId]);
+
+  if (loading) {
+    return <div>Loading customer data...</div>;
+  }
+
+  if (error) {
+    return <div className="text-red-500">{error}</div>;
+  }
+
+  if (!customerData) {
+    return <div>No customer data available</div>;
+  }
+
+  // Format member since date
+  const memberSince = customerData.createdAt?.toDate 
+    ? customerData.createdAt.toDate().toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      })
+    : 'N/A';
+
+  // Calculate referrals count
+  const totalReferrals = customerData.referredUsers?.length || 0;
 
   const stats = [
     {
-      title: 'Recharge Wallet',
-      value: `₹${customerData.rechargeWallet.toLocaleString()}`,
+      title: 'Wallet Balance',
+      value: `₹${customerData.walletBalance.toLocaleString()}`,
       description: 'Available for purchases',
       icon: Wallet,
       color: 'text-purple-600',
@@ -40,7 +83,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
     {
       title: 'Surabhi Coins',
       value: customerData.surabhiCoins.toLocaleString(),
-      description: '10% earned on recharges',
+      description: 'Lifetime coins earned',
       icon: Coins,
       color: 'text-amber-600',
       bgColor: 'bg-amber-50',
@@ -48,7 +91,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
     },
     {
       title: 'Go Seva Contribution',
-      value: `₹${customerData.goSevaContribution}`,
+      value: `₹${customerData.sevaCoinsTotal}`,
       description: 'Community welfare fund',
       icon: Heart,
       color: 'text-red-600',
@@ -57,7 +100,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
     },
     {
       title: 'Total Referrals',
-      value: customerData.totalReferrals.toString(),
+      value: totalReferrals.toString(),
       description: 'Friends you referred',
       icon: Gift,
       color: 'text-green-600',
@@ -68,36 +111,32 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Loyalty Level Card */}
-      {/* <Card className="shadow-xl border-0 bg-gradient-to-r from-purple-600 to-amber-500 text-white">
+      {/* Customer Info Card */}
+      <Card className="shadow-lg border-0 bg-white">
         <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-white/20 p-3 rounded-full">
-                <Award className="h-6 w-6 text-white" />
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="bg-purple-100 p-3 rounded-full">
+                <User className="h-6 w-6 text-purple-600" />
               </div>
               <div>
-                <h2 className="text-xl font-bold">Loyalty Level: {customerData.loyaltyLevel}</h2>
-                <p className="text-purple-100">Member since {customerData.memberSince}</p>
+                <h2 className="text-xl font-bold">{customerData.name}</h2>
+                <p className="text-gray-600">Member since {memberSince}</p>
               </div>
             </div>
-            <div className="text-right">
-              <div className="bg-white/20 px-3 py-1 rounded-full">
-                <span className="text-sm font-medium">Next: Gold</span>
+            
+            <div className="flex items-center gap-4">
+              <div className="bg-blue-100 p-3 rounded-full">
+                <Phone className="h-6 w-6 text-blue-600" />
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-gray-600">Your referral number</p>
+                <p className="text-lg font-bold">{customerData.mobile}</p>
               </div>
             </div>
-          </div>
-          
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Progress to Gold Level</span>
-              <span>{customerData.nextLevelProgress}%</span>
-            </div>
-            <Progress value={customerData.nextLevelProgress} className="bg-white/20" />
-            <p className="text-xs text-purple-100">₹1,500 more to reach Gold level</p>
           </div>
         </CardContent>
-      </Card> */}
+      </Card>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -125,7 +164,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
 
       {/* Recent Activity & Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+        <Card className="shadow-lg border-0 bg-white">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-blue-600" />
@@ -134,18 +173,28 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="bg-green-100 p-2 rounded-full">
-                    <Wallet className="h-4 w-4 text-green-600" />
+              {customerData.lastTransactionDate && (
+                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-green-100 p-2 rounded-full">
+                      <Wallet className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Last Wallet Recharge</p>
+                      <p className="text-xs text-gray-600">
+                        {new Date(customerData.lastTransactionDate).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-sm">Wallet Recharged</p>
-                    <p className="text-xs text-gray-600">2 hours ago</p>
-                  </div>
+                  <span className="font-bold text-green-600">+₹{customerData.walletBalance}</span>
                 </div>
-                <span className="font-bold text-green-600">+₹500</span>
-              </div>
+              )}
               
               <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
                 <div className="flex items-center gap-3">
@@ -153,30 +202,32 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                     <Coins className="h-4 w-4 text-amber-600" />
                   </div>
                   <div>
-                    <p className="font-medium text-sm">Surabhi Coins Earned</p>
-                    <p className="text-xs text-gray-600">2 hours ago</p>
+                    <p className="font-medium text-sm">Current Month Surabhi Coins</p>
+                    <p className="text-xs text-gray-600">Earned this month</p>
                   </div>
                 </div>
-                <span className="font-bold text-amber-600">+50 coins</span>
+                <span className="font-bold text-amber-600">+{customerData.sevaCoinsCurrentMonth} coins</span>
               </div>
               
-              <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="bg-purple-100 p-2 rounded-full">
-                    <Gift className="h-4 w-4 text-purple-600" />
+              {totalReferrals > 0 && (
+                <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-purple-100 p-2 rounded-full">
+                      <Gift className="h-4 w-4 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Referral Bonus</p>
+                      <p className="text-xs text-gray-600">From your referrals</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-sm">Referral Bonus</p>
-                    <p className="text-xs text-gray-600">1 day ago</p>
-                  </div>
+                  <span className="font-bold text-purple-600">+{totalReferrals * 7.5} coins</span>
                 </div>
-                <span className="font-bold text-purple-600">+37.5 coins</span>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+        <Card className="shadow-lg border-0 bg-white">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Target className="h-5 w-5 text-purple-600" />
@@ -202,12 +253,15 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
               <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="bg-green-100 p-2 rounded-full">
-                    <Gift className="h-4 w-4 text-green-600" />
+                    <Phone className="h-4 w-4 text-green-600" />
                   </div>
                   <h3 className="font-medium text-green-900">Refer Friends</h3>
                 </div>
+                <p className="text-sm text-green-700 mb-2">
+                  Share your referral number: <span className="font-bold">{customerData.mobile}</span>
+                </p>
                 <p className="text-sm text-green-700 mb-2">Earn 7.5% on friend's purchases</p>
-                <div className="text-xs text-green-600">Share your referral code</div>
+                <div className="text-xs text-green-600">Ask friends to use your number when signing up</div>
               </div>
             </div>
           </CardContent>
