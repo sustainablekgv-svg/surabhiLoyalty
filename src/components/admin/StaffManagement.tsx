@@ -141,6 +141,11 @@ export const StaffManagement = () => {
       return;
     }
 
+    if (!currentStaff?.id && (!currentStaff.staffPin || currentStaff.staffPin.length < 4)) {
+    toast.error('Please set a 4-digit Staff PIN for new staff');
+        return;
+    }
+
     try {
       const staffData = {
         name: currentStaff.name,
@@ -352,11 +357,14 @@ export const StaffManagement = () => {
                   {staff.length} staff members across {stores.length} stores
                 </CardDescription>
               </div>
-              <Button onClick={() => {
+              <Button 
+              onClick={() => {
                 setCurrentStaff({
                   role: 'staff',
-                  status: 'active'
+                  status: 'active',
+                  staffPin: ''
                 });
+                console.log("Line 367 data is", currentStaff);
                 setIsStaffDialogOpen(true);
               }}>
                 <UserPlus className="h-4 w-4 mr-2" />
@@ -634,7 +642,7 @@ export const StaffManagement = () => {
                   <SelectValue placeholder="Select store" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Unassigned</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
                   {stores.map(store => (
                     <SelectItem key={store.id} value={store.id}>
                       {store.name}
@@ -643,6 +651,16 @@ export const StaffManagement = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="space-y-2">
+            <Label>Admin PIN Verification *</Label>
+            <Input
+              type="password"
+              value={adminPin}
+              onChange={(e) => setAdminPin(e.target.value)}
+              placeholder="Enter admin PIN to confirm"
+            />
+          </div>
             
             {!currentStaff?.id && (
               <div className="space-y-2">

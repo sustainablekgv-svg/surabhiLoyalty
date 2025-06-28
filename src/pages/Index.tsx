@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Coins, Shield, Users, Phone, Lock, Eye, EyeOff, UserCircle, Mail } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-context';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { getCustomerByMobile } from '@/lib/db';
@@ -22,8 +22,27 @@ const Index = () => {
   const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
   const [customerEmail, setCustomerEmail] = useState('');
   const [isLoadingEmail, setIsLoadingEmail] = useState(false);
-  const { login, isLoading } = useAuth();
+  
+  const { login, isLoading, isAuthenticated, isInitialized } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isInitialized && isAuthenticated) {
+      const from = location.state?.from?.pathname || '/customer/dashboard';
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, isInitialized, navigate, location]);
+
+  // Show loading while initializing
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-amber-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,13 +63,13 @@ const Index = () => {
       
       toast.success('Login successful!');
       
-      if (user.role === 'admin') {
-        navigate('/admin/dashboard');
-      } else if (user.role === 'staff') {
-        navigate('/staff/dashboard');
-      } else {
-        navigate('/customer/dashboard');
-      }
+      // Navigate based on role
+      const redirectPath = location.state?.from?.pathname || 
+        (user.role === 'admin' ? '/admin/dashboard' : 
+         user.role === 'staff' ? '/staff/dashboard' : 
+         '/customer/dashboard');
+      
+      navigate(redirectPath, { replace: true });
     } catch (error) {
       toast.error('Invalid credentials. Please try again.');
     }

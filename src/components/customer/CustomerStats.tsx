@@ -11,7 +11,7 @@ import {
   User
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, Timestamp, FieldValue  } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Customer } from '@/types/types';
 
@@ -59,13 +59,37 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
   }
 
   // Format member since date
-  const memberSince = customerData.createdAt?.toDate 
-    ? customerData.createdAt.toDate().toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric' 
-      })
-    : 'N/A';
+  function formatCreatedAt(createdAt: unknown): string {
+    if (createdAt instanceof Timestamp) {
+      return createdAt.toDate().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+  
+    if (createdAt instanceof Date) {
+      return createdAt.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+  
+    if (typeof createdAt === 'string' || typeof createdAt === 'number') {
+      return new Date(createdAt).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+  
+    // It’s likely a FieldValue or undefined/null
+    return 'N/A';
+  }
+  
+  const memberSince = formatCreatedAt(customerData.createdAt);
+
 
   // Calculate referrals count
   const totalReferrals = customerData.referredUsers?.length || 0;
@@ -257,9 +281,9 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                   </div>
                   <h3 className="font-medium text-green-900">Refer Friends</h3>
                 </div>
-                <p className="text-sm text-green-700 mb-2">
+                {/* <p className="text-sm text-green-700 mb-2">
                   Share your referral number: <span className="font-bold">{customerData.mobile}</span>
-                </p>
+                </p> */}
                 <p className="text-sm text-green-700 mb-2">Earn 7.5% on friend's purchases</p>
                 <div className="text-xs text-green-600">Ask friends to use your number when signing up</div>
               </div>

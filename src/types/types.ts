@@ -10,10 +10,11 @@ export interface Customer {
   surabhiCoins: number;
   sevaCoinsTotal: number;
   sevaCoinsCurrentMonth: number;
-  referredBy?: string;
-  referredUsers?: { uid: string; referralDate: string; }[];
+  referredBy: string | null;
+  referralIncome: number | null;
+  referredUsers: { mobile:number; referralDate: string; }[] | null;
   registered: Boolean;
-  lastTransactionDate?: string;
+  lastTransactionDate: string | null;
   customerPassword: string;
 }
 
@@ -32,45 +33,6 @@ export interface SalesManagementProps {
 export interface StoreUsersProps {
   storeLocation: string;
 }
-
-
-export interface SalesTransaction  {
-  id?: string;
-  customerId: string;
-  customerName: string;
-  customerMobile: string;
-  // Transaction amounts
-  amount: number;
-  surabhiCoinsUsed: number;
-  walletDeduction: number;
-  cashPayment: number;
-  // Rewards calculation
-  surabhiCoinsEarned: number;
-  goSevaContribution: number;
-  // Payment info
-  paymentMethod: 'cash' | 'wallet' | 'mixed';
-  paymentStatus: 'pending' | 'completed' | 'failed';
-  // Location and processing
-  storeLocation: string;
-  processedBy: string;
-  processedAt: string;
-  // Additional metadata
-  isNewCustomer: boolean;
-  previousBalance?: {
-    wallet: number;
-    surabhiCoins: number;
-    sevaCoins: number;
-  };
-  newBalance?: {
-    wallet: number;
-    surabhiCoins: number;
-    sevaCoins: number;
-  };
-  // For returns/refunds
-  isReturn?: boolean;
-  originalTransactionId?: string;
-  returnReason?: string;
-};
 
 export interface StaffType {
   id: string;
@@ -98,18 +60,46 @@ export interface StoreType {
   updatedAt: Date;
 }
 
-export interface Transaction {
-  id: string;
+// export interface Transaction {
+//   id: string;
+//   customerName: string;
+//   mobile: string;
+//   storeLocation: string;
+//   amount: number;
+//   staffInWork: string;
+//   paymentMethod: 'wallet' | 'cash' | 'mixed';
+//   surabhiCoinsUsed: number;
+//   timestamp: string;
+//   status: 'completed' | 'pending' | 'failed';
+// }
+
+export interface SalesTransaction  {
+  id?: string;
   customerName: string;
-  mobile: string;
-  storeLocation: string;
+  customerMobile: string;
+  // Transaction amounts
   amount: number;
-  staffInWork: string;
-  paymentMethod: 'wallet' | 'cash' | 'mixed';
   surabhiCoinsUsed: number;
-  timestamp: string;
-  status: 'completed' | 'pending' | 'failed';
-}
+  walletDeduction: number;
+  cashPayment: number;
+  // Payment info
+  paymentMethod: 'cash' | 'wallet' | 'mixed';
+  // Location and processing
+  storeLocation: string;
+  processedBy: string;
+  // Additional metadata
+  isCustomerRegistered: boolean;
+  previousBalance?: {
+    wallet: number;
+    surabhiCoins: number;
+    sevaCoins: number;
+  };
+  newBalance?: {
+    wallet: number;
+    surabhiCoins: number;
+    sevaCoins: number;
+  };
+};
 
 export interface SevaTransaction {
   id: string;

@@ -9,7 +9,7 @@ import {
   History
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-context';
 import { CustomerHeader } from '@/components/customer/CustomerHeader';
 import { CustomerStats } from '@/components/customer/CustomerStats';
 import { ReferralSystem } from '@/components/customer/ReferralSystem';
@@ -101,9 +101,9 @@ const CustomerDashboard = () => {
             <CustomerStats userId={user.id} />
           </TabsContent>
 
-          <TabsContent value="referrals">
+          {/* <TabsContent value="referrals">
             <ReferralSystem userId={user.id} userName={user.name || ''} userMobile={user.mobile} />
-          </TabsContent>
+          </TabsContent> */}
 
           <TabsContent value="history">
             <TransactionHistory userId={user.id} />

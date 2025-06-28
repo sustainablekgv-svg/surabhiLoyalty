@@ -17,7 +17,7 @@ import {
   ShoppingCart
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-context';
 import { useNavigate } from 'react-router-dom';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { AdminStats } from '@/components/admin/AdminStats';

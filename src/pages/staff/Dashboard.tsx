@@ -14,7 +14,7 @@ import {
   History
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/auth-context';
 import { StaffHeader } from '@/components/staff/StaffHeader';
 import { StaffStats } from '@/components/staff/StaffStats';
 import { UserRegistration } from '@/components/staff/UserRegistration';

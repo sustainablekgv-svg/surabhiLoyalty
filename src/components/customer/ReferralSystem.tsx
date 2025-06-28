@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { 
   Share2, 
@@ -10,59 +9,80 @@ import {
   Gift,
   TrendingUp,
   Phone,
-  Calendar
+  Calendar,
+  Wallet,
+  Coins
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface ReferralSystemProps {
-  userId: string;
+  userMobile: string;
   userName: string;
-  userMobile: string; // Added phone number prop
 }
 
 interface Referral {
-  id: string;
   name: string;
   mobile: string;
   joinDate: string;
-  totalPurchases: number;
   bonusEarned: number;
   status: 'active' | 'inactive';
 }
 
-export const ReferralSystem = ({ userId, userName, userMobile }: ReferralSystemProps) => {
-  const [referrals] = useState<Referral[]>([
-    {
-      id: '1',
-      name: 'Rohit Kumar',
-      mobile: '9998887776',
-      joinDate: '2024-05-15',
-      totalPurchases: 2500,
-      bonusEarned: 187.5,
-      status: 'active'
-    },
-    {
-      id: '2',
-      name: 'Kavya Singh',
-      mobile: '8887776665',
-      joinDate: '2024-04-20',
-      totalPurchases: 1800,
-      bonusEarned: 135,
-      status: 'active'
-    },
-    {
-      id: '3',
-      name: 'Arjun Malhotra',
-      mobile: '7776665554',
-      joinDate: '2024-03-10',
-      totalPurchases: 3200,
-      bonusEarned: 240,
-      status: 'active'
-    }
-  ]);
+export const ReferralSystem = ({ userMobile, userName }: ReferralSystemProps) => {
+  const [referrals, setReferrals] = useState<Referral[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [referralIncome, setReferralIncome] = useState(0);
+  const [userData, setUserData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchReferralData = async () => {
+      try {
+        // Fetch current user data to get referralIncome
+        const usersRef = collection(db, 'customers');
+        const q = query(usersRef, where('mobile', '==', userMobile));
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+          const userDoc = querySnapshot.docs[0];
+          const userData = userDoc.data();
+          setUserData(userData);
+          setReferralIncome(userData.referralIncome || 0);
+        }
+
+        // Fetch referred users
+        const referredUsersQuery = query(
+          collection(db, 'customers'),
+          where('referredBy', '==', userMobile)
+        );
+        const referredUsersSnapshot = await getDocs(referredUsersQuery);
+        
+        const referralsData: Referral[] = [];
+        referredUsersSnapshot.forEach(doc => {
+          const data = doc.data();
+          referralsData.push({
+            name: data.name,
+            mobile: data.mobile,
+            joinDate: data.createdAt?.toDate().toLocaleDateString() || 'N/A',
+            bonusEarned: data.sevaCoinsTotal * 0.075 || 0, // 7.5% of their seva coins
+            status: data.registered ? 'active' : 'inactive'
+          });
+        });
+
+        setReferrals(referralsData);
+      } catch (error) {
+        console.error('Error fetching referral data:', error);
+        toast.error('Failed to load referral data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReferralData();
+  }, [userMobile]);
 
   const totalReferrals = referrals.length;
-  const totalBonusEarned = referrals.reduce((sum, ref) => sum + ref.bonusEarned, 0);
   const activeReferrals = referrals.filter(ref => ref.status === 'active').length;
 
   const copyReferralNumber = async () => {
@@ -75,7 +95,7 @@ export const ReferralSystem = ({ userId, userName, userMobile }: ReferralSystemP
   };
 
   const shareReferral = async () => {
-    const shareText = `Join ${userName}'s network and start earning rewards! Use my referral number when signing up: ${userMobile}`;
+    const shareText = `Join ${userName}'s network on our loyalty program! Use my referral number ${userMobile} when signing up to get benefits. I've earned ₹${referralIncome} in referral bonuses so far!`;
     
     if (navigator.share) {
       try {
@@ -92,6 +112,10 @@ export const ReferralSystem = ({ userId, userName, userMobile }: ReferralSystemP
     }
   };
 
+  if (loading) {
+    return <div className="flex justify-center py-8">Loading referral data...</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-6">
@@ -100,7 +124,7 @@ export const ReferralSystem = ({ userId, userName, userMobile }: ReferralSystemP
         </div>
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Referral Program</h2>
-          <p className="text-gray-600">Invite friends and earn 7.5% Surabhi Coins on their purchases</p>
+          <p className="text-gray-600">Invite friends and earn 7.5% of their spending as Surabhi Coins</p>
         </div>
       </div>
 
@@ -123,11 +147,11 @@ export const ReferralSystem = ({ userId, userName, userMobile }: ReferralSystemP
           <CardContent className="p-6">
             <div className="flex items-center gap-3 mb-3">
               <div className="bg-amber-100 p-2 rounded-full">
-                <Gift className="h-5 w-5 text-amber-600" />
+                <Coins className="h-5 w-5 text-amber-600" />
               </div>
-              <span className="text-sm font-medium text-amber-600">Total Bonus Earned</span>
+              <span className="text-sm font-medium text-amber-600">Referral Income</span>
             </div>
-            <div className="text-3xl font-bold text-amber-900 mb-1">{totalBonusEarned}</div>
+            <div className="text-3xl font-bold text-amber-900 mb-1">{referralIncome}</div>
             <div className="text-xs text-amber-700">Lifetime Surabhi Coins</div>
           </CardContent>
         </Card>
@@ -136,12 +160,14 @@ export const ReferralSystem = ({ userId, userName, userMobile }: ReferralSystemP
           <CardContent className="p-6">
             <div className="flex items-center gap-3 mb-3">
               <div className="bg-purple-100 p-2 rounded-full">
-                <TrendingUp className="h-5 w-5 text-purple-600" />
+                <Wallet className="h-5 w-5 text-purple-600" />
               </div>
-              <span className="text-sm font-medium text-purple-600">This Month</span>
+              <span className="text-sm font-medium text-purple-600">Potential Earnings</span>
             </div>
-            <div className="text-3xl font-bold text-purple-900 mb-1">87.5</div>
-            <div className="text-xs text-purple-700">Surabhi Coins earned</div>
+            <div className="text-3xl font-bold text-purple-900 mb-1">
+              {referrals.reduce((sum, ref) => sum + ref.bonusEarned, 0)}
+            </div>
+            <div className="text-xs text-purple-700">From current referrals</div>
           </CardContent>
         </Card>
       </div>
@@ -155,7 +181,7 @@ export const ReferralSystem = ({ userId, userName, userMobile }: ReferralSystemP
               Your Referral Number
             </CardTitle>
             <CardDescription>
-              Share your mobile number with friends to earn rewards
+              Share your mobile number with friends to earn Surabhi Coins
             </CardDescription>
           </CardHeader>
           
@@ -220,8 +246,8 @@ export const ReferralSystem = ({ userId, userName, userMobile }: ReferralSystemP
           <CardContent>
             {referrals.length > 0 ? (
               <div className="space-y-3">
-                {referrals.map((referral) => (
-                  <div key={referral.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                {referrals.map((referral, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-medium text-gray-900">{referral.name}</h3>
@@ -242,7 +268,7 @@ export const ReferralSystem = ({ userId, userName, userMobile }: ReferralSystemP
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-amber-600">{referral.bonusEarned} coins</p>
-                      <p className="text-xs text-gray-500">Surabhi Coins earned</p>
+                      <p className="text-xs text-gray-500">Earned for you</p>
                     </div>
                   </div>
                 ))}
