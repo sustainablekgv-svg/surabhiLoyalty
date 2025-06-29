@@ -23,6 +23,7 @@ import { SalesManagement } from '@/components/staff/SalesManagement';
 
 const StaffDashboard = () => {
   const { user, logout, isLoading: authLoading } = useAuth();
+  console.log("the staff info is", user);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [isLoading, setIsLoading] = useState(true);

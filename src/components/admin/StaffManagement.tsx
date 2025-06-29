@@ -644,7 +644,7 @@ export const StaffManagement = () => {
                 <SelectContent>
                   <SelectItem value="unassigned">Unassigned</SelectItem>
                   {stores.map(store => (
-                    <SelectItem key={store.id} value={store.id}>
+                    <SelectItem key={store.id} value={store.name}>
                       {store.name}
                     </SelectItem>
                   ))}

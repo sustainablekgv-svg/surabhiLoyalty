@@ -16,6 +16,7 @@ export interface Customer {
   registered: Boolean;
   lastTransactionDate: string | null;
   customerPassword: string;
+  tpin: string;
 }
 
 export interface UserRegistrationProps {
