@@ -66,19 +66,6 @@ export interface StoreType {
   updatedAt: Date;
 }
 
-// export interface Transaction {
-//   id: string;
-//   customerName: string;
-//   mobile: string;
-//   storeLocation: string;
-//   amount: number;
-//   staffInWork: string;
-//   paymentMethod: 'wallet' | 'cash' | 'mixed';
-//   surabhiCoinsUsed: number;
-//   timestamp: string;
-//   status: 'completed' | 'pending' | 'failed';
-// }
-
 export interface SalesTransaction  {
   id?: string;
   customerName: string;
@@ -127,4 +114,24 @@ export interface SevaPool {
   allocationsCurrentMonth: number;
   lastResetDate: import('firebase/firestore').FieldValue;
   lastAllocatedDate: import('firebase/firestore').FieldValue;
+}
+
+export interface Activity {
+  id: string;
+  type: 'signup' | 'transaction' | 'recharge' | 'referral' | 'contribution' | 'allocation';
+  description: string;
+  amount?: number;
+  user: string;
+  location: string;
+  timestamp: string;
+  date?: any;
+}
+
+export interface StorePerformance {
+  name: string;
+  transactions: number;
+  sales: number;
+  surabhiCoinsUsed: number;
+  walletDeduction: number;
+  cashPayment: number;
 }

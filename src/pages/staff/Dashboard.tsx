@@ -20,6 +20,7 @@ import { StaffStats } from '@/components/staff/StaffStats';
 import { UserRegistration } from '@/components/staff/UserRegistration';
 import { WalletRecharge } from '@/components/staff/WalletRecharge';
 import { SalesManagement } from '@/components/staff/SalesManagement';
+import { TransactionsPage } from '@/components/staff/TransactionsPage';
 
 const StaffDashboard = () => {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -115,31 +116,14 @@ const StaffDashboard = () => {
               <ShoppingCart className="h-5 w-5" />
               <span className="text-xs">Sales</span>
             </TabsTrigger>
-            {/* <TabsTrigger value="scan" className="flex flex-col items-center gap-1 py-3">
-              <Scan className="h-5 w-5" />
-              <span className="text-xs">Scan</span>
-            </TabsTrigger> */}
-            <TabsTrigger value="history" className="flex flex-col items-center gap-1 py-3">
+            <TabsTrigger value="transactions" className="flex flex-col items-center gap-1 py-3">
               <History className="h-5 w-5" />
-              <span className="text-xs">History</span>
+              <span className="text-xs">Transactions</span>
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
             <StaffStats storeLocation={user?.storeLocation || ''} />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Gift className="h-5 w-5 text-purple-600" />
-                    <span>Today's Offers</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600">No special offers today. Check back later!</p>
-                </CardContent>
-              </Card>
-            </div>
           </TabsContent>
 
           <TabsContent value="register">
@@ -154,41 +138,8 @@ const StaffDashboard = () => {
             <SalesManagement storeLocation={user?.storeLocation || ''} />
           </TabsContent>
 
-          <TabsContent value="scan">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Scan className="h-5 w-5 text-purple-600" />
-                  <span>Scan Customer QR</span>
-                </CardTitle>
-                <CardDescription>
-                  Scan a customer's QR code to access their profile quickly
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                  <Scan className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                  <p className="text-gray-500 mb-4">Scanner will appear here</p>
-                  <Button className="bg-purple-600 hover:bg-purple-700">
-                    Start Scanning
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="history">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <History className="h-5 w-5 text-purple-600" />
-                  <span>Transaction History</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Transaction history will be displayed here</p>
-              </CardContent>
-            </Card>
+          <TabsContent value="transactions">
+            <TransactionsPage storeLocation={user?.storeLocation || ''} />
           </TabsContent>
         </Tabs>
       </div>

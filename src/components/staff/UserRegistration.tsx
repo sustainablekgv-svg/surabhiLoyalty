@@ -9,10 +9,12 @@ import {
   EyeOff,
   CheckCircle,
   Link2,
-  Loader2
+  Loader2,
+  Search,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { auth, db } from '@/lib/firebase'; // Import from your firebase config
+import { auth, db } from '@/lib/firebase';
 import { 
   createUserWithEmailAndPassword,
   onAuthStateChanged,
@@ -36,14 +38,17 @@ import { Customer, UserRegistrationProps } from '@/types/types';
 export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [referralName, setReferralName] = useState<string | null>(null);
+  const [isFetchingReferral, setIsFetchingReferral] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     mobile: '',
     email: '',
     password: '',
-    referredBy: ''
+    referredBy: '',
+    tpin: ''
   });
-  const [isAuthReady, setIsAuthReady] = useState(false);
 
   // Initialize auth state
   useEffect(() => {
@@ -64,147 +69,203 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
     return () => unsubscribe();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-
-  if (!isAuthReady) {
-    toast.error('System is not ready yet. Please try again.');
-    return;
-  }
-
-  if (!formData.name || !formData.mobile || !formData.email || !formData.password) {
-    toast.error('Please fill all required fields');
-    return;
-  }
-
-  if (!/^\d{10}$/.test(formData.mobile)) {
-    toast.error('Please enter a valid 10-digit mobile number');
-    return;
-  }
-
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-    toast.error('Please enter a valid email address');
-    return;
-  }
-
-  if (formData.password.length < 6) {
-    toast.error('Password must be at least 6 characters');
-    return;
-  }
-
-  if (formData.referredBy && !/^\d{10}$/.test(formData.referredBy)) {
-    toast.error('Referral number must be 10 digits');
-    return;
-  }
-
-  setIsLoading(true);
-  const toastId = toast.loading('Checking details...');
-
-  try {
-    const customersCollection = collection(db, 'customers');
-
-    // 🔍 Check if email already exists
-    const emailQuery = query(customersCollection, where('email', '==', formData.email));
-    const emailSnap = await getDocs(emailQuery);
-    if (!emailSnap.empty) {
-      toast.error('This email is already registered.', { id: toastId });
-      setIsLoading(false);
-      return;
-    }
-
-    // 🔍 Check if mobile number already exists
-    const mobileQuery = query(customersCollection, where('mobile', '==', formData.mobile));
-    const mobileSnap = await getDocs(mobileQuery);
-    if (!mobileSnap.empty) {
-      toast.error('This mobile number is already registered.', { id: toastId });
-      setIsLoading(false);
-      return;
-    }
-
-    // ✅ Proceed with registration
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      formData.email,
-      formData.password
-    );
-    const newUserUid = userCredential.user.uid;
-
-    const walletId = `WALLET-${newUserUid.substring(0, 8).toUpperCase()}`;
-    const newUserData: Customer = {
-      name: formData.name,
-      mobile: formData.mobile,
-      email: formData.email,
-      storeLocation,
-      walletBalance: 0,
-      surabhiCoins: 0,
-      sevaCoinsTotal: 0,
-      sevaCoinsCurrentMonth: 0,
-      createdAt: serverTimestamp(),
-      role: 'customer',
-      customerPassword: formData.password,
-      registered:true,
-      walletId,
-      ...(formData.referredBy && { referredBy: formData.referredBy })
+  // Fetch referral name when mobile number is entered
+  useEffect(() => {
+    const fetchReferralName = async () => {
+      if (formData.referredBy?.length === 10 && /^\d+$/.test(formData.referredBy)) {
+        setIsFetchingReferral(true);
+        try {
+          const customersCollection = collection(db, 'customers');
+          const referralQuery = query(
+            customersCollection,
+            where('mobile', '==', formData.referredBy)
+          );
+          const querySnapshot = await getDocs(referralQuery);
+          
+          if (!querySnapshot.empty) {
+            const referralData = querySnapshot.docs[0].data() as Customer;
+            setReferralName(referralData.name);
+            toast.success(`Referral found: ${referralData.name}`);
+          } else {
+            setReferralName(null);
+            toast.error('No customer found with this mobile number');
+          }
+        } catch (error) {
+          console.error('Error fetching referral:', error);
+          toast.error('Failed to check referral');
+          setReferralName(null);
+        } finally {
+          setIsFetchingReferral(false);
+        }
+      } else {
+        setReferralName(null);
+      }
     };
 
-    await setDoc(doc(customersCollection, newUserUid), newUserData);
-
-    if (formData.referredBy) {
-      const referrerQuery = query(
-        customersCollection,
-        where('mobile', '==', formData.referredBy)
-      );
-      const referrerSnapshot = await getDocs(referrerQuery);
-
-      if (!referrerSnapshot.empty) {
-        const referrerDoc = referrerSnapshot.docs[0];
-        await updateDoc(doc(customersCollection, referrerDoc.id), {
-          referredUsers: arrayUnion({
-            uid: newUserUid,
-            referralDate: serverTimestamp()
-          })
-        });
-        toast.success(`User registered! Referral recorded.`, { id: toastId });
+    const timer = setTimeout(() => {
+      if (formData.referredBy?.length === 10) {
+        fetchReferralName();
       } else {
-        toast.success(`User registered! Referrer not found.`, { id: toastId });
+        setReferralName(null);
       }
-    } else {
-      toast.success('User registered successfully!', { id: toastId });
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [formData.referredBy]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!isAuthReady) {
+      toast.error('System is not ready yet. Please try again.');
+      return;
     }
 
-    setFormData({
-      name: '',
-      mobile: '',
-      email: '',
-      password: '',
-      referredBy: ''
-    });
-
-  } catch (error: any) {
-    console.error('Registration error:', error);
-    let errorMessage = 'Registration failed. Please try again.';
-
-    switch (error.code) {
-      case 'auth/email-already-in-use':
-        errorMessage = 'This email is already registered.';
-        break;
-      case 'auth/weak-password':
-        errorMessage = 'Password should be at least 6 characters.';
-        break;
-      case 'auth/invalid-email':
-        errorMessage = 'Please enter a valid email address.';
-        break;
-      case 'permission-denied':
-        errorMessage = 'You don’t have permission to perform this action.';
-        break;
+    if (!formData.name || !formData.mobile || !formData.email || !formData.password || !formData.tpin) {
+      toast.error('Please fill all required fields');
+      return;
     }
 
-    toast.error(errorMessage, { id: toastId });
-  } finally {
-    setIsLoading(false);
-  }
-};
+    if (!/^\d{10}$/.test(formData.mobile)) {
+      toast.error('Please enter a valid 10-digit mobile number');
+      return;
+    }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
+    if (!/^\d{4}$/.test(formData.tpin)) {
+      toast.error('TPIN must be 4 digits');
+      return;
+    }
+
+    if (formData.referredBy && !/^\d{10}$/.test(formData.referredBy)) {
+      toast.error('Referral number must be 10 digits');
+      return;
+    }
+
+    setIsLoading(true);
+    const toastId = toast.loading('Checking details...');
+
+    try {
+      const customersCollection = collection(db, 'customers');
+
+      // Check if email already exists
+      const emailQuery = query(customersCollection, where('email', '==', formData.email));
+      const emailSnap = await getDocs(emailQuery);
+      if (!emailSnap.empty) {
+        toast.error('This email is already registered.', { id: toastId });
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if mobile number already exists
+      const mobileQuery = query(customersCollection, where('mobile', '==', formData.mobile));
+      const mobileSnap = await getDocs(mobileQuery);
+      if (!mobileSnap.empty) {
+        toast.error('This mobile number is already registered.', { id: toastId });
+        setIsLoading(false);
+        return;
+      }
+
+      // Proceed with registration
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
+      );
+      const newUserUid = userCredential.user.uid;
+
+      const walletId = `WALLET-${newUserUid.substring(0, 8).toUpperCase()}`;
+      const newUserData: Customer = {
+        name: formData.name,
+        mobile: formData.mobile,
+        email: formData.email,
+        storeLocation,
+        walletBalance: 0,
+        walletBalanceCurrentMonth: 0,
+        surabhiCoins: 0,
+        surabhiCoinsCurrentMonth: 0,
+        sevaCoinsTotal: 0,
+        sevaCoinsCurrentMonth: 0,
+        createdAt: serverTimestamp(),
+        role: 'customer',
+        walletId,
+        customerPassword: formData.password,
+        tpin: formData.tpin,
+        registered: true,
+        lastTransactionDate: null,
+        referredBy: formData.referredBy || null,
+        referralIncome: null,
+        referredUsers: null
+      };
+
+      await setDoc(doc(customersCollection, newUserUid), newUserData);
+
+      // Handle referral if exists
+      if (formData.referredBy && referralName) {
+        const referrerQuery = query(
+          customersCollection,
+          where('mobile', '==', formData.referredBy)
+        );
+        const referrerSnapshot = await getDocs(referrerQuery);
+
+        if (!referrerSnapshot.empty) {
+          const referrerDoc = referrerSnapshot.docs[0];
+          await updateDoc(doc(customersCollection, referrerDoc.id), {
+            referredUsers: arrayUnion({
+              mobile: formData.mobile,
+              referralDate: serverTimestamp()
+            })
+          });
+          toast.success(`User registered! Referral recorded.`, { id: toastId });
+        }
+      } else {
+        toast.success('User registered successfully!', { id: toastId });
+      }
+
+      // Reset form
+      setFormData({
+        name: '',
+        mobile: '',
+        email: '',
+        password: '',
+        referredBy: '',
+        tpin: ''
+      });
+      setReferralName(null);
+
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      let errorMessage = 'Registration failed. Please try again.';
+
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          errorMessage = 'This email is already registered.';
+          break;
+        case 'auth/weak-password':
+          errorMessage = 'Password should be at least 6 characters.';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Please enter a valid email address.';
+          break;
+        case 'permission-denied':
+          errorMessage = 'You don&apos;t have permission to perform this action.';
+          break;
+      }
+
+      toast.error(errorMessage, { id: toastId });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const generatePassword = () => {
     if (!formData.name || !formData.mobile || !formData.email) {
@@ -219,6 +280,21 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
     }
     setFormData({ ...formData, password });
     toast.success('Secure password generated!');
+  };
+
+  const generateTPIN = () => {
+    if (!formData.name || !formData.mobile || !formData.email || !formData.password) {
+      toast.error('Please fill name, mobile and email first');
+      return;
+    } 
+    const tpin = Math.floor(1000 + Math.random() * 9000).toString();
+    setFormData({ ...formData, tpin });
+    toast.success('4-digit TPIN generated!');
+  };
+
+  const clearReferral = () => {
+    setFormData({ ...formData, referredBy: '' });
+    setReferralName(null);
   };
 
   return (
@@ -268,7 +344,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
 
                 {/* Mobile Field */}
                 <div className="space-y-2">
-                  <label htmlFor="mobile" className="block text-sm font-medium text-gray-700 w-40">
+                  <label htmlFor="mobile" className="block text-sm font-medium text-gray-700">
                     Mobile Number <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -345,6 +421,40 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                   </div>
                 </div>
 
+                {/* TPIN Field */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label htmlFor="tpin" className="block text-sm font-medium text-gray-700">
+                      TPIN (4 digits) <span className="text-red-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={generateTPIN}
+                      disabled={!formData.name || !formData.mobile || !formData.email || !formData.password}
+                      className={`text-xs px-2 py-1 rounded ${
+                        !formData.name || !formData.mobile || !formData.email || !formData.password
+                          ? 'text-gray-400 cursor-not-allowed'
+                          : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+                      }`}
+                    >
+                      Generate TPIN
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      id="tpin"
+                      type="password"
+                      placeholder="Enter 4-digit TPIN"
+                      value={formData.tpin}
+                      onChange={(e) => setFormData({ ...formData, tpin: e.target.value })}
+                      className="w-full pl-10 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      maxLength={4}
+                      required
+                    />
+                  </div>
+                </div>
+
                 {/* Referral Field */}
                 <div className="space-y-2">
                   <label htmlFor="referredBy" className="block text-sm font-medium text-gray-700">
@@ -358,10 +468,31 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                       placeholder="Enter referrer's mobile number"
                       value={formData.referredBy}
                       onChange={(e) => setFormData({ ...formData, referredBy: e.target.value })}
-                      className="w-full pl-10 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full pl-10 pr-10 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       maxLength={10}
                     />
+                    {formData.referredBy && (
+                      <button
+                        type="button"
+                        onClick={clearReferral}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
+                  {isFetchingReferral && formData.referredBy.length === 10 && (
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Checking referral...</span>
+                    </div>
+                  )}
+                  {referralName && (
+                    <div className="flex items-center gap-2 p-2 bg-green-50 rounded text-sm text-green-700">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span>Referral: {referralName}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Submit Button */}
@@ -452,6 +583,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                   <li>Initial coins balance will be zero</li>
                   <li>Referrals must be existing customers</li>
                   <li>Password must be at least 6 characters</li>
+                  <li>TPIN is required for secure transactions</li>
                 </ul>
               </div>
             </div>

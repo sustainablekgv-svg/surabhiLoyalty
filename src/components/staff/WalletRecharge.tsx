@@ -16,24 +16,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-
-interface Customer {
-  name: string;
-  mobile: string;
-  email: string;
-  storeLocation: string;
-  walletBalance: number;
-  surabhiCoins: number;
-  createdAt: string;
-  role: string;
-  walletId: string;
-}
-
-interface WalletRechargeProps {
-  storeLocation: string;
-}
+import { Customer, WalletRechargeProps, ActivityType } from '@/types/types';
 
 export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -81,10 +66,33 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
   const rechargeAmountNum = parseFloat(rechargeAmount) || 0;
   const surabhiCoinsEarned = calculateRewards(rechargeAmountNum);
 
+  const addActivityRecord = async (activityData: Omit<ActivityType, 'id' | 'date'>) => {
+  try {
+    await addDoc(collection(db, 'Activity'), {
+      ...activityData,
+      date: serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Error adding activity record:', error);
+    // You might want to show a toast notification here
+    toast.error('Failed to log activity');
+  }
+};
+
   const verifyStaffPin = async () => {
     // In a real app, you would verify the PIN against your staff database
     // This is a simplified version that checks for a 4-digit PIN
     return staffPin.length === 4 && /^\d+$/.test(staffPin) && `${import.meta.env.VITE_FIREBASE_API_KEY}`;
+  };
+
+  const needsMonthlyReset = (lastTransactionDate: string | null): boolean => {
+    if (!lastTransactionDate) return true;
+    
+    const lastDate = new Date(lastTransactionDate);
+    const currentDate = new Date();
+    
+    return lastDate.getMonth() !== currentDate.getMonth() || 
+           lastDate.getFullYear() !== currentDate.getFullYear();
   };
 
   const processRecharge = async () => {
@@ -113,19 +121,63 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
 
       const customerDoc = querySnapshot.docs[0];
       const currentData = customerDoc.data() as Customer;
+      
+      // Check if monthly reset is needed
+      const resetMonthlyFields = needsMonthlyReset(currentData.lastTransactionDate);
+      const currentDate = new Date().toISOString();
+
+      // Prepare update data
+      const updateData: Partial<Customer> = {
+        walletBalance: currentData.walletBalance + rechargeAmountNum,
+        surabhiCoins: currentData.surabhiCoins + surabhiCoinsEarned,
+        lastTransactionDate: currentDate
+      };
+
+      // Handle monthly fields
+      if (resetMonthlyFields) {
+        updateData.walletBalanceCurrentMonth = rechargeAmountNum;
+        updateData.surabhiCoinsCurrentMonth = surabhiCoinsEarned;
+      } else {
+        updateData.walletBalanceCurrentMonth = (currentData.walletBalanceCurrentMonth || 0) + rechargeAmountNum;
+        updateData.surabhiCoinsCurrentMonth = (currentData.surabhiCoinsCurrentMonth || 0) + surabhiCoinsEarned;
+      }
 
       // Update customer document in Firestore
-      await updateDoc(customerDoc.ref, {
-        walletBalance: currentData.walletBalance + rechargeAmountNum,
-        surabhiCoins: currentData.surabhiCoins + surabhiCoinsEarned
+      await updateDoc(customerDoc.ref, updateData);
+
+            // If this was their first recharge, you might want to add a special activity
+    if (currentData.walletBalance === 0) {
+      await addActivityRecord({
+        type: 'signup',
+        description: `First wallet recharge after registration`,
+        user: selectedCustomer.mobile,
+        location: storeLocation
+      });
+    }
+    
+      // Add activity record for the recharge
+      await addActivityRecord({
+        type: 'recharge',
+        description: `Wallet recharge of ₹${rechargeAmountNum}`,
+        amount: rechargeAmountNum,
+        user: selectedCustomer.mobile,
+        location: storeLocation
       });
 
+      
       // Update local state
       setCustomers(customers.map(c => 
         c.mobile === selectedCustomer.mobile ? { 
           ...c, 
           walletBalance: c.walletBalance + rechargeAmountNum,
-          surabhiCoins: c.surabhiCoins + surabhiCoinsEarned
+          surabhiCoins: c.surabhiCoins + surabhiCoinsEarned,
+          walletBalanceCurrentMonth: resetMonthlyFields 
+            ? rechargeAmountNum 
+            : (c.walletBalanceCurrentMonth || 0) + rechargeAmountNum,
+          surabhiCoinsCurrentMonth: resetMonthlyFields
+            ? surabhiCoinsEarned
+            : (c.surabhiCoinsCurrentMonth || 0) + surabhiCoinsEarned,
+          lastTransactionDate: currentDate
         } : c
       ));
 
@@ -159,8 +211,18 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
     }
 
     const amount = parseFloat(rechargeAmount);
-    if (isNaN(amount) || amount < 2000 || amount > 50000) {
-      toast.error('Please enter a valid amount between ₹2,000 and ₹50,000');
+    if (isNaN(amount)) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+    
+    if (amount < 2000) {
+      toast.error('Minimum recharge amount is ₹2,000');
+      return;
+    }
+    
+    if (amount > 50000) {
+      toast.error('Maximum recharge amount is ₹50,000');
       return;
     }
 
@@ -364,7 +426,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         </Card>
       </div>
 
-            {/* Confirmation Dialog */}
+      {/* Confirmation Dialog */}
       <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>

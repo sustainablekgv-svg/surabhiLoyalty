@@ -16,31 +16,12 @@ import {
 import { collection, getDocs, query, orderBy, limit, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-import { StoreType } from '@/types/types';
-interface Activity {
-  id: string;
-  type: 'signup' | 'transaction' | 'recharge' | 'referral' | 'contribution' | 'allocation';
-  description: string;
-  amount?: number;
-  user: string;
-  location: string;
-  timestamp: string;
-  date?: any;
-}
-
-interface StorePerformance {
-  name: string;
-  transactions: number;
-  sales: number;
-  surabhiCoinsUsed: number;
-  walletDeduction: number;
-  cashPayment: number;
-}
+import { StoreType, ActivityType, StorePerformance } from '@/types/types';
 
 export const AdminRecentActivity = () => {
   const [filter, setFilter] = useState('all');
   const [storeFilter, setStoreFilter] = useState('all');
-  const [activities, setActivities] = useState<Activity[]>([]);
+  const [activities, setActivities] = useState<ActivityType[]>([]);
   const [stores, setStores] = useState<StoreType[]>([]);
   const [storePerformance, setStorePerformance] = useState<StorePerformance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,7 +70,7 @@ export const AdminRecentActivity = () => {
             location: data.storeLocation,
             timestamp: formatTimestamp(data.date),
             date: data.date
-          } as Activity;
+          } as ActivityType;
         });
         
         // Process seva transactions
@@ -104,7 +85,7 @@ export const AdminRecentActivity = () => {
             location: data.storeLocation || 'N/A',
             timestamp: formatTimestamp(data.date),
             date: data.date
-          } as Activity;
+          } as ActivityType;
         });
 
         // Calculate store performance
@@ -140,8 +121,25 @@ export const AdminRecentActivity = () => {
         
         // Combine and sort all activities by date
         const allActivities = [...salesActivities, ...sevaActivities]
-          .sort((a, b) => b.date?.seconds - a.date?.seconds)
-          .slice(0, 15); // Get top 15 most recent
+  .sort((a, b) => {
+    const getDate = (d: any) => {
+      if (!d) return undefined;
+      if (typeof d.toDate === 'function') return d.toDate();
+      if (d instanceof Date) return d;
+      if (d.seconds) return new Date(d.seconds * 1000);
+      return undefined;
+    };
+
+    const aDate = getDate(a.date);
+    const bDate = getDate(b.date);
+
+    const aMillis = aDate instanceof Date ? aDate.getTime() : 0;
+    const bMillis = bDate instanceof Date ? bDate.getTime() : 0;
+
+    return bMillis - aMillis; // Descending: latest first
+  })
+  .slice(0, 15);
+
         
         setActivities(allActivities);
       } catch (error) {
@@ -273,7 +271,7 @@ export const AdminRecentActivity = () => {
                         <span>•</span>
                         <span>{activity.location}</span>
                         <span>•</span>
-                        <span>{activity.timestamp}</span>
+                        <span>{formatTimestamp(activity.date)}</span>
                       </div>
                     </div>
                   </div>
