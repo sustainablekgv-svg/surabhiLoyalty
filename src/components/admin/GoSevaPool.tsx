@@ -63,9 +63,10 @@ export const GoSevaPool = () => {
       // Fetch transactions
       const transactionsQuery = query(
         collection(db, 'SevaTransaction'),
-        where('date', '>=', format(startOfMonth(new Date()), 'yyyy-MM-dd'))
+        where('date', '>=', startOfMonth(new Date()))
       );
       const transactionsSnapshot = await getDocs(transactionsQuery);
+      console.log("THe data in line 69 transaction is", transactionsSnapshot.docs);
       const transactionsData = transactionsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -90,6 +91,7 @@ export const GoSevaPool = () => {
         where('sevaCoinsCurrentMonth', '>', 0)
       );
       const customersSnapshot = await getDocs(customersQuery);
+      console.log("THe line 93 data customers is", customersSnapshot.docs);
       const customersData = customersSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -330,7 +332,7 @@ export const GoSevaPool = () => {
               <TrendingUp className="h-4 w-4 text-green-600" />
               <span className="text-xs font-medium text-green-600">Monthly Contributions</span>
             </div>
-            <p className="text-xl font-bold text-green-900">₹{monthlyStats.totalContributions.toLocaleString()}</p>
+            <p className="text-xl font-bold text-green-900">{monthlyStats.totalContributions.toLocaleString()}</p>
           </CardContent>
         </Card>
         
@@ -508,10 +510,10 @@ export const GoSevaPool = () => {
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-green-600">
-                      ₹{(customer.sevaCoinsCurrentMonth * 0.075).toFixed(2)}
+                      ₹{(customer.sevaCoinsCurrentMonth).toFixed(2)}
                     </p>
                     <Badge variant="outline" className="mt-1">
-                      {customer.sevaCoinsCurrentMonth} coins
+                      {customer.sevaCoinsTotal} Lifetime coins
                     </Badge>
                   </div>
                 </div>

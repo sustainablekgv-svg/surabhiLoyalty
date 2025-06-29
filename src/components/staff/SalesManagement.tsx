@@ -185,21 +185,17 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       
       // Record the sale
       const saleData: SalesTransaction = {
-        customerId: newCustomerMobile,
+        // customerId: newCustomerMobile,
         customerName: newCustomerName,
         customerMobile: newCustomerMobile,
         amount: saleAmount,
-        paymentMethod: 'cash', // Force cash for new customers
+        paymentMethod: 'cash', 
         surabhiCoinsUsed: 0,
-        surabhiCoinsEarned: Math.floor(saleAmount * 0.015),
-        goSevaContribution: 0,
         storeLocation,
         processedBy: 'system',
-        processedAt: new Date().toISOString(),
         walletDeduction: 0,
         cashPayment: saleAmount,
-        paymentStatus: 'completed',
-        isNewCustomer: true
+        isCustomerRegistered: false,
       };
       
       await addDoc(collection(db, 'sales'), saleData);
@@ -259,21 +255,15 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       
       // Record the sale
       const saleData: SalesTransaction = {
-        customerId: updatedCustomer.mobile,
         customerName: updatedCustomer.name,
         customerMobile: updatedCustomer.mobile,
         amount: saleCalculation.totalAmount,
         paymentMethod,
         surabhiCoinsUsed: saleCalculation.surabhiCoinsUsed,
-        surabhiCoinsEarned: saleCalculation.surabhiCoinsEarned,
-        goSevaContribution: saleCalculation.goSevaContribution,
         storeLocation,
         processedBy: 'system',
-        processedAt: new Date().toISOString(),
         walletDeduction: saleCalculation.walletDeduction,
         cashPayment: saleCalculation.cashPayment,
-        paymentStatus: 'completed',
-        isNewCustomer: false,
         previousBalance: {
           wallet: updatedCustomer.walletBalance,
           surabhiCoins: updatedCustomer.surabhiCoins,
@@ -283,7 +273,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           wallet: newWalletBalance,
           surabhiCoins: newSurabhiCoins,
           sevaCoins: newSevaCoinsTotal
-        }
+        },
+        isCustomerRegistered: true
       };
       
       await addDoc(collection(db, 'sales'), saleData);
