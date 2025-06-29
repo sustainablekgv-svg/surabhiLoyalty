@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
   CardContent,
@@ -383,7 +384,33 @@ export const StaffManagement = () => {
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              {isLoading ? (
+    // Show skeleton loaders while loading
+          Array.from({ length: 5 }).map((_, index) => (
+            <TableRow key={index}>
+              <TableCell>
+                <Skeleton className="h-4 w-[150px]" />
+                <Skeleton className="h-3 w-[100px] mt-2" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-[80px]" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-[120px]" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-[70px]" />
+              </TableCell>
+              <TableCell>
+                <div className="flex gap-2">
+                  <Skeleton className="h-8 w-[60px]" />
+                  <Skeleton className="h-8 w-[80px]" />
+                </div>
+              </TableCell>
+            </TableRow>
+          ))
+        ) : 
+              (<TableBody>
                 {staff.map((member) => (
                   <TableRow key={member.id}>
                     <TableCell className="font-medium">
@@ -440,7 +467,7 @@ export const StaffManagement = () => {
                     </TableCell>
                   </TableRow>
                 ))}
-              </TableBody>
+              </TableBody>) }
             </Table>
           </CardContent>
         </Card>

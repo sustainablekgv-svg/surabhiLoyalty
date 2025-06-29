@@ -28,7 +28,7 @@ export const CustomerManagement = () => {
   const [stores, setStores] = useState<StoreType[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterLocation, setFilterLocation] = useState('all');
+  const [filterStore, setFilterStore] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
 
   // Fetch customers from Firestore
@@ -41,26 +41,28 @@ export const CustomerManagement = () => {
         querySnapshot.forEach((doc) => {
           const data = doc.data();
           customersData.push({
-          name: data.name,
-          mobile: data.mobile,
-          email: data.email || '',
-          storeLocation: data.storeLocation || 'Unassigned',
-          walletBalance: data.walletBalance || 0,
-          surabhiCoins: data.surabhiCoins || 0,
-          sevaCoinsTotal: data.sevaCoinsTotal || 0,
-          sevaCoinsCurrentMonth: data.sevaCoinsCurrentMonth || 0,
-          registered: data.registered ?? false,
-          createdAt: data.createdAt ?? Timestamp.now(), // FieldValue or Timestamp
-          role: data.role || 'customer',
-          walletId: data.walletId || '',
-          customerPassword: data.customerPassword || '',
-          lastTransactionDate: data.lastTransactionDate?.toDate()?.toISOString() ?? '',
-          referredBy: data.referredBy || '',
-          referredUsers: (data.referredUsers || []).map((ref: any) => ({
-            uid: ref.uid,
-            referralDate: ref.referralDate
-          }))
-    });
+            name: data.name,
+            mobile: data.mobile,
+            email: data.email || '',
+            storeLocation: data.storeLocation || 'Unassigned',
+            walletBalance: data.walletBalance || 0,
+            surabhiCoins: data.surabhiCoins || 0,
+            sevaCoinsTotal: data.sevaCoinsTotal || 0,
+            sevaCoinsCurrentMonth: data.sevaCoinsCurrentMonth || 0,
+            registered: data.registered ?? false,
+            createdAt: data.createdAt ?? Timestamp.now(),
+            role: data.role || 'customer',
+            walletId: data.walletId || '',
+            customerPassword: data.customerPassword || '',
+            lastTransactionDate: data.lastTransactionDate?.toDate()?.toISOString() ?? '',
+            referredBy: data.referredBy || '',
+            referredUsers: (data.referredUsers || []).map((ref: any) => ({
+              uid: ref.uid,
+              referralDate: ref.referralDate
+            })),
+            referralIncome: 0,
+            tpin: ''
+          });
         });
         
         setCustomers(customersData);
@@ -84,7 +86,10 @@ export const CustomerManagement = () => {
         contactNumber: data.contactNumber,
         status: data.status,
         createdAt: data.createdAt?.toDate(), // Convert Firestore Timestamp to Date
-        updatedAt: data.updatedAt?.toDate()  // Convert Firestore Timestamp to Date
+        updatedAt: data.updatedAt?.toDate(),  // Convert Firestore Timestamp to Date
+        walletCommission: data.walletCommission ?? 0,
+        surabhiCommission: data.surabhiCommission ?? 0,
+        sevaCommission: data.sevaCommission ?? 0
       }; 
     })
         setStores(storesData);
@@ -106,11 +111,11 @@ export const CustomerManagement = () => {
                          customer.mobile.includes(searchTerm) ||
                          customer.email.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesLocation = filterLocation === 'all' || customer.storeLocation === filterLocation;
+    const matchesStore = filterStore === 'all' || customer.storeLocation === filterStore;
     const matchesStatus = filterStatus === 'all' || 
                          (filterStatus === 'active' ? customer.registered : !customer.registered);
     
-    return matchesSearch && matchesLocation && matchesStatus;
+    return matchesSearch && matchesStore && matchesStatus;
   });
 
   // Calculate analytics
@@ -258,18 +263,18 @@ export const CustomerManagement = () => {
                 />
               </div>
               
-              <Select value={filterLocation} onValueChange={setFilterLocation}>
+              <Select value={filterStore} onValueChange={setFilterStore}>
                 <SelectTrigger className="w-full sm:w-48">
                   <div className="flex items-center gap-2">
                     <Filter className="h-4 w-4" />
-                    <SelectValue placeholder="All Locations" />
+                    <SelectValue placeholder="All Stores" />
                   </div>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Locations</SelectItem>
+                  <SelectItem value="all">All Stores</SelectItem>
                   {stores.map((store) => (
-                    <SelectItem key={store.id} value={store.location}>
-                      {store.location}
+                    <SelectItem key={store.id} value={store.name}>
+                      {store.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

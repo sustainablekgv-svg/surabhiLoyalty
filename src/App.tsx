@@ -48,9 +48,9 @@ const App = () => (
               } 
             />
             <Route 
-              path="/customers/:customerId" 
+              path="/customer/:mobile" 
               element={
-                <ProtectedRoute requiredRole="staff">
+                <ProtectedRoute requiredRole="admin">
                   <CustomerDetails />
                 </ProtectedRoute>
               } 

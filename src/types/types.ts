@@ -55,6 +55,9 @@ export interface StoreType {
   name: string;
   location: string;
   address: string;
+  walletCommission: number;
+  surabhiCommission: number;
+  sevaCommission: number;
   contactNumber: string;
   status: 'active' | 'inactive';
   createdAt: Date;

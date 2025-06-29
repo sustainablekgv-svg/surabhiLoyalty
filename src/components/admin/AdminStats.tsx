@@ -12,34 +12,14 @@ import {
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase'; // Adjust this import to your firebase config
 import { useEffect, useState } from 'react';
-
-interface Customer {
-  name: string;
-  mobile: string;
-  email: string;
-  storeLocation: string;
-  walletBalance: number;
-  createdAt: any;
-  role: string;
-  walletId: string;
-  surabhiCoins: number;
-  sevaCoinsTotal: number;
-  sevaCoinsCurrentMonth: number;
-  referredBy: string | null;
-  referralIncome: number | null;
-  referredUsers: { mobile: number; referralDate: string; }[] | null;
-  registered: boolean;
-  lastTransactionDate: string | null;
-  customerPassword: string;
-  tpin: string;
-}
+import {Customer} from '@/types/types';
 
 export const AdminStats = () => {
   const [stats, setStats] = useState([
     {
       title: 'Total Users',
       value: '0',
-      change: '+0%',
+      // change: '+0%',
       icon: Users,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50'
@@ -47,7 +27,7 @@ export const AdminStats = () => {
     {
       title: 'Total Recharge',
       value: '₹0',
-      change: '+0%',
+      // change: '+0%',
       icon: DollarSign,
       color: 'text-green-600',
       bgColor: 'bg-green-50'
@@ -55,7 +35,7 @@ export const AdminStats = () => {
     {
       title: 'Surabhi Coins',
       value: '0',
-      change: '+0%',
+      // change: '+0%',
       icon: Coins,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50'
@@ -63,7 +43,7 @@ export const AdminStats = () => {
     {
       title: 'Go Seva Pool',
       value: '₹0',
-      change: 'Monthly',
+      // change: 'Monthly',
       icon: Heart,
       color: 'text-red-600',
       bgColor: 'bg-red-50'
@@ -96,7 +76,7 @@ export const AdminStats = () => {
           {
             title: 'Total Users',
             value: totalUsers.toLocaleString(),
-            change: userChange,
+            // change: userChange,
             icon: Users,
             color: 'text-blue-600',
             bgColor: 'bg-blue-50'
@@ -104,7 +84,7 @@ export const AdminStats = () => {
           {
             title: 'Total Recharge',
             value: `₹${totalRecharge.toLocaleString('en-IN')}`,
-            change: rechargeChange,
+            // change: rechargeChange,
             icon: DollarSign,
             color: 'text-green-600',
             bgColor: 'bg-green-50'
@@ -112,7 +92,7 @@ export const AdminStats = () => {
           {
             title: 'Surabhi Coins',
             value: totalSurabhiCoins.toLocaleString(),
-            change: coinsChange,
+            // change: coinsChange,
             icon: Coins,
             color: 'text-purple-600',
             bgColor: 'bg-purple-50'
@@ -120,7 +100,7 @@ export const AdminStats = () => {
           {
             title: 'Go Seva Pool',
             value: `₹${totalSevaPool.toLocaleString('en-IN')}`,
-            change: 'Monthly',
+            // change: 'Monthly',
             icon: Heart,
             color: 'text-red-600',
             bgColor: 'bg-red-50'
@@ -179,10 +159,10 @@ export const AdminStats = () => {
             <div className="text-2xl font-bold text-gray-900 mb-1">
               {stat.value}
             </div>
-            <p className="text-xs text-gray-600 flex items-center gap-1">
+            {/* <p className="text-xs text-gray-600 flex items-center gap-1">
               <TrendingUp className="h-3 w-3" />
               {stat.change}
-            </p>
+            </p> */}
           </CardContent>
         </Card>
       ))}
