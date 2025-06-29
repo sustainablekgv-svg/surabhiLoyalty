@@ -47,6 +47,7 @@ export const CustomerManagement = () => {
             storeLocation: data.storeLocation || 'Unassigned',
             walletBalance: data.walletBalance || 0,
             surabhiCoins: data.surabhiCoins || 0,
+            surabhiCoinsCurrentMonth: data.surabhiCoinsCurrentMonth || 0,
             sevaCoinsTotal: data.sevaCoinsTotal || 0,
             sevaCoinsCurrentMonth: data.sevaCoinsCurrentMonth || 0,
             registered: data.registered ?? false,
@@ -61,7 +62,8 @@ export const CustomerManagement = () => {
               referralDate: ref.referralDate
             })),
             referralIncome: 0,
-            tpin: ''
+            tpin: '',
+            walletBalanceCurrentMonth: 0
           });
         });
         

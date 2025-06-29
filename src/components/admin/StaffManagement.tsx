@@ -46,30 +46,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-interface StoreType {
-  id: string;
-  name: string;
-  location: string;
-  address: string;
-  contactNumber: string;
-  status: 'active' | 'inactive';
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-interface StaffType {
-  id: string;
-  name: string;
-  email: string;
-  mobile: string;
-  role: 'admin' | 'manager' | 'staff';
-  storeLocation: string;
-  status: 'active' | 'inactive';
-  createdAt: Date;
-  lastActive?: Date;
-  staffPin?: string;
-  salesCount?: number;
-}
+import { StaffType, StoreType } from '@/types/types';
 
 export const StaffManagement = () => {
   const [stores, setStores] = useState<StoreType[]>([]);
@@ -270,7 +247,6 @@ export const StaffManagement = () => {
         updatedAt: doc.data().updatedAt?.toDate()
       })) as StoreType[];
       setStores(updatedStores);
-
       setIsStoreDialogOpen(false);
       setCurrentStore(null);
       setAdminPin('');
@@ -319,7 +295,7 @@ export const StaffManagement = () => {
       console.error('Error deleting store:', error);
     }
   };
-
+  console.log("The line 250 data is",stores, staff);
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -430,7 +406,7 @@ export const StaffManagement = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {stores.find(s => s.id === member.storeLocation)?.name || 'Unassigned'}
+                      {stores.find(s => s.name === member.storeLocation)?.name || 'Unassigned'}
                     </TableCell>
                     <TableCell>
                       <Badge variant={member.status === 'active' ? 'default' : 'secondary'}>
@@ -620,7 +596,7 @@ export const StaffManagement = () => {
                   value={currentStaff?.role || 'staff'}
                   onValueChange={(value) => setCurrentStaff({
                     ...currentStaff,
-                    role: value as 'admin' | 'manager' | 'staff',
+                    role: value as 'admin' | 'staff',
                     ...(value === 'admin' ? { storeLocation: 'All Locations' } : {})
                   })}
                 >

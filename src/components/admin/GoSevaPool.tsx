@@ -23,15 +23,19 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { Customer, SevaPool,SevaTransaction } from '@/types/types';
+import { Customer, SevaPool, SevaTransaction } from '@/types/types';
 
 export const GoSevaPool = () => {
   const [sevaPool, setSevaPool] = useState<SevaPool>({
     currentBalance: 0,
     totalContributions: 0,
     totalAllocations: 0,
-    lastResetDate: format(new Date(), 'yyyy-MM-dd')
+    contributionsCurrentMonth: 0,
+    allocationsCurrentMonth: 0,
+    lastResetDate: serverTimestamp(),
+    lastAllocatedDate: serverTimestamp()
   });
+  
   const [transactions, setTransactions] = useState<SevaTransaction[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +54,7 @@ export const GoSevaPool = () => {
       await checkAndResetMonthlySevaCoins();
       
       // Fetch Seva Pool data
-      const poolSnapshot = await getDocs(collection(db, 'sevaPool'));
+      const poolSnapshot = await getDocs(collection(db, 'SevaPool'));
       if (!poolSnapshot.empty) {
         const poolData = poolSnapshot.docs[0].data() as SevaPool;
         setSevaPool(poolData);
@@ -58,7 +62,7 @@ export const GoSevaPool = () => {
       
       // Fetch transactions
       const transactionsQuery = query(
-        collection(db, 'sevaTransactions'),
+        collection(db, 'SevaTransaction'),
         where('date', '>=', format(startOfMonth(new Date()), 'yyyy-MM-dd'))
       );
       const transactionsSnapshot = await getDocs(transactionsQuery);
@@ -66,7 +70,19 @@ export const GoSevaPool = () => {
         id: doc.id,
         ...doc.data()
       })) as SevaTransaction[];
-      setTransactions(transactionsData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      setTransactions(
+        transactionsData.sort((a, b) => {
+          const getJsDate = (date: any) => {
+            if (date && typeof date === 'object' && typeof date.toDate === 'function') {
+              return date.toDate();
+            } else if (typeof date === 'string' || typeof date === 'number' || date instanceof Date) {
+              return new Date(date);
+            }
+            return new Date(0); // fallback to epoch if invalid
+          };
+          return getJsDate(b.date).getTime() - getJsDate(a.date).getTime();
+        })
+      );
       
       // Fetch customers who have contributed this month
       const customersQuery = query(
@@ -104,12 +120,19 @@ export const GoSevaPool = () => {
         const batch = writeBatch(db);
         snapshot.forEach(doc => {
           const customerRef = doc.ref;
-          batch.update(customerRef, { sevaCoinsCurrentMonth: 0 });
+          batch.update(customerRef, { 
+            sevaCoinsCurrentMonth: 0,
+            sevaCoinsTotal: doc.data().sevaCoinsTotal // Keep total count
+          });
         });
         
-        // Update Seva Pool reset date
+        // Update Seva Pool reset date and reset monthly counts
         const poolRef = doc(collection(db, 'sevaPool'), 'current');
-        batch.update(poolRef, { lastResetDate: format(new Date(), 'yyyy-MM-dd') });
+        batch.update(poolRef, { 
+          lastResetDate: serverTimestamp(),
+          contributionsCurrentMonth: 0,
+          allocationsCurrentMonth: 0
+        });
         
         await batch.commit();
         toast.success('Monthly Seva coins reset successfully');
@@ -139,7 +162,7 @@ export const GoSevaPool = () => {
         type: 'allocation',
         amount: -amount,
         description: allocationDescription,
-        date: format(new Date(), 'yyyy-MM-dd'),
+        date: serverTimestamp(),
         monthYear: format(new Date(), 'yyyy-MM')
       };
 
@@ -150,7 +173,9 @@ export const GoSevaPool = () => {
       const poolRef = doc(collection(db, 'sevaPool'), 'current');
       await updateDoc(poolRef, {
         currentBalance: sevaPool.currentBalance - amount,
-        totalAllocations: sevaPool.totalAllocations + amount
+        totalAllocations: sevaPool.totalAllocations + amount,
+        allocationsCurrentMonth: sevaPool.allocationsCurrentMonth + amount,
+        lastAllocatedDate: serverTimestamp()
       });
 
       // Update local state
@@ -158,7 +183,9 @@ export const GoSevaPool = () => {
       setSevaPool({
         ...sevaPool,
         currentBalance: sevaPool.currentBalance - amount,
-        totalAllocations: sevaPool.totalAllocations + amount
+        totalAllocations: sevaPool.totalAllocations + amount,
+        allocationsCurrentMonth: sevaPool.allocationsCurrentMonth + amount,
+        lastAllocatedDate: serverTimestamp()
       });
       
       setAllocationAmount('');
@@ -181,19 +208,13 @@ export const GoSevaPool = () => {
     fetchData();
   }, []);
 
-  // Calculate monthly stats
+  // Calculate monthly stats using the sevaPool contributionsCurrentMonth
   const monthlyStats = {
-    totalContributions: transactions
-      .filter(t => t.type === 'contribution')
-      .reduce((sum, t) => sum + t.amount, 0),
-    totalAllocations: Math.abs(transactions
-      .filter(t => t.type === 'allocation')
-      .reduce((sum, t) => sum + t.amount, 0)),
+    totalContributions: sevaPool.contributionsCurrentMonth,
+    totalAllocations: sevaPool.allocationsCurrentMonth,
     contributorCount: customers.length,
     avgContribution: customers.length > 0 
-      ? transactions
-          .filter(t => t.type === 'contribution')
-          .reduce((sum, t) => sum + t.amount, 0) / customers.length
+      ? sevaPool.contributionsCurrentMonth / customers.length
       : 0
   };
 
@@ -393,11 +414,40 @@ export const GoSevaPool = () => {
                         {transaction.description}
                       </p>
                       <div className="flex items-center gap-2 text-xs text-gray-600">
-                        <span>{format(new Date(transaction.date), 'dd MMM yyyy')}</span>
+                        <span>
+                          {(() => {
+                            // Firestore Timestamp compatibility
+                            const dateValue = transaction.date;
+                            let jsDate: Date;
+                            if (
+                              dateValue &&
+                              typeof dateValue === 'object' &&
+                              typeof (dateValue as any).toDate === 'function'
+                            ) {
+                              jsDate = (dateValue as any).toDate();
+                            } else if (
+                              typeof dateValue === 'string' ||
+                              typeof dateValue === 'number' ||
+                              dateValue instanceof Date
+                            ) {
+                              jsDate = new Date(dateValue);
+                            } else {
+                              // Fallback for unsupported types (e.g., FieldValue)
+                              return 'N/A';
+                            }
+                            return format(jsDate, 'dd MMM yyyy');
+                          })()}
+                        </span>
                         {transaction.customerName && (
                           <>
                             <span>•</span>
                             <span>{transaction.customerName}</span>
+                            {transaction.storeLocation && (
+                              <>
+                                <span>•</span>
+                                <span>{transaction.storeLocation}</span>
+                              </>
+                            )}
                           </>
                         )}
                       </div>
@@ -452,6 +502,9 @@ export const GoSevaPool = () => {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-900 truncate">{customer.name}</p>
                     <p className="text-sm text-gray-600">{customer.mobile}</p>
+                    {customer.storeLocation && (
+                      <p className="text-xs text-gray-500">{customer.storeLocation}</p>
+                    )}
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-green-600">

@@ -4,10 +4,12 @@ export interface Customer {
   email: string;
   storeLocation: string;
   walletBalance: number;
+  walletBalanceCurrentMonth : number;
   createdAt: import('firebase/firestore').FieldValue;
   role: string;
   walletId: string;
   surabhiCoins: number;
+  surabhiCoinsCurrentMonth : number;
   sevaCoinsTotal: number;
   sevaCoinsCurrentMonth: number;
   referredBy: string | null;
@@ -110,15 +112,19 @@ export interface SevaTransaction {
   type: 'contribution' | 'allocation';
   amount: number;
   description: string;
-  date: string;
+  date: import('firebase/firestore').FieldValue;
   customerMobile?: string;
   customerName?: string;
   monthYear: string; // Format: "YYYY-MM"
+  storeLocation?: string;
 }
 
 export interface SevaPool {
   currentBalance: number;
   totalContributions: number;
   totalAllocations: number;
-  lastResetDate: string;
+  contributionsCurrentMonth : number;
+  allocationsCurrentMonth: number;
+  lastResetDate: import('firebase/firestore').FieldValue;
+  lastAllocatedDate: import('firebase/firestore').FieldValue;
 }
