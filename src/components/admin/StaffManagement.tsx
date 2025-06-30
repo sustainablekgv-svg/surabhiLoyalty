@@ -37,7 +37,9 @@ import {
 } from "@/components/ui/table";
 import { 
   UserPlus, Search, MapPin, Phone, Mail, Edit, Trash2, 
-  User, Shield, Lock, AlertCircle, Store, PlusCircle 
+  User, Shield, Lock, AlertCircle, Store, PlusCircle, 
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
@@ -66,6 +68,9 @@ export const StaffManagement = () => {
   
   // Admin verification
   const [adminPin, setAdminPin] = useState('');
+
+  // Password visibility state
+  const [showPassword, setShowPassword] = useState(false);
 
   // Fetch data from Firestore
   useEffect(() => {
@@ -357,6 +362,8 @@ export const StaffManagement = () => {
                   <TableHead>Role</TableHead>
                   <TableHead>Store</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Staff Password</TableHead>
+                  <TableHead>Staff Pin</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -412,6 +419,12 @@ export const StaffManagement = () => {
                       <Badge variant={member.status === 'active' ? 'default' : 'secondary'}>
                         {member.status}
                       </Badge>
+                    </TableCell>
+                      <TableCell>
+                        {member.staffPassword}
+                    </TableCell>
+                    <TableCell>
+                        {member.staffPin}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
@@ -539,168 +552,204 @@ export const StaffManagement = () => {
 
       {/* Staff Dialog */}
       <Dialog open={isStaffDialogOpen} onOpenChange={setIsStaffDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {currentStaff?.id ? 'Edit Staff Member' : 'Add New Staff Member'}
-            </DialogTitle>
-            <DialogDescription>
-              {currentStaff?.id ? 'Update staff details' : 'Create a new staff account'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Full Name *</Label>
-              <Input
-                value={currentStaff?.name || ''}
-                onChange={(e) => setCurrentStaff({
-                  ...currentStaff,
-                  name: e.target.value
-                })}
-                placeholder="Enter staff name"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Email *</Label>
-              <Input
-                type="email"
-                value={currentStaff?.email || ''}
-                onChange={(e) => setCurrentStaff({
-                  ...currentStaff,
-                  email: e.target.value
-                })}
-                placeholder="Enter email address"
-                disabled={!!currentStaff?.id}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Mobile Number *</Label>
-              <Input
-                type="tel"
-                value={currentStaff?.mobile || ''}
-                onChange={(e) => setCurrentStaff({
-                  ...currentStaff,
-                  mobile: e.target.value.replace(/\D/g, '')
-                })}
-                placeholder="Enter mobile number"
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Role *</Label>
-                <Select
-                  value={currentStaff?.role || 'staff'}
-                  onValueChange={(value) => setCurrentStaff({
-                    ...currentStaff,
-                    role: value as 'admin' | 'staff',
-                    ...(value === 'admin' ? { storeLocation: 'All Locations' } : {})
-                  })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="staff">Staff</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Status *</Label>
-                <Select
-                  value={currentStaff?.status || 'active'}
-                  onValueChange={(value) => setCurrentStaff({
-                    ...currentStaff,
-                    status: value as 'active' | 'inactive'
-                  })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Assigned Store</Label>
-              <Select
-                value={currentStaff?.storeLocation || ''}
-                onValueChange={(value) => setCurrentStaff({
-                  ...currentStaff,
-                  storeLocation: value
-                })}
-                disabled={currentStaff?.role === 'admin'}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select store" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {stores.map(store => (
-                    <SelectItem key={store.id} value={store.name}>
-                      {store.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+  <DialogContent className="sm:max-w-[600px]">
+    <DialogHeader>
+      <DialogTitle>
+        {currentStaff?.id ? 'Edit Staff Member' : 'Add New Staff Member'}
+      </DialogTitle>
+      <DialogDescription>
+        {currentStaff?.id ? 'Update staff details' : 'Create a new staff account'}
+      </DialogDescription>
+    </DialogHeader>
+    
+    <div className="space-y-4">
+      {/* Basic Information Section */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Full Name *</Label>
+          <Input
+            value={currentStaff?.name || ''}
+            onChange={(e) => setCurrentStaff({
+              ...currentStaff,
+              name: e.target.value
+            })}
+            placeholder="Enter staff name"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label>Mobile Number *</Label>
+          <Input
+            type="tel"
+            value={currentStaff?.mobile || ''}
+            onChange={(e) => setCurrentStaff({
+              ...currentStaff,
+              mobile: e.target.value.replace(/\D/g, '')
+            })}
+            placeholder="Enter mobile number"
+          />
+        </div>
+      </div>
 
-            <div className="space-y-2">
-            <Label>Admin PIN Verification *</Label>
+      <div className="space-y-2">
+        <Label>Email *</Label>
+        <Input
+          type="email"
+          value={currentStaff?.email || ''}
+          onChange={(e) => setCurrentStaff({
+            ...currentStaff,
+            email: e.target.value
+          })}
+          placeholder="Enter email address"
+          disabled={!!currentStaff?.id}
+        />
+      </div>
+
+      {/* Role and Status Section */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Role *</Label>
+          <Select
+            value={currentStaff?.role || 'staff'}
+            onValueChange={(value) => setCurrentStaff({
+              ...currentStaff,
+              role: value as 'admin' | 'staff',
+              ...(value === 'admin' ? { storeLocation: 'All Locations' } : {})
+            })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="manager">Manager</SelectItem>
+              <SelectItem value="staff">Staff</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="space-y-2">
+          <Label>Status *</Label>
+          <Select
+            value={currentStaff?.status || 'active'}
+            onValueChange={(value) => setCurrentStaff({
+              ...currentStaff,
+              status: value as 'active' | 'inactive'
+            })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      
+      <div className="space-y-2">
+        <Label>Assigned Store</Label>
+        <Select
+          value={currentStaff?.storeLocation || ''}
+          onValueChange={(value) => setCurrentStaff({
+            ...currentStaff,
+            storeLocation: value
+          })}
+          disabled={currentStaff?.role === 'admin'}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select store" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="unassigned">Unassigned</SelectItem>
+            {stores.map(store => (
+              <SelectItem key={store.id} value={store.name}>
+                {store.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Authentication Section */}
+      <div className="border-t pt-4 space-y-4">
+        <h4 className="font-medium">Authentication</h4>
+        
+        {/* Staff Login Password - Required for all staff */}
+        <div className="space-y-2">
+          <Label>Login Password {!currentStaff?.id && '*'}</Label>
+          <div className="relative">
             <Input
-              type="password"
-              value={adminPin}
-              onChange={(e) => setAdminPin(e.target.value)}
-              placeholder="Enter admin PIN to confirm"
+              type={showPassword ? "text" : "password"}
+              value={currentStaff?.staffPassword || ''}
+              onChange={(e) => setCurrentStaff({
+                ...currentStaff,
+                staffPassword: e.target.value
+              })}
+              placeholder={currentStaff?.id ? "Leave blank to keep unchanged" : "Create login password"}
             />
-          </div>
-            
-            {!currentStaff?.id && (
-              <div className="space-y-2">
-                <Label>Staff PIN (4 digits) *</Label>
-                <Input
-                  type="password"
-                  value={currentStaff?.staffPin || ''}
-                  onChange={(e) => setCurrentStaff({
-                    ...currentStaff,
-                    staffPin: e.target.value.replace(/\D/g, '').slice(0, 4)
-                  })}
-                  placeholder="Enter 4-digit PIN"
-                  maxLength={4}
-                />
-              </div>
-            )}
-            
-            {(currentStaff?.role === 'admin' || !currentStaff?.id) && (
-              <div className="space-y-2">
-                <Label>Admin PIN Verification *</Label>
-                <Input
-                  type="password"
-                  value={adminPin}
-                  onChange={(e) => setAdminPin(e.target.value)}
-                  placeholder="Enter admin PIN to confirm"
-                />
-              </div>
-            )}
-          </div>
-          
-          <DialogFooter>
-            <Button onClick={handleSaveStaff}>
-              {currentStaff?.id ? 'Save Changes' : 'Create Staff'}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {!currentStaff?.id 
+              ? "Minimum 8 characters with at least 1 number and 1 special character"
+              : "Only enter if you want to change the password"}
+          </p>
+        </div>
+
+        {/* Transaction PIN - Required for all staff */}
+        <div className="space-y-2">
+          <Label>Transaction PIN (4 digits) {!currentStaff?.id && '*'}</Label>
+          <Input
+            type="password"
+            value={currentStaff?.staffPin || ''}
+            onChange={(e) => setCurrentStaff({
+              ...currentStaff,
+              staffPin: e.target.value.replace(/\D/g, '').slice(0, 4)
+            })}
+            placeholder={currentStaff?.id ? "Leave blank to keep unchanged" : "Enter 4-digit PIN"}
+            maxLength={4}
+          />
+          <p className="text-xs text-muted-foreground">
+            This PIN will be used to verify sales transactions
+          </p>
+        </div>
+      </div>
+
+      {/* Admin Verification Section */}
+        <div className="space-y-2">
+          <Label>Admin Verification PIN *</Label>
+          <Input
+            type="password"
+            value={adminPin}
+            onChange={(e) => setAdminPin(e.target.value)}
+            placeholder="Enter admin PIN to confirm changes"
+          />
+          <p className="text-xs text-muted-foreground">
+            Required for admin-level changes
+          </p>
+        </div>
+      {/* )} */}
+    </div>
+    <DialogFooter>
+      <Button onClick={handleSaveStaff}>
+        {currentStaff?.id ? 'Save Changes' : 'Create Staff'}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
 
       {/* Delete Staff Dialog */}
       <Dialog open={isDeleteStaffDialogOpen} onOpenChange={setIsDeleteStaffDialogOpen}>

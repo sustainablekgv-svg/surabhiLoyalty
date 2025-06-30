@@ -225,7 +225,7 @@ export const SalesManagement = () => {
               <CardTitle>Sales Transactions</CardTitle>
               <CardDescription>
                 {filteredTransactions.length} transactions found
-                {(searchTerm || filterStore !== 'all' || filterPayment !== 'all' || filterStatus !== 'all') && 
+                {(searchTerm || filterStore !== 'all' || filterPayment !== 'all') && 
                   ' (filtered)'}
               </CardDescription>
             </div>
@@ -267,7 +267,7 @@ export const SalesManagement = () => {
                 </SelectContent>
               </Select>
 
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
+              {/* <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger className="w-full sm:w-40">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -277,7 +277,7 @@ export const SalesManagement = () => {
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="failed">Failed</SelectItem>
                 </SelectContent>
-              </Select>
+              </Select> */}
             </div>
           </div>
         </CardHeader>
@@ -287,12 +287,11 @@ export const SalesManagement = () => {
             <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-500">
               <Search className="h-8 w-8" />
               <p>No transactions found</p>
-              {(searchTerm || filterStore !== 'all' || filterPayment !== 'all' || filterStatus !== 'all') && (
+              {(searchTerm || filterStore !== 'all' || filterPayment !== 'all') && (
                 <Button variant="ghost" onClick={() => {
                   setSearchTerm('');
                   setFilterStore('all');
                   setFilterPayment('all');
-                  setFilterStatus('all');
                 }}>
                   Clear filters
                 </Button>
@@ -356,7 +355,7 @@ export const SalesManagement = () => {
                       </div>
                     </div>
                     
-                    <div className="flex gap-2 w-full lg:w-auto">
+                    {/* <div className="flex gap-2 w-full lg:w-auto">
                       <Button variant="outline" size="sm" className="w-full lg:w-auto gap-2">
                         <Eye className="h-4 w-4" />
                         Details
@@ -365,7 +364,7 @@ export const SalesManagement = () => {
                         <Printer className="h-4 w-4" />
                         Receipt
                       </Button>
-                    </div>
+                    </div> */}
                   </div>
                 );
               })}

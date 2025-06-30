@@ -16,7 +16,7 @@ export interface Customer {
   referralIncome: number | null;
   referredUsers: { mobile:number; referralDate: string; }[] | null;
   registered: Boolean;
-  lastTransactionDate: string | null;
+  lastTransactionDate: import('firebase/firestore').FieldValue;
   customerPassword: string;
   tpin: string;
 }
@@ -116,15 +116,14 @@ export interface SevaPool {
   lastAllocatedDate: import('firebase/firestore').FieldValue;
 }
 
-export interface Activity {
+export interface ActivityType {
   id: string;
   type: 'signup' | 'transaction' | 'recharge' | 'referral' | 'contribution' | 'allocation';
   description: string;
   amount?: number;
   user: string;
   location: string;
-  timestamp: string;
-  date?: any;
+  date: import('firebase/firestore').FieldValue;
 }
 
 export interface StorePerformance {

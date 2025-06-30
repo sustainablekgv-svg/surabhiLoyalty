@@ -39,34 +39,34 @@ export const CustomerManagement = () => {
         const customersData: Customer[] = [];
         
         querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          customersData.push({
-            name: data.name,
-            mobile: data.mobile,
-            email: data.email || '',
-            storeLocation: data.storeLocation || 'Unassigned',
-            walletBalance: data.walletBalance || 0,
-            surabhiCoins: data.surabhiCoins || 0,
-            surabhiCoinsCurrentMonth: data.surabhiCoinsCurrentMonth || 0,
-            sevaCoinsTotal: data.sevaCoinsTotal || 0,
-            sevaCoinsCurrentMonth: data.sevaCoinsCurrentMonth || 0,
-            registered: data.registered ?? false,
-            createdAt: data.createdAt ?? Timestamp.now(),
-            role: data.role || 'customer',
-            walletId: data.walletId || '',
-            customerPassword: data.customerPassword || '',
-            lastTransactionDate: data.lastTransactionDate?.toDate()?.toISOString() ?? '',
-            referredBy: data.referredBy || '',
-            referredUsers: (data.referredUsers || []).map((ref: any) => ({
-              uid: ref.uid,
-              referralDate: ref.referralDate
-            })),
-            referralIncome: 0,
-            tpin: '',
-            walletBalanceCurrentMonth: 0
-          });
-        });
-        
+  const data = doc.data();
+  customersData.push({
+    name: data.name,
+    mobile: data.mobile,
+    email: data.email || '',
+    storeLocation: data.storeLocation || 'Unassigned',
+    walletBalance: data.walletBalance || 0,
+    surabhiCoins: data.surabhiCoins || 0,
+    surabhiCoinsCurrentMonth: data.surabhiCoinsCurrentMonth || 0,
+    sevaCoinsTotal: data.sevaCoinsTotal || 0,
+    sevaCoinsCurrentMonth: data.sevaCoinsCurrentMonth || 0,
+    registered: data.registered ?? false,
+    createdAt: data.createdAt ?? Timestamp.now(),
+    role: data.role || 'customer',
+    walletId: data.walletId || '',
+    customerPassword: data.customerPassword || '',
+    lastTransactionDate: data.lastTransactionDate ?? null, // Keep as Firestore Timestamp or null
+    referredBy: data.referredBy || '',
+    referredUsers: (data.referredUsers || []).map((ref: any) => ({
+      mobile: ref.mobile, // Changed from uid to mobile to match interface
+      referralDate: ref.referralDate
+    })),
+    referralIncome: 0,
+    tpin: '',
+    walletBalanceCurrentMonth: 0
+  });
+});
+        console.log("The customers information in line 69 is", customersData)
         setCustomers(customersData);
       } catch (error) {
         console.error('Error fetching customers:', error);

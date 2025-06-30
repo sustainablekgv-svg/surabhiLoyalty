@@ -14,7 +14,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useEffect, useState } from 'react';
 import { Customer } from '@/types/types';
-import { AdminRecentActivity } from './AdminRecentActivity'; // Import the activity component
+import { AdminRecentActivity } from './AdminRecentActivity';
 
 export const AdminStats = () => {
   const [stats, setStats] = useState([
@@ -180,7 +180,7 @@ export const AdminStats = () => {
             </Card>
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -237,9 +237,20 @@ export const AdminStats = () => {
         ))}
       </div>
 
-      {/* Bottom Section with Store Performance and Recent Activity */}
-     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <AdminRecentActivity />
+      {/* Bottom Section - Full width cards */}
+      <div className="space-y-6">
+        {/* Recent Activity - Full width */}
+        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm w-full">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-purple-600" />
+              Recent Activity
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AdminRecentActivity />
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
