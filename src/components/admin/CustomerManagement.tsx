@@ -14,14 +14,23 @@ import {
   MapPin,
   Wallet,
   Coins,
-  Heart,
   Eye,
-  Loader2
+  Loader2,
+  Edit
 } from 'lucide-react';
 import { collection, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-
 import { Customer, StoreType } from '@/types/types';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+
 export const CustomerManagement = () => {
   const navigate = useNavigate();
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -30,6 +39,11 @@ export const CustomerManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStore, setFilterStore] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
+  const [adminPin, setAdminPin] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
+  const ADMIN_PIN = '1234'; // In production, use environment variables
 
   // Fetch customers from Firestore
   useEffect(() => {
@@ -39,34 +53,33 @@ export const CustomerManagement = () => {
         const customersData: Customer[] = [];
         
         querySnapshot.forEach((doc) => {
-  const data = doc.data();
-  customersData.push({
-    name: data.name,
-    mobile: data.mobile,
-    email: data.email || '',
-    storeLocation: data.storeLocation || 'Unassigned',
-    walletBalance: data.walletBalance || 0,
-    surabhiCoins: data.surabhiCoins || 0,
-    surabhiCoinsCurrentMonth: data.surabhiCoinsCurrentMonth || 0,
-    sevaCoinsTotal: data.sevaCoinsTotal || 0,
-    sevaCoinsCurrentMonth: data.sevaCoinsCurrentMonth || 0,
-    registered: data.registered ?? false,
-    createdAt: data.createdAt ?? Timestamp.now(),
-    role: data.role || 'customer',
-    walletId: data.walletId || '',
-    customerPassword: data.customerPassword || '',
-    lastTransactionDate: data.lastTransactionDate ?? null, // Keep as Firestore Timestamp or null
-    referredBy: data.referredBy || '',
-    referredUsers: (data.referredUsers || []).map((ref: any) => ({
-      mobile: ref.mobile, // Changed from uid to mobile to match interface
-      referralDate: ref.referralDate
-    })),
-    referralIncome: 0,
-    tpin: '',
-    walletBalanceCurrentMonth: 0
-  });
-});
-        console.log("The customers information in line 69 is", customersData)
+          const data = doc.data();
+          customersData.push({
+            name: data.name,
+            mobile: data.mobile,
+            email: data.email || '',
+            storeLocation: data.storeLocation || 'Unassigned',
+            walletBalance: data.walletBalance || 0,
+            surabhiCoins: data.surabhiCoins || 0,
+            surabhiCoinsCurrentMonth: data.surabhiCoinsCurrentMonth || 0,
+            sevaCoinsTotal: data.sevaCoinsTotal || 0,
+            sevaCoinsCurrentMonth: data.sevaCoinsCurrentMonth || 0,
+            registered: data.registered ?? false,
+            createdAt: data.createdAt ?? Timestamp.now(),
+            role: data.role || 'customer',
+            walletId: data.walletId || '',
+            customerPassword: data.customerPassword || '',
+            lastTransactionDate: data.lastTransactionDate ?? null,
+            referredBy: data.referredBy || '',
+            referredUsers: (data.referredUsers || []).map((ref: any) => ({
+              mobile: ref.mobile,
+              referralDate: ref.referralDate
+            })),
+            referralIncome: 0,
+            tpin: '',
+            walletBalanceCurrentMonth: 0
+          });
+        });
         setCustomers(customersData);
       } catch (error) {
         console.error('Error fetching customers:', error);
@@ -75,25 +88,25 @@ export const CustomerManagement = () => {
       }
     };
 
-     const fetchStores = async () => {
+    const fetchStores = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, 'stores'));
         const storesData: StoreType[] = querySnapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        name: data.name,
-        location: data.location,
-        address: data.address,
-        contactNumber: data.contactNumber,
-        status: data.status,
-        createdAt: data.createdAt?.toDate(), // Convert Firestore Timestamp to Date
-        updatedAt: data.updatedAt?.toDate(),  // Convert Firestore Timestamp to Date
-        walletCommission: data.walletCommission ?? 0,
-        surabhiCommission: data.surabhiCommission ?? 0,
-        sevaCommission: data.sevaCommission ?? 0
-      }; 
-    })
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: data.name,
+            location: data.location,
+            address: data.address,
+            contactNumber: data.contactNumber,
+            status: data.status,
+            createdAt: data.createdAt?.toDate(),
+            updatedAt: data.updatedAt?.toDate(),
+            walletCommission: data.walletCommission ?? 0,
+            surabhiCommission: data.surabhiCommission ?? 0,
+            sevaCommission: data.sevaCommission ?? 0
+          }; 
+        });
         setStores(storesData);
       } catch (error) {
         console.error('Error fetching stores:', error);
@@ -105,8 +118,6 @@ export const CustomerManagement = () => {
     fetchCustomers();
     fetchStores();
   }, []);
-
-  
 
   const filteredCustomers = customers.filter(customer => {
     const matchesSearch = customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -144,6 +155,23 @@ export const CustomerManagement = () => {
     navigate(`/customer/${mobile}`);
   };
 
+  const handleEditClick = (customer: Customer) => {
+    setEditCustomer(customer);
+    setIsPinDialogOpen(true);
+    setAdminPin('');
+    setPinError('');
+  };
+
+  const verifyAdminPin = () => {
+    if (adminPin === ADMIN_PIN) {
+      setPinError('');
+      setIsPinDialogOpen(false);
+      navigate(`/customer/${editCustomer?.mobile}/edit`);
+    } else {
+      setPinError('Invalid admin PIN');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -154,6 +182,37 @@ export const CustomerManagement = () => {
 
   return (
     <div className="space-y-6">
+      {/* Admin PIN Verification Dialog */}
+      <Dialog open={isPinDialogOpen} onOpenChange={setIsPinDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Admin Verification Required</DialogTitle>
+            <DialogDescription>
+              Please enter admin PIN to edit customer details.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="adminPin" className="text-right">
+                Admin PIN
+              </Label>
+              <Input
+                id="adminPin"
+                type="password"
+                value={adminPin}
+                onChange={(e) => setAdminPin(e.target.value)}
+                className="col-span-3"
+                placeholder="Enter admin PIN"
+              />
+            </div>
+            {pinError && <p className="text-sm text-red-500 text-center">{pinError}</p>}
+          </div>
+          <DialogFooter>
+            <Button onClick={verifyAdminPin}>Verify</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Customer Management</h2>
@@ -347,6 +406,15 @@ export const CustomerManagement = () => {
                     >
                       <Eye className="h-3 w-3 mr-1" />
                       View Details
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1 lg:flex-none"
+                      onClick={() => handleEditClick(customer)}
+                    >
+                      <Edit className="h-3 w-3 mr-1" />
+                      Edit
                     </Button>
                   </div>
                 </div>
