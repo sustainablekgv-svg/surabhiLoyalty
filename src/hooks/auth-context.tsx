@@ -10,6 +10,7 @@ import {
 } from '@/lib/authService';
 import { storageUtils } from '@/lib/storage';
 import { sessionManager } from '@/lib/sessionManager';
+import { StaffType } from '@/types/types';
 
 interface AuthContextType {
   user: User | null;
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  console.log("The user data in line 28 is", user);
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -43,7 +45,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         userData = await getCustomerByMobile(mobile, password);
       } else if (role === 'staff' || role === 'admin') {
         userData = await getStaffByMobile(mobile, password, role);
-        console.log('THe line 46 userData is', userData);
+        console.log('TView and manage all customer accounts', userData);
       } else {
         throw new Error('Invalid role specified');
       }
@@ -187,6 +189,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
+  console.log("The line 190 is",  context)
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }

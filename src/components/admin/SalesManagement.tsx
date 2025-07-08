@@ -4,6 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from '@/hooks/use-toast';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   ShoppingCart, 
   Search, 
@@ -17,11 +20,11 @@ import {
   Printer,
   Eye
 } from 'lucide-react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, Timestamp, where, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 
-export interface Transaction {
+interface Transaction {
   id: string;
   customerName: string;
   mobile: string;
@@ -36,16 +39,7 @@ export interface Transaction {
   status: 'completed' | 'pending' | 'failed';
 }
 
-export interface StoreType {
-  id: string;
-  name: string;
-  location: string;
-  address: string;
-  contactNumber: string;
-  status: 'active' | 'inactive';
-  createdAt: Date;
-  updatedAt: Date;
-}
+import { StoreType, ActivityType} from '@/types/types';
 
 export const SalesManagement = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -58,6 +52,9 @@ export const SalesManagement = () => {
   const [filterStore, setFilterStore] = useState('all');
   const [filterPayment, setFilterPayment] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+
+  const [recharges, setRecharges] = useState<ActivityType[]>([]);
+  const [activeTab, setActiveTab] = useState('transactions');
 
   // Fetch transactions from Firestore
   const fetchTransactions = async () => {
@@ -98,12 +95,34 @@ export const SalesManagement = () => {
     }
   };
 
+    // Fetch recharges
+  const fetchRecharges = async () => {
+    try {
+      const activitiesRef = collection(db, 'Activity');
+      const querySnapshot = await getDocs(
+        query(activitiesRef, where('type', '==', 'recharge'))
+      );
+      
+      const rechargesData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        date: doc.data().date?.toDate() || new Date()
+      })) as ActivityType[];
+      
+      setRecharges(rechargesData);
+    } catch (err) {
+      console.error('Error fetching recharges:', err);
+      setError('Failed to load recharge data');
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchTransactions(), fetchStores()]);
+      await Promise.all([fetchTransactions(), fetchStores(), fetchRecharges()]);
     };
     loadData();
+    console.log("Is it coming here in line 135")
   }, []);
 
   const handleRefresh = () => {
@@ -218,7 +237,13 @@ export const SalesManagement = () => {
         </Card>
       </div>
 
-      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-2 max-w-xs">
+          <TabsTrigger value="transactions">Transactions</TabsTrigger>
+          <TabsTrigger value="recharges">Recharges</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="transactions">      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
         <CardHeader>
           <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
             <div>
@@ -371,7 +396,65 @@ export const SalesManagement = () => {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card></TabsContent>
+
+      <TabsContent value="recharges">
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Wallet Recharges</CardTitle>
+                  <CardDescription>
+                    {recharges.length} recharge activities
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            
+            <CardContent>
+              {recharges.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-500">
+                  <Search className="h-8 w-8" />
+                  <p>No recharge activities found</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Mobile</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {recharges.map((recharge) => (
+                      <TableRow key={recharge.id}>
+                        <TableCell className="font-medium">
+                          {recharge.user}
+                        </TableCell>
+                        <TableCell className="text-green-600">
+                          ₹{recharge.amount?.toFixed(2) || '0.00'}
+                        </TableCell>
+                        <TableCell>
+                          {recharge.description}
+                        </TableCell>
+                        <TableCell>
+                          {recharge.location}
+                        </TableCell>
+                        <TableCell>
+                  {recharge.date instanceof Timestamp ? format(recharge.date.toDate(), 'dd MMM yyyy, hh:mm a') : 'Invalid date'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+       </Tabs>
     </div>
   );
 };

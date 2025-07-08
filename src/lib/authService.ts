@@ -2,7 +2,7 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-
+import { StaffType } from '@/types/types';
 export interface User {
   id: string;
   mobile: string;
@@ -42,41 +42,56 @@ export const getCustomerByMobile = async (mobile: string, password: string): Pro
   }
 };
 
-export const getStaffByMobile = async (mobile: string, password: string, role: string): Promise<User | null> => {
+
+export const getStaffByMobile = async (
+  mobile: string,
+  password: string,
+  role: 'admin' | 'staff'
+): Promise<StaffType | null> => {
   try {
+    // Query staff collection for the mobile number
     const staffRef = collection(db, 'staff');
-    console.log("THe line 48 info is", staffRef, typeof (mobile), mobile, typeof(password),password, typeof(role),role);
-    const q = query(
-      staffRef, 
-      where('mobile', '==', mobile),
-      where('role', '==', role)
-    );
-    console.log("THe line 54 data is", q)
+    const q = query(staffRef, where('mobile', '==', mobile));
     const querySnapshot = await getDocs(q);
-    console.log("THe line 58 data is", querySnapshot, querySnapshot.empty);
-    
-    if (!querySnapshot.empty) {
-      const staffDoc = querySnapshot.docs[0];
-      const staffData = staffDoc.data();
-      console.log("THe line 64 data is", staffData);
-      
-      // In production, use proper password hashing (bcrypt, etc.)
-      if (staffData.staffPassword === password) {
-        return {
-          id: staffDoc.id,
-          mobile: staffData.mobile,
-          role: staffData.role,
-          name: staffData.name,
-          email: staffData.email,
-          storeLocation: staffData.storeLocation,
-          createdAt: staffData.createdAt
-        };
-      }
+
+    if (querySnapshot.empty) {
+      return null;
     }
-    return null;
+
+    // Get the first matching document (assuming mobile is unique)
+    const doc = querySnapshot.docs[0];
+    const staffData = doc.data();
+
+    // Verify password
+    if (staffData.staffPassword !== password) {
+      return null;
+    }
+
+    // Verify role if specified
+    if (role && staffData.role !== role) {
+      return null;
+    }
+
+    // Map to StaffType interface
+    const staff: StaffType = {
+      id: doc.id,
+      name: staffData.name,
+      mobile: staffData.mobile,
+      email: staffData.email || '',
+      storeLocation: staffData.storeLocation || '',
+      role: staffData.role,
+      createdAt: staffData.createdAt?.toDate().toISOString() || new Date().toISOString(),
+      status: staffData.status || 'active',
+      salesCount: staffData.salesCount || 0,
+      staffPin: staffData.staffPin || '',
+      lastActive: staffData.lastActive?.toDate().toISOString(),
+      staffPassword: staffData.staffPassword
+    };
+
+    return staff;
   } catch (error) {
     console.error('Error fetching staff:', error);
-    throw new Error('Failed to authenticate staff');
+    return null;
   }
 };
 

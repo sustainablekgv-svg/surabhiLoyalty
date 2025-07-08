@@ -25,9 +25,11 @@ import { StaffManagement } from '@/components/admin/StaffManagement';
 import { CustomerManagement } from '@/components/admin/CustomerManagement';
 import { GoSevaPool } from '@/components/admin/GoSevaPool';
 import { SalesManagement } from '@/components/admin/SalesManagement';
+import { Accounts } from '@/components/admin/AccountsSection';
 
 const AdminDashboard = () => {
   const { user, logout, isLoading: authLoading } = useAuth();
+  console.log("THe user data is", user)
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [isLoading, setIsLoading] = useState(true);
@@ -86,7 +88,7 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-5 mb-8">
+          <TabsList className="grid w-full grid-cols-6 lg:grid-cols-6 mb-8">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               <span className="hidden sm:inline">Overview</span>
@@ -102,6 +104,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="sales" className="flex items-center gap-2">
               <ShoppingCart className="h-4 w-4" />
               <span className="hidden sm:inline">Sales</span>
+            </TabsTrigger>
+            <TabsTrigger value="accounts" className="flex items-center gap-2">
+              <ShoppingCart className="h-4 w-4" />
+              <span className="hidden sm:inline">Accounts</span>
             </TabsTrigger>
             <TabsTrigger value="goseva" className="flex items-center gap-2">
               <Heart className="h-4 w-4" />
@@ -123,6 +129,10 @@ const AdminDashboard = () => {
 
           <TabsContent value="sales">
             <SalesManagement />
+          </TabsContent>
+
+          <TabsContent value="accounts">
+            <Accounts />
           </TabsContent>
 
           <TabsContent value="goseva">

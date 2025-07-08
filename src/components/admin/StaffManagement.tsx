@@ -485,38 +485,40 @@ export const StaffManagement = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Staff Count</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="w-[200px]">Name</TableHead>
+                  <TableHead className="w-[150px]">Location</TableHead>
+                  <TableHead className="text-right w-[100px]">Wallet Commission</TableHead>
+                  <TableHead className="text-right w-[100px]">Surabhi Commission</TableHead>
+                  <TableHead className="text-right w-[100px]">Seva Commission</TableHead>
+                  <TableHead className="text-right w-[200px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {stores.map((store) => (
                   <TableRow key={store.id}>
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium w-[200px]">
                       {store.name}
                       <div className="text-sm text-muted-foreground">
                         {store.contactNumber}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="w-[150px]">
                       <div className="flex items-center gap-1">
                         <MapPin className="h-4 w-4" />
                         {store.location}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant={store.status === 'active' ? 'default' : 'secondary'}>
-                        {store.status}
-                      </Badge>
+                    <TableCell className="text-right w-[100px]">
+                      {store.walletCommission}%
                     </TableCell>
-                    <TableCell>
-                      {staff.filter(s => s.storeLocation === store.id).length}
+                    <TableCell className="text-right w-[100px]">
+                      {store.surabhiCommission}%
                     </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
+                    <TableCell className="text-right w-[100px]">
+                      {store.sevaCommission}%
+                    </TableCell>
+                    <TableCell className="text-right w-[200px]">
+                      <div className="flex gap-2 justify-end">
                         <Button
                           variant="outline"
                           size="sm"
@@ -783,106 +785,155 @@ export const StaffManagement = () => {
 
       {/* Store Dialog */}
       <Dialog open={isStoreDialogOpen} onOpenChange={setIsStoreDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {currentStore?.id ? 'Edit Store' : 'Add New Store'}
-            </DialogTitle>
-            <DialogDescription>
-              {currentStore?.id ? 'Update store details' : 'Create a new store location'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Store Name *</Label>
-              <Input
-                value={currentStore?.name || ''}
-                onChange={(e) => setCurrentStore({
-                  ...currentStore,
-                  name: e.target.value
-                })}
-                placeholder="Enter store name"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Location *</Label>
-              <Input
-                value={currentStore?.location || ''}
-                onChange={(e) => setCurrentStore({
-                  ...currentStore,
-                  location: e.target.value
-                })}
-                placeholder="Enter location"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Address *</Label>
-              <Input
-                value={currentStore?.address || ''}
-                onChange={(e) => setCurrentStore({
-                  ...currentStore,
-                  address: e.target.value
-                })}
-                placeholder="Enter full address"
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Contact Number</Label>
-                <Input
-                  type="tel"
-                  value={currentStore?.contactNumber || ''}
-                  onChange={(e) => setCurrentStore({
-                    ...currentStore,
-                    contactNumber: e.target.value.replace(/\D/g, '')
-                  })}
-                  placeholder="Enter contact number"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Status *</Label>
-                <Select
-                  value={currentStore?.status || 'active'}
-                  onValueChange={(value) => setCurrentStore({
-                    ...currentStore,
-                    status: value as 'active' | 'inactive'
-                  })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            {!currentStore?.id && (
-              <div className="space-y-2">
-                <Label>Admin PIN Verification *</Label>
-                <Input
-                  type="password"
-                  value={adminPin}
-                  onChange={(e) => setAdminPin(e.target.value)}
-                  placeholder="Enter admin PIN to confirm"
-                />
-              </div>
-            )}
+  <DialogContent className="sm:max-w-[600px]">
+    <DialogHeader>
+      <DialogTitle>
+        {currentStore?.id ? 'Edit Store' : 'Add New Store'}
+      </DialogTitle>
+      <DialogDescription>
+        {currentStore?.id ? 'Update store details' : 'Create a new store location'}
+      </DialogDescription>
+    </DialogHeader>
+    
+    <div className="space-y-4">
+      {/* Basic Information Section */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Store Name *</Label>
+          <Input
+            value={currentStore?.name || ''}
+            onChange={(e) => setCurrentStore({
+              ...currentStore,
+              name: e.target.value
+            })}
+            placeholder="Enter store name"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label>Location *</Label>
+          <Input
+            value={currentStore?.location || ''}
+            onChange={(e) => setCurrentStore({
+              ...currentStore,
+              location: e.target.value
+            })}
+            placeholder="Enter location"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Address *</Label>
+        <Input
+          value={currentStore?.address || ''}
+          onChange={(e) => setCurrentStore({
+            ...currentStore,
+            address: e.target.value
+          })}
+          placeholder="Enter full address"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Contact Number</Label>
+        <Input
+          type="tel"
+          value={currentStore?.contactNumber || ''}
+          onChange={(e) => setCurrentStore({
+            ...currentStore,
+            contactNumber: e.target.value.replace(/\D/g, '')
+          })}
+          placeholder="Enter contact number"
+        />
+      </div>
+
+      {/* Commission Section */}
+      <div className="border-t pt-4">
+        <h4 className="font-medium mb-4">Commission Rates</h4>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label>Wallet Commission (%)</Label>
+            <Input
+              type="number"
+              min="0"
+              max="100"
+              value={currentStore?.walletCommission || 0}
+              onChange={(e) => setCurrentStore({
+                ...currentStore,
+                walletCommission: Number(e.target.value)
+              })}
+            />
           </div>
           
-          <DialogFooter>
-            <Button onClick={handleSaveStore}>
-              {currentStore?.id ? 'Save Changes' : 'Create Store'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+          <div className="space-y-2">
+            <Label>Surabhi Commission (%)</Label>
+            <Input
+              type="number"
+              min="0"
+              max="100"
+              value={currentStore?.surabhiCommission || 0}
+              onChange={(e) => setCurrentStore({
+                ...currentStore,
+                surabhiCommission: Number(e.target.value)
+              })}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label>Seva Commission (%)</Label>
+            <Input
+              type="number"
+              min="0"
+              max="100"
+              value={currentStore?.sevaCommission || 0}
+              onChange={(e) => setCurrentStore({
+                ...currentStore,
+                sevaCommission: Number(e.target.value)
+              })}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Status Section */}
+      <div className="space-y-2">
+        <Label>Status *</Label>
+        <Select
+          value={currentStore?.status || 'active'}
+          onValueChange={(value) => setCurrentStore({
+            ...currentStore,
+            status: value as 'active' | 'inactive'
+          })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Admin Verification Section */}
+      <div className="space-y-2">
+        <Label>Admin Verification PIN *</Label>
+        <Input
+          type="password"
+          value={adminPin}
+          onChange={(e) => setAdminPin(e.target.value)}
+          placeholder="Enter admin PIN to confirm changes"
+        />
+      </div>
+    </div>
+    
+    <DialogFooter>
+      <Button onClick={handleSaveStore}>
+        {currentStore?.id ? 'Save Changes' : 'Create Store'}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
       </Dialog>
 
       {/* Delete Store Dialog */}

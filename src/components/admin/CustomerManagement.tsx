@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from '@/hooks/use-toast';
+import { doc, updateDoc } from 'firebase/firestore';
 import { 
   Search, 
   Filter, 
@@ -42,7 +44,12 @@ export const CustomerManagement = () => {
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
   const [adminPin, setAdminPin] = useState('');
   const [pinError, setPinError] = useState('');
+  const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editedData, setEditedData] = useState<Partial<Customer>>({});
   const ADMIN_PIN = '1234'; // In production, use environment variables
 
   // Fetch customers from Firestore
@@ -151,12 +158,24 @@ export const CustomerManagement = () => {
     }).length
   };
 
-  const viewCustomerDetails = (mobile: string) => {
-    navigate(`/customer/${mobile}`);
+  const viewCustomerDetails = (customer: Customer) => {
+  console.log("Viewing customer details:", customer);
+  setSelectedCustomer(customer);
+  setIsCustomerDialogOpen(true);
   };
 
   const handleEditClick = (customer: Customer) => {
     setEditCustomer(customer);
+    setEditedData({
+      name: customer.name,
+      email: customer.email,
+      storeLocation: customer.storeLocation,
+      walletBalance: customer.walletBalance,
+      surabhiCoins: customer.surabhiCoins,
+      sevaCoinsTotal: customer.sevaCoinsTotal,
+      registered: customer.registered,
+      tpin: customer.tpin
+    });
     setIsPinDialogOpen(true);
     setAdminPin('');
     setPinError('');
@@ -166,9 +185,74 @@ export const CustomerManagement = () => {
     if (adminPin === ADMIN_PIN) {
       setPinError('');
       setIsPinDialogOpen(false);
-      navigate(`/customer/${editCustomer?.mobile}/edit`);
+      setIsEditDialogOpen(true);
     } else {
       setPinError('Invalid admin PIN');
+    }
+  };
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setEditedData(prev => ({
+      ...prev,
+      [name]: name === 'walletBalance' || name === 'surabhiCoins' || name === 'sevaCoinsTotal'
+        ? parseFloat(value) || 0
+        : value
+    }));
+  };
+
+  const handleSelectChange = (value: string, name: string) => {
+    setEditedData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleToggleChange = (name: string) => {
+    setEditedData(prev => ({
+      ...prev,
+      [name]: !prev[name]
+    }));
+  };
+
+  const saveCustomerChanges = async () => {
+    if (!editCustomer) return;
+
+    try {
+      setIsSaving(true);
+      const customerRef = doc(db, 'customers', editCustomer.mobile);
+      
+      await updateDoc(customerRef, {
+        name: editedData.name,
+        email: editedData.email,
+        storeLocation: editedData.storeLocation,
+        walletBalance: editedData.walletBalance,
+        surabhiCoins: editedData.surabhiCoins,
+        sevaCoinsTotal: editedData.sevaCoinsTotal,
+        registered: editedData.registered,
+        tpin: editedData.tpin
+      });
+
+      // Update local state
+      setCustomers(prev => prev.map(c => 
+        c.mobile === editCustomer.mobile ? { ...c, ...editedData } : c
+      ));
+
+      toast({
+        title: "Success",
+        description: "Customer details updated successfully",
+        variant: "default",
+      });
+      setIsEditDialogOpen(false);
+    } catch (error) {
+      console.error("Error updating customer:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update customer details",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -209,6 +293,254 @@ export const CustomerManagement = () => {
           </div>
           <DialogFooter>
             <Button onClick={verifyAdminPin}>Verify</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Customer Details Dialog */}
+      <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
+  <DialogContent className="sm:max-w-[625px] max-h-[80vh] overflow-y-auto">
+    <DialogHeader>
+      <DialogTitle>Customer Details</DialogTitle>
+    </DialogHeader>
+    
+    {selectedCustomer && (
+      <div className="grid gap-4 py-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <h4 className="font-medium">Basic Information</h4>
+            <div className="space-y-2 mt-2 text-sm">
+              <p><span className="text-muted-foreground">Name:</span> {selectedCustomer.name}</p>
+              <p><span className="text-muted-foreground">Mobile:</span> {selectedCustomer.mobile}</p>
+              <p><span className="text-muted-foreground">Email:</span> {selectedCustomer.email || 'N/A'}</p>
+              <p><span className="text-muted-foreground">Store Location:</span> {selectedCustomer.storeLocation}</p>
+              <p><span className="text-muted-foreground">Registered:</span> {selectedCustomer.registered ? 'Yes' : 'No'}</p>
+              <p><span className="text-muted-foreground">Role:</span> {selectedCustomer.role}</p>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-medium">Wallet Information</h4>
+            <div className="space-y-2 mt-2 text-sm">
+              <p><span className="text-muted-foreground">Wallet Balance:</span> ₹{selectedCustomer.walletBalance.toFixed(2)}</p>
+              <p><span className="text-muted-foreground">This Month:</span> ₹{selectedCustomer.walletBalanceCurrentMonth.toFixed(2)}</p>
+              <p><span className="text-muted-foreground">Surabhi Coins:</span> {selectedCustomer.surabhiCoins}</p>
+              <p><span className="text-muted-foreground">This Month:</span> {selectedCustomer.surabhiCoinsCurrentMonth}</p>
+              <p><span className="text-muted-foreground">Seva Coins:</span> {selectedCustomer.sevaCoinsTotal}</p>
+              <p><span className="text-muted-foreground">This Month:</span> {selectedCustomer.sevaCoinsCurrentMonth}</p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h4 className="font-medium">Referral Information</h4>
+          <div className="space-y-2 mt-2 text-sm">
+            <p><span className="text-muted-foreground">Referred By:</span> {selectedCustomer.referredBy || 'N/A'}</p>
+            <p><span className="text-muted-foreground">Referral Income:</span> {selectedCustomer.referralIncome ? `₹${selectedCustomer.referralIncome.toFixed(2)}` : 'N/A'}</p>
+            
+            {selectedCustomer.referredUsers && selectedCustomer.referredUsers.length > 0 && (
+              <div>
+                <p className="font-medium mt-2">Referred Users:</p>
+                <div className="border rounded p-2 mt-1">
+                  {selectedCustomer.referredUsers.map((user, index) => (
+                    <div key={index} className="flex justify-between py-1 border-b last:border-b-0">
+                      <span>{user.mobile}</span>
+                      <span className="text-muted-foreground">{user.referralDate}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <h4 className="font-medium">Account Details</h4>
+            <div className="space-y-2 mt-2 text-sm">
+              <p><span className="text-muted-foreground">Wallet ID:</span> {selectedCustomer.walletId}</p>
+              <p><span className="text-muted-foreground">Created At:</span> {selectedCustomer.createdAt instanceof Timestamp
+  ? selectedCustomer.createdAt.toDate().toLocaleString()
+  : "N/A"}</p>
+              <p><span className="text-muted-foreground">Last Transaction:</span> {selectedCustomer.lastTransactionDate instanceof Timestamp
+  ? selectedCustomer.lastTransactionDate.toDate().toLocaleString()
+  : "N/A"}</p>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-medium">Security</h4>
+            <div className="space-y-2 mt-2 text-sm">
+              <p><span className="text-muted-foreground">TPIN Set:</span> {selectedCustomer.tpin ? 'Yes' : 'No'}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+  </DialogContent>
+</Dialog>
+
+      {/* Edit Customer Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Edit Customer Details</DialogTitle>
+            <DialogDescription>
+              Make changes to customer profile here. Click save when you're done.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Full Name
+              </Label>
+              <Input
+                id="name"
+                name="name"
+                value={editedData.name || ''}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="mobile" className="text-right">
+                Mobile
+              </Label>
+              <Input
+                id="mobile"
+                value={editCustomer?.mobile || ''}
+                className="col-span-3"
+                disabled
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="email" className="text-right">
+                Email
+              </Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                value={editedData.email || ''}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="storeLocation" className="text-right">
+                Store Location
+              </Label>
+              <Select
+                value={editedData.storeLocation || ''}
+                onValueChange={(value) => handleSelectChange(value, 'storeLocation')}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select store" />
+                </SelectTrigger>
+                <SelectContent>
+                  {stores.map((store) => (
+                    <SelectItem key={store.id} value={store.name}>
+                      {store.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="walletBalance" className="text-right">
+                Wallet Balance
+              </Label>
+              <Input
+                id="walletBalance"
+                name="walletBalance"
+                type="number"
+                value={editedData.walletBalance || 0}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="surabhiCoins" className="text-right">
+                Surabhi Coins
+              </Label>
+              <Input
+                id="surabhiCoins"
+                name="surabhiCoins"
+                type="number"
+                value={editedData.surabhiCoins || 0}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="sevaCoinsTotal" className="text-right">
+                Seva Coins
+              </Label>
+              <Input
+                id="sevaCoinsTotal"
+                name="sevaCoinsTotal"
+                type="number"
+                value={editedData.sevaCoinsTotal || 0}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="tpin" className="text-right">
+                Transaction PIN
+              </Label>
+              <Input
+                id="tpin"
+                name="tpin"
+                type="text"
+                value={editedData.tpin || ''}
+                onChange={handleInputChange}
+                className="col-span-3"
+                placeholder="Set new PIN"
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">
+                Account Status
+              </Label>
+              <div className="col-span-3 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="registered"
+                  checked={Boolean(editedData.registered) || false}
+                  onChange={() => handleToggleChange('registered')}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <Label htmlFor="registered">
+                  Registered User
+                </Label>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsEditDialogOpen(false)}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={saveCustomerChanges}
+              disabled={isSaving}
+            >
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -402,7 +734,7 @@ export const CustomerManagement = () => {
                       variant="outline" 
                       size="sm" 
                       className="flex-1 lg:flex-none"
-                      onClick={() => viewCustomerDetails(customer.mobile)}
+                      onClick={() => viewCustomerDetails(customer)}
                     >
                       <Eye className="h-3 w-3 mr-1" />
                       View Details
