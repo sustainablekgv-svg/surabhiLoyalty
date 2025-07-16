@@ -83,12 +83,19 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
           const querySnapshot = await getDocs(referralQuery);
           
           if (!querySnapshot.empty) {
-            const referralData = querySnapshot.docs[0].data() as Customer;
-            setReferralName(referralData.name);
-            toast.success(`Referral found: ${referralData.name}`);
+          const referralData = querySnapshot.docs[0].data() as Customer;
+
+          // Check if wallet recharge is done
+          if (referralData.walletRechargeDone === false) {
+          setReferralName(null);
+          toast.error('This customer is not eligible for referral (wallet recharge not done)');
           } else {
-            setReferralName(null);
-            toast.error('No customer found with this mobile number');
+          setReferralName(referralData.name);
+          toast.success(`Referral found: ${referralData.name}`);
+          }
+          } else {
+          setReferralName(null);
+          toast.error('No customer found with this mobile number');
           }
         } catch (error) {
           console.error('Error fetching referral:', error);
@@ -188,6 +195,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
         name: formData.name,
         mobile: formData.mobile,
         email: formData.email,
+        walletRechargeDone: Boolean(false),
         storeLocation,
         walletBalance: 0,
         walletBalanceCurrentMonth: 0,

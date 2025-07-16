@@ -37,7 +37,7 @@ interface AdminUserType {
 interface AdminHeaderProps {
   user: Partial<AdminUserType>;
   onLogout: () => void;
-  onUpdateProfile: (updatedData: Partial<AdminUserType>) => Promise<boolean>;
+  onUpdateProfile?: (updatedData: Partial<AdminUserType>) => Promise<boolean>;
 }
 
 export const AdminHeader = ({ user, onLogout, onUpdateProfile }: AdminHeaderProps) => {

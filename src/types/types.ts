@@ -4,6 +4,7 @@ export interface Customer {
   email: string;
   storeLocation: string;
   walletBalance: number;
+  walletRechargeDone?: Boolean;
   walletBalanceCurrentMonth : number;
   createdAt: import('firebase/firestore').FieldValue;
   role: string;
@@ -92,6 +93,7 @@ export interface SalesTransaction  {
     surabhiCoins: number;
     sevaCoins: number;
   };
+  createdAt: import('firebase/firestore').FieldValue;
 };
 
 export interface SevaTransaction {
