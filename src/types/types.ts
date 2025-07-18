@@ -4,7 +4,7 @@ export interface Customer {
   email: string;
   storeLocation: string;
   walletBalance: number;
-  walletRechargeDone?: Boolean;
+  walletRechargeDone: Boolean;
   walletBalanceCurrentMonth : number;
   createdAt: import('firebase/firestore').FieldValue;
   role: string;

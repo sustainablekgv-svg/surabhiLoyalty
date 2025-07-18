@@ -41,6 +41,8 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [referralName, setReferralName] = useState<string | null>(null);
   const [isFetchingReferral, setIsFetchingReferral] = useState(false);
+  const [isElgibleForReferral, setIsElgibleForReferral] = useState(false);
+  const [isReferralEntered, setIsReferralEntered] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     mobile: '',
@@ -91,6 +93,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
           toast.error('This customer is not eligible for referral (wallet recharge not done)');
           } else {
           setReferralName(referralData.name);
+          setIsElgibleForReferral(true);
           toast.success(`Referral found: ${referralData.name}`);
           }
           } else {
@@ -475,7 +478,11 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                       type="tel"
                       placeholder="Enter referrer's mobile number"
                       value={formData.referredBy}
-                      onChange={(e) => setFormData({ ...formData, referredBy: e.target.value })}
+                      onChange={(e) => {
+                        if(formData.referredBy.length == 10){
+                          setIsReferralEntered(true);
+                        }
+                        setFormData({ ...formData, referredBy: e.target.value })}}
                       className="w-full pl-10 pr-10 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       maxLength={10}
                     />
@@ -507,7 +514,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                 <div className="pt-2">
                   <button
                     type="submit"
-                    disabled={isLoading || !isAuthReady}
+                    disabled={isLoading || !isAuthReady || (!isElgibleForReferral && formData.referredBy.length > 0)}
                     className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white font-medium rounded-lg transition-all duration-200 shadow-md disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isLoading ? (
