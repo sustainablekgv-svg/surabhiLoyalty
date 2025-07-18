@@ -16,9 +16,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Customer, WalletRechargeProps, ActivityType } from '@/types/types';
+import { Customer, WalletRechargeProps, ActivityType, StoreType } from '@/types/types';
+import { FieldValue } from 'firebase/firestore';
 
 export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,11 +31,21 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [staffPin, setStaffPin] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [storeDetails, setStoreDetails] = useState<StoreType | null>(null);
 
-  // Fetch customers from Firestore
+  // Fetch customers and store details from Firestore
   useEffect(() => {
-    const fetchCustomers = async () => {
+    const fetchData = async () => {
       try {
+        // Fetch store details first
+        const storeDoc = await getDoc(doc(db, 'stores', storeLocation));
+        if (storeDoc.exists()) {
+          setStoreDetails(storeDoc.data() as StoreType);
+        } else {
+          toast.error('Store details not found');
+        }
+
+        // Then fetch customers
         const customersCollection = collection(db, 'customers');
         const querySnapshot = await getDocs(customersCollection);
         const customersData = querySnapshot.docs.map(doc => ({
@@ -43,15 +54,15 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         }));
         setCustomers(customersData);
       } catch (error) {
-        toast.error('Failed to fetch customers');
-        console.error('Error fetching customers:', error);
+        toast.error('Failed to fetch data');
+        console.error('Error fetching data:', error);
       } finally {
         setIsFetchingCustomers(false);
       }
     };
 
-    fetchCustomers();
-  }, []);
+    fetchData();
+  }, [storeLocation]);
 
   const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -59,25 +70,29 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
     (customer.email && customer.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
  
-  const calculateRewards = (amount: number) => {
-    return Math.floor(amount * 0.1); // 10% Surabhi coins
+  const calculateCommissions = (amount: number) => {
+    if (!storeDetails) return { surabhiCoins: 0, sevaAmount: 0 };
+    
+    const surabhiCoins = Math.floor(amount * (storeDetails.surabhiCommission / 100));
+    const sevaAmount = Math.floor(amount * (storeDetails.sevaCommission / 100));
+    
+    return { surabhiCoins, sevaAmount };
   };
 
   const rechargeAmountNum = parseFloat(rechargeAmount) || 0;
-  const surabhiCoinsEarned = calculateRewards(rechargeAmountNum);
+  const { surabhiCoins: surabhiCoinsEarned, sevaAmount: sevaAmountEarned } = calculateCommissions(rechargeAmountNum);
 
   const addActivityRecord = async (activityData: Omit<ActivityType, 'id' | 'date'>) => {
-  try {
-    await addDoc(collection(db, 'Activity'), {
-      ...activityData,
-      date: serverTimestamp()
-    });
-  } catch (error) {
-    console.error('Error adding activity record:', error);
-    // You might want to show a toast notification here
-    toast.error('Failed to log activity');
-  }
-};
+    try {
+      await addDoc(collection(db, 'Activity'), {
+        ...activityData,
+        date: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('Error adding activity record:', error);
+      toast.error('Failed to log activity');
+    }
+  };
 
   const verifyStaffPin = async () => {
     // In a real app, you would verify the PIN against your staff database
@@ -85,10 +100,20 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
     return staffPin.length === 4 && /^\d+$/.test(staffPin) && `${import.meta.env.VITE_FIREBASE_API_KEY}`;
   };
 
-  const needsMonthlyReset = (lastTransactionDate: string | null): boolean => {
+  const needsMonthlyReset = (lastTransactionDate: FieldValue | Date | string | null): boolean => {
     if (!lastTransactionDate) return true;
     
-    const lastDate = new Date(lastTransactionDate);
+    let lastDate: Date;
+    
+    if (lastTransactionDate instanceof Date) {
+      lastDate = lastTransactionDate;
+    } else if (typeof lastTransactionDate === 'string') {
+      lastDate = new Date(lastTransactionDate);
+    } else {
+      // If it's a FieldValue (like serverTimestamp), we can't compare, so assume no reset needed
+      return false;
+    }
+    
     const currentDate = new Date();
     
     return lastDate.getMonth() !== currentDate.getMonth() || 
@@ -96,7 +121,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
   };
 
   const processRecharge = async () => {
-    if (!selectedCustomer || !rechargeAmount) return;
+    if (!selectedCustomer || !rechargeAmount || !storeDetails) return;
 
     setIsProcessing(true);
     const toastId = toast.loading('Verifying staff PIN...');
@@ -122,40 +147,44 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       const customerDoc = querySnapshot.docs[0];
       const currentData = customerDoc.data() as Customer;
       
-      // Check if monthly reset is needed
-      const resetMonthlyFields = needsMonthlyReset(currentData.lastTransactionDate);
-      const currentDate = new Date().toISOString();
+      // Handle lastTransactionDate properly
+      const lastTransactionDate = currentData.lastTransactionDate || null;
+      const resetMonthlyFields = needsMonthlyReset(lastTransactionDate);
+      const currentTimestamp = serverTimestamp();
 
       // Prepare update data
       const updateData: Partial<Customer> = {
         walletBalance: currentData.walletBalance + rechargeAmountNum,
         surabhiCoins: currentData.surabhiCoins + surabhiCoinsEarned,
-        lastTransactionDate: currentDate
+        sevaCoinsTotal: (currentData.sevaCoinsTotal || 0) + sevaAmountEarned,
+        lastTransactionDate: currentTimestamp
       };
 
       // Handle monthly fields
       if (resetMonthlyFields) {
         updateData.walletBalanceCurrentMonth = rechargeAmountNum;
         updateData.surabhiCoinsCurrentMonth = surabhiCoinsEarned;
+        updateData.sevaCoinsCurrentMonth = sevaAmountEarned;
       } else {
         updateData.walletBalanceCurrentMonth = (currentData.walletBalanceCurrentMonth || 0) + rechargeAmountNum;
         updateData.surabhiCoinsCurrentMonth = (currentData.surabhiCoinsCurrentMonth || 0) + surabhiCoinsEarned;
+        updateData.sevaCoinsCurrentMonth = (currentData.sevaCoinsCurrentMonth || 0) + sevaAmountEarned;
       }
 
       // Update customer document in Firestore
       await updateDoc(customerDoc.ref, updateData);
 
-            // If this was their first recharge, you might want to add a special activity
-    if (currentData.walletBalance === 0) {
-      await addActivityRecord({
-        type: 'signup',
-        description: `First wallet recharge after registration`,
-        user: selectedCustomer.mobile,
-        location: storeLocation
-      });
-    }
+      // If this was their first recharge, add a special activity
+      if (currentData.walletBalance === 0) {
+        await addActivityRecord({
+          type: 'signup',
+          description: `First wallet recharge after registration`,
+          user: selectedCustomer.mobile,
+          location: storeLocation
+        });
+      }
     
-      // Add activity record for the recharge
+      // Add activity records for the recharge and commissions
       await addActivityRecord({
         type: 'recharge',
         description: `Wallet recharge of ₹${rechargeAmountNum}`,
@@ -164,27 +193,47 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         location: storeLocation
       });
 
-      
+      await addActivityRecord({
+        type: 'recharge',
+        description: `Earned ${surabhiCoinsEarned} Surabhi Coins from recharge`,
+        amount: surabhiCoinsEarned,
+        user: selectedCustomer.mobile,
+        location: storeLocation
+      });
+
+      await addActivityRecord({
+        type: 'contribution',
+        description: `Added ₹${sevaAmountEarned} to Seva Wallet from recharge`,
+        amount: sevaAmountEarned,
+        user: selectedCustomer.mobile,
+        location: storeLocation
+      });
+
       // Update local state
       setCustomers(customers.map(c => 
-        c.mobile === selectedCustomer.mobile ? { 
-          ...c, 
-          walletBalance: c.walletBalance + rechargeAmountNum,
-          surabhiCoins: c.surabhiCoins + surabhiCoinsEarned,
-          walletBalanceCurrentMonth: resetMonthlyFields 
-            ? rechargeAmountNum 
-            : (c.walletBalanceCurrentMonth || 0) + rechargeAmountNum,
-          surabhiCoinsCurrentMonth: resetMonthlyFields
-            ? surabhiCoinsEarned
-            : (c.surabhiCoinsCurrentMonth || 0) + surabhiCoinsEarned,
-          lastTransactionDate: currentDate
-        } : c
-      ));
+  c.mobile === selectedCustomer.mobile ? { 
+    ...c, 
+    walletBalance: c.walletBalance + rechargeAmountNum,
+    surabhiCoins: c.surabhiCoins + surabhiCoinsEarned,
+    sevaCoinsTotal: (c.sevaCoinsTotal || 0) + sevaAmountEarned,
+    walletBalanceCurrentMonth: resetMonthlyFields 
+      ? rechargeAmountNum 
+      : (c.walletBalanceCurrentMonth || 0) + rechargeAmountNum,
+    surabhiCoinsCurrentMonth: resetMonthlyFields
+      ? surabhiCoinsEarned
+      : (c.surabhiCoinsCurrentMonth || 0) + surabhiCoinsEarned,
+    sevaCoinsCurrentMonth: resetMonthlyFields
+      ? sevaAmountEarned
+      : (c.sevaCoinsCurrentMonth || 0) + sevaAmountEarned,
+    lastTransactionDate: serverTimestamp(), // For local state, we can use string
+    walletRechargeDone: true
+  } : c
+));
 
       toast.success(
         `₹${rechargeAmountNum.toLocaleString()} recharged successfully!`, 
         { 
-          description: `Customer earned ${surabhiCoinsEarned} Surabhi Coins`,
+          description: `Customer earned ${surabhiCoinsEarned} Surabhi Coins and ₹${sevaAmountEarned} Seva Wallet`,
           id: toastId
         }
       );
@@ -238,6 +287,16 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Wallet Recharge</h2>
           <p className="text-gray-600">Recharge customer wallets at {storeLocation}</p>
+          {storeDetails && (
+            <div className="flex gap-4 mt-2 text-sm">
+              <Badge variant="outline" className="border-green-200 text-green-800">
+                Surabhi: {storeDetails.surabhiCommission}%
+              </Badge>
+              <Badge variant="outline" className="border-blue-200 text-blue-800">
+                Seva: {storeDetails.sevaCommission}%
+              </Badge>
+            </div>
+          )}
         </div>
       </div>
 
@@ -307,6 +366,11 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                           <p className="text-sm font-medium text-amber-600 mt-1">
                             {customer.surabhiCoins} Coins
                           </p>
+                          {customer.sevaCoinsTotal && customer.sevaCoinsTotal > 0 && (
+                            <p className="text-sm font-medium text-blue-600 mt-1">
+                              ₹{customer.sevaCoinsTotal} Seva
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -349,9 +413,16 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                         <p className="text-sm text-blue-700">{selectedCustomer.email}</p>
                       )}
                     </div>
-                    <Badge variant="secondary">
-                      ₹{selectedCustomer.walletBalance.toLocaleString()}
-                    </Badge>
+                    <div className="flex flex-col items-end">
+                      <Badge variant="secondary" className="mb-1">
+                        ₹{selectedCustomer.walletBalance.toLocaleString()}
+                      </Badge>
+                      {selectedCustomer.sevaCoinsTotal && selectedCustomer.sevaCoinsTotal > 0 && (
+                        <Badge variant="outline" className="text-blue-600 border-blue-200">
+                          ₹{selectedCustomer.sevaCoinsTotal} Seva
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
                 
@@ -376,7 +447,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                   )}
                 </div>
                 
-                {rechargeAmountNum >= 2000 && (
+                {rechargeAmountNum >= 2000 && storeDetails && (
                   <div className="space-y-3">
                     <h3 className="font-medium text-gray-900">Reward Breakdown</h3>
                     
@@ -392,9 +463,21 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                       <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
                         <div className="flex items-center gap-2">
                           <Coins className="h-4 w-4 text-amber-600" />
-                          <span className="text-sm font-medium text-amber-900">Surabhi Coins (10%)</span>
+                          <span className="text-sm font-medium text-amber-900">
+                            Surabhi Coins ({storeDetails.surabhiCommission}%)
+                          </span>
                         </div>
                         <span className="font-bold text-amber-600">+{surabhiCoinsEarned}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Wallet className="h-4 w-4 text-blue-600" />
+                          <span className="text-sm font-medium text-blue-900">
+                            Seva Wallet ({storeDetails.sevaCommission}%)
+                          </span>
+                        </div>
+                        <span className="font-bold text-blue-600">+₹{sevaAmountEarned}</span>
                       </div>
                     </div>
                   </div>
@@ -402,7 +485,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                 
                 <Button
                   onClick={handleRechargeClick}
-                  disabled={isLoading || !rechargeAmount || rechargeAmountNum < 2000}
+                  disabled={isLoading || !rechargeAmount || rechargeAmountNum < 2000 || !storeDetails}
                   className="w-full h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium"
                 >
                   {isLoading ? (
@@ -450,6 +533,12 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                 <div>₹{selectedCustomer?.walletBalance.toLocaleString()}</div>
                 <div className="text-gray-500">Current Coins:</div>
                 <div>{selectedCustomer?.surabhiCoins}</div>
+                {selectedCustomer?.sevaCoinsTotal && (
+                  <>
+                    <div className="text-gray-500">Seva Wallet:</div>
+                    <div>₹{selectedCustomer.sevaCoinsTotal}</div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -460,6 +549,8 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                 <div className="font-medium">₹{rechargeAmountNum.toLocaleString()}</div>
                 <div className="text-gray-500">Coins Earned:</div>
                 <div className="font-medium">+{surabhiCoinsEarned}</div>
+                <div className="text-gray-500">Seva Amount:</div>
+                <div className="font-medium">+₹{sevaAmountEarned}</div>
               </div>
             </div>
 
