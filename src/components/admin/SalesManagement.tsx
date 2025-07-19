@@ -274,7 +274,7 @@ export const SalesManagement = () => {
                   <SelectItem value="all">All Stores</SelectItem>
                   {stores.map((store) => (
                     <SelectItem key={store.id} value={store.name}>
-                      {store.name} ({store.location})
+                      {store.name} ({store.storeLocation})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -291,18 +291,6 @@ export const SalesManagement = () => {
                   <SelectItem value="mixed">Mixed</SelectItem>
                 </SelectContent>
               </Select>
-
-              {/* <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-full sm:w-40">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="failed">Failed</SelectItem>
-                </SelectContent>
-              </Select> */}
             </div>
           </div>
         </CardHeader>
@@ -370,7 +358,7 @@ export const SalesManagement = () => {
                           <MapPin className="h-3 w-3" />
                           <span>
                             {transaction.storeLocation}
-                            {store && ` (${store.location})`}
+                            {store && ` (${store.storeLocation})`}
                           </span>
                         </div>
                         <div className="flex items-center gap-1">

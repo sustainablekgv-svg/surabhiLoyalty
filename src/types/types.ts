@@ -1,3 +1,4 @@
+import { Timestamp } from 'firebase/firestore';
 export interface Customer {
   name: string;
   mobile: string;
@@ -10,14 +11,12 @@ export interface Customer {
   role: string;
   walletId: string;
   surabhiCoins: number;
-  surabhiCoinsCurrentMonth : number;
   sevaCoinsTotal: number;
-  sevaCoinsCurrentMonth: number;
   referredBy: string | null;
   referralIncome: number | null;
   referredUsers: { mobile:number; referralDate: string; }[] | null;
   registered: Boolean;
-  lastTransactionDate: import('firebase/firestore').FieldValue;
+  lastTransactionDate: Timestamp;
   customerPassword: string;
   tpin: string;
 }
@@ -56,9 +55,9 @@ export interface StaffType {
 export interface StoreType {
   id: string;
   name: string;
-  location: string;
+  storeLocation: string;
   address: string;
-  walletCommission: number;
+  referralCommission: number;
   surabhiCommission: number;
   sevaCommission: number;
   contactNumber: string;
@@ -71,27 +70,22 @@ export interface SalesTransaction  {
   id?: string;
   customerName: string;
   customerMobile: string;
-  // Transaction amounts
+  // Transaction amounts 
   amount: number;
   surabhiCoinsUsed: number;
   walletDeduction: number;
   cashPayment: number;
-  // Payment info
   paymentMethod: 'cash' | 'wallet' | 'mixed';
-  // Location and processing
   storeLocation: string;
   processedBy: string;
-  // Additional metadata
   isCustomerRegistered: boolean;
   previousBalance?: {
     wallet: number;
     surabhiCoins: number;
-    sevaCoins: number;
   };
   newBalance?: {
     wallet: number;
     surabhiCoins: number;
-    sevaCoins: number;
   };
   createdAt: import('firebase/firestore').FieldValue;
 };
@@ -128,11 +122,30 @@ export interface ActivityType {
   date: import('firebase/firestore').FieldValue;
 }
 
-export interface StorePerformance {
-  name: string;
-  transactions: number;
-  sales: number;
-  surabhiCoinsUsed: number;
-  walletDeduction: number;
-  cashPayment: number;
+interface AccountTx {
+  id: string;
+  date: Date;
+  shopId: string;
+  shopName: string;
+  type: 'credit' | 'debit';
+  amount: number;
+  description: string;
 }
+
+interface StoreSummary {
+  storeName: string;
+  currentBalance: number;
+  lastTransactionDate: Date;
+}
+
+interface AdminDeck {
+  totalBalance: number;
+  recentTransactions: AccountTx[];
+  shopsSummary: StoreSummary[];
+  walletOverview: {
+    totalCredits: number;
+    totalDebits: number;
+    netFlow: number;
+  };
+}
+

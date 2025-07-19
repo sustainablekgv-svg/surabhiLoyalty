@@ -19,10 +19,32 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { CalendarIcon, Search, Filter, ShoppingCart, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { collection, query, where, getDocs, QuerySnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, DocumentData } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { SalesTransaction } from '@/types/types';
-import { toast } from 'sonner'; // or your preferred toast library
+import { toast } from 'sonner';
+
+interface SalesTransaction {
+  id?: string;
+  customerName: string;
+  customerMobile: string;
+  amount: number;
+  surabhiCoinsUsed: number;
+  walletDeduction: number;
+  cashPayment: number;
+  paymentMethod: 'cash' | 'wallet' | 'mixed';
+  storeLocation: string;
+  processedBy: string;
+  isCustomerRegistered: boolean;
+  previousBalance?: {
+    wallet: number;
+    surabhiCoins: number;
+  };
+  newBalance?: {
+    wallet: number;
+    surabhiCoins: number;
+  };
+  createdAt?: any; // Firestore FieldValue or Timestamp
+}
 
 interface TransactionsPageProps {
   storeLocation: string;
@@ -51,17 +73,28 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
           collection(db, 'transactions'), 
           where('storeLocation', '==', storeLocation)
         );
-        const snapshot: QuerySnapshot = await getDocs(q);
+        const querySnapshot = await getDocs(q);
         const txns: SalesTransaction[] = [];
 
-        snapshot.forEach((doc) => {
-          const data = doc.data() as SalesTransaction;
-          // Ensure processedBy is a Date object
-          const processedBy = data.processedBy ? new Date(data.processedBy) : new Date();
+        querySnapshot.forEach((doc) => {
+          const data = doc.data() as DocumentData;
+          const processedBy = data.processedBy ? data.processedBy : data.createdAt?.toDate() || new Date();
+          
           txns.push({ 
-            id: doc.id, 
-            ...data,
-            processedBy: processedBy.toISOString() 
+            id: doc.id,
+            customerName: data.customerName || '',
+            customerMobile: data.customerMobile || '',
+            amount: data.amount || 0,
+            surabhiCoinsUsed: data.surabhiCoinsUsed || 0,
+            walletDeduction: data.walletDeduction || 0,
+            cashPayment: data.cashPayment || 0,
+            paymentMethod: data.paymentMethod || 'cash',
+            storeLocation: data.storeLocation,
+            processedBy: processedBy instanceof Date ? processedBy.toISOString() : processedBy,
+            isCustomerRegistered: data.isCustomerRegistered || false,
+            previousBalance: data.previousBalance,
+            newBalance: data.newBalance,
+            createdAt: data.createdAt
           });
         });
 
@@ -259,11 +292,11 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                 Showing {filteredTransactions.length} transaction(s) for {storeLocation}
               </CardDescription>
             </div>
-            {!isLoading && filteredTransactions.length > 0 && (
+            {/* {!isLoading && filteredTransactions.length > 0 && (
               <Button variant="outline" size="sm" disabled>
                 Export CSV
               </Button>
-            )}
+            )} */}
           </div>
         </CardHeader>
         <CardContent>
@@ -319,24 +352,32 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTransactions.map((tx) => (
-                    <TableRow key={tx.id} className="hover:bg-gray-50">
-                      <TableCell>
-                        {format(new Date(tx.processedBy), 'MMM dd, yyyy hh:mm a')}
-                      </TableCell>
-                      <TableCell className="font-medium">{tx.customerName || '-'}</TableCell>
-                      <TableCell>{tx.customerMobile || '-'}</TableCell>
-                      <TableCell className="text-right">₹{Number(tx.amount).toFixed(2)}</TableCell>
-                      <TableCell className="text-right">{tx.surabhiCoinsUsed || 0}</TableCell>
-                      <TableCell>{tx.paymentMethod || '-'}</TableCell>
-                      <TableCell className="text-right">
-                        {tx.cashPayment ? `₹${Number(tx.cashPayment).toFixed(2)}` : '-'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {tx.walletDeduction ? `₹${Number(tx.walletDeduction).toFixed(2)}` : '-'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filteredTransactions.map((tx) => {
+  // Safely parse the date and handle invalid dates
+  const processedDate = tx.processedBy ? new Date(tx.processedBy) : null;
+  const formattedDate = processedDate && !isNaN(processedDate.getTime()) 
+    ? format(processedDate, 'MMM dd, yyyy hh:mm a') 
+    : 'Invalid date';
+
+  return (
+    <TableRow key={tx.id} className="hover:bg-gray-50">
+      <TableCell>
+        {formattedDate}
+      </TableCell>
+      <TableCell className="font-medium">{tx.customerName || '-'}</TableCell>
+      <TableCell>{tx.customerMobile || '-'}</TableCell>
+      <TableCell className="text-right">₹{Number(tx.amount).toFixed(2)}</TableCell>
+      <TableCell className="text-right">{tx.surabhiCoinsUsed || 0}</TableCell>
+      <TableCell>{tx.paymentMethod || '-'}</TableCell>
+      <TableCell className="text-right">
+        {tx.cashPayment ? `₹${Number(tx.cashPayment).toFixed(2)}` : '-'}
+      </TableCell>
+      <TableCell className="text-right">
+        {tx.walletDeduction ? `₹${Number(tx.walletDeduction).toFixed(2)}` : '-'}
+      </TableCell>
+    </TableRow>
+  );
+})}
                 </TableBody>
               </Table>
             </div>

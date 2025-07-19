@@ -16,12 +16,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, updateDoc, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, addDoc, serverTimestamp, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Customer, WalletRechargeProps, ActivityType, StoreType } from '@/types/types';
 import { FieldValue } from 'firebase/firestore';
 
 export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
+  console.log("The storeLocation is", storeLocation);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [rechargeAmount, setRechargeAmount] = useState('');
@@ -38,11 +39,18 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
     const fetchData = async () => {
       try {
         // Fetch store details first
-        const storeDoc = await getDoc(doc(db, 'stores', storeLocation));
-        if (storeDoc.exists()) {
-          setStoreDetails(storeDoc.data() as StoreType);
+        const q = query(
+        collection(db, 'stores'),
+        where('name', '==', storeLocation) // exact match
+        );
+
+        const querySnapshotStores = await getDocs(q);
+        if (!querySnapshotStores.empty) {
+        querySnapshotStores.forEach((doc) => {
+        setStoreDetails(doc.data() as StoreType);
+        });
         } else {
-          toast.error('Store details not found');
+        toast.error('No stores found with that name');
         }
 
         // Then fetch customers
@@ -157,18 +165,14 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         walletBalance: currentData.walletBalance + rechargeAmountNum,
         surabhiCoins: currentData.surabhiCoins + surabhiCoinsEarned,
         sevaCoinsTotal: (currentData.sevaCoinsTotal || 0) + sevaAmountEarned,
-        lastTransactionDate: currentTimestamp
+        lastTransactionDate: Timestamp.fromDate(new Date())
       };
 
       // Handle monthly fields
       if (resetMonthlyFields) {
         updateData.walletBalanceCurrentMonth = rechargeAmountNum;
-        updateData.surabhiCoinsCurrentMonth = surabhiCoinsEarned;
-        updateData.sevaCoinsCurrentMonth = sevaAmountEarned;
       } else {
         updateData.walletBalanceCurrentMonth = (currentData.walletBalanceCurrentMonth || 0) + rechargeAmountNum;
-        updateData.surabhiCoinsCurrentMonth = (currentData.surabhiCoinsCurrentMonth || 0) + surabhiCoinsEarned;
-        updateData.sevaCoinsCurrentMonth = (currentData.sevaCoinsCurrentMonth || 0) + sevaAmountEarned;
       }
 
       // Update customer document in Firestore
@@ -219,13 +223,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
     walletBalanceCurrentMonth: resetMonthlyFields 
       ? rechargeAmountNum 
       : (c.walletBalanceCurrentMonth || 0) + rechargeAmountNum,
-    surabhiCoinsCurrentMonth: resetMonthlyFields
-      ? surabhiCoinsEarned
-      : (c.surabhiCoinsCurrentMonth || 0) + surabhiCoinsEarned,
-    sevaCoinsCurrentMonth: resetMonthlyFields
-      ? sevaAmountEarned
-      : (c.sevaCoinsCurrentMonth || 0) + sevaAmountEarned,
-    lastTransactionDate: serverTimestamp(), // For local state, we can use string
+    lastTransactionDate: Timestamp.fromDate(new Date()), // For local state, we can use string
     walletRechargeDone: true
   } : c
 ));
@@ -289,6 +287,9 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
           <p className="text-gray-600">Recharge customer wallets at {storeLocation}</p>
           {storeDetails && (
             <div className="flex gap-4 mt-2 text-sm">
+              <Badge variant="outline" className="border-blue-200 text-blue-800">
+              Referral: {storeDetails.referralCommission}%
+              </Badge>
               <Badge variant="outline" className="border-green-200 text-green-800">
                 Surabhi: {storeDetails.surabhiCommission}%
               </Badge>

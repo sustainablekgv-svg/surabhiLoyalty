@@ -29,7 +29,8 @@ import {
   doc, 
   setDoc,
   getDoc,
-  increment
+  increment,
+  Timestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { 
@@ -37,7 +38,6 @@ import {
   SalesManagementProps, 
   SalesTransaction,
   SevaTransaction,
-  SevaPool,
   ActivityType
 } from '@/types/types';
 import { serverTimestamp } from 'firebase/firestore';
@@ -56,23 +56,6 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
   const [isFetchingCustomers, setIsFetchingCustomers] = useState(false);
   const [showTpinInput, setShowTpinInput] = useState(false);
   const [tpin, setTpin] = useState('');
-
-  // Function to check and reset monthly values if needed
-  const checkAndResetMonthlyValues = (customer: Customer): Customer => {
-    const today = new Date();
-    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const lastTransactionDate = customer.lastTransactionDate ? 
-      new Date(customer.lastTransactionDate) : new Date(0);
-    
-    if (lastTransactionDate < firstDayOfMonth) {
-      return {
-        ...customer,
-        sevaCoinsCurrentMonth: 0,
-        lastTransactionDate: today.toISOString()
-      };
-    }
-    return customer;
-  };
 
   // Fetch customers from Firestore
   useEffect(() => {
@@ -101,15 +84,17 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     customer.mobile.includes(searchTerm)
   );
 
-  // Automatically use all available Surabhi coins
+  // Automatically use all available Surabhi coins if customer is selected
   useEffect(() => {
-    if (selectedCustomer && selectedCustomer.surabhiCoins > 0 && saleAmount) {
-      setSurabhiCoinsToUse(Math.min(selectedCustomer.surabhiCoins, saleAmount));
+    if (selectedCustomer && saleAmount && saleAmount > 0) {
+      const maxCoinsToUse = Math.min(selectedCustomer.surabhiCoins, saleAmount);
+      setSurabhiCoinsToUse(maxCoinsToUse);
     } else {
       setSurabhiCoinsToUse(0);
     }
   }, [selectedCustomer, saleAmount]);
 
+  // Calculate sale details with accurate payment logic
   const calculateSale = () => {
     if (!saleAmount || saleAmount <= 0) return null;
 
@@ -120,42 +105,61 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     let walletDeduction = 0;
     let cashPayment = 0;
     let surabhiCoinsEarned = 0;
-    let goSevaContribution = 0;
+    let goSevaContribution = Math.floor(saleAmount * 0.01); // 1% of total amount for Go Seva
 
-    const remainingAmount = saleAmount - coinsToUse;
+    const remainingAfterCoins = saleAmount - coinsToUse;
 
-    if (selectedCustomer) {
-      if (paymentMethod === 'wallet') {
-        if (selectedCustomer.walletBalance >= remainingAmount) {
-          walletDeduction = remainingAmount;
-          goSevaContribution = saleAmount * 0.025;
-          surabhiCoinsEarned = remainingAmount * 0.025;
-        } else {
-          return null;
-        }
-      } else if (paymentMethod === 'cash') {
-        cashPayment = remainingAmount;
-        surabhiCoinsEarned = coinsToUse * 0.025 + cashPayment * 0.02;
-        goSevaContribution = saleAmount * 0.025;
-      } else if (paymentMethod === 'mixed') {
-        const availableWallet = selectedCustomer.walletBalance || 0;
-        walletDeduction = Math.min(availableWallet, remainingAmount);
-        cashPayment = remainingAmount - walletDeduction;
-        surabhiCoinsEarned = (coinsToUse + walletDeduction) * 0.025 + cashPayment * 0.02;
-        goSevaContribution = saleAmount * 0.025;
+    // For new customers (cash only)
+    // if (isNewCustomer) {
+    //   cashPayment = saleAmount;
+    //   surabhiCoinsEarned = Math.floor(cashPayment * 0.015); // 1.5% of cash payment for new customers
+    //   return {
+    //     totalAmount: saleAmount,
+    //     surabhiCoinsUsed: 0,
+    //     walletDeduction: 0,
+    //     cashPayment,
+    //     surabhiCoinsEarned,
+    //     goSevaContribution,
+    //     isValid: true
+    //   };
+    // }
+
+    // For registered customers
+    if (!selectedCustomer) return null;
+
+    const walletBalance = selectedCustomer.walletBalance || 0;
+
+    // Payment method logic
+    if (paymentMethod === 'wallet') {
+      if (walletBalance >= remainingAfterCoins) {
+        walletDeduction = remainingAfterCoins;
+        surabhiCoinsEarned = Math.floor(walletDeduction * 0.025); // 2.5% of wallet payment
+      } else {
+        return { isValid: false, error: 'Insufficient wallet balance' };
       }
-    } else {
-      cashPayment = saleAmount;
-      surabhiCoinsEarned = cashPayment * 0.015;
+    } 
+    else if (paymentMethod === 'cash') {
+      cashPayment = remainingAfterCoins;
+      surabhiCoinsEarned = Math.floor(cashPayment * 0.02); // 2% of cash payment
+    } 
+    else if (paymentMethod === 'mixed') {
+      walletDeduction = Math.min(walletBalance, remainingAfterCoins);
+      cashPayment = remainingAfterCoins - walletDeduction;
+      // 2.5% of wallet + 2% of cash
+      surabhiCoinsEarned = Math.floor(walletDeduction * 0.025 + cashPayment * 0.02);
     }
+
+    // Add bonus for using Surabhi coins (1% of coins used)
+    surabhiCoinsEarned += Math.floor(coinsToUse * 0.01);
 
     return {
       totalAmount: saleAmount,
       surabhiCoinsUsed: coinsToUse,
       walletDeduction,
       cashPayment,
-      surabhiCoinsEarned: Math.floor(surabhiCoinsEarned),
-      goSevaContribution: Math.floor(goSevaContribution)
+      surabhiCoinsEarned,
+      goSevaContribution,
+      isValid: true
     };
   };
 
@@ -174,6 +178,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     setIsLoading(true);
     
     try {
+      // Check if customer already exists
       const customerQuery = query(collection(db, 'customers'), where('mobile', '==', newCustomerMobile));
       const querySnapshot = await getDocs(customerQuery);
       
@@ -182,48 +187,82 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         return;
       }
       
+      // Create new customer
       const customerData = {
         name: newCustomerName,
         mobile: newCustomerMobile,
         walletBalance: 0,
-        surabhiCoins: Math.floor(saleAmount * 0.015),
-        sevaCoinsTotal: 0,
-        sevaCoinsCurrentMonth: 0,
+        surabhiCoins: saleCalculation?.surabhiCoinsEarned || 0,
         registered: false,
-        createdAt: new Date().toISOString(),
-        lastTransactionDate: new Date().toISOString(),
+        createdAt: serverTimestamp(),
+        lastTransactionDate: serverTimestamp(),
         createdBy: 'system',
-        email: '', 
         storeLocation,
         role: 'customer',
         walletId: `WALLET-${newCustomerMobile}`,
-        surabhiCoinsCurrentMonth: 0,
-        referredBy: null,
-        referralIncome: null,
-        referredUsers: null,
-        customerPassword: 'default123',
-        tpin: '0000'
+        tpin: '0000' // Default TPIN
       };
       
       await setDoc(doc(db, 'customers', newCustomerMobile), customerData);
       
+      // Record transaction
       const saleData: SalesTransaction = {
         customerName: newCustomerName,
         customerMobile: newCustomerMobile,
         amount: saleAmount,
-        paymentMethod: 'cash', 
+        paymentMethod: 'cash',
         surabhiCoinsUsed: 0,
-        storeLocation,
-        processedBy: 'system',
         walletDeduction: 0,
         cashPayment: saleAmount,
+        storeLocation,
+        processedBy: 'system',
         isCustomerRegistered: false,
+        createdAt: Timestamp.fromDate(new Date())
       };
       
       await addDoc(collection(db, 'transactions'), saleData);
       
+      // Update Seva Pool
+      const sevaPoolRef = doc(db, 'SevaPool', 'main');
+      const sevaPoolSnap = await getDoc(sevaPoolRef);
+      
+      const sevaContribution = saleCalculation?.goSevaContribution || 0;
+      
+      if (sevaPoolSnap.exists()) {
+        await updateDoc(sevaPoolRef, {
+          currentBalance: increment(sevaContribution),
+          totalContributions: increment(sevaContribution),
+          contributionsCurrentMonth: increment(sevaContribution),
+          lastAllocatedDate: serverTimestamp()
+        });
+      } else {
+        await setDoc(sevaPoolRef, {
+          currentBalance: sevaContribution,
+          totalContributions: sevaContribution,
+          totalAllocations: 0,
+          contributionsCurrentMonth: sevaContribution,
+          allocationsCurrentMonth: 0,
+          lastResetDate: serverTimestamp(),
+          lastAllocatedDate: serverTimestamp()
+        });
+      }
+      
+      // Record activity
+      const activity: ActivityType = {
+        id: `act-${Date.now()}`,
+        type: 'transaction',
+        description: `Purchase of ₹${saleAmount} by new customer ${newCustomerName}`,
+        amount: saleAmount,
+        user: newCustomerMobile,
+        location: storeLocation,
+        date: serverTimestamp()
+      };
+      
+      await addDoc(collection(db, 'Activity'), activity);
+      
       toast.success(`Sale of ₹${saleAmount} completed for new customer!`);
       
+      // Reset form
       setNewCustomerName('');
       setNewCustomerMobile('');
       setSaleAmount(undefined);
@@ -239,18 +278,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
   };
 
   const handleRegisteredCustomerSale = async () => {
-    if (!selectedCustomer || !saleAmount || !paymentMethod) {
-      toast.error('Please fill all required fields');
-      return;
-    }
-    
-    if (!saleCalculation) {
+    if (!selectedCustomer || !saleAmount || !saleCalculation || !saleCalculation.isValid) {
       toast.error('Invalid sale calculation');
-      return;
-    }
-    
-    if (paymentMethod === 'wallet' && saleCalculation.walletDeduction > (selectedCustomer.walletBalance || 0)) {
-      toast.error('Insufficient wallet balance');
       return;
     }
     
@@ -262,125 +291,100 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     setIsLoading(true);
     
     try {
-      const updatedCustomer = checkAndResetMonthlyValues(selectedCustomer);
-      
-      const newWalletBalance = updatedCustomer.walletBalance - saleCalculation.walletDeduction;
-      const newSurabhiCoins = updatedCustomer.surabhiCoins - saleCalculation.surabhiCoinsUsed + saleCalculation.surabhiCoinsEarned;
-      const newSevaCoinsTotal = updatedCustomer.sevaCoinsTotal + saleCalculation.goSevaContribution;
-      const newSevaCoinsCurrentMonth = updatedCustomer.sevaCoinsCurrentMonth + saleCalculation.goSevaContribution;
-      
-      const customerQuery = query(
-        collection(db, 'customers'),
-        where('mobile', '==', updatedCustomer.mobile)
-      );
-      const customerSnapshot = await getDocs(customerQuery);
-      const customerRef = customerSnapshot.docs[0].ref;
-      
-      if (!customerSnapshot.empty) {
-      const customerDocId = customerSnapshot.docs[0].id;
-      const customerRef = doc(db, 'customers', customerDocId);
+      const customerRef = doc(db, 'customers', selectedCustomer.mobile);
+      const newWalletBalance = (selectedCustomer.walletBalance || 0) - saleCalculation.walletDeduction;
+      const newSurabhiCoins = (selectedCustomer.surabhiCoins || 0) - saleCalculation.surabhiCoinsUsed + saleCalculation.surabhiCoinsEarned;
 
+      // Update customer balances
       await updateDoc(customerRef, {
         walletBalance: newWalletBalance,
         surabhiCoins: newSurabhiCoins,
-        sevaCoinsTotal: newSevaCoinsTotal,
-        sevaCoinsCurrentMonth: newSevaCoinsCurrentMonth,
-        lastTransactionDate: new Date().toISOString()
+        lastTransactionDate: serverTimestamp()
       });
-    }
-      
+
+      // Record transaction
       const saleData: SalesTransaction = {
-        customerName: updatedCustomer.name,
-        customerMobile: updatedCustomer.mobile,
+        customerName: selectedCustomer.name,
+        customerMobile: selectedCustomer.mobile,
         amount: saleCalculation.totalAmount,
         paymentMethod,
         surabhiCoinsUsed: saleCalculation.surabhiCoinsUsed,
-        storeLocation,
-        processedBy: 'system',
         walletDeduction: saleCalculation.walletDeduction,
         cashPayment: saleCalculation.cashPayment,
+        storeLocation,
+        processedBy: 'system',
+        isCustomerRegistered: true,
         previousBalance: {
-          wallet: updatedCustomer.walletBalance,
-          surabhiCoins: updatedCustomer.surabhiCoins,
-          sevaCoins: updatedCustomer.sevaCoinsTotal
+          wallet: selectedCustomer.walletBalance || 0,
+          surabhiCoins: selectedCustomer.surabhiCoins || 0,
         },
         newBalance: {
           wallet: newWalletBalance,
           surabhiCoins: newSurabhiCoins,
-          sevaCoins: newSevaCoinsTotal
         },
-        isCustomerRegistered: true
+        createdAt: Timestamp.fromDate(new Date())
       };
       
       await addDoc(collection(db, 'transactions'), saleData);
       
-      const today = new Date();
-      const monthYear = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-      
+      // Update Seva Pool
       const sevaPoolRef = doc(db, 'SevaPool', 'main');
       const sevaPoolSnap = await getDoc(sevaPoolRef);
       
-      let sevaContribution = saleCalculation.goSevaContribution;
-      
       if (sevaPoolSnap.exists()) {
         await updateDoc(sevaPoolRef, {
-          currentBalance: increment(sevaContribution),
-          totalContributions: increment(sevaContribution),
-          contributionsCurrentMonth: increment(sevaContribution),
-          lastAllocatedDate: new Date().toISOString()
-        });
-      } else {
-        await setDoc(sevaPoolRef, {
-          currentBalance: sevaContribution,
-          totalContributions: sevaContribution,
-          totalAllocations: 0,
-          contributionsCurrentMonth: sevaContribution,
-          allocationsCurrentMonth: 0,
-          lastResetDate: new Date().toISOString(),
-          lastAllocatedDate: new Date().toISOString()
+          currentBalance: increment(saleCalculation.goSevaContribution),
+          totalContributions: increment(saleCalculation.goSevaContribution),
+          contributionsCurrentMonth: increment(saleCalculation.goSevaContribution),
+          lastAllocatedDate: serverTimestamp()
         });
       }
+      
+      // Record Seva transaction
+      const today = new Date();
+      const monthYear = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
       
       const sevaTransaction: SevaTransaction = {
         id: `seva-${Date.now()}`,
         type: 'contribution',
-        amount: sevaContribution,
-        description: `Contribution from sale by ${updatedCustomer.name} at ${storeLocation}`,
+        amount: saleCalculation.goSevaContribution,
+        description: `Contribution from sale by ${selectedCustomer.name}`,
         date: serverTimestamp(),
-        customerMobile: updatedCustomer.mobile,
-        customerName: updatedCustomer.name,
+        customerMobile: selectedCustomer.mobile,
+        customerName: selectedCustomer.name,
         monthYear,
         storeLocation
       };
       
       await addDoc(collection(db, 'SevaTransaction'), sevaTransaction);
       
+      // Record activity
       const activity: ActivityType = {
         id: `act-${Date.now()}`,
         type: 'transaction',
-        description: `Purchase of ₹${saleCalculation.totalAmount} by ${updatedCustomer.name}`,
+        description: `Purchase of ₹${saleCalculation.totalAmount} by ${selectedCustomer.name}`,
         amount: saleCalculation.totalAmount,
-        user: updatedCustomer.mobile,
+        user: selectedCustomer.mobile,
         location: storeLocation,
         date: serverTimestamp()
       };
       
       await addDoc(collection(db, 'Activity'), activity);
       
-      setCustomers(customers.map(c => 
-        c.mobile === updatedCustomer.mobile ? 
-        { 
-          ...c, 
-          walletBalance: newWalletBalance,
-          surabhiCoins: newSurabhiCoins,
-          sevaCoinsTotal: newSevaCoinsTotal,
-          sevaCoinsCurrentMonth: newSevaCoinsCurrentMonth,
-          lastTransactionDate: new Date().toISOString()
-        } : c
-      ));
+      // Update local state
+setCustomers(customers.map(c => 
+  c.mobile === selectedCustomer.mobile ? 
+  { 
+    ...c, 
+    walletBalance: newWalletBalance, 
+    surabhiCoins: newSurabhiCoins, 
+    lastTransactionDate:  Timestamp.fromDate(new Date()) 
+  } : c
+));
       
       toast.success(`Sale of ₹${saleAmount} completed successfully!`);
       
+      // Reset form
       setSaleAmount(undefined);
       setPaymentMethod('wallet');
       setSurabhiCoinsToUse(0);
@@ -401,6 +405,20 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     if (isNewCustomer) {
       await handleNewCustomerSale();
     } else {
+      // Validate payment method before asking for TPIN
+      if (!selectedCustomer || !saleAmount) {
+        toast.error('Please select a customer and enter sale amount');
+        return;
+      }
+      
+      if (paymentMethod === 'wallet') {
+        const remainingAfterCoins = saleAmount - (saleCalculation?.surabhiCoinsUsed || 0);
+        if ((selectedCustomer.walletBalance || 0) < remainingAfterCoins) {
+          toast.error('Insufficient wallet balance for this payment method');
+          return;
+        }
+      }
+      
       setShowTpinInput(true);
     }
   };
@@ -416,6 +434,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           <p className="text-gray-600">Process customer purchases at {storeLocation}</p>
         </div>
       </div>
+      
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Customer Selection */}
         <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
@@ -485,7 +504,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                     </div>
                   )}
                 </div>
-                <Button
+                {/* <Button
                   onClick={() => {
                     setIsNewCustomer(true);
                     setSelectedCustomer(null);
@@ -495,12 +514,12 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                 >
                   <UserPlus className="h-4 w-4 mr-2" />
                   New Customer (Cash Only)
-                </Button>
+                </Button> */}
               </>
             ) : (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="newName">Customer Name</Label>
+                  <Label htmlFor="newName">Customer Name *</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
@@ -509,11 +528,12 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                       value={newCustomerName}
                       onChange={(e) => setNewCustomerName(e.target.value)}
                       className="pl-10 h-12"
+                      required
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="newMobile">Mobile Number</Label>
+                  <Label htmlFor="newMobile">Mobile Number *</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
@@ -523,6 +543,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                       value={newCustomerMobile}
                       onChange={(e) => setNewCustomerMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
                       className="pl-10 h-12"
+                      required
                     />
                   </div>
                 </div>
@@ -539,7 +560,6 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           </CardContent>
         </Card>
         
-        {/* Sale Processing */}
         <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -566,8 +586,16 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                         <p className="font-bold">{selectedCustomer.surabhiCoins}</p>
                       </div>
                       <div>
-                        <p className="text-red-700">Seva Coins (Month)</p>
-                        <p className="font-bold">₹{selectedCustomer.sevaCoinsCurrentMonth}</p>
+                        <p className="text-purple-700">Last Purchase</p>
+                        <p className="font-bold">
+                          {selectedCustomer.lastTransactionDate
+                            ? typeof selectedCustomer.lastTransactionDate === 'string'
+                              ? new Date(selectedCustomer.lastTransactionDate).toLocaleString()
+                              : (selectedCustomer.lastTransactionDate instanceof Date
+                                  ? selectedCustomer.lastTransactionDate.toLocaleString()
+                                  : 'Invalid date')
+                            : 'Never'}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -575,7 +603,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="amount">Sale Amount (₹)</Label>
+                    <Label htmlFor="amount">Sale Amount (₹) *</Label>
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input
@@ -586,6 +614,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                         onChange={(e) => setSaleAmount(Number(e.target.value))}
                         className="pl-10 h-12"
                         min="1"
+                        required
                       />
                     </div>
                   </div>
@@ -600,9 +629,17 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                           type="number"
                           placeholder="Enter coins to use"
                           value={surabhiCoinsToUse}
-                          onChange={(e) => setSurabhiCoinsToUse(Math.max(0, Math.min(Number(e.target.value), selectedCustomer.surabhiCoins)))
-                          }
+                          onChange={(e) => {
+                            const value = Number(e.target.value);
+                            const maxCoins = Math.min(
+                              selectedCustomer.surabhiCoins, 
+                              saleAmount || 0
+                            );
+                            setSurabhiCoinsToUse(Math.max(0, Math.min(value, maxCoins)));
+                          }}
                           className="pl-10 h-12"
+                          min="0"
+                          max={selectedCustomer.surabhiCoins}
                         />
                       </div>
                       <p className="text-xs text-gray-600">
@@ -613,12 +650,12 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                   
                   {selectedCustomer && (
                     <div className="space-y-2">
-                      <Label htmlFor="payment">Payment Method</Label>
+                      <Label htmlFor="payment">Payment Method *</Label>
                       <Select 
                         value={paymentMethod} 
                         onValueChange={(value) => setPaymentMethod(value as 'wallet' | 'cash' | 'mixed')}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="h-12">
                           <SelectValue placeholder="Select payment method" />
                         </SelectTrigger>
                         <SelectContent>
@@ -627,6 +664,16 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                           <SelectItem value="mixed">Wallet + Cash</SelectItem>
                         </SelectContent>
                       </Select>
+                      {paymentMethod === 'wallet' && (
+                        <p className="text-xs text-blue-600">
+                          Full amount (after coins) will be deducted from wallet
+                        </p>
+                      )}
+                      {paymentMethod === 'mixed' && (
+                        <p className="text-xs text-blue-600">
+                          Maximum wallet amount will be used first, then cash
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -660,29 +707,13 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                           <span className="font-bold text-green-600">₹{saleCalculation.cashPayment}</span>
                         </div>
                       )}
-                      
-                      {saleCalculation.surabhiCoinsEarned > 0 && (
-                        <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
-                          <span className="text-sm font-medium text-yellow-900">
-                            {selectedCustomer ? 'Surabhi Coins Earned' : 'Seva Coins Earned'}
-                          </span>
-                          <span className="font-bold text-yellow-600">+{Math.floor(saleCalculation.surabhiCoinsEarned)}</span>
-                        </div>
-                      )}
-                      
-                      {selectedCustomer && saleCalculation.goSevaContribution > 0 && (
-                        <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-                          <span className="text-sm font-medium text-red-900">Go Seva Contribution</span>
-                          <span className="font-bold text-red-600">₹{Math.floor(saleCalculation.goSevaContribution)}</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
                 
                 {showTpinInput && selectedCustomer && (
                   <div className="space-y-2">
-                    <Label htmlFor="tpin">Enter Customer TPIN</Label>
+                    <Label htmlFor="tpin">Enter Customer TPIN *</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input
@@ -692,10 +723,11 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                         value={tpin}
                         onChange={(e) => setTpin(e.target.value)}
                         className="pl-10 h-12"
+                        required
                       />
                     </div>
                     <p className="text-xs text-gray-600">
-                      Confirm sale with customer TPIN
+                      Confirm sale with customer's 4-digit TPIN
                     </p>
                   </div>
                 )}
@@ -705,7 +737,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                     onClick={handleSale}
                     disabled={isLoading || !saleAmount || 
                       (selectedCustomer && !paymentMethod) ||
-                      (isNewCustomer && (!newCustomerName || !newCustomerMobile))}
+                      (isNewCustomer && (!newCustomerName || !newCustomerMobile)) ||
+                      (saleCalculation && !saleCalculation.isValid)}
                     className="w-full h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium"
                   >
                     {isLoading ? (
@@ -713,21 +746,20 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                     ) : (
                       <CheckCircle className="h-4 w-4 mr-2" />
                     )}
-                    Complete Sale
+                    {selectedCustomer ? 'Process Sale' : 'Complete New Customer Sale'}
                   </Button>
                 ) : (
                   <div className="space-y-2">
                     <Button
-                      onClick={() => {
-                        if (tpin === selectedCustomer.tpin) {
-                          handleRegisteredCustomerSale();
-                        } else {
-                          toast.error("Invalid TPIN. Please try again.");
-                        }
-                      }}
+                      onClick={handleRegisteredCustomerSale}
                       disabled={isLoading || tpin.length !== 4}
                       className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-medium"
                     >
+                      {isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                      )}
                       Confirm Sale with TPIN
                     </Button>
                     
