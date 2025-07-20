@@ -40,17 +40,13 @@ export const CustomerManagement = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStore, setFilterStore] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
+  // const [filterStatus, setFilterStatus] = useState('all');
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
-  const [adminPin, setAdminPin] = useState('');
-  const [pinError, setPinError] = useState('');
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editedData, setEditedData] = useState<Partial<Customer>>({});
-  const ADMIN_PIN = '1234'; // In production, use environment variables
 
   // Fetch customers from Firestore
   useEffect(() => {
@@ -62,29 +58,31 @@ export const CustomerManagement = () => {
         querySnapshot.forEach((doc) => {
           const data = doc.data();
           customersData.push({
-            name: data.name,
-            mobile: data.mobile,
-            email: data.email || '',
-            storeLocation: data.storeLocation || 'Unassigned',
-            walletBalance: data.walletBalance || 0,
-            surabhiCoins: data.surabhiCoins || 0,
-            surabhiCoinsCurrentMonth: data.surabhiCoinsCurrentMonth || 0,
-            sevaCoinsTotal: data.sevaCoinsTotal || 0,
-            sevaCoinsCurrentMonth: data.sevaCoinsCurrentMonth || 0,
-            registered: data.registered ?? false,
-            createdAt: data.createdAt ?? Timestamp.now(),
-            role: data.role || 'customer',
-            walletId: data.walletId || '',
-            customerPassword: data.customerPassword || '',
-            lastTransactionDate: data.lastTransactionDate ?? null,
-            referredBy: data.referredBy || '',
-            referredUsers: (data.referredUsers || []).map((ref: any) => ({
-              mobile: ref.mobile,
-              referralDate: ref.referralDate
-            })),
-            referralIncome: 0,
-            tpin: '',
-            walletBalanceCurrentMonth: 0
+          name: data.name,
+          mobile: data.mobile,
+          email: data.email || '',
+          storeLocation: data.storeLocation || 'Unassigned',
+          walletBalance: data.walletBalance || 0,
+          walletRechargeDone: data.walletRechargeDone || false,
+          walletBalanceCurrentMonth: data.walletBalanceCurrentMonth || 0,
+          role: data.role || 'customer',
+          walletId: data.walletId || '',
+          surabhiCoins: data.surabhiCoins || 0,
+          surabhiCoinsCurrentMonth: data.surabhiCoinsCurrentMonth || 0,
+          sevaCoinsTotal: data.sevaCoinsTotal || 0,
+          sevaCoinsCurrentMonth: data.sevaCoinsCurrentMonth || 0,
+          referredBy: data.referredBy || null,
+          referralIncome: data.referralIncome || null,
+          referredUsers: (data.referredUsers || []).map((ref: any) => ({
+          mobile: ref.mobile,
+          name: ref.name || '',
+          referralDate: ref.referralDate || Timestamp.now()
+          })),
+          registered: data.registered ?? false,
+          lastTransactionDate: data.lastTransactionDate || Timestamp.now(),
+          createdAt: data.createdAt || Timestamp.now(),
+          customerPassword: data.customerPassword || '',
+          tpin: data.tpin || ''
           });
         });
         setCustomers(customersData);
@@ -99,20 +97,27 @@ export const CustomerManagement = () => {
       try {
         const querySnapshot = await getDocs(collection(db, 'stores'));
         const storesData: StoreType[] = querySnapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            name: data.name,
-            location: data.location,
-            address: data.address,
-            contactNumber: data.contactNumber,
-            status: data.status,
-            createdAt: data.createdAt?.toDate(),
-            updatedAt: data.updatedAt?.toDate(),
-            walletCommission: data.walletCommission ?? 0,
-            surabhiCommission: data.surabhiCommission ?? 0,
-            sevaCommission: data.sevaCommission ?? 0
-          }; 
+        const data = doc.data();
+        return {
+        id: doc.id,
+        name: data.name,
+        storeLocation: data.location || data.storeLocation || '',
+        address: data.address || '',
+        referralCommission: data.referralCommission ?? 0,
+        surabhiCommission: data.surabhiCommission ?? 0,
+        sevaCommission: data.sevaCommission ?? 0,
+        cashOnlyCommission: data.cashOnlyCommission ?? 0,
+        contactNumber: data.contactNumber || '',
+        status: data.status === 'active' || data.status === 'inactive' 
+        ? data.status 
+        : 'inactive', // Default to inactive if invalid status
+        createdAt: data.createdAt instanceof Timestamp 
+        ? data.createdAt 
+        : Timestamp.fromDate(new Date(data.createdAt || new Date())),
+        updatedAt: data.updatedAt instanceof Timestamp 
+        ? data.updatedAt 
+        : Timestamp.fromDate(new Date(data.updatedAt || new Date()))
+        };
         });
         setStores(storesData);
       } catch (error) {
@@ -132,10 +137,10 @@ export const CustomerManagement = () => {
                          customer.email.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStore = filterStore === 'all' || customer.storeLocation === filterStore;
-    const matchesStatus = filterStatus === 'all' || 
-                         (filterStatus === 'active' ? customer.registered : !customer.registered);
+    // const matchesStatus = filterStatus === 'all' || 
+    //                      (filterStatus === 'active' ? customer.registered : !customer.registered);
     
-    return matchesSearch && matchesStore && matchesStatus;
+    return matchesSearch && matchesStore;
   });
 
   // Calculate analytics
@@ -159,9 +164,9 @@ export const CustomerManagement = () => {
   };
 
   const viewCustomerDetails = (customer: Customer) => {
-  console.log("Viewing customer details:", customer);
-  setSelectedCustomer(customer);
-  setIsCustomerDialogOpen(true);
+    console.log("Viewing customer details:", customer);
+    setSelectedCustomer(customer);
+    setIsCustomerDialogOpen(true);
   };
 
   const handleEditClick = (customer: Customer) => {
@@ -176,22 +181,10 @@ export const CustomerManagement = () => {
       registered: customer.registered,
       tpin: customer.tpin
     });
-    setIsPinDialogOpen(true);
-    setAdminPin('');
-    setPinError('');
+    setIsEditDialogOpen(true);
   };
 
-  const verifyAdminPin = () => {
-    if (adminPin === ADMIN_PIN) {
-      setPinError('');
-      setIsPinDialogOpen(false);
-      setIsEditDialogOpen(true);
-    } else {
-      setPinError('Invalid admin PIN');
-    }
-  };
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setEditedData(prev => ({
       ...prev,
@@ -266,119 +259,92 @@ export const CustomerManagement = () => {
 
   return (
     <div className="space-y-6">
-      {/* Admin PIN Verification Dialog */}
-      <Dialog open={isPinDialogOpen} onOpenChange={setIsPinDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Admin Verification Required</DialogTitle>
-            <DialogDescription>
-              Please enter admin PIN to edit customer details.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="adminPin" className="text-right">
-                Admin PIN
-              </Label>
-              <Input
-                id="adminPin"
-                type="password"
-                value={adminPin}
-                onChange={(e) => setAdminPin(e.target.value)}
-                className="col-span-3"
-                placeholder="Enter admin PIN"
-              />
-            </div>
-            {pinError && <p className="text-sm text-red-500 text-center">{pinError}</p>}
-          </div>
-          <DialogFooter>
-            <Button onClick={verifyAdminPin}>Verify</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Customer Details Dialog */}
       <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
-  <DialogContent className="sm:max-w-[625px] max-h-[80vh] overflow-y-auto">
-    <DialogHeader>
-      <DialogTitle>Customer Details</DialogTitle>
-    </DialogHeader>
-    
-    {selectedCustomer && (
-      <div className="grid gap-4 py-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <h4 className="font-medium">Basic Information</h4>
-            <div className="space-y-2 mt-2 text-sm">
-              <p><span className="text-muted-foreground">Name:</span> {selectedCustomer.name}</p>
-              <p><span className="text-muted-foreground">Mobile:</span> {selectedCustomer.mobile}</p>
-              <p><span className="text-muted-foreground">Email:</span> {selectedCustomer.email || 'N/A'}</p>
-              <p><span className="text-muted-foreground">Store Location:</span> {selectedCustomer.storeLocation}</p>
-              <p><span className="text-muted-foreground">Registered:</span> {selectedCustomer.registered ? 'Yes' : 'No'}</p>
-              <p><span className="text-muted-foreground">Role:</span> {selectedCustomer.role}</p>
-            </div>
-          </div>
+        <DialogContent className="sm:max-w-[625px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Customer Details</DialogTitle>
+          </DialogHeader>
+          
+          {selectedCustomer && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-medium">Basic Information</h4>
+                  <div className="space-y-2 mt-2 text-sm">
+                    <p><span className="text-muted-foreground">Name:</span> {selectedCustomer.name}</p>
+                    <p><span className="text-muted-foreground">Mobile:</span> {selectedCustomer.mobile}</p>
+                    <p><span className="text-muted-foreground">Email:</span> {selectedCustomer.email || 'N/A'}</p>
+                    <p><span className="text-muted-foreground">Store Location:</span> {selectedCustomer.storeLocation}</p>
+                    <p><span className="text-muted-foreground">Registered:</span> {selectedCustomer.registered ? 'Yes' : 'No'}</p>
+                    <p><span className="text-muted-foreground">Role:</span> {selectedCustomer.role}</p>
+                  </div>
+                </div>
 
-          <div>
-            <h4 className="font-medium">Wallet Information</h4>
-            <div className="space-y-2 mt-2 text-sm">
-              <p><span className="text-muted-foreground">Wallet Balance:</span> ₹{selectedCustomer.walletBalance.toFixed(2)}</p>
-              <p><span className="text-muted-foreground">This Month:</span> ₹{selectedCustomer.walletBalanceCurrentMonth.toFixed(2)}</p>
-              <p><span className="text-muted-foreground">Surabhi Coins:</span> {selectedCustomer.surabhiCoins}</p>
-              <p><span className="text-muted-foreground">This Month:</span> {selectedCustomer.surabhiCoinsCurrentMonth}</p>
-              <p><span className="text-muted-foreground">Seva Coins:</span> {selectedCustomer.sevaCoinsTotal}</p>
-              <p><span className="text-muted-foreground">This Month:</span> {selectedCustomer.sevaCoinsCurrentMonth}</p>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <h4 className="font-medium">Referral Information</h4>
-          <div className="space-y-2 mt-2 text-sm">
-            <p><span className="text-muted-foreground">Referred By:</span> {selectedCustomer.referredBy || 'N/A'}</p>
-            <p><span className="text-muted-foreground">Referral Income:</span> {selectedCustomer.referralIncome ? `₹${selectedCustomer.referralIncome.toFixed(2)}` : 'N/A'}</p>
-            
-            {selectedCustomer.referredUsers && selectedCustomer.referredUsers.length > 0 && (
-              <div>
-                <p className="font-medium mt-2">Referred Users:</p>
-                <div className="border rounded p-2 mt-1">
-                  {selectedCustomer.referredUsers.map((user, index) => (
-                    <div key={index} className="flex justify-between py-1 border-b last:border-b-0">
-                      <span>{user.mobile}</span>
-                      <span className="text-muted-foreground">{user.referralDate}</span>
-                    </div>
-                  ))}
+                <div>
+                  <h4 className="font-medium">Wallet Information</h4>
+                  <div className="space-y-2 mt-2 text-sm">
+                    <p><span className="text-muted-foreground">Wallet Balance:</span> ₹{selectedCustomer.walletBalance.toFixed(2)}</p>
+                    <p><span className="text-muted-foreground">This Month:</span> ₹{selectedCustomer.walletBalanceCurrentMonth.toFixed(2)}</p>
+                    <p><span className="text-muted-foreground">Surabhi Coins:</span> {selectedCustomer.surabhiCoins}</p>
+                    <p><span className="text-muted-foreground">This Month:</span> {selectedCustomer.surabhiCoinsCurrentMonth}</p>
+                    <p><span className="text-muted-foreground">Seva Coins:</span> {selectedCustomer.sevaCoinsTotal}</p>
+                    <p><span className="text-muted-foreground">This Month:</span> {selectedCustomer.sevaCoinsCurrentMonth}</p>
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <h4 className="font-medium">Account Details</h4>
-            <div className="space-y-2 mt-2 text-sm">
-              <p><span className="text-muted-foreground">Wallet ID:</span> {selectedCustomer.walletId}</p>
-              <p><span className="text-muted-foreground">Created At:</span> {selectedCustomer.createdAt instanceof Timestamp
-  ? selectedCustomer.createdAt.toDate().toLocaleString()
-  : "N/A"}</p>
-              <p><span className="text-muted-foreground">Last Transaction:</span> {selectedCustomer.lastTransactionDate instanceof Timestamp
-  ? selectedCustomer.lastTransactionDate.toDate().toLocaleString()
-  : "N/A"}</p>
-            </div>
-          </div>
+              <div>
+                <h4 className="font-medium">Referral Information</h4>
+                <div className="space-y-2 mt-2 text-sm">
+                  <p><span className="text-muted-foreground">Referred By:</span> {selectedCustomer.referredBy || 'N/A'}</p>
+                  <p><span className="text-muted-foreground">Referral Income:</span> {selectedCustomer.referralIncome ? `₹${selectedCustomer.referralIncome.toFixed(2)}` : 'N/A'}</p>
+                  
+                  {selectedCustomer.referredUsers && selectedCustomer.referredUsers.length > 0 && (
+                    <div>
+                      <p className="font-medium mt-2">Referred Users:</p>
+                      <div className="border rounded p-2 mt-1">
+                        {selectedCustomer.referredUsers.map((user, index) => (
+                          <div key={index} className="flex justify-between py-1 border-b last:border-b-0">
+                            <span>{user.mobile}</span>
+                            <span className="text-muted-foreground">
+                            {user.referralDate instanceof Timestamp 
+                              ? user.referralDate.toDate().toLocaleString() 
+                              : new Date(user.referralDate).toLocaleString()}
+                          </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
 
-          <div>
-            <h4 className="font-medium">Security</h4>
-            <div className="space-y-2 mt-2 text-sm">
-              <p><span className="text-muted-foreground">TPIN Set:</span> {selectedCustomer.tpin ? 'Yes' : 'No'}</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-medium">Account Details</h4>
+                  <div className="space-y-2 mt-2 text-sm">
+                    <p><span className="text-muted-foreground">Wallet ID:</span> {selectedCustomer.walletId}</p>
+                    <p><span className="text-muted-foreground">Created At:</span> {selectedCustomer.createdAt instanceof Timestamp
+                      ? selectedCustomer.createdAt.toDate().toLocaleString()
+                      : "N/A"}</p>
+                    <p><span className="text-muted-foreground">Last Transaction:</span> {selectedCustomer.lastTransactionDate instanceof Timestamp
+                      ? selectedCustomer.lastTransactionDate.toDate().toLocaleString()
+                      : "N/A"}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-medium">Security</h4>
+                  <div className="space-y-2 mt-2 text-sm">
+                    <p><span className="text-muted-foreground">TPIN Set:</span> {selectedCustomer.tpin ? 'Yes' : 'No'}</p>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      </div>
-    )}
-  </DialogContent>
-</Dialog>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Customer Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -673,16 +639,16 @@ export const CustomerManagement = () => {
                 </SelectContent>
               </Select>
               
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
+              {/* <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger className="w-full sm:w-36">
                   <SelectValue placeholder="All Status" />
-                </SelectTrigger>
-                <SelectContent>
+                </SelectTrigger> */}
+                {/* <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="active">Registered</SelectItem>
                   <SelectItem value="inactive">Guests</SelectItem>
-                </SelectContent>
-              </Select>
+                </SelectContent> */}
+              {/* </Select> */}
             </div>
           </div>
         </CardHeader>

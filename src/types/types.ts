@@ -23,6 +23,10 @@ export interface Customer {
   tpin: string;
 }
 
+export interface TransactionsPageProps {
+  storeLocation: string;
+}
+
 export interface UserRegistrationProps {
   storeLocation: string;
 }
@@ -69,6 +73,22 @@ export interface StoreType {
   updatedAt: Timestamp;
 }
 
+export interface RechargeRecord {
+  id?: string; 
+  customerMobile: string;
+  customerName: string;
+  amount: number;
+  storeLocation: string;
+  storeName: string;
+  surabhiCoinsEarned: number;
+  sevaAmountEarned: number;
+  referralAmountEarned?: number;
+  referredBy?: string | null;
+  timestamp: Timestamp;
+  paymentMethod?: 'cash';
+  staffName: string; // ID of staff who processed
+}
+
 export interface SalesTransaction  {
   id?: string;
   customerName: string;
@@ -94,11 +114,10 @@ export interface SalesTransaction  {
 };
 
 export interface SevaTransaction {
-  id: string;
   type: 'contribution' | 'allocation';
   amount: number;
   description: string;
-  date: import('firebase/firestore').FieldValue;
+  date: Timestamp;
   customerMobile?: string;
   customerName?: string;
   monthYear: string; // Format: "YYYY-MM"
@@ -111,8 +130,8 @@ export interface SevaPool {
   totalAllocations: number;
   contributionsCurrentMonth : number;
   allocationsCurrentMonth: number;
-  lastResetDate: import('firebase/firestore').FieldValue;
-  lastAllocatedDate: import('firebase/firestore').FieldValue;
+  lastResetDate: Timestamp;
+  lastAllocatedDate: Timestamp;
 }
 
 export interface ActivityType {
@@ -122,7 +141,7 @@ export interface ActivityType {
   amount?: number;
   user: string;
   location: string;
-  date: import('firebase/firestore').FieldValue;
+  date: Timestamp;
 }
 
 export interface AccountTx {

@@ -17,32 +17,19 @@ import {
   Users,
   Loader2,
   RefreshCw,
-  Printer,
-  Eye
+  Eye,
+  Wallet,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { collection, getDocs, Timestamp, where, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 
-interface Transaction {
-  id: string;
-  customerName: string;
-  mobile: string;
-  storeLocation: string;
-  amount: number;
-  staffInWork: string;
-  paymentMethod: 'wallet' | 'cash' | 'mixed';
-  surabhiCoinsUsed: number;
-  surabhiCoinsEarned: number;
-  goSevaContribution: number;
-  timestamp: string;
-  status: 'completed' | 'pending' | 'failed';
-}
-
-import { StoreType, ActivityType} from '@/types/types';
+import { StoreType, SalesTransaction, RechargeRecord } from '@/types/types';
 
 export const SalesManagement = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<SalesTransaction[]>([]);
   const [stores, setStores] = useState<StoreType[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -51,10 +38,15 @@ export const SalesManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStore, setFilterStore] = useState('all');
   const [filterPayment, setFilterPayment] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
 
-  const [recharges, setRecharges] = useState<ActivityType[]>([]);
+  const [recharges, setRecharges] = useState<RechargeRecord[]>([]);
   const [activeTab, setActiveTab] = useState('transactions');
+
+  // Pagination state
+  const [transactionsPage, setTransactionsPage] = useState(1);
+  const [rechargesPage, setRechargesPage] = useState(1);
+  const [transactionsPerPage, setTransactionsPerPage] = useState(10);
+  const [rechargesPerPage, setRechargesPerPage] = useState(10);
 
   // Fetch transactions from Firestore
   const fetchTransactions = async () => {
@@ -64,8 +56,8 @@ export const SalesManagement = () => {
       const transactionsData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        timestamp: doc.data().timestamp?.toDate().toISOString() || new Date().toISOString()
-      })) as Transaction[];
+        createdAt: doc.data().createdAt || Timestamp.now()
+      })) as SalesTransaction[];
       setTransactions(transactionsData);
     } catch (err) {
       console.error('Error fetching transactions:', err);
@@ -87,7 +79,6 @@ export const SalesManagement = () => {
         createdAt: doc.data().createdAt?.toDate() || new Date(),
         updatedAt: doc.data().updatedAt?.toDate() || new Date()
       })) as StoreType[];
-      // Only include active stores in the filter options
       setStores(storesData.filter(store => store.status === 'active'));
     } catch (err) {
       console.error('Error fetching stores:', err);
@@ -95,19 +86,17 @@ export const SalesManagement = () => {
     }
   };
 
-    // Fetch recharges
+  // Fetch recharges from Firestore
   const fetchRecharges = async () => {
     try {
-      const activitiesRef = collection(db, 'Activity');
-      const querySnapshot = await getDocs(
-        query(activitiesRef, where('type', '==', 'recharge'))
-      );
+      const rechargesRef = collection(db, 'recharges');
+      const querySnapshot = await getDocs(rechargesRef);
       
       const rechargesData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        date: doc.data().date?.toDate() || new Date()
-      })) as ActivityType[];
+        timestamp: doc.data().timestamp || Timestamp.now()
+      })) as RechargeRecord[];
       
       setRecharges(rechargesData);
     } catch (err) {
@@ -122,30 +111,49 @@ export const SalesManagement = () => {
       await Promise.all([fetchTransactions(), fetchStores(), fetchRecharges()]);
     };
     loadData();
-    console.log("Is it coming here in line 135")
   }, []);
 
   const handleRefresh = () => {
     setRefreshing(true);
+    setTransactionsPage(1);
+    setRechargesPage(1);
     fetchTransactions();
+    fetchRecharges();
   };
 
   const filteredTransactions = transactions.filter(transaction => {
     const matchesSearch = transaction.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         transaction.mobile.includes(searchTerm);
+                         transaction.customerMobile.includes(searchTerm);
     const matchesStore = filterStore === 'all' || transaction.storeLocation === filterStore;
     const matchesPayment = filterPayment === 'all' || transaction.paymentMethod === filterPayment;
-    const matchesStatus = filterStatus === 'all' || transaction.status === filterStatus;
     
-    return matchesSearch && matchesStore && matchesPayment && matchesStatus;
+    return matchesSearch && matchesStore && matchesPayment;
   });
+
+  const filteredRecharges = recharges.filter(recharge => {
+    return recharge.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           recharge.customerMobile.includes(searchTerm);
+  });
+
+  // Pagination logic for transactions
+  const transactionsTotalPages = Math.ceil(filteredTransactions.length / transactionsPerPage);
+  const transactionsStartIndex = (transactionsPage - 1) * transactionsPerPage;
+  const transactionsEndIndex = transactionsStartIndex + transactionsPerPage;
+  const paginatedTransactions = filteredTransactions.slice(transactionsStartIndex, transactionsEndIndex);
+
+  // Pagination logic for recharges
+  const rechargesTotalPages = Math.ceil(filteredRecharges.length / rechargesPerPage);
+  const rechargesStartIndex = (rechargesPage - 1) * rechargesPerPage;
+  const rechargesEndIndex = rechargesStartIndex + rechargesPerPage;
+  const paginatedRecharges = filteredRecharges.slice(rechargesStartIndex, rechargesEndIndex);
 
   const totalStats = {
     totalSales: transactions.reduce((sum, t) => sum + t.amount, 0),
     totalTransactions: transactions.length,
     totalSurabhiCoinsUsed: transactions.reduce((sum, t) => sum + (t.surabhiCoinsUsed || 0), 0),
-    totalSurabhiCoinsEarned: transactions.reduce((sum, t) => sum + (t.surabhiCoinsEarned || 0), 0),
-    totalGoSevaContribution: transactions.reduce((sum, t) => sum + (t.goSevaContribution || 0), 0)
+    totalWalletDeductions: transactions.reduce((sum, t) => sum + (t.walletDeduction || 0), 0),
+    totalCashPayments: transactions.reduce((sum, t) => sum + (t.cashPayment || 0), 0),
+    totalRecharges: recharges.reduce((sum, r) => sum + r.amount, 0)
   };
 
   if (loading) {
@@ -206,6 +214,16 @@ export const SalesManagement = () => {
           </CardContent>
         </Card>
         
+        <Card className="bg-purple-50 border-purple-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Wallet className="h-4 w-4 text-purple-600" />
+              <span className="text-xs font-medium text-purple-600">Wallet Used</span>
+            </div>
+            <p className="text-xl font-bold text-purple-900">₹{totalStats.totalWalletDeductions.toLocaleString()}</p>
+          </CardContent>
+        </Card>
+        
         <Card className="bg-amber-50 border-amber-200">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -216,23 +234,13 @@ export const SalesManagement = () => {
           </CardContent>
         </Card>
         
-        <Card className="bg-purple-50 border-purple-200">
+        <Card className="bg-gray-50 border-gray-200">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="h-4 w-4 text-purple-600" />
-              <span className="text-xs font-medium text-purple-600">Coins Earned</span>
+              <DollarSign className="h-4 w-4 text-gray-600" />
+              <span className="text-xs font-medium text-gray-600">Cash Payments</span>
             </div>
-            <p className="text-xl font-bold text-purple-900">{totalStats.totalSurabhiCoinsEarned}</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-red-50 border-red-200">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Users className="h-4 w-4 text-red-600" />
-              <span className="text-xs font-medium text-red-600">Go Seva Pool</span>
-            </div>
-            <p className="text-xl font-bold text-red-900">₹{totalStats.totalGoSevaContribution.toLocaleString()}</p>
+            <p className="text-xl font-bold text-gray-900">₹{totalStats.totalCashPayments.toLocaleString()}</p>
           </CardContent>
         </Card>
       </div>
@@ -243,206 +251,381 @@ export const SalesManagement = () => {
           <TabsTrigger value="recharges">Recharges</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="transactions">      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader>
-          <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
-            <div>
-              <CardTitle>Sales Transactions</CardTitle>
-              <CardDescription>
-                {filteredTransactions.length} transactions found
-                {(searchTerm || filterStore !== 'all' || filterPayment !== 'all') && 
-                  ' (filtered)'}
-              </CardDescription>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search customers..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-full sm:w-64"
-                />
-              </div>
-              
-              <Select value={filterStore} onValueChange={setFilterStore}>
-                <SelectTrigger className="w-full sm:w-48">
-                  <SelectValue placeholder="Filter by store" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Stores</SelectItem>
-                  {stores.map((store) => (
-                    <SelectItem key={store.id} value={store.name}>
-                      {store.name} ({store.storeLocation})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <Select value={filterPayment} onValueChange={setFilterPayment}>
-                <SelectTrigger className="w-full sm:w-40">
-                  <SelectValue placeholder="Payment" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Methods</SelectItem>
-                  <SelectItem value="wallet">Wallet</SelectItem>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="mixed">Mixed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardHeader>
-        
-        <CardContent>
-          {filteredTransactions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-500">
-              <Search className="h-8 w-8" />
-              <p>No transactions found</p>
-              {(searchTerm || filterStore !== 'all' || filterPayment !== 'all') && (
-                <Button variant="ghost" onClick={() => {
-                  setSearchTerm('');
-                  setFilterStore('all');
-                  setFilterPayment('all');
-                }}>
-                  Clear filters
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredTransactions.map((transaction) => {
-                const store = stores.find(s => s.name === transaction.storeLocation);
-                
-                return (
-                  <div key={transaction.id} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-4 bg-gray-50 rounded-lg gap-4 hover:bg-gray-100 transition-colors">
-                    <div className="flex-1 min-w-0 w-full lg:w-auto">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-3">
-                        <h3 className="font-medium text-gray-900">{transaction.customerName}</h3>
-                        <div className="flex gap-2 flex-wrap">
-                          <Badge variant={
-                            transaction.status === 'completed' ? 'default' : 
-                            transaction.status === 'pending' ? 'secondary' : 'destructive'
-                          }>
-                            {transaction.status}
-                          </Badge>
-                          <Badge variant="outline" className="text-xs">
-                            {transaction.paymentMethod}
-                          </Badge>
-                          {transaction.staffInWork && (
-                            <Badge variant="outline" className="text-xs">
-                              Staff: {transaction.staffInWork}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                        <div className="text-gray-600">
-                          <span className="font-medium">Amount:</span> ₹{transaction.amount}
-                        </div>
-                        <div className="text-amber-600">
-                          <span className="font-medium">Coins Used:</span> {transaction.surabhiCoinsUsed || 0}
-                        </div>
-                        <div className="text-purple-600">
-                          <span className="font-medium">Coins Earned:</span> {transaction.surabhiCoinsEarned || 0}
-                        </div>
-                        <div className="text-red-600">
-                          <span className="font-medium">Go Seva:</span> ₹{transaction.goSevaContribution || 0}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          <span>
-                            {transaction.storeLocation}
-                            {store && ` (${store.storeLocation})`}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          <span>{format(new Date(transaction.timestamp), 'dd MMM yyyy, hh:mm a')}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* <div className="flex gap-2 w-full lg:w-auto">
-                      <Button variant="outline" size="sm" className="w-full lg:w-auto gap-2">
-                        <Eye className="h-4 w-4" />
-                        Details
-                      </Button>
-                      <Button variant="outline" size="sm" className="w-full lg:w-auto gap-2">
-                        <Printer className="h-4 w-4" />
-                        Receipt
-                      </Button>
-                    </div> */}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card></TabsContent>
-
-      <TabsContent value="recharges">
+        <TabsContent value="transactions">
           <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
             <CardHeader>
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
                 <div>
-                  <CardTitle>Wallet Recharges</CardTitle>
+                  <CardTitle>Sales Transactions</CardTitle>
                   <CardDescription>
-                    {recharges.length} recharge activities
+                    {filteredTransactions.length} transactions found
+                    {(searchTerm || filterStore !== 'all' || filterPayment !== 'all') && 
+                      ' (filtered)'}
                   </CardDescription>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search customers..."
+                      value={searchTerm}
+                      onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        setTransactionsPage(1); // Reset to first page when searching
+                      }}
+                      className="pl-10 w-full sm:w-64"
+                    />
+                  </div>
+                  
+                  <Select value={filterStore} onValueChange={(value) => {
+                    setFilterStore(value);
+                    setTransactionsPage(1); // Reset to first page when filtering
+                  }}>
+                    <SelectTrigger className="w-full sm:w-48">
+                      <SelectValue placeholder="Filter by store" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Stores</SelectItem>
+                      {stores.map((store) => (
+                        <SelectItem key={store.id} value={store.name}>
+                          {store.name} ({store.storeLocation})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select value={filterPayment} onValueChange={(value) => {
+                    setFilterPayment(value);
+                    setTransactionsPage(1); // Reset to first page when filtering
+                  }}>
+                    <SelectTrigger className="w-full sm:w-40">
+                      <SelectValue placeholder="Payment" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Methods</SelectItem>
+                      <SelectItem value="wallet">Wallet</SelectItem>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="mixed">Mixed</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardHeader>
             
             <CardContent>
-              {recharges.length === 0 ? (
+              {filteredTransactions.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-500">
                   <Search className="h-8 w-8" />
-                  <p>No recharge activities found</p>
+                  <p>No transactions found</p>
+                  {(searchTerm || filterStore !== 'all' || filterPayment !== 'all') && (
+                    <Button variant="ghost" onClick={() => {
+                      setSearchTerm('');
+                      setFilterStore('all');
+                      setFilterPayment('all');
+                    }}>
+                      Clear filters
+                    </Button>
+                  )}
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Mobile</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {recharges.map((recharge) => (
-                      <TableRow key={recharge.id}>
-                        <TableCell className="font-medium">
-                          {recharge.user}
-                        </TableCell>
-                        <TableCell className="text-green-600">
-                          ₹{recharge.amount?.toFixed(2) || '0.00'}
-                        </TableCell>
-                        <TableCell>
-                          {recharge.description}
-                        </TableCell>
-                        <TableCell>
-                          {recharge.location}
-                        </TableCell>
-                        <TableCell>
-                  {recharge.date instanceof Timestamp ? format(recharge.date.toDate(), 'dd MMM yyyy, hh:mm a') : 'Invalid date'}
-                        </TableCell>
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Mobile</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Payment</TableHead>
+                        <TableHead>Wallet</TableHead>
+                        <TableHead>Coins</TableHead>
+                        <TableHead>Cash</TableHead>
+                        <TableHead>Store</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Staff</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedTransactions.map((transaction) => (
+                        <TableRow key={transaction.id}>
+                          <TableCell className="font-medium">
+                            {transaction.customerName}
+                            {!transaction.isCustomerRegistered && (
+                              <Badge variant="outline" className="ml-2 text-xs">
+                                Guest
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {transaction.customerMobile}
+                          </TableCell>
+                          <TableCell className="font-bold">
+                            ₹{transaction.amount}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              transaction.paymentMethod === 'wallet' ? 'default' :
+                              transaction.paymentMethod === 'cash' ? 'secondary' : 'outline'
+                            }>
+                              {transaction.paymentMethod}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-purple-600">
+                            ₹{transaction.walletDeduction}
+                          </TableCell>
+                          <TableCell className="text-amber-600">
+                            {transaction.surabhiCoinsUsed}
+                          </TableCell>
+                          <TableCell className="text-gray-600">
+                            ₹{transaction.cashPayment}
+                          </TableCell>
+                          <TableCell>
+                            {transaction.storeLocation}
+                          </TableCell>
+                          <TableCell>
+                            {format(transaction.createdAt.toDate(), 'dd MMM yyyy, hh:mm a')}
+                          </TableCell>
+                          <TableCell>
+                            {transaction.processedBy}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+
+                  {/* Transactions Pagination */}
+                  <div className="flex items-center justify-between px-2 mt-4">
+                    <div className="flex items-center space-x-2">
+                      <p className="text-sm font-medium">Rows per page</p>
+                      <Select
+                        value={`${transactionsPerPage}`}
+                        onValueChange={(value) => {
+                          setTransactionsPerPage(Number(value));
+                          setTransactionsPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="h-8 w-[70px]">
+                          <SelectValue placeholder={transactionsPerPage} />
+                        </SelectTrigger>
+                        <SelectContent side="top">
+                          {[5, 10, 20, 30, 40, 50].map((pageSize) => (
+                            <SelectItem key={pageSize} value={`${pageSize}`}>
+                              {pageSize}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center space-x-6 lg:space-x-8">
+                      <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                        Page {transactionsPage} of {transactionsTotalPages}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setTransactionsPage(1)}
+                          disabled={transactionsPage === 1}
+                        >
+                          <span className="sr-only">Go to first page</span>
+                          <ChevronLeft className="h-4 w-4" />
+                          <ChevronLeft className="h-4 w-4 -ml-2" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setTransactionsPage(Math.max(1, transactionsPage - 1))}
+                          disabled={transactionsPage === 1}
+                        >
+                          <span className="sr-only">Go to previous page</span>
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setTransactionsPage(Math.min(transactionsTotalPages, transactionsPage + 1))}
+                          disabled={transactionsPage === transactionsTotalPages || transactionsTotalPages === 0}
+                        >
+                          <span className="sr-only">Go to next page</span>
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setTransactionsPage(transactionsTotalPages)}
+                          disabled={transactionsPage === transactionsTotalPages || transactionsTotalPages === 0}
+                        >
+                          <span className="sr-only">Go to last page</span>
+                          <ChevronRight className="h-4 w-4" />
+                          <ChevronRight className="h-4 w-4 -ml-2" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
         </TabsContent>
-       </Tabs>
+
+        <TabsContent value="recharges">
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <CardHeader>
+              <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
+                <div>
+                  <CardTitle>Wallet Recharges</CardTitle>
+                  <CardDescription>
+                    {filteredRecharges.length} recharge records (Total: ₹{totalStats.totalRecharges.toLocaleString()})
+                  </CardDescription>
+                </div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search recharges..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setRechargesPage(1); // Reset to first page when searching
+                    }}
+                    className="pl-10 w-full sm:w-64"
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            
+            <CardContent>
+              {filteredRecharges.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-500">
+                  <Search className="h-8 w-8" />
+                  <p>No recharge records found</p>
+                  {searchTerm && (
+                    <Button variant="ghost" onClick={() => setSearchTerm('')}>
+                      Clear search
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Mobile</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Store</TableHead>
+                        <TableHead>Coins Earned</TableHead>
+                        <TableHead>Seva Amount</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Staff</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedRecharges.map((recharge) => (
+                        <TableRow key={recharge.id}>
+                          <TableCell className="font-medium">
+                            {recharge.customerName}
+                          </TableCell>
+                          <TableCell>
+                            {recharge.customerMobile}
+                          </TableCell>
+                          <TableCell className="text-green-600">
+                            ₹{recharge.amount}
+                          </TableCell>
+                          <TableCell>
+                            {recharge.storeName} ({recharge.storeLocation})
+                          </TableCell>
+                          <TableCell>
+                            {recharge.surabhiCoinsEarned}
+                          </TableCell>
+                          <TableCell>
+                            ₹{recharge.sevaAmountEarned}
+                          </TableCell>
+                          <TableCell>
+                            {format(recharge.timestamp.toDate(), 'dd MMM yyyy, hh:mm a')}
+                          </TableCell>
+                          <TableCell>
+                            {recharge.staffName}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+
+                  {/* Recharges Pagination */}
+                  <div className="flex items-center justify-between px-2 mt-4">
+                    <div className="flex items-center space-x-2">
+                      <p className="text-sm font-medium">Rows per page</p>
+                      <Select
+                        value={`${rechargesPerPage}`}
+                        onValueChange={(value) => {
+                          setRechargesPerPage(Number(value));
+                          setRechargesPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="h-8 w-[70px]">
+                          <SelectValue placeholder={rechargesPerPage} />
+                        </SelectTrigger>
+                        <SelectContent side="top">
+                          {[5, 10, 20, 30, 40, 50].map((pageSize) => (
+                            <SelectItem key={pageSize} value={`${pageSize}`}>
+                              {pageSize}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center space-x-6 lg:space-x-8">
+                      <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                        Page {rechargesPage} of {rechargesTotalPages}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setRechargesPage(1)}
+                          disabled={rechargesPage === 1}
+                        >
+                          <span className="sr-only">Go to first page</span>
+                          <ChevronLeft className="h-4 w-4" />
+                          <ChevronLeft className="h-4 w-4 -ml-2" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setRechargesPage(Math.max(1, rechargesPage - 1))}
+                          disabled={rechargesPage === 1}
+                        >
+                          <span className="sr-only">Go to previous page</span>
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setRechargesPage(Math.min(rechargesTotalPages, rechargesPage + 1))}
+                          disabled={rechargesPage === rechargesTotalPages || rechargesTotalPages === 0}
+                        >
+                          <span className="sr-only">Go to next page</span>
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => setRechargesPage(rechargesTotalPages)}
+                          disabled={rechargesPage === rechargesTotalPages || rechargesTotalPages === 0}
+                        >
+                          <span className="sr-only">Go to last page</span>
+                          <ChevronRight className="h-4 w-4" />
+                          <ChevronRight className="h-4 w-4 -ml-2" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
