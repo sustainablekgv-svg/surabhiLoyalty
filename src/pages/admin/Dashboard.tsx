@@ -25,7 +25,7 @@ import { StaffManagement } from '@/components/admin/StaffManagement';
 import { CustomerManagement } from '@/components/admin/CustomerManagement';
 import { GoSevaPool } from '@/components/admin/GoSevaPool';
 import { SalesManagement } from '@/components/admin/SalesManagement';
-import { Accounts } from '@/components/admin/AccountsSection';
+import Accounts from '@/components/admin/AccountsSection';
 
 const AdminDashboard = () => {
   const { user, logout, isLoading: authLoading } = useAuth();

@@ -1,13 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  Coins,
-  LogOut,
-  User,
-  Settings,
-  X
-} from 'lucide-react';
+import { Coins, LogOut, Settings } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -18,39 +12,22 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-
-interface AdminUserType {
-  id: string;
-  name: string;
-  mobile: string;
-  email: string;
-  storeLocation: string;
-  role: 'admin' | 'staff' | 'customer';
-  createdAt: string;
-  status: 'active' | 'inactive';
-  salesCount: number;
-  staffPin: string;
-  lastActive?: string;
-  staffPassword: string;
-}
-
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { StaffType } from '@/types/types';
 interface AdminHeaderProps {
-  user: Partial<AdminUserType>;
+  user: StaffType;
   onLogout: () => void;
-  onUpdateProfile?: (updatedData: Partial<AdminUserType>) => Promise<boolean>;
 }
 
-export const AdminHeader = ({ user, onLogout, onUpdateProfile }: AdminHeaderProps) => {
+export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [pin, setPin] = useState('');
-  const [formData, setFormData] = useState<Partial<AdminUserType>>({
+  const [formData, setFormData] = useState<Partial<StaffType>>({
     name: user.name,
-    mobile: user.mobile,
     email: user.email,
     storeLocation: user.storeLocation,
   });
-  const [pinError, setPinError] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,41 +38,33 @@ export const AdminHeader = ({ user, onLogout, onUpdateProfile }: AdminHeaderProp
     }));
   };
 
-  const handlePinSubmit = async () => {
-    // Compare with environment variable or stored PIN
-    const envPin = import.meta.env.VITE_STAFF_PIN || '1234'; // Default for demo
-    if (pin === envPin || pin === user.staffPin) {
-      setPinError('');
-      setIsEditing(true);
-    } else {
-      setPinError('Invalid PIN');
-    }
-  };
-
   const handleSaveChanges = async () => {
+    if (!user.id) return;
+    
+    setIsUpdating(true);
     try {
-      const success = await onUpdateProfile(formData);
-      if (success) {
-        toast({
-          title: "Profile updated",
-          description: "Your changes have been saved successfully.",
-          variant: "default",
-        });
-        setIsEditing(false);
-        setIsSettingsOpen(false);
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to update profile.",
-          variant: "destructive",
-        });
-      }
+      const staffRef = doc(db, 'staff', user.id);
+      await updateDoc(staffRef, {
+        name: formData.name,
+        email: formData.email,
+        storeLocation: formData.storeLocation,
+      });
+
+      toast({
+        title: "Profile updated",
+        description: "Your changes have been saved successfully.",
+        variant: "default",
+      });
+      setIsSettingsOpen(false);
     } catch (error) {
+      console.error('Error updating staff profile:', error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred.",
+        description: "Failed to update profile. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -155,97 +124,77 @@ export const AdminHeader = ({ user, onLogout, onUpdateProfile }: AdminHeaderProp
           <DialogHeader>
             <DialogTitle>Admin Settings</DialogTitle>
             <DialogDescription>
-              {isEditing ? "Update your profile information" : "Enter your PIN to edit profile"}
+              Update your profile information
             </DialogDescription>
           </DialogHeader>
 
-          {!isEditing ? (
-            <div className="space-y-4">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="pin">Enter Admin PIN</Label>
+                <Label htmlFor="name">Full Name</Label>
                 <Input
-                  id="pin"
-                  type="password"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  placeholder="Enter your admin PIN"
-                />
-                {pinError && <p className="text-sm text-red-500 mt-1">{pinError}</p>}
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsSettingsOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handlePinSubmit}>
-                  Verify PIN
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={formData.name || ''}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="mobile">Mobile Number</Label>
-                  <Input
-                    id="mobile"
-                    name="mobile"
-                    value={formData.mobile || ''}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email || ''}
+                  id="name"
+                  name="name"
+                  value={formData.name || ''}
                   onChange={handleInputChange}
                 />
               </div>
-
               <div>
-                <Label htmlFor="storeLocation">Store Location</Label>
+                <Label htmlFor="mobile">Mobile Number</Label>
                 <Input
-                  id="storeLocation"
-                  name="storeLocation"
-                  value={formData.storeLocation || ''}
-                  onChange={handleInputChange}
+                  id="mobile"
+                  name="mobile"
+                  value={user.mobile}
+                  disabled
+                  className="bg-gray-100"
                 />
               </div>
-
-              <div className="flex justify-end gap-2 pt-4">
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setIsEditing(false);
-                    setFormData({
-                      name: user.name,
-                      mobile: user.mobile,
-                      email: user.email,
-                      storeLocation: user.storeLocation,
-                    });
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button onClick={handleSaveChanges}>
-                  Save Changes
-                </Button>
-              </div>
             </div>
-          )}
+
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email || ''}
+                onChange={handleInputChange}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="storeLocation">Store Location</Label>
+              <Input
+                id="storeLocation"
+                name="storeLocation"
+                value={formData.storeLocation || ''}
+                onChange={handleInputChange}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setIsSettingsOpen(false);
+                  setFormData({
+                    name: user.name,
+                    email: user.email,
+                    storeLocation: user.storeLocation,
+                  });
+                }}
+                disabled={isUpdating}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSaveChanges}
+                disabled={isUpdating}
+              >
+                {isUpdating ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

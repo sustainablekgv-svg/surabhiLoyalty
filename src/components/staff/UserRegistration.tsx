@@ -30,7 +30,7 @@ import {
   getDocs, 
   updateDoc, 
   arrayUnion, 
-  serverTimestamp 
+  Timestamp
 } from 'firebase/firestore';
 
 import { Customer, UserRegistrationProps } from '@/types/types';
@@ -206,7 +206,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
         surabhiCoinsCurrentMonth: 0,
         sevaCoinsTotal: 0,
         sevaCoinsCurrentMonth: 0,
-        createdAt: serverTimestamp(),
+        createdAt: Timestamp.fromDate(new Date()),
         role: 'customer',
         walletId,
         customerPassword: formData.password,
@@ -233,7 +233,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
           await updateDoc(doc(customersCollection, referrerDoc.id), {
             referredUsers: arrayUnion({
               mobile: formData.mobile,
-              referralDate: serverTimestamp()
+              referralDate: Timestamp.fromDate(new Date())
             })
           });
           toast.success(`User registered! Referral recorded.`, { id: toastId });
@@ -562,7 +562,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                 </div>
                 <div>
                   <h3 className="font-medium text-amber-900">Reward Coins</h3>
-                  <p className="text-sm text-amber-700">Earn 10% coins on every wallet recharge</p>
+                  <p className="text-sm text-amber-700">Earn Surabhi coins on every wallet recharge</p>
                 </div>
               </div>
 
@@ -584,7 +584,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                 </div>
                 <div>
                   <h3 className="font-medium text-purple-900">Community Support</h3>
-                  <p className="text-sm text-purple-700">2.5% of recharges support community welfare</p>
+                  <p className="text-sm text-purple-700">Fraction of a recharges support community welfare</p>
                 </div>
               </div>
 

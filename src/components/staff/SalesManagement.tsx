@@ -18,6 +18,7 @@ import {
   Loader2,
   Lock
 } from 'lucide-react';
+import { Badge } from "@/components/ui/badge"
 import { toast } from 'sonner';
 import { 
   collection, 
@@ -38,7 +39,8 @@ import {
   SalesManagementProps, 
   SalesTransaction,
   SevaTransaction,
-  ActivityType
+  ActivityType,
+  StoreType
 } from '@/types/types';
 import { serverTimestamp } from 'firebase/firestore';
 
@@ -56,9 +58,44 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
   const [isFetchingCustomers, setIsFetchingCustomers] = useState(false);
   const [showTpinInput, setShowTpinInput] = useState(false);
   const [tpin, setTpin] = useState('');
-
+  const [storeDetails, setStoreDetails] = useState<StoreType | null>(null);
+   console.log("THe store details are", storeDetails, storeLocation)
   // Fetch customers from Firestore
   useEffect(() => {
+     const fetchData = async () => {
+      try {
+        // Fetch store details first
+        const q = query(
+        collection(db, 'stores'),
+        where('name', '==', storeLocation) // exact match
+        );
+
+        const querySnapshotStores = await getDocs(q);
+        console.log("THe line 74 data is", querySnapshotStores);
+        if (!querySnapshotStores.empty) {
+        querySnapshotStores.forEach((doc) => {
+        setStoreDetails(doc.data() as StoreType);
+        });
+        } else {
+        toast.error('No stores found with that name');
+        }
+
+        // Then fetch customers
+        const customersCollection = collection(db, 'customers');
+        const querySnapshot = await getDocs(customersCollection);
+        const customersData = querySnapshot.docs.map(doc => ({
+          ...doc.data() as Customer,
+          mobile: doc.data().mobile // Using mobile as identifier
+        }));
+        setCustomers(customersData);
+      } catch (error) {
+        toast.error('Failed to fetch data');
+        console.error('Error fetching data:', error);
+      } finally {
+        setIsFetchingCustomers(false);
+      }
+    };
+
     const fetchCustomers = async () => {
       setIsFetchingCustomers(true);
       try {
@@ -77,7 +114,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       }
     };
     fetchCustomers();
-  }, []);
+    fetchData();
+  }, [storeLocation]);
 
   const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -255,7 +293,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         amount: saleAmount,
         user: newCustomerMobile,
         location: storeLocation,
-        date: serverTimestamp()
+        date: Timestamp.fromDate(new Date())
       };
       
       await addDoc(collection(db, 'Activity'), activity);
@@ -349,7 +387,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         type: 'contribution',
         amount: saleCalculation.goSevaContribution,
         description: `Contribution from sale by ${selectedCustomer.name}`,
-        date: serverTimestamp(),
+        date: Timestamp.fromDate(new Date()),
         customerMobile: selectedCustomer.mobile,
         customerName: selectedCustomer.name,
         monthYear,
@@ -366,7 +404,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         amount: saleCalculation.totalAmount,
         user: selectedCustomer.mobile,
         location: storeLocation,
-        date: serverTimestamp()
+        date: Timestamp.fromDate(new Date())
       };
       
       await addDoc(collection(db, 'Activity'), activity);
@@ -432,6 +470,22 @@ setCustomers(customers.map(c =>
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Sales Management</h2>
           <p className="text-gray-600">Process customer purchases at {storeLocation}</p>
+            {storeDetails && (
+  <div className="flex gap-4 mt-2 text-sm flex-wrap">
+    <Badge variant="outline" className="border-blue-200 text-blue-800">
+      Referral: {storeDetails.referralCommission}%
+    </Badge>
+    <Badge variant="outline" className="border-green-200 text-green-800">
+      Surabhi: {storeDetails.surabhiCommission}%
+    </Badge>
+    <Badge variant="outline" className="border-red-200 text-red-800">
+      Cash Only: {storeDetails.cashOnlyCommission}%
+    </Badge>
+    <Badge variant="outline" className="border-purple-200 text-purple-800">
+      Seva: {storeDetails.sevaCommission}%
+    </Badge>
+  </div>
+)}
         </div>
       </div>
       

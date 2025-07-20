@@ -7,16 +7,18 @@ export interface Customer {
   walletBalance: number;
   walletRechargeDone: Boolean;
   walletBalanceCurrentMonth : number;
-  createdAt: import('firebase/firestore').FieldValue;
   role: string;
   walletId: string;
   surabhiCoins: number;
+  surabhiCoinsCurrentMonth:number;
   sevaCoinsTotal: number;
+  sevaCoinsCurrentMonth:number;
   referredBy: string | null;
   referralIncome: number | null;
-  referredUsers: { mobile:number; referralDate: string; }[] | null;
+  referredUsers: { mobile:number; name: string; referralDate: Timestamp; }[] | null;
   registered: Boolean;
   lastTransactionDate: Timestamp;
+  createdAt: Timestamp;
   customerPassword: string;
   tpin: string;
 }
@@ -60,10 +62,11 @@ export interface StoreType {
   referralCommission: number;
   surabhiCommission: number;
   sevaCommission: number;
+  cashOnlyCommission: number;
   contactNumber: string;
   status: 'active' | 'inactive';
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
 export interface SalesTransaction  {
@@ -87,7 +90,7 @@ export interface SalesTransaction  {
     wallet: number;
     surabhiCoins: number;
   };
-  createdAt: import('firebase/firestore').FieldValue;
+  createdAt: Timestamp;
 };
 
 export interface SevaTransaction {
@@ -122,23 +125,23 @@ export interface ActivityType {
   date: import('firebase/firestore').FieldValue;
 }
 
-interface AccountTx {
+export interface AccountTx {
   id: string;
   date: Date;
-  shopId: string;
-  shopName: string;
+  storeId: string;
+  storeName: string;
   type: 'credit' | 'debit';
   amount: number;
   description: string;
 }
 
-interface StoreSummary {
+export interface StoreSummary {
   storeName: string;
   currentBalance: number;
   lastTransactionDate: Date;
 }
 
-interface AdminDeck {
+export interface AdminDeck {
   totalBalance: number;
   recentTransactions: AccountTx[];
   shopsSummary: StoreSummary[];

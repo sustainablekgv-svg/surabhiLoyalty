@@ -66,8 +66,6 @@ export const StaffManagement = () => {
   const [currentStore, setCurrentStore] = useState<Partial<StoreType> | null>(null);
   const [isDeleteStoreDialogOpen, setIsDeleteStoreDialogOpen] = useState(false);
   
-  // Admin verification
-  const [adminPin, setAdminPin] = useState('');
 
   // Password visibility state
   const [showPassword, setShowPassword] = useState(false);
@@ -107,17 +105,9 @@ export const StaffManagement = () => {
     fetchData();
   }, []);
 
-  // Verify admin PIN
-  const verifyAdmin = () => {
-    return adminPin === '1234'; // In production, verify against hashed PIN in database
-  };
 
   // Staff CRUD operations
   const handleSaveStaff = async () => {
-    if (!verifyAdmin()) {
-      toast.error('Invalid admin PIN');
-      return;
-    }
 
     if (!currentStaff?.name || !currentStaff.email || !currentStaff.mobile || !currentStaff.role) {
       toast.error('Please fill all required fields');
@@ -168,7 +158,6 @@ export const StaffManagement = () => {
 
       setIsStaffDialogOpen(false);
       setCurrentStaff(null);
-      setAdminPin('');
     } catch (error) {
       toast.error('Error saving staff');
       console.error('Error saving staff:', error);
@@ -176,10 +165,6 @@ export const StaffManagement = () => {
   };
 
   const handleDeleteStaff = async () => {
-    if (!verifyAdmin()) {
-      toast.error('Invalid admin PIN');
-      return;
-    }
 
     if (!currentStaff?.id) return;
 
@@ -199,7 +184,6 @@ export const StaffManagement = () => {
 
       setIsDeleteStaffDialogOpen(false);
       setCurrentStaff(null);
-      setAdminPin('');
     } catch (error) {
       toast.error('Error deleting staff');
       console.error('Error deleting staff:', error);
@@ -207,100 +191,143 @@ export const StaffManagement = () => {
   };
 
   // Store CRUD operations
-  const handleSaveStore = async () => {
-    if (!verifyAdmin()) {
-      toast.error('Invalid admin PIN');
-      return;
-    }
+  const handleSaveStore = async (currentStore: Partial<StoreType>) => {
+    console.log("THe details are in line 195", currentStore)
+  // Validate required fields
+  if (!currentStore?.name?.trim() || 
+      !currentStore?.storeLocation?.trim() || 
+      !currentStore?.address?.trim()) {
+    toast.error('Please fill all required fields');
+    return false;
+  }
 
-    if (!currentStore?.name || !currentStore.location || !currentStore.address) {
-      toast.error('Please fill all required fields');
-      return;
-    }
+  try {
+    const storeData = {
+      name: currentStore.name.trim(),
+      storeLocation: currentStore.storeLocation.trim(),
+      address: currentStore.address.trim(),
+      contactNumber: currentStore.contactNumber?.trim() || '',
+      referralCommission: Number(currentStore.referralCommission) || 0,
+      surabhiCommission: Number(currentStore.surabhiCommission) || 0,
+      sevaCommission: Number(currentStore.sevaCommission) || 0,
+      status: currentStore.status || 'active',
+      updatedAt: serverTimestamp()
+    };
 
-    try {
-      const storeData = {
-        name: currentStore.name,
-        location: currentStore.location,
-        address: currentStore.address,
-        contactNumber: currentStore.contactNumber || '',
-        status: currentStore.status || 'active',
-        updatedAt: serverTimestamp(),
-        ...(currentStore.id ? {} : { createdAt: serverTimestamp() })
-      };
+    if (currentStore.id) {
+      // Check if store exists
+      const storeQuery = query(
+        collection(db, 'stores'),
+        where('__name__', '==', currentStore.id)
+      );
+      const querySnapshot = await getDocs(storeQuery);
 
-      if (currentStore.id) {
-        // Update existing store
+      if (querySnapshot.empty) {
+        // Create if doesn't exist
+        await setDoc(doc(db, 'stores', currentStore.id), {
+          ...storeData,
+          createdAt: serverTimestamp()
+        });
+        toast.success('Store created successfully');
+      } else {
+        // Update existing
         await updateDoc(doc(db, 'stores', currentStore.id), {
           ...storeData,
-          createdAt: currentStore.createdAt // Preserve original creation date
+          createdAt: querySnapshot.docs[0].data().createdAt || serverTimestamp()
         });
         toast.success('Store updated successfully');
-      } else {
-        // Create new store
-        const newStoreRef = doc(collection(db, 'stores'));
-        await setDoc(newStoreRef, storeData);
-        toast.success('Store created successfully');
       }
-
-      // Refresh data
-      const storesSnapshot = await getDocs(collection(db, 'stores'));
-      const updatedStores = storesSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate(),
-        updatedAt: doc.data().updatedAt?.toDate()
-      })) as StoreType[];
-      setStores(updatedStores);
-      setIsStoreDialogOpen(false);
-      setCurrentStore(null);
-      setAdminPin('');
-    } catch (error) {
-      toast.error('Error saving store');
-      console.error('Error saving store:', error);
-    }
-  };
-
-  const handleDeleteStore = async () => {
-    if (!verifyAdmin()) {
-      toast.error('Invalid admin PIN');
-      return;
+    } else {
+      // Create new with auto-generated ID
+      const newStoreRef = doc(collection(db, 'stores'));
+      await setDoc(newStoreRef, {
+        ...storeData,
+        createdAt: serverTimestamp()
+      });
+      toast.success('Store created successfully');
     }
 
-    if (!currentStore?.id) return;
+    return true;
+  } catch (error) {
+    console.error('Error saving store:', error);
+    toast.error(`Error saving store: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    return false;
+  }
+};
 
-    // Check if store has assigned staff
-    const staffQuery = query(collection(db, 'staff'), where('storeLocation', '==', currentStore.id));
+const handleDeleteStore = async (storeId: string) => {
+  if (!storeId) return false;
+
+  try {
+    // Check for assigned staff
+    const staffQuery = query(
+      collection(db, 'staff'), 
+      where('storeLocation', '==', storeId)
+    );
     const staffSnapshot = await getDocs(staffQuery);
     
     if (!staffSnapshot.empty) {
       toast.error('Cannot delete store with assigned staff');
-      return;
+      return false;
     }
 
-    try {
-      await deleteDoc(doc(db, 'stores', currentStore.id));
-      toast.success('Store deleted successfully');
-      
-      // Refresh data
-      const storesSnapshot = await getDocs(collection(db, 'stores'));
-      const updatedStores = storesSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate(),
-        updatedAt: doc.data().updatedAt?.toDate()
-      })) as StoreType[];
-      setStores(updatedStores);
+    // Check if store exists
+    const storeQuery = query(
+      collection(db, 'stores'),
+      where('__name__', '==', storeId)
+    );
+    const storeSnapshot = await getDocs(storeQuery);
 
-      setIsDeleteStoreDialogOpen(false);
-      setCurrentStore(null);
-      setAdminPin('');
-    } catch (error) {
-      toast.error('Error deleting store');
-      console.error('Error deleting store:', error);
+    if (storeSnapshot.empty) {
+      toast.error('Store not found');
+      return false;
     }
-  };
+
+    await deleteDoc(doc(db, 'stores', storeId));
+    toast.success('Store deleted successfully');
+    return true;
+  } catch (error) {
+    console.error('Error deleting store:', error);
+    toast.error(`Error deleting store: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    return false;
+  }
+};
+
+const refreshStores = async () => {
+  try {
+    const storesSnapshot = await getDocs(collection(db, 'stores'));
+    return storesSnapshot.docs.map(doc => ({
+      id: doc.id,
+      name: doc.data().name || '',
+      storeLocation: doc.data().storeLocation || '',
+      address: doc.data().address || '',
+      contactNumber: doc.data().contactNumber || '',
+      referralCommission: Number(doc.data().referralCommission) || 0,
+      surabhiCommission: Number(doc.data().surabhiCommission) || 0,
+      sevaCommission: Number(doc.data().sevaCommission) || 0,
+      status: doc.data().status || 'active',
+      createdAt: doc.data().createdAt?.toDate() || new Date(),
+      updatedAt: doc.data().updatedAt?.toDate() || new Date()
+    })) as StoreType[];
+  } catch (error) {
+    console.error('Error refreshing stores:', error);
+    toast.error('Failed to load stores');
+    return [];
+  }
+};
   console.log("The line 250 data is",stores, staff);
+
+  const handleSaveClick = async (e: React.MouseEvent) => {
+  e.preventDefault(); // Prevent default form submission if needed
+  const success = await handleSaveStore(currentStore);
+  if (success) {
+    const updatedStores = await refreshStores();
+    setStores(updatedStores);
+    setIsStoreDialogOpen(false);
+    setCurrentStore(null);
+  }
+};
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -487,7 +514,7 @@ export const StaffManagement = () => {
                 <TableRow>
                   <TableHead className="w-[200px]">Name</TableHead>
                   <TableHead className="w-[150px]">Location</TableHead>
-                  <TableHead className="text-right w-[100px]">Wallet Commission</TableHead>
+                  <TableHead className="text-right w-[100px]">Referral Commission</TableHead>
                   <TableHead className="text-right w-[100px]">Surabhi Commission</TableHead>
                   <TableHead className="text-right w-[100px]">Seva Commission</TableHead>
                   <TableHead className="text-right w-[200px]">Actions</TableHead>
@@ -505,11 +532,11 @@ export const StaffManagement = () => {
                     <TableCell className="w-[150px]">
                       <div className="flex items-center gap-1">
                         <MapPin className="h-4 w-4" />
-                        {store.location}
+                        {store.storeLocation}
                       </div>
                     </TableCell>
                     <TableCell className="text-right w-[100px]">
-                      {store.walletCommission}%
+                      {store.referralCommission}%
                     </TableCell>
                     <TableCell className="text-right w-[100px]">
                       {store.surabhiCommission}%
@@ -729,21 +756,6 @@ export const StaffManagement = () => {
           </p>
         </div>
       </div>
-
-      {/* Admin Verification Section */}
-        <div className="space-y-2">
-          <Label>Admin Verification PIN *</Label>
-          <Input
-            type="password"
-            value={adminPin}
-            onChange={(e) => setAdminPin(e.target.value)}
-            placeholder="Enter admin PIN to confirm changes"
-          />
-          <p className="text-xs text-muted-foreground">
-            Required for admin-level changes
-          </p>
-        </div>
-      {/* )} */}
     </div>
     <DialogFooter>
       <Button onClick={handleSaveStaff}>
@@ -762,18 +774,7 @@ export const StaffManagement = () => {
               Are you sure you want to delete {currentStaff?.name}? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Admin PIN Verification *</Label>
-              <Input
-                type="password"
-                value={adminPin}
-                onChange={(e) => setAdminPin(e.target.value)}
-                placeholder="Enter admin PIN to confirm"
-              />
-            </div>
-          </div>
+
           
           <DialogFooter>
             <Button variant="destructive" onClick={handleDeleteStaff}>
@@ -813,10 +814,10 @@ export const StaffManagement = () => {
         <div className="space-y-2">
           <Label>Location *</Label>
           <Input
-            value={currentStore?.location || ''}
+            value={currentStore?.storeLocation || ''}
             onChange={(e) => setCurrentStore({
               ...currentStore,
-              location: e.target.value
+              storeLocation: e.target.value
             })}
             placeholder="Enter location"
           />
@@ -858,10 +859,10 @@ export const StaffManagement = () => {
               type="number"
               min="0"
               max="100"
-              value={currentStore?.walletCommission || 0}
+              value={currentStore?.referralCommission || 0}
               onChange={(e) => setCurrentStore({
                 ...currentStore,
-                walletCommission: Number(e.target.value)
+                referralCommission: Number(e.target.value)
               })}
             />
           </div>
@@ -915,22 +916,11 @@ export const StaffManagement = () => {
           </SelectContent>
         </Select>
       </div>
-
-      {/* Admin Verification Section */}
-      <div className="space-y-2">
-        <Label>Admin Verification PIN *</Label>
-        <Input
-          type="password"
-          value={adminPin}
-          onChange={(e) => setAdminPin(e.target.value)}
-          placeholder="Enter admin PIN to confirm changes"
-        />
-      </div>
     </div>
     
     <DialogFooter>
-      <Button onClick={handleSaveStore}>
-        {currentStore?.id ? 'Save Changes' : 'Create Store'}
+      <Button onClick={handleSaveClick}>
+      {currentStore?.id ? 'Save Changes' : 'Create Store'}
       </Button>
     </DialogFooter>
   </DialogContent>
@@ -946,20 +936,8 @@ export const StaffManagement = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Admin PIN Verification *</Label>
-              <Input
-                type="password"
-                value={adminPin}
-                onChange={(e) => setAdminPin(e.target.value)}
-                placeholder="Enter admin PIN to confirm"
-              />
-            </div>
-          </div>
-          
           <DialogFooter>
-            <Button variant="destructive" onClick={handleDeleteStore}>
+            <Button variant="destructive" onClick={() => handleDeleteStore(currentStore.id)}>
               Confirm Delete
             </Button>
           </DialogFooter>

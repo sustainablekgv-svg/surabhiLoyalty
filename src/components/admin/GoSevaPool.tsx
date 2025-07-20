@@ -305,11 +305,6 @@ export const GoSevaPool = () => {
               </div>
             </DialogContent>
           </Dialog>
-          
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Export Report
-          </Button>
         </div>
       </div>
 

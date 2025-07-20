@@ -12,17 +12,20 @@ import {
   CheckCircle,
   Phone,
   Loader2,
-  Mail
+  Mail,
+  HandCoins
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, updateDoc, addDoc, serverTimestamp, doc, getDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, addDoc, serverTimestamp, doc, getDoc, Timestamp, arrayUnion, increment } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Customer, WalletRechargeProps, ActivityType, StoreType } from '@/types/types';
+import { Customer, WalletRechargeProps, ActivityType, StoreType, RechargeRecord } from '@/types/types';
 import { FieldValue } from 'firebase/firestore';
+import { useAuth } from '@/hooks/auth-context';
 
 export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
   console.log("The storeLocation is", storeLocation);
+  const { user, logout, isLoading: authLoading } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [rechargeAmount, setRechargeAmount] = useState('');
@@ -30,9 +33,10 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isFetchingCustomers, setIsFetchingCustomers] = useState(true);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [staffPin, setStaffPin] = useState('');
+  // const [staffPin, setStaffPin] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [storeDetails, setStoreDetails] = useState<StoreType | null>(null);
+  // const [hasReferrer, setHasReferrer] = useState<Boolean> (false);
 
   // Fetch customers and store details from Firestore
   useEffect(() => {
@@ -83,18 +87,18 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
     
     const surabhiCoins = Math.floor(amount * (storeDetails.surabhiCommission / 100));
     const sevaAmount = Math.floor(amount * (storeDetails.sevaCommission / 100));
-    
-    return { surabhiCoins, sevaAmount };
+    const referralAmount = Math.floor(amount * (storeDetails.referralCommission / 100));
+    return { surabhiCoins, sevaAmount, referralAmount  };
   };
 
   const rechargeAmountNum = parseFloat(rechargeAmount) || 0;
-  const { surabhiCoins: surabhiCoinsEarned, sevaAmount: sevaAmountEarned } = calculateCommissions(rechargeAmountNum);
+  const { surabhiCoins: surabhiCoinsEarned, sevaAmount: sevaAmountEarned, referralAmount:referralAmount} = calculateCommissions(rechargeAmountNum);
 
   const addActivityRecord = async (activityData: Omit<ActivityType, 'id' | 'date'>) => {
     try {
       await addDoc(collection(db, 'Activity'), {
         ...activityData,
-        date: serverTimestamp()
+        date: new Date()
       });
     } catch (error) {
       console.error('Error adding activity record:', error);
@@ -102,11 +106,9 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
     }
   };
 
-  const verifyStaffPin = async () => {
-    // In a real app, you would verify the PIN against your staff database
-    // This is a simplified version that checks for a 4-digit PIN
-    return staffPin.length === 4 && /^\d+$/.test(staffPin) && `${import.meta.env.VITE_FIREBASE_API_KEY}`;
-  };
+  // const verifyStaffPin = async () => {
+  //   return staffPin.length === 4 && /^\d+$/.test(staffPin) && `${import.meta.env.VITE_FIREBASE_API_KEY}`;
+  // };
 
   const needsMonthlyReset = (lastTransactionDate: FieldValue | Date | string | null): boolean => {
     if (!lastTransactionDate) return true;
@@ -118,7 +120,6 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
     } else if (typeof lastTransactionDate === 'string') {
       lastDate = new Date(lastTransactionDate);
     } else {
-      // If it's a FieldValue (like serverTimestamp), we can't compare, so assume no reset needed
       return false;
     }
     
@@ -132,16 +133,16 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
     if (!selectedCustomer || !rechargeAmount || !storeDetails) return;
 
     setIsProcessing(true);
-    const toastId = toast.loading('Verifying staff PIN...');
+    // const toastId = toast.loading('Verifying staff PIN...');
 
     try {
-      const isValidPin = await verifyStaffPin();
-      if (!isValidPin) {
-        toast.error('Invalid staff PIN. Please try again.', { id: toastId });
-        return;
-      }
+      // const isValidPin = await verifyStaffPin();
+      // if (!isValidPin) {
+      //   toast.error('Invalid staff PIN. Please try again.', { id: toastId });
+      //   return;
+      // }
 
-      toast.loading('Processing recharge...', { id: toastId });
+      toast.loading('Processing recharge...');
 
       // Find customer document by mobile number
       const customersCollection = collection(db, 'customers');
@@ -158,7 +159,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       // Handle lastTransactionDate properly
       const lastTransactionDate = currentData.lastTransactionDate || null;
       const resetMonthlyFields = needsMonthlyReset(lastTransactionDate);
-      const currentTimestamp = serverTimestamp();
+      const currentTimestamp = new Date();
 
       // Prepare update data
       const updateData: Partial<Customer> = {
@@ -171,12 +172,70 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       // Handle monthly fields
       if (resetMonthlyFields) {
         updateData.walletBalanceCurrentMonth = rechargeAmountNum;
+        updateData.surabhiCoinsCurrentMonth = surabhiCoinsEarned;
+        updateData.sevaCoinsCurrentMonth = sevaAmountEarned;
       } else {
         updateData.walletBalanceCurrentMonth = (currentData.walletBalanceCurrentMonth || 0) + rechargeAmountNum;
+        updateData.surabhiCoinsCurrentMonth = (currentData.surabhiCoinsCurrentMonth || 0) + surabhiCoinsEarned;
+        updateData.sevaCoinsCurrentMonth = (currentData.sevaCoinsCurrentMonth || 0) + sevaAmountEarned;
       }
 
-      // Update customer document in Firestore
+       // Update customer document in Firestore
       await updateDoc(customerDoc.ref, updateData);
+
+      const rechargeData: Omit<RechargeRecord, 'id'> = {
+      customerMobile: selectedCustomer.mobile,
+      customerName: selectedCustomer.name,
+      amount: rechargeAmountNum,
+      storeLocation: storeLocation,
+      staffName:user.name,
+      storeName: storeDetails.name,
+      surabhiCoinsEarned: surabhiCoinsEarned,
+      sevaAmountEarned: sevaAmountEarned,
+      timestamp: Timestamp.fromDate(new Date()),
+      paymentMethod: 'cash', // Adjust as needed
+    };
+
+      const rechargeRef = await addDoc(collection(db, 'recharges'), rechargeData);
+
+       // Handle referral income if customer has a referrer
+      if (currentData.referredBy && referralAmount > 0) {
+        // Find referrer's document
+        const referrerQuery = query(customersCollection, where('mobile', '==', currentData.referredBy));
+        const referrerSnapshot = await getDocs(referrerQuery);
+        // console.log("The line 188 data is", referrerSnapshot);
+        
+        if (!referrerSnapshot.empty) {
+          const referrerDoc = referrerSnapshot.docs[0];
+          const referrerData = referrerDoc.data() as Customer;
+
+          const newReferredUser = {
+          mobile: currentData.mobile,
+          name: currentData.name,
+          referralDate: new Date(), // Use regular Date here
+          amount: 0 // Initial amount is 0 since no recharge yet
+        };
+
+          console.log('currentData:', currentData);
+        console.log('newReferredUser:', newReferredUser);
+        console.log('referralAmount:', referralAmount);
+          
+          // Update referrer's data
+          await updateDoc(referrerDoc.ref, {
+          referralIncome: increment(referralAmount),
+          referredUsers: arrayUnion(newReferredUser)
+        });
+
+          // Add activity record for referrer
+          await addActivityRecord({
+            type: 'referral',
+            description: `Earned ₹${referralAmount} referral income from ${currentData.name}'s recharge`,
+            amount: referralAmount,
+            user: currentData.referredBy,
+            location: storeLocation
+          });
+        }
+      }
 
       // If this was their first recharge, add a special activity
       if (currentData.walletBalance === 0) {
@@ -205,6 +264,23 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         location: storeLocation
       });
 
+       // Add activity records for the recharge and commissions
+      await addActivityRecord({
+        type: 'recharge',
+        description: `Wallet recharge of ₹${rechargeAmountNum}`,
+        amount: rechargeAmountNum,
+        user: selectedCustomer.mobile,
+        location: storeLocation
+      });
+
+      await addActivityRecord({
+        type: 'recharge',
+        description: `Earned ${surabhiCoinsEarned} Surabhi Coins from recharge`,
+        amount: surabhiCoinsEarned,
+        user: selectedCustomer.mobile,
+        location: storeLocation
+      });
+
       await addActivityRecord({
         type: 'contribution',
         description: `Added ₹${sevaAmountEarned} to Seva Wallet from recharge`,
@@ -213,37 +289,75 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         location: storeLocation
       });
 
-      // Update local state
-      setCustomers(customers.map(c => 
-  c.mobile === selectedCustomer.mobile ? { 
-    ...c, 
-    walletBalance: c.walletBalance + rechargeAmountNum,
-    surabhiCoins: c.surabhiCoins + surabhiCoinsEarned,
-    sevaCoinsTotal: (c.sevaCoinsTotal || 0) + sevaAmountEarned,
-    walletBalanceCurrentMonth: resetMonthlyFields 
-      ? rechargeAmountNum 
-      : (c.walletBalanceCurrentMonth || 0) + rechargeAmountNum,
-    lastTransactionDate: Timestamp.fromDate(new Date()), // For local state, we can use string
-    walletRechargeDone: true
-  } : c
-));
-
-      toast.success(
-        `₹${rechargeAmountNum.toLocaleString()} recharged successfully!`, 
-        { 
-          description: `Customer earned ${surabhiCoinsEarned} Surabhi Coins and ₹${sevaAmountEarned} Seva Wallet`,
-          id: toastId
+      // Update local state for selected customer
+      const updatedCustomers = customers.map(c => {
+        if (c.mobile === selectedCustomer.mobile) {
+          return { 
+            ...c, 
+            walletBalance: c.walletBalance + rechargeAmountNum,
+            surabhiCoins: c.surabhiCoins + surabhiCoinsEarned,
+            sevaCoinsTotal: (c.sevaCoinsTotal || 0) + sevaAmountEarned,
+            walletBalanceCurrentMonth: resetMonthlyFields 
+              ? rechargeAmountNum 
+              : (c.walletBalanceCurrentMonth || 0) + rechargeAmountNum,
+            surabhiCoinsCurrentMonth: resetMonthlyFields
+              ? surabhiCoinsEarned
+              : (c.surabhiCoinsCurrentMonth || 0) + surabhiCoinsEarned,
+            sevaCoinsCurrentMonth: resetMonthlyFields
+              ? sevaAmountEarned
+              : (c.sevaCoinsCurrentMonth || 0) + sevaAmountEarned,
+            lastTransactionDate: Timestamp.fromDate(new Date()),
+            walletRechargeDone: true
+          };
         }
-      );
+        return c;
+      });
+
+      //       // Update local state for referrer if applicable
+      // if (selectedCustomer.referredBy && referralAmount > 0) {
+      //   const referrerIndex = updatedCustomers.findIndex(c => c.mobile === selectedCustomer.referredBy);
+      //   if (referrerIndex !== -1) {
+      //     const referrer = updatedCustomers[referrerIndex];
+      //     updatedCustomers[referrerIndex] = {
+      //       ...referrer,
+      //       referralIncome: (referrer.referralIncome || 0) + referralAmount,
+      //       referredUsers: [
+      //         ...(referrer.referredUsers || []),
+      //         {
+      //           mobile: selectedCustomer.mobile,
+      //           referralDate: new Date().toISOString(),
+      //           amount: rechargeAmountNum
+      //         }
+      //       ]
+      //     };
+      //   }
+      // }
+
+      setCustomers(updatedCustomers);
+
+      let successMessage = `₹${rechargeAmountNum.toLocaleString()} recharged successfully!`;
+      let successDescription = `Customer earned ${surabhiCoinsEarned} Surabhi Coins and ₹${sevaAmountEarned} Seva Wallet`;
+      
+      if (selectedCustomer.referredBy && referralAmount > 0) {
+        successDescription += ` | Referrer earned ₹${referralAmount}`;
+      }
+
+      toast.success(successMessage, { 
+        description: successDescription,
+      });
+
+      toast.success(`Recharge of ₹${rechargeAmountNum} completed!`, {
+      description: `Receipt #${rechargeRef.id}`,
+    });
       
       // Reset form
       setRechargeAmount('');
       setSelectedCustomer(null);
       setSearchTerm('');
-      setStaffPin('');
+      // setStaffPin('');
       setShowConfirmation(false);
     } catch (error) {
-      toast.error('Recharge failed. Please try again.', { id: toastId });
+      toast.error('Recharge failed. Please try again.');
       console.error('Recharge error:', error);
     } finally {
       setIsProcessing(false);
@@ -290,10 +404,13 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
               <Badge variant="outline" className="border-blue-200 text-blue-800">
               Referral: {storeDetails.referralCommission}%
               </Badge>
-              <Badge variant="outline" className="border-green-200 text-green-800">
+              <Badge variant="outline" className="border-green-200 text-red-800">
                 Surabhi: {storeDetails.surabhiCommission}%
               </Badge>
-              <Badge variant="outline" className="border-blue-200 text-blue-800">
+              <Badge variant="outline" className="border-blue-200 text-green-800">
+                Cash Only: {storeDetails.cashOnlyCommission}%
+              </Badge>
+              <Badge variant="outline" className="border-blue-200 text-purple-800">
                 Seva: {storeDetails.sevaCommission}%
               </Badge>
             </div>
@@ -358,6 +475,12 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                               <span>{customer.email}</span>
                             </div>
                           )}
+                          {customer.referredBy && (
+                            <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                              <HandCoins className="h-3 w-3" />
+                              <span>{customer.referredBy}</span>
+                            </div>
+                          )}
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-medium text-green-600">
@@ -365,11 +488,11 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                           </p>
                           <p className="text-xs text-gray-500">Current Balance</p>
                           <p className="text-sm font-medium text-amber-600 mt-1">
-                            {customer.surabhiCoins} Coins
+                            {customer.surabhiCoins} Surabhi Coins
                           </p>
                           {customer.sevaCoinsTotal && customer.sevaCoinsTotal > 0 && (
                             <p className="text-sm font-medium text-blue-600 mt-1">
-                              ₹{customer.sevaCoinsTotal} Seva
+                              ₹{customer.sevaCoinsTotal} All Time Seva
                             </p>
                           )}
                         </div>
@@ -471,6 +594,24 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                         <span className="font-bold text-amber-600">+{surabhiCoinsEarned}</span>
                       </div>
 
+                      {/* <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Coins className="h-4 w-4 text-amber-600" />
+                          <span className="text-sm font-medium text-amber-900">
+                            Referral Coins ({storeDetails.referralCommission}%)
+                          </span>
+                        </div>
+                        <span className="font-bold text-amber-600">+{referralAmount}</span>
+                      </div> */}
+
+                      <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Wallet className="h-4 w-4 text-purple-600" />
+                          <span className="text-sm font-medium text-purple-900">Referral Reward</span>
+                        </div>
+                        <span className="font-bold text-purple-600">+₹{rechargeAmountNum.toLocaleString()}</span>
+                      </div>
+
                       <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                         <div className="flex items-center gap-2">
                           <Wallet className="h-4 w-4 text-blue-600" />
@@ -515,9 +656,9 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Confirm Recharge</DialogTitle>
-            <DialogDescription>
+            {/* <DialogDescription>
               Please verify the details and enter your staff PIN to proceed
-            </DialogDescription>
+            </DialogDescription> */}
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
@@ -555,7 +696,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
               </div>
             </div>
 
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label htmlFor="staffPin">Staff PIN</Label>
               <Input
                 id="staffPin"
@@ -566,7 +707,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                 className="h-12"
                 maxLength={4}
               />
-            </div>
+            </div> */}
           </div>
 
           <DialogFooter>
@@ -579,7 +720,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
             </Button>
             <Button 
               onClick={processRecharge}
-              disabled={isProcessing || staffPin.length !== 4}
+              disabled={isProcessing}
               className="bg-green-600 hover:bg-green-700"
             >
               {isProcessing ? (
