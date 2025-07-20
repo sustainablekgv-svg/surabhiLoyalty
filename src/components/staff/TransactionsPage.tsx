@@ -43,7 +43,7 @@ interface SalesTransaction {
     wallet: number;
     surabhiCoins: number;
   };
-  createdAt?: any; // Firestore FieldValue or Timestamp
+  createdAt?: any;
 }
 
 interface TransactionsPageProps {
@@ -51,6 +51,8 @@ interface TransactionsPageProps {
 }
 
 export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [recordsPerPage, setRecordsPerPage] = useState(10);
   const [transactions, setTransactions] = useState<SalesTransaction[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<SalesTransaction[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -59,6 +61,21 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isFiltering, setIsFiltering] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Calculate pagination
+const indexOfLastRecord = currentPage * recordsPerPage;
+const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+const currentRecords = filteredTransactions.slice(indexOfFirstRecord, indexOfLastRecord);
+const totalPages = Math.ceil(filteredTransactions.length / recordsPerPage);
+
+// Change page
+const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
+// Handle records per page change
+const handleRecordsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  setRecordsPerPage(Number(e.target.value));
+  setCurrentPage(1); // Reset to first page when changing records per page
+};
 
   // Fetch all transactions for current store
   useEffect(() => {
@@ -184,7 +201,9 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
             <Filter className="h-5 w-5 text-gray-600" />
             Filter Transactions
           </CardTitle>
-          <CardDescription>Apply filters to narrow down results</CardDescription>
+          <CardDescription>
+            Showing {indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredTransactions.length)} of {filteredTransactions.length} transaction(s) for {storeLocation}
+            </CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="space-y-2">
@@ -292,11 +311,6 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                 Showing {filteredTransactions.length} transaction(s) for {storeLocation}
               </CardDescription>
             </div>
-            {/* {!isLoading && filteredTransactions.length > 0 && (
-              <Button variant="outline" size="sm" disabled>
-                Export CSV
-              </Button>
-            )} */}
           </div>
         </CardHeader>
         <CardContent>
@@ -352,7 +366,7 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTransactions.map((tx) => {
+                  {currentRecords.map((tx) => {
   // Safely parse the date and handle invalid dates
   const processedDate = tx.processedBy ? new Date(tx.processedBy) : null;
   const formattedDate = processedDate && !isNaN(processedDate.getTime()) 
@@ -380,6 +394,57 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
 })}
                 </TableBody>
               </Table>
+              <div className="flex items-center justify-between mt-4">
+  <div className="flex items-center gap-2">
+    <Label htmlFor="recordsPerPage">Records per page:</Label>
+    <select
+      id="recordsPerPage"
+      value={recordsPerPage}
+      onChange={handleRecordsPerPageChange}
+      className="border rounded-md px-2 py-1 text-sm"
+    >
+      <option value="5">5</option>
+      <option value="10">10</option>
+      <option value="20">20</option>
+      <option value="50">50</option>
+    </select>
+  </div>
+  
+  <div className="flex items-center gap-2">
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => paginate(currentPage - 1)}
+      disabled={currentPage === 1}
+    >
+      Previous
+    </Button>
+    
+    {Array.from({ length: totalPages }, (_, i) => i + 1).map((number) => (
+      <Button
+        key={number}
+        variant={currentPage === number ? "default" : "outline"}
+        size="sm"
+        onClick={() => paginate(number)}
+      >
+        {number}
+      </Button>
+    ))}
+    
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => paginate(currentPage + 1)}
+      disabled={currentPage === totalPages}
+    >
+      Next
+    </Button>
+  </div>
+  
+  <div className="text-sm text-gray-600">
+    Showing {indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredTransactions.length)} of {filteredTransactions.length} records
+  </div>
+</div>
             </div>
           )}
         </CardContent>
