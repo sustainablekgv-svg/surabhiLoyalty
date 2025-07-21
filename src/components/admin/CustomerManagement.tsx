@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, query, updateDoc, where } from 'firebase/firestore';
 import { 
   Search, 
   Filter, 
@@ -209,45 +209,78 @@ export const CustomerManagement = () => {
   };
 
   const saveCustomerChanges = async () => {
-    if (!editCustomer) return;
+  if (!editCustomer?.mobile) {
+    toast({
+      title: "Error",
+      description: "No customer mobile number provided",
+      variant: "destructive",
+    });
+    return;
+  }
 
-    try {
-      setIsSaving(true);
-      const customerRef = doc(db, 'customers', editCustomer.mobile);
-      
-      await updateDoc(customerRef, {
-        name: editedData.name,
-        email: editedData.email,
-        storeLocation: editedData.storeLocation,
-        walletBalance: editedData.walletBalance,
-        surabhiCoins: editedData.surabhiCoins,
-        sevaCoinsTotal: editedData.sevaCoinsTotal,
-        registered: editedData.registered,
-        tpin: editedData.tpin
-      });
-
-      // Update local state
-      setCustomers(prev => prev.map(c => 
-        c.mobile === editCustomer.mobile ? { ...c, ...editedData } : c
-      ));
-
+  try {
+    setIsSaving(true);
+    
+    // Query customers by mobile number
+    const customersRef = collection(db, 'customers');
+    console.log("THe line 219 data is", customersRef);
+    const q = query(customersRef, where('mobile', '==', editCustomer.mobile));
+    const querySnapshot = await getDocs(q);
+        console.log("Query results:", {
+        size: querySnapshot.size,
+        docs: querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        data: doc.data()
+        }))
+        });
+    
+    if (querySnapshot.empty) {
       toast({
-        title: "Success",
-        description: "Customer details updated successfully",
-        variant: "default",
-      });
-      setIsEditDialogOpen(false);
-    } catch (error) {
-      console.error("Error updating customer:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update customer details",
+        title: "Failure",
+        description: "No customer found with this mobile number",
         variant: "destructive",
       });
-    } finally {
-      setIsSaving(false);
+      return;
     }
-  };
+    
+    // Get the first matching document (assuming mobile numbers are unique)
+    const customerDoc = querySnapshot.docs[0];
+    
+    // Update the document
+    await updateDoc(customerDoc.ref, {
+      name: editedData.name,
+      email: editedData.email,
+      storeLocation: editedData.storeLocation,
+      walletBalance: editedData.walletBalance,
+      surabhiCoins: editedData.surabhiCoins,
+      sevaCoinsTotal: editedData.sevaCoinsTotal,
+      registered: editedData.registered,
+      tpin: editedData.tpin,
+      updatedAt: Timestamp.fromDate(new Date())
+    });
+
+    // Update local state
+    setCustomers(prev => prev.map(c => 
+      c.mobile === editCustomer.mobile ? { ...c, ...editedData } : c
+    ));
+
+    toast({
+      title: "Success",
+      description: "Customer details updated successfully",
+      variant: "default",
+    });
+    setIsEditDialogOpen(false);
+  } catch (error) {
+    console.error("Error updating customer:", error);
+    toast({
+      title: "Error",
+      description: "Failed to update customer details",
+      variant: "destructive",
+    });
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   if (loading) {
     return (
