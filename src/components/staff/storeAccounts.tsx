@@ -25,47 +25,22 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
+
 interface Store {
   id: string;
   name: string;
   location: string;
 }
+
 import { AccountTx, StoreAccountsProps } from '@/types/types';
-const StoreAccounts = ({ storeLocation }: StoreAccountsProps) => {
+
+const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userRole: string }) => {
   const [transactions, setTransactions] = useState<AccountTx[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [updatingTx, setUpdatingTx] = useState<string | null>(null);
-  const [storeName, setStoreName] = useState<string>('');
 
-   const fetchStoreName = async () => {
-    try {
-      setLoading(true);
-      const storesQuery = query(
-        collection(db, 'stores'),
-        where('storeLocation', '==', storeLocation) // Assuming 'location' is the field name
-      );
-      
-      const querySnapshot = await getDocs(storesQuery);
-      
-      if (!querySnapshot.empty) {
-        // Assuming there's only one store with this location
-        const storeDoc = querySnapshot.docs[0];
-        const storeData = storeDoc.data() as Store;
-        setStoreName(storeData.name);
-      } else {
-        console.log('No store found with location given as prop');
-      }
-    } catch (error) {
-      console.error('Error fetching store name:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchStoreName();
-  }, []);
+  const isAdmin = userRole === 'admin'; // Assuming 'admin' is the role name for administrators
 
   const fetchTransactions = async () => {
     try {
@@ -75,11 +50,9 @@ const StoreAccounts = ({ storeLocation }: StoreAccountsProps) => {
       
       const txQuery = query(
         collection(db, 'AccountTx'),
-        where('storeName', '==', storeName),
+        where('storeName', '==', storeLocation),
         orderBy('date', 'desc')
       );
-
-      console.log("THe line 82 data is", txQuery);
       
       const txSnapshot = await getDocs(txQuery);
       const txData: AccountTx[] = [];
@@ -112,6 +85,8 @@ const StoreAccounts = ({ storeLocation }: StoreAccountsProps) => {
   };
 
   const handleSettledToggle = async (txId: string, settled: boolean) => {
+    if (!isAdmin) return; // Only allow admins to update the settled status
+    
     try {
       setUpdatingTx(txId);
       await updateDoc(doc(db, 'AccountTx', txId), {
@@ -127,7 +102,6 @@ const StoreAccounts = ({ storeLocation }: StoreAccountsProps) => {
     }
   };
 
-  // Helper function to format Timestamp
   const formatTimestamp = (timestamp: Timestamp): string => {
     return format(timestamp.toDate(), 'MMM dd, yyyy HH:mm');
   };
@@ -208,7 +182,7 @@ const StoreAccounts = ({ storeLocation }: StoreAccountsProps) => {
                   <TableCell>
                     {updatingTx === tx.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
+                    ) : isAdmin ? (
                       <Checkbox
                         checked={Boolean(tx.settled)}
                         onCheckedChange={(checked) => 
@@ -216,6 +190,8 @@ const StoreAccounts = ({ storeLocation }: StoreAccountsProps) => {
                         }
                         className="h-5 w-5 rounded-md"
                       />
+                    ) : (
+                      <span>{tx.settled ? '✔️' : '❌'}</span>
                     )}
                   </TableCell>
                   <TableCell className="max-w-xs truncate">
