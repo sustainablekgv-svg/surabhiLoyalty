@@ -25,6 +25,28 @@ import { toast } from 'sonner';
 
 import { Customer, SevaPool, SevaTransaction, RechargeRecord } from '@/types/types';
 
+function safeConvertToTimestamp(date: any): Timestamp {
+  if (date instanceof Timestamp) {
+    return date;
+  }
+  if (date?.toDate instanceof Function) {
+    return Timestamp.fromDate(date.toDate());
+  }
+  if (date instanceof Date) {
+    return Timestamp.fromDate(date);
+  }
+  // If date is a string or number, try to parse it
+  if (typeof date === 'string' || typeof date === 'number') {
+    try {
+      return Timestamp.fromDate(new Date(date));
+    } catch {
+      return Timestamp.now(); // fallback to current time
+    }
+  }
+  // If we can't parse it, return current timestamp
+  return Timestamp.now();
+}
+
 export const GoSevaPool = () => {
     const [sevaPool, setSevaPool] = useState<SevaPool>({
     currentBalance: 0,
@@ -62,8 +84,8 @@ export const GoSevaPool = () => {
       totalAllocations: data.totalAllocations ?? 0,
       contributionsCurrentMonth: data.contributionsCurrentMonth ?? 0,
       allocationsCurrentMonth: data.allocationsCurrentMonth ?? 0,
-      lastResetDate:  Timestamp.fromDate(data.lastResetDate) || data.lastResetDate,
-      lastAllocatedDate: Timestamp.fromDate(data.lastAllocatedDate) || data.lastAllocatedDate
+      lastResetDate: safeConvertToTimestamp(data.lastResetDate),
+      lastAllocatedDate: safeConvertToTimestamp(data.lastAllocatedDate)
       };
       setSevaPool(poolData);
       } else {
@@ -84,15 +106,20 @@ export const GoSevaPool = () => {
       setRecharges(rechargesData);
 
       // Create transactions from recharges
-      const rechargeTransactions: SevaTransaction[] = rechargesData.map(recharge => ({
-        type: 'contribution',
-        amount: recharge.sevaAmountEarned,
-        description: `Recharge by ${recharge.customerName}`,
-        date: recharge.timestamp,
-        monthYear: format(recharge.timestamp.toDate(), 'yyyy-MM'),
-        customerName: recharge.customerName,
-        storeLocation: recharge.storeLocation
-      }));
+          const rechargeTransactions: SevaTransaction[] = rechargesData.map(recharge => ({
+          type: 'contribution',
+          amount: recharge.sevaAmountEarned,
+          description: `Recharge by ${recharge.customerName}`,
+          date: recharge.timestamp instanceof Timestamp ? recharge.timestamp : Timestamp.fromDate(new Date(recharge.timestamp)),
+          monthYear: format(
+          recharge.timestamp instanceof Timestamp 
+          ? recharge.timestamp.toDate() 
+          : new Date(recharge.timestamp), 
+          'yyyy-MM'
+          ),
+          customerName: recharge.customerName,
+          storeLocation: recharge.storeLocation
+          }));
 
       // Fetch allocation transactions
       const transactionsQuery = query(
@@ -129,10 +156,11 @@ export const GoSevaPool = () => {
 });
 
       // Combine transactions
-      const allTransactions = [...rechargeTransactions, ...allocationTransactions].sort((a, b) => 
-        b.date.toDate().getTime() - a.date.toDate().getTime()
-      );
-      setTransactions(allTransactions);
+        const allTransactions = [...rechargeTransactions, ...allocationTransactions].sort((a, b) => {
+        const dateA = a.date instanceof Timestamp ? a.date.toDate() : new Date(a.date);
+        const dateB = b.date instanceof Timestamp ? b.date.toDate() : new Date(b.date);
+        return dateB.getTime() - dateA.getTime();
+        });
       
       // Process customers
       const contributingCustomers = rechargesData.reduce((acc: Customer[], recharge) => {
@@ -516,7 +544,12 @@ export const GoSevaPool = () => {
                       </p>
                       <div className="flex items-center gap-2 text-xs text-gray-600">
                         <span>
-                          {format(transaction.date.toDate(), 'dd MMM yyyy')}
+                        {format(
+                        transaction.date instanceof Timestamp 
+                        ? transaction.date.toDate() 
+                        : new Date(transaction.date), 
+                        'dd MMM yyyy'
+                        )}
                         </span>
                         {transaction.customerName && (
                           <>
