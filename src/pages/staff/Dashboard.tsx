@@ -11,7 +11,8 @@ import {
   ShoppingCart,
   Scan,
   Gift,
-  History
+  History,
+  WalletCards
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/auth-context';
@@ -21,36 +22,26 @@ import { UserRegistration } from '@/components/staff/UserRegistration';
 import { WalletRecharge } from '@/components/staff/WalletRecharge';
 import { SalesManagement } from '@/components/staff/SalesManagement';
 import { TransactionsPage } from '@/components/staff/TransactionsPage';
+import StoreAccounts from '@/components/staff/storeAccounts';
 
 const StaffDashboard = () => {
   const { user, logout, isLoading: authLoading } = useAuth();
-  console.log("the staff info is", user);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [isLoading, setIsLoading] = useState(true);
 
-  // Handle authentication and authorization
   useEffect(() => {
-    if (authLoading) {
-      // Still loading auth state
-      return;
-    }
-
+    if (authLoading) return;
     if (!user) {
-      // No user - redirect to login
       navigate('/');
       toast.error('Please login to access this page');
       return;
     }
-
     if (user.role !== 'staff') {
-      // User is not staff
       navigate('/');
       toast.error('Access restricted to staff only');
       return;
     }
-
-    // If we get here, user is authenticated staff
     setIsLoading(false);
   }, [user, authLoading, navigate]);
 
@@ -76,7 +67,6 @@ const StaffDashboard = () => {
     );
   }
 
-  // Final safety check before rendering
   if (!user || user.role !== 'staff') {
     return null;
   }
@@ -99,48 +89,55 @@ const StaffDashboard = () => {
 
         {/* Main Dashboard Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-5 mb-6 gap-1">
-            <TabsTrigger value="overview" className="flex flex-col items-center gap-1 py-3">
-              <TrendingUp className="h-5 w-5" />
-              <span className="text-xs">Overview</span>
-            </TabsTrigger>
-            <TabsTrigger value="register" className="flex flex-col items-center gap-1 py-3">
-              <UserPlus className="h-5 w-5" />
-              <span className="text-xs">Register</span>
-            </TabsTrigger>
-            <TabsTrigger value="recharge" className="flex flex-col items-center gap-1 py-3">
-              <Wallet className="h-5 w-5" />
-              <span className="text-xs">Wallet</span>
-            </TabsTrigger>
-            <TabsTrigger value="sales" className="flex flex-col items-center gap-1 py-3">
-              <ShoppingCart className="h-5 w-5" />
-              <span className="text-xs">Sales</span>
-            </TabsTrigger>
-            <TabsTrigger value="transactions" className="flex flex-col items-center gap-1 py-3">
-              <History className="h-5 w-5" />
-              <span className="text-xs">Transactions</span>
-            </TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 mb-6 gap-1 bg-gray-100 p-1 rounded-lg">
+            {[
+              { value: 'overview', icon: TrendingUp, label: 'Overview' },
+              { value: 'register', icon: UserPlus, label: 'Register' },
+              { value: 'recharge', icon: Wallet, label: 'Wallet' },
+              { value: 'sales', icon: ShoppingCart, label: 'Sales' },
+              { value: 'transactions', icon: History, label: 'Transactions' },
+              { value: 'accounts', icon: WalletCards, label: 'Accounts' },
+            ].map((tab) => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className={`flex flex-col items-center gap-1 py-2 px-1 rounded-md transition-all ${
+                  activeTab === tab.value 
+                    ? 'bg-white shadow-sm text-purple-600 font-medium' 
+                    : 'text-gray-600 hover:text-purple-500'
+                }`}
+              >
+                <tab.icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="text-xs sm:text-sm">{tab.label}</span>
+              </TabsTrigger>
+            ))}
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
-            <StaffStats storeLocation={user?.storeLocation || ''} />
-          </TabsContent>
+          <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+            <TabsContent value="overview" className="space-y-6">
+              <StaffStats storeLocation={user?.storeLocation || ''} />
+            </TabsContent>
 
-          <TabsContent value="register">
-            <UserRegistration storeLocation={user?.storeLocation || ''} />
-          </TabsContent>
+            <TabsContent value="register">
+              <UserRegistration storeLocation={user?.storeLocation || ''} />
+            </TabsContent>
 
-          <TabsContent value="recharge">
-            <WalletRecharge storeLocation={user?.storeLocation || ''} />
-          </TabsContent>
+            <TabsContent value="recharge">
+              <WalletRecharge storeLocation={user?.storeLocation || ''} />
+            </TabsContent>
 
-          <TabsContent value="sales">
-            <SalesManagement storeLocation={user?.storeLocation || ''} />
-          </TabsContent>
+            <TabsContent value="sales">
+              <SalesManagement storeLocation={user?.storeLocation || ''} />
+            </TabsContent>
 
-          <TabsContent value="transactions">
-            <TransactionsPage storeLocation={user?.storeLocation || ''} />
-          </TabsContent>
+            <TabsContent value="transactions">
+              <TransactionsPage storeLocation={user?.storeLocation || ''} />
+            </TabsContent>
+
+            <TabsContent value="accounts">
+              <StoreAccounts storeLocation={user?.storeLocation || ''} />
+            </TabsContent>
+          </div>
         </Tabs>
       </div>
     </div>

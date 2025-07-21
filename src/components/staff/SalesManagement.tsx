@@ -38,9 +38,20 @@ import {
   SalesTransaction,
   SevaTransaction,
   ActivityType,
-  StoreType
+  StoreType,
+  AccountTx
 } from '@/types/types';
 import { serverTimestamp } from 'firebase/firestore';
+
+const calculateAdminCut = (saleAmount: number, storeDetails: StoreType) => {
+  if (!storeDetails) return 0;
+  
+  const referralAmount = Math.floor(saleAmount * (storeDetails.referralCommission / 100));
+  const sevaAmount = Math.floor(saleAmount * (storeDetails.sevaCommission / 100));
+  const surabhiAmount = Math.floor(saleAmount * (storeDetails.surabhiCommission / 100));
+  
+  return referralAmount + sevaAmount + surabhiAmount;
+};
 
 export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -135,7 +146,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     let walletDeduction = 0;
     let cashPayment = 0;
     let surabhiCoinsEarned = 0;
-    let referrerCoinsEarned = 0;
+    // let referrerCoinsEarned = 0;
     let goSevaContribution = Math.floor(saleAmount * (storeDetails.sevaCommission / 100));
 
     const remainingAfterCoins = saleAmount - coinsToUse;
@@ -168,10 +179,6 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       );
     }
 
-    // Calculate referrer coins if customer has a referrer
-    if (selectedCustomer.referredBy) {
-      referrerCoinsEarned = Math.floor(saleAmount * (storeDetails.referralCommission / 100));
-    }
 
     return {
       totalAmount: saleAmount,
@@ -179,7 +186,6 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       walletDeduction,
       cashPayment,
       surabhiCoinsEarned,
-      referrerCoinsEarned,
       goSevaContribution,
       isValid: true
     };
@@ -244,6 +250,74 @@ if (querySnapshot.empty) {
   };
   
   await addDoc(collection(db, 'transactions'), saleData);
+
+  // Add AccountTx record based on payment method
+  // Add AccountTx record(s) based on payment method
+if (paymentMethod === 'wallet') {
+  const adminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
+  const accountTxData: Omit<AccountTx, 'id'> = {
+    date: Timestamp.fromDate(new Date()),
+    storeName: storeDetails.name,
+    type: 'wallet',
+    amount: saleCalculation.totalAmount,
+    debit: saleCalculation.totalAmount,
+    adminCut: adminCut,
+    credit: saleCalculation.totalAmount - adminCut,
+    balance: saleCalculation.totalAmount - adminCut,
+    description: `Wallet sale for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
+    settled: false
+  };
+  await addDoc(collection(db, 'AccountTx'), accountTxData);
+} else if (paymentMethod === 'cash') {
+  const accountTxData: Omit<AccountTx, 'id'> = {
+    date: Timestamp.fromDate(new Date()),
+    storeName: storeDetails.name,
+    type: 'cash',
+    amount: saleCalculation.totalAmount,
+    debit: saleCalculation.totalAmount,
+    credit: 0,
+    balance: saleCalculation.totalAmount,
+    description: `Cash sale for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
+    settled: false
+  };
+  await addDoc(collection(db, 'AccountTx'), accountTxData);
+} else { 
+  // Mixed payment - create two separate records
+  
+  // 1. Wallet portion record
+  if (saleCalculation.walletDeduction > 0) {
+    const walletAdminCut = calculateAdminCut(saleCalculation.walletDeduction, storeDetails);
+    const walletTxData: Omit<AccountTx, 'id'> = {
+      date: Timestamp.fromDate(new Date()),
+      storeName: storeDetails.name,
+      type: 'wallet',
+      amount: saleCalculation.walletDeduction,
+      debit: saleCalculation.walletDeduction,
+      adminCut: walletAdminCut,
+      credit: saleCalculation.walletDeduction - walletAdminCut,
+      balance: saleCalculation.walletDeduction - walletAdminCut,
+      description: `Wallet portion (${saleCalculation.walletDeduction}) of mixed payment for ${selectedCustomer.name}`,
+      settled: false
+    };
+    await addDoc(collection(db, 'AccountTx'), walletTxData);
+  }
+  
+  // 2. Cash portion record
+  if (saleCalculation.cashPayment > 0) {
+    const cashTxData: Omit<AccountTx, 'id'> = {
+      date: Timestamp.fromDate(new Date()),
+      storeName: storeDetails.name,
+      type: 'cash',
+      amount: saleCalculation.cashPayment,
+      debit: saleCalculation.cashPayment,
+      credit: 0,
+      balance: saleCalculation.cashPayment,
+      description: `Cash portion (${saleCalculation.cashPayment}) of mixed payment for ${selectedCustomer.name}`,
+      settled: false
+    };
+    await addDoc(collection(db, 'AccountTx'), cashTxData);
+  }
+}
   
   // Record activity
   const activity: ActivityType = {
@@ -544,12 +618,12 @@ if (querySnapshot.empty) {
                           <span className="font-bold text-green-600">₹{saleCalculation.cashPayment}</span>
                         </div>
                       )}
-                      {saleCalculation.referrerCoinsEarned > 0 && (
+                      {/* {saleCalculation.referrerCoinsEarned > 0 && (
                         <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
                           <span className="text-sm font-medium text-indigo-900">Referral Bonus</span>
                           <span className="font-bold text-indigo-600">+{saleCalculation.referrerCoinsEarned} (to referrer)</span>
                         </div>
-                      )}
+                      )} */}
                     </div>
                   </div>
                 )}

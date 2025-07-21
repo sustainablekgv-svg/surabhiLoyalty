@@ -149,11 +149,13 @@ export interface ActivityType {
 }
 
 export interface AccountTx {
+  id: string;
   date: Timestamp;
   storeName: string;
-  type: 'cash' | 'recharge' | 'sale';
+  type: 'cash' | 'recharge' | 'wallet';
   amount: number;
   debit: number;
+  adminCut?:number;
   credit: number;
   balance: number;
   description: string;

@@ -180,8 +180,12 @@ export const CustomerDetails = () => {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Last Transaction</p>
-              <p>{customer.lastTransactionDate || 'No transactions yet'}</p>
-            </div>
+              <p>
+              {customer.lastTransactionDate 
+              ? customer.lastTransactionDate.toDate().toLocaleString() 
+              : 'No transactions yet'}
+              </p>
+</div>
             <div>
               <p className="text-xs text-muted-foreground">TPIN</p>
               <p className="font-mono">{customer.tpin || 'Not set'}</p>
@@ -250,9 +254,9 @@ export const CustomerDetails = () => {
                         >
                           {user.mobile}
                         </Button>
-                        <span className="text-xs text-muted-foreground">
-                          {user.referralDate}
-                        </span>
+                      <span className="text-xs text-muted-foreground">
+                      {user.referralDate.toDate().toLocaleString()}
+                      </span>
                       </div>
                     ))}
                   </div>
