@@ -17,7 +17,7 @@ export interface Customer {
   referralIncome: number | null;
   referredUsers: { mobile:number; name: string; referralDate: Timestamp; }[] | null;
   registered: Boolean;
-  lastTransactionDate: Timestamp;
+  lastTransactionDate: Timestamp | null;
   createdAt: Timestamp;
   customerPassword: string;
   tpin: string;
@@ -73,6 +73,10 @@ export interface StoreType {
   updatedAt: Timestamp;
 }
 
+export interface AdminHeaderProps {
+  user: StaffType;
+  onLogout: () => void;
+}
 export interface RechargeRecord {
   id?: string; 
   customerMobile: string;

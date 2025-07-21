@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 
 import { Customer, SevaPool, SevaTransaction, RechargeRecord } from '@/types/types';
 
+// Safe timestamp conversion utility
 function safeConvertToTimestamp(date: any): Timestamp {
   if (date instanceof Timestamp) {
     return date;
@@ -35,27 +36,44 @@ function safeConvertToTimestamp(date: any): Timestamp {
   if (date instanceof Date) {
     return Timestamp.fromDate(date);
   }
-  // If date is a string or number, try to parse it
   if (typeof date === 'string' || typeof date === 'number') {
     try {
       return Timestamp.fromDate(new Date(date));
     } catch {
-      return Timestamp.now(); // fallback to current time
+      return Timestamp.now();
     }
   }
-  // If we can't parse it, return current timestamp
   return Timestamp.now();
 }
 
+// Safe date formatting utility
+function safeFormatDate(date: any, dateFormat: string = 'dd MMM yyyy'): string {
+  try {
+    let jsDate: Date;
+    if (date instanceof Timestamp) {
+      jsDate = date.toDate();
+    } else if (date instanceof Date) {
+      jsDate = date;
+    } else if (date?.toDate instanceof Function) {
+      jsDate = date.toDate();
+    } else {
+      jsDate = new Date(date);
+    }
+    return format(jsDate, dateFormat);
+  } catch {
+    return 'Invalid date';
+  }
+}
+
 export const GoSevaPool = () => {
-    const [sevaPool, setSevaPool] = useState<SevaPool>({
+  const [sevaPool, setSevaPool] = useState<SevaPool>({
     currentBalance: 0,
     totalContributions: 0,
     totalAllocations: 0,
     contributionsCurrentMonth: 0,
     allocationsCurrentMonth: 0,
-     lastResetDate: serverTimestamp() as Timestamp,
-    lastAllocatedDate: serverTimestamp() as Timestamp
+    lastResetDate: Timestamp.now(),
+    lastAllocatedDate: Timestamp.now()
   });
   
   const [transactions, setTransactions] = useState<SevaTransaction[]>([]);
@@ -77,19 +95,19 @@ export const GoSevaPool = () => {
       const poolRef = doc(db, 'SevaPool', 'main');
       const poolSnapshot = await getDoc(poolRef);
       if (poolSnapshot.exists()) {
-      const data = poolSnapshot.data();
-      const poolData: SevaPool = {
-      currentBalance: data.currentBalance ?? 0,
-      totalContributions: data.totalContributions ?? 0,
-      totalAllocations: data.totalAllocations ?? 0,
-      contributionsCurrentMonth: data.contributionsCurrentMonth ?? 0,
-      allocationsCurrentMonth: data.allocationsCurrentMonth ?? 0,
-      lastResetDate: safeConvertToTimestamp(data.lastResetDate),
-      lastAllocatedDate: safeConvertToTimestamp(data.lastAllocatedDate)
-      };
-      setSevaPool(poolData);
+        const data = poolSnapshot.data();
+        const poolData: SevaPool = {
+          currentBalance: data.currentBalance ?? 0,
+          totalContributions: data.totalContributions ?? 0,
+          totalAllocations: data.totalAllocations ?? 0,
+          contributionsCurrentMonth: data.contributionsCurrentMonth ?? 0,
+          allocationsCurrentMonth: data.allocationsCurrentMonth ?? 0,
+          lastResetDate: safeConvertToTimestamp(data.lastResetDate),
+          lastAllocatedDate: safeConvertToTimestamp(data.lastAllocatedDate)
+        };
+        setSevaPool(poolData);
       } else {
-      toast.error('Seva Pool document not found');
+        toast.error('Seva Pool document not found');
       }
       
       // Fetch recharges with seva contributions
@@ -106,20 +124,15 @@ export const GoSevaPool = () => {
       setRecharges(rechargesData);
 
       // Create transactions from recharges
-          const rechargeTransactions: SevaTransaction[] = rechargesData.map(recharge => ({
-          type: 'contribution',
-          amount: recharge.sevaAmountEarned,
-          description: `Recharge by ${recharge.customerName}`,
-          date: recharge.timestamp instanceof Timestamp ? recharge.timestamp : Timestamp.fromDate(new Date(recharge.timestamp)),
-          monthYear: format(
-          recharge.timestamp instanceof Timestamp 
-          ? recharge.timestamp.toDate() 
-          : new Date(recharge.timestamp), 
-          'yyyy-MM'
-          ),
-          customerName: recharge.customerName,
-          storeLocation: recharge.storeLocation
-          }));
+      const rechargeTransactions: SevaTransaction[] = rechargesData.map(recharge => ({
+        type: 'contribution',
+        amount: recharge.sevaAmountEarned,
+        description: `Recharge by ${recharge.customerName}`,
+        date: safeConvertToTimestamp(recharge.timestamp),
+        monthYear: safeFormatDate(recharge.timestamp, 'yyyy-MM'),
+        customerName: recharge.customerName,
+        storeLocation: recharge.storeLocation
+      }));
 
       // Fetch allocation transactions
       const transactionsQuery = query(
@@ -128,39 +141,28 @@ export const GoSevaPool = () => {
       );
       const transactionsSnapshot = await getDocs(transactionsQuery);
       const allocationTransactions = transactionsSnapshot.docs.map(doc => {
-  const data = doc.data();
-  
-  // Validate required fields
-  if (
-    !['contribution', 'allocation'].includes(data.type) ||
-    typeof data.amount !== 'number' ||
-    typeof data.description !== 'string' ||
-    !(data.date instanceof Timestamp) ||
-    typeof data.monthYear !== 'string'
-  ) {
-    console.error('Invalid transaction data:', doc.id, data);
-    throw new Error(`Invalid transaction data for document ${doc.id}`);
-  }
-
-  return {
-    id: doc.id,
-    type: data.type as 'contribution' | 'allocation',
-    amount: data.amount,
-    description: data.description,
-    date: data.date,
-    monthYear: data.monthYear,
-    customerMobile: data.customerMobile || undefined,
-    customerName: data.customerName || undefined,
-    storeLocation: data.storeLocation || undefined
-  } as SevaTransaction;
-});
+        const data = doc.data();
+        
+        return {
+          id: doc.id,
+          type: data.type as 'contribution' | 'allocation',
+          amount: data.amount,
+          description: data.description,
+          date: safeConvertToTimestamp(data.date),
+          monthYear: data.monthYear,
+          customerMobile: data.customerMobile || undefined,
+          customerName: data.customerName || undefined,
+          storeLocation: data.storeLocation || undefined
+        } as SevaTransaction;
+      });
 
       // Combine transactions
-        const allTransactions = [...rechargeTransactions, ...allocationTransactions].sort((a, b) => {
+      const allTransactions = [...rechargeTransactions, ...allocationTransactions].sort((a, b) => {
         const dateA = a.date instanceof Timestamp ? a.date.toDate() : new Date(a.date);
         const dateB = b.date instanceof Timestamp ? b.date.toDate() : new Date(b.date);
         return dateB.getTime() - dateA.getTime();
-        });
+      });
+      setTransactions(allTransactions);
       
       // Process customers
       const contributingCustomers = rechargesData.reduce((acc: Customer[], recharge) => {
@@ -183,8 +185,8 @@ export const GoSevaPool = () => {
             referralIncome: null,
             referredUsers: null,
             registered: true,
-            lastTransactionDate: Timestamp.fromDate(new Date()),
-            createdAt: Timestamp.fromDate(new Date()),
+            lastTransactionDate: Timestamp.now(),
+            createdAt: Timestamp.now(),
             customerPassword: '',
             tpin: ''
           });
@@ -199,33 +201,33 @@ export const GoSevaPool = () => {
       );
       const customersSnapshot = await getDocs(customersQuery);
       const customersData = customersSnapshot.docs.map(doc => {
-  const data = doc.data();
-  
-  return {
-    id: doc.id,
-    name: data.name || '',
-    mobile: data.mobile || '',
-    email: data.email || '',
-    storeLocation: data.storeLocation || '',
-    walletBalance: data.walletBalance || 0,
-    walletRechargeDone: data.walletRechargeDone || false,
-    walletBalanceCurrentMonth: data.walletBalanceCurrentMonth || 0,
-    role: data.role || 'customer',
-    walletId: data.walletId || '',
-    surabhiCoins: data.surabhiCoins || 0,
-    surabhiCoinsCurrentMonth: data.surabhiCoinsCurrentMonth || 0,
-    sevaCoinsTotal: data.sevaCoinsTotal || 0,
-    sevaCoinsCurrentMonth: data.sevaCoinsCurrentMonth || 0,
-    referredBy: data.referredBy || null,
-    referralIncome: data.referralIncome || null,
-    referredUsers: data.referredUsers || null,
-    registered: data.registered || false,
-    lastTransactionDate: Timestamp.fromDate(data.lastTransactionDate) || data.lastTransactionDate,
-    createdAt: Timestamp.fromDate(data.createdAt) || data.createdAt,
-    customerPassword: data.customerPassword || '',
-    tpin: data.tpin || ''
-  } as Customer;
-});
+        const data = doc.data();
+        
+        return {
+          id: doc.id,
+          name: data.name || '',
+          mobile: data.mobile || '',
+          email: data.email || '',
+          storeLocation: data.storeLocation || '',
+          walletBalance: data.walletBalance || 0,
+          walletRechargeDone: data.walletRechargeDone || false,
+          walletBalanceCurrentMonth: data.walletBalanceCurrentMonth || 0,
+          role: data.role || 'customer',
+          walletId: data.walletId || '',
+          surabhiCoins: data.surabhiCoins || 0,
+          surabhiCoinsCurrentMonth: data.surabhiCoinsCurrentMonth || 0,
+          sevaCoinsTotal: data.sevaCoinsTotal || 0,
+          sevaCoinsCurrentMonth: data.sevaCoinsCurrentMonth || 0,
+          referredBy: data.referredBy || null,
+          referralIncome: data.referralIncome || null,
+          referredUsers: data.referredUsers || null,
+          registered: data.registered || false,
+          lastTransactionDate: safeConvertToTimestamp(data.lastTransactionDate),
+          createdAt: safeConvertToTimestamp(data.createdAt),
+          customerPassword: data.customerPassword || '',
+          tpin: data.tpin || ''
+        } as Customer;
+      });
 
       // Merge customers
       const mergedCustomers = [...customersData, ...contributingCustomers].reduce((acc: Customer[], customer) => {
@@ -286,53 +288,53 @@ export const GoSevaPool = () => {
   };
 
   const handleAllocation = async () => {
-  const amount = parseFloat(allocationAmount);
-  if (!amount || amount <= 0 || amount > sevaPool.currentBalance) {
-    toast.error('Please enter a valid allocation amount');
-    return;
-  }
+    const amount = parseFloat(allocationAmount);
+    if (!amount || amount <= 0 || amount > sevaPool.currentBalance) {
+      toast.error('Please enter a valid allocation amount');
+      return;
+    }
 
-  try {
-    // Create transaction
-    const newTransaction: Omit<SevaTransaction, 'id'> = {
-      type: 'allocation',
-      amount: -amount,
-      description: allocationDescription,
-      date: Timestamp.fromDate(new Date()),
-      monthYear: format(new Date(), 'yyyy-MM')
-    };
+    try {
+      // Create transaction
+      const newTransaction: Omit<SevaTransaction, 'id'> = {
+        type: 'allocation',
+        amount: -amount,
+        description: allocationDescription,
+        date: Timestamp.fromDate(new Date()),
+        monthYear: format(new Date(), 'yyyy-MM')
+      };
 
-    // Add transaction
-    const docRef = await addDoc(collection(db, 'sevaTransactions'), newTransaction);
-    
-    // Update Seva Pool
-    const poolRef = doc(db, 'SevaPool', 'main');
-    await updateDoc(poolRef, {
-      currentBalance: sevaPool.currentBalance - amount,
-      totalAllocations: sevaPool.totalAllocations + amount,
-      allocationsCurrentMonth: sevaPool.allocationsCurrentMonth + amount,
-      lastAllocatedDate: serverTimestamp()
-    });
+      // Add transaction
+      const docRef = await addDoc(collection(db, 'sevaTransactions'), newTransaction);
+      
+      // Update Seva Pool
+      const poolRef = doc(db, 'SevaPool', 'main');
+      await updateDoc(poolRef, {
+        currentBalance: sevaPool.currentBalance - amount,
+        totalAllocations: sevaPool.totalAllocations + amount,
+        allocationsCurrentMonth: sevaPool.allocationsCurrentMonth + amount,
+        lastAllocatedDate: serverTimestamp()
+      });
 
-    // Update state
-    setTransactions([{ ...newTransaction }, ...transactions]);
-    setSevaPool({
-      ...sevaPool,
-      currentBalance: sevaPool.currentBalance - amount,
-      totalAllocations: sevaPool.totalAllocations + amount,
-      allocationsCurrentMonth: sevaPool.allocationsCurrentMonth + amount,
-      lastAllocatedDate: Timestamp.fromDate(new Date())
-    });
-    
-    setAllocationAmount('');
-    setAllocationDescription('');
-    setIsAllocationDialogOpen(false);
-    toast.success(`₹${amount} allocated successfully`);
-  } catch (error) {
-    console.error('Error allocating funds:', error);
-    toast.error('Failed to allocate funds');
-  }
-};
+      // Update state
+      setTransactions([{ ...newTransaction}, ...transactions]);
+      setSevaPool({
+        ...sevaPool,
+        currentBalance: sevaPool.currentBalance - amount,
+        totalAllocations: sevaPool.totalAllocations + amount,
+        allocationsCurrentMonth: sevaPool.allocationsCurrentMonth + amount,
+        lastAllocatedDate: Timestamp.fromDate(new Date())
+      });
+      
+      setAllocationAmount('');
+      setAllocationDescription('');
+      setIsAllocationDialogOpen(false);
+      toast.success(`₹${amount} allocated successfully`);
+    } catch (error) {
+      console.error('Error allocating funds:', error);
+      toast.error('Failed to allocate funds');
+    }
+  };
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -510,7 +512,7 @@ export const GoSevaPool = () => {
             
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-gray-500" />
-              <span className="text-sm text-gray-600">{format(new Date(), 'MMMM yyyy')}</span>
+              <span className="text-sm text-gray-600">{safeFormatDate(new Date(), 'MMMM yyyy')}</span>
             </div>
           </div>
         </CardHeader>
@@ -524,7 +526,7 @@ export const GoSevaPool = () => {
               </div>
             ) : (
               transactions.map((transaction) => (
-                <div key={transaction.customerMobile} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div key={transaction.customerMobile || transaction.customerMobile} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                   <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-full ${
                       transaction.type === 'contribution' 
@@ -544,12 +546,7 @@ export const GoSevaPool = () => {
                       </p>
                       <div className="flex items-center gap-2 text-xs text-gray-600">
                         <span>
-                        {format(
-                        transaction.date instanceof Timestamp 
-                        ? transaction.date.toDate() 
-                        : new Date(transaction.date), 
-                        'dd MMM yyyy'
-                        )}
+                          {safeFormatDate(transaction.date)}
                         </span>
                         {transaction.customerName && (
                           <>
