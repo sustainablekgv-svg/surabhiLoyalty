@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, updateDoc, addDoc, serverTimestamp, doc, getDoc, Timestamp, arrayUnion, increment } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Customer, WalletRechargeProps, ActivityType, StoreType, RechargeRecord } from '@/types/types';
+import { Customer, WalletRechargeProps, ActivityType, StoreType, RechargeRecord, AccountTx } from '@/types/types';
 import { FieldValue } from 'firebase/firestore';
 import { useAuth } from '@/hooks/auth-context';
 
@@ -130,17 +130,16 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
   };
 
   const processRecharge = async () => {
-    if (!selectedCustomer || !rechargeAmount || !storeDetails) return;
+    if (!selectedCustomer || !rechargeAmount || !storeDetails) {
+    setIsLoading(false);
+    setIsProcessing(false);
+    return;
+  }
 
-    setIsProcessing(true);
-    // const toastId = toast.loading('Verifying staff PIN...');
-
+  setIsProcessing(true);
+  setIsLoading(true); // Ensure both are set when starting
+  
     try {
-      // const isValidPin = await verifyStaffPin();
-      // if (!isValidPin) {
-      //   toast.error('Invalid staff PIN. Please try again.', { id: toastId });
-      //   return;
-      // }
 
       toast.loading('Processing recharge...');
 
@@ -197,6 +196,20 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
     };
 
       const rechargeRef = await addDoc(collection(db, 'recharges'), rechargeData);
+
+      const accountTxData: Omit<AccountTx, 'id'> = {
+      date: Timestamp.fromDate(new Date()),
+      storeName: storeDetails.name,
+      type: 'recharge',
+      amount: rechargeAmountNum,
+      debit: rechargeAmountNum,
+      credit: 0,
+      balance: rechargeAmountNum, // Since credit is 0, balance equals debit
+      description: `Recharge for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
+      settled: false
+      };
+
+      await addDoc(collection(db, 'AccountTx'), accountTxData);
 
        // Handle referral income if customer has a referrer
       if (currentData.referredBy && referralAmount > 0) {
@@ -312,26 +325,6 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         }
         return c;
       });
-
-      //       // Update local state for referrer if applicable
-      // if (selectedCustomer.referredBy && referralAmount > 0) {
-      //   const referrerIndex = updatedCustomers.findIndex(c => c.mobile === selectedCustomer.referredBy);
-      //   if (referrerIndex !== -1) {
-      //     const referrer = updatedCustomers[referrerIndex];
-      //     updatedCustomers[referrerIndex] = {
-      //       ...referrer,
-      //       referralIncome: (referrer.referralIncome || 0) + referralAmount,
-      //       referredUsers: [
-      //         ...(referrer.referredUsers || []),
-      //         {
-      //           mobile: selectedCustomer.mobile,
-      //           referralDate: new Date().toISOString(),
-      //           amount: rechargeAmountNum
-      //         }
-      //       ]
-      //     };
-      //   }
-      // }
 
       setCustomers(updatedCustomers);
 
@@ -594,22 +587,14 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                         <span className="font-bold text-amber-600">+{surabhiCoinsEarned}</span>
                       </div>
 
-                      {/* <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
+                      <div className="flex items-center justify-between p-3 bg-green-100 rounded-lg">
                         <div className="flex items-center gap-2">
-                          <Coins className="h-4 w-4 text-amber-600" />
-                          <span className="text-sm font-medium text-amber-900">
+                          <HandCoins className="h-4 w-4 text-green-600" />
+                          <span className="text-sm font-medium text-green-900">
                             Referral Coins ({storeDetails.referralCommission}%)
                           </span>
                         </div>
-                        <span className="font-bold text-amber-600">+{referralAmount}</span>
-                      </div> */}
-
-                      <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <Wallet className="h-4 w-4 text-purple-600" />
-                          <span className="text-sm font-medium text-purple-900">Referral Reward</span>
-                        </div>
-                        <span className="font-bold text-purple-600">+₹{rechargeAmountNum.toLocaleString()}</span>
+                        <span className="font-bold text-green-600">+{referralAmount}</span>
                       </div>
 
                       <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
@@ -656,9 +641,6 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Confirm Recharge</DialogTitle>
-            {/* <DialogDescription>
-              Please verify the details and enter your staff PIN to proceed
-            </DialogDescription> */}
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
@@ -691,23 +673,12 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                 <div className="font-medium">₹{rechargeAmountNum.toLocaleString()}</div>
                 <div className="text-gray-500">Coins Earned:</div>
                 <div className="font-medium">+{surabhiCoinsEarned}</div>
+                <div className="text-gray-500">Referral Coins:</div>
+                <div className="font-medium">+₹{referralAmount}</div>
                 <div className="text-gray-500">Seva Amount:</div>
                 <div className="font-medium">+₹{sevaAmountEarned}</div>
               </div>
             </div>
-
-            {/* <div className="space-y-2">
-              <Label htmlFor="staffPin">Staff PIN</Label>
-              <Input
-                id="staffPin"
-                type="password"
-                placeholder="Enter 4-digit PIN"
-                value={staffPin}
-                onChange={(e) => setStaffPin(e.target.value)}
-                className="h-12"
-                maxLength={4}
-              />
-            </div> */}
           </div>
 
           <DialogFooter>

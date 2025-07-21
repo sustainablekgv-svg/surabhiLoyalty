@@ -50,11 +50,11 @@ export interface StaffType {
   email: string;
   storeLocation: string;
   role: 'admin' | 'staff';
-  createdAt: string;
+  createdAt: Timestamp;
   status: 'active' | 'inactive';
   salesCount: number;
   staffPin: string;
-  lastActive?: string;
+  lastActive?: Timestamp;
   staffPassword: string;
 }
 
@@ -149,19 +149,20 @@ export interface ActivityType {
 }
 
 export interface AccountTx {
-  id: string;
-  date: Date;
-  storeId: string;
+  date: Timestamp;
   storeName: string;
-  type: 'credit' | 'debit';
+  type: 'cash' | 'recharge' | 'sale';
   amount: number;
+  debit: number;
+  credit: number;
+  balance: number;
   description: string;
+  settled: Boolean;
 }
 
 export interface StoreSummary {
   storeName: string;
   currentBalance: number;
-  lastTransactionDate: Date;
 }
 
 export interface AdminDeck {

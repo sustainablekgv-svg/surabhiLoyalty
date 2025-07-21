@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, Timestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Coins, LogOut, Settings } from 'lucide-react';
@@ -18,8 +18,27 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { StaffType } from '@/types/types';
 
+// Safe date formatting utility
+function safeFormatDate(date: any, dateFormat: string = 'dd MMM yyyy'): string {
+  try {
+    let jsDate: Date;
+    if (date instanceof Timestamp) {
+      jsDate = date.toDate();
+    } else if (date instanceof Date) {
+      jsDate = date;
+    } else if (date?.toDate instanceof Function) {
+      jsDate = date.toDate();
+    } else {
+      jsDate = new Date(date);
+    }
+    return format(jsDate, dateFormat);
+  } catch {
+    return 'Invalid date';
+  }
+}
 
 import { StoreType, AdminHeaderProps } from '@/types/types';
+import { format } from 'date-fns';
 export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
   const [stores, setStores] = useState<StoreType[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -280,11 +299,11 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Created At</Label>
-                <Input
-                  value={new Date(user.createdAt).toLocaleString()}
-                  disabled
-                  className="bg-gray-100"
-                />
+                    <Input
+                    value={safeFormatDate(user.createdAt)} // Using our safeFormatDate utility
+                    disabled
+                    className="bg-gray-100"
+                    />
               </div>
               <div>
                 <Label>Sales Count</Label>
