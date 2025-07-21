@@ -48,7 +48,35 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-import { StaffType, StoreType } from '@/types/types';
+interface StoreType {
+  id: string;
+  name: string;
+  storeLocation: string;
+  address: string;
+  referralCommission: number;
+  surabhiCommission: number;
+  sevaCommission: number;
+  cashOnlyCommission: number;
+  contactNumber: string;
+  status: 'active' | 'inactive';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface StaffType {
+  id: string;
+  name: string;
+  mobile: string;
+  email: string;
+  storeLocation: string;
+  role: 'admin' | 'staff';
+  createdAt: Date;
+  status: 'active' | 'inactive';
+  salesCount: number;
+  staffPin: string;
+  lastActive?: Date;
+  staffPassword: string;
+}
 
 export const StaffManagement = () => {
   const [stores, setStores] = useState<StoreType[]>([]);
@@ -75,9 +103,17 @@ export const StaffManagement = () => {
         const storesSnapshot = await getDocs(collection(db, 'stores'));
         const storesData = storesSnapshot.docs.map(doc => ({
           id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate(),
-          updatedAt: doc.data().updatedAt?.toDate()
+          name: doc.data().name || '',
+          storeLocation: doc.data().storeLocation || '',
+          address: doc.data().address || '',
+          contactNumber: doc.data().contactNumber || '',
+          referralCommission: Number(doc.data().referralCommission) || 0,
+          surabhiCommission: Number(doc.data().surabhiCommission) || 0,
+          sevaCommission: Number(doc.data().sevaCommission) || 0,
+          cashOnlyCommission: Number(doc.data().cashOnlyCommission) || 0,
+          status: doc.data().status || 'active',
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
+          updatedAt: doc.data().updatedAt?.toDate() || new Date()
         })) as StoreType[];
         setStores(storesData);
 
@@ -85,8 +121,16 @@ export const StaffManagement = () => {
         const staffSnapshot = await getDocs(collection(db, 'staff'));
         const staffData = staffSnapshot.docs.map(doc => ({
           id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate(),
+          name: doc.data().name || '',
+          mobile: doc.data().mobile || '',
+          email: doc.data().email || '',
+          storeLocation: doc.data().storeLocation || '',
+          role: doc.data().role || 'staff',
+          status: doc.data().status || 'active',
+          salesCount: Number(doc.data().salesCount) || 0,
+          staffPin: doc.data().staffPin || '',
+          staffPassword: doc.data().staffPassword || '',
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
           lastActive: doc.data().lastActive?.toDate()
         })) as StaffType[];
         setStaff(staffData);
@@ -116,16 +160,16 @@ export const StaffManagement = () => {
         role: currentStaff.role,
         status: currentStaff.status || 'active',
         storeLocation: currentStaff.storeLocation || '',
+        salesCount: currentStaff.salesCount || 0,
+        staffPin: currentStaff.staffPin || '',
+        staffPassword: currentStaff.staffPassword || '',
         updatedAt: serverTimestamp(),
         ...(currentStaff.id ? {} : { createdAt: serverTimestamp() })
       };
 
       if (currentStaff.id) {
         // Update existing staff
-        await updateDoc(doc(db, 'staff', currentStaff.id), {
-          ...staffData,
-          createdAt: currentStaff.createdAt // Preserve original creation date
-        });
+        await updateDoc(doc(db, 'staff', currentStaff.id), staffData);
         toast.success('Staff updated successfully');
       } else {
         // Create new staff
@@ -139,7 +183,7 @@ export const StaffManagement = () => {
       const updatedStaff = staffSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
         lastActive: doc.data().lastActive?.toDate()
       })) as StaffType[];
       setStaff(updatedStaff);
@@ -164,7 +208,7 @@ export const StaffManagement = () => {
       const updatedStaff = staffSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
         lastActive: doc.data().lastActive?.toDate()
       })) as StaffType[];
       setStaff(updatedStaff);
@@ -177,164 +221,31 @@ export const StaffManagement = () => {
     }
   };
 
-  const fetchStoreByContactNumber = async (contactNumber: string): Promise<StoreType | null> => {
-  try {
-    const storeQuery = query(
-      collection(db, 'stores'),
-      where('contactNumber', '==', contactNumber.trim())
-    );
-    const querySnapshot = await getDocs(storeQuery);
-
-    if (!querySnapshot.empty) {
-      const storeDoc = querySnapshot.docs[0];
-      return {
-        id: storeDoc.id,
-        name: storeDoc.data().name || '',
-        storeLocation: storeDoc.data().storeLocation || '',
-        address: storeDoc.data().address || '',
-        contactNumber: storeDoc.data().contactNumber || '',
-        referralCommission: Number(storeDoc.data().referralCommission) || 0,
-        cashOnlyCommission: Number(storeDoc.data().cashOnlyCommission) || 0,
-        surabhiCommission: Number(storeDoc.data().surabhiCommission) || 0,
-        sevaCommission: Number(storeDoc.data().sevaCommission) || 0,
-        status: storeDoc.data().status || 'active',
-        createdAt: storeDoc.data().createdAt?.toDate() || new Date(),
-        updatedAt: storeDoc.data().updatedAt?.toDate() || new Date()
-      };
-    }
-    return null;
-  } catch (error) {
-    console.error('Error fetching store:', error);
-    toast.error('Failed to fetch store details');
-    return null;
-  }
-};
-
-
-// Function to update existing store
-const updateExistingStore = async (storeData: Partial<StoreType>): Promise<boolean> => {
-  if (!storeData.id || !storeData.contactNumber) {
-    toast.error('Store ID and contact number are required for update');
-    return false;
-  }
-
-  try {
-    // First verify the store exists
-    const existingStore = await fetchStoreByContactNumber(storeData.contactNumber);
-    
-    if (!existingStore) {
-      toast.error('Store not found');
-      return false;
-    }
-
-    if (existingStore.id !== storeData.id) {
-      toast.error('Another store already uses this contact number');
-      return false;
-    }
-
-    const updateData = {
-      name: storeData.name?.trim() || '',
-      storeLocation: storeData.storeLocation?.trim() || '',
-      address: storeData.address?.trim() || '',
-      contactNumber: storeData.contactNumber.trim(),
-      referralCommission: Number(storeData.referralCommission) || 0,
-      surabhiCommission: Number(storeData.surabhiCommission) || 0,
-      sevaCommission: Number(storeData.sevaCommission) || 0,
-      status: storeData.status || 'active',
-      updatedAt: serverTimestamp()
-    };
-
-    await updateDoc(doc(db, 'stores', storeData.id), updateData);
-    toast.success('Store updated successfully');
-    return true;
-  } catch (error) {
-    console.error('Error updating store:', error);
-    toast.error(`Error updating store: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    return false;
-  }
-};
-
-// Usage in the edit store handler
-const handleEditStore = async (storeToEdit: Partial<StoreType>) => {
-  if (!storeToEdit.contactNumber) {
-    toast.error('Contact number is required');
-    return;
-  }
-
-  // Fetch the existing store data
-  const existingStore = await fetchStoreByContactNumber(storeToEdit.contactNumber);
-  
-  if (!existingStore) {
-    toast.error('Store not found');
-    return;
-  }
-
-  // Update the store with new data
-  const success = await updateExistingStore({
-    ...existingStore,
-    ...storeToEdit // Override with any new values
-  });
-
-  if (success) {
-    const updatedStores = await refreshStores();
-    setStores(updatedStores);
-    setIsStoreDialogOpen(false);
-    setCurrentStore(null);
-  }
-};
-
-
   // Store CRUD operations
- const handleSaveStore = async (currentStore: Partial<StoreType>) => {
-  console.log("The slected stoe is", currentStore.id)
-  // Validate required fields
-  if (!currentStore?.name?.trim() || 
-      !currentStore?.storeLocation?.trim() || 
-      !currentStore?.address?.trim() ||
-      !currentStore?.contactNumber?.trim()) {
-    toast.error('Please fill all required fields including contact number');
-    return false;
-  }
+  const handleSaveStore = async () => {
+    if (!currentStore) return false;
 
-  try {
-    const storeData = {
-      name: currentStore.name.trim(),
-      storeLocation: currentStore.storeLocation.trim(),
-      address: currentStore.address.trim(),
-      contactNumber: currentStore.contactNumber.trim(),
-      referralCommission: Number(currentStore.referralCommission) || 0,
-      surabhiCommission: Number(currentStore.surabhiCommission) || 0,
-      sevaCommission: Number(currentStore.sevaCommission) || 0,
-      status: currentStore.status || 'active',
-      updatedAt: serverTimestamp()
-    };
+    if (!currentStore.name || !currentStore.storeLocation || !currentStore.address || !currentStore.contactNumber) {
+      toast.error('Please fill all required fields');
+      return false;
+    }
 
-    // Check if store with this contact number already exists
-    const storeQuery = query(
-      collection(db, 'stores'),
-      where('contactNumber', '==', currentStore.contactNumber.trim())
-    );
-    const querySnapshot = await getDocs(storeQuery);
+    try {
+      const storeData = {
+        name: currentStore.name.trim(),
+        storeLocation: currentStore.storeLocation.trim(),
+        address: currentStore.address.trim(),
+        contactNumber: currentStore.contactNumber.trim(),
+        referralCommission: Number(currentStore.referralCommission) || 0,
+        surabhiCommission: Number(currentStore.surabhiCommission) || 0,
+        sevaCommission: Number(currentStore.sevaCommission) || 0,
+        cashOnlyCommission: Number(currentStore.cashOnlyCommission) || 0,
+        status: currentStore.status || 'active',
+        updatedAt: serverTimestamp()
+      };
 
-    if (!querySnapshot.empty) {
-      // Store with this contact number exists
-      if (currentStore.id && querySnapshot.docs[0].id === currentStore.id) {
-        // Updating the same store
-        await updateDoc(doc(db, 'stores', currentStore.id), storeData);
-        toast.success('Store updated successfully');
-      } else if (!currentStore.id) {
-        // Trying to create new but contact number exists
-        toast.error('Store with this contact number already exists');
-        return false;
-      } else {
-        // Trying to update but contact number belongs to different store
-        toast.error('Another store already uses this contact number');
-        return false;
-      }
-    } else {
-      // No store with this contact number exists
       if (currentStore.id) {
-        // Update existing store (contact number was changed to a new unique one)
+        // Update existing store
         await updateDoc(doc(db, 'stores', currentStore.id), storeData);
         toast.success('Store updated successfully');
       } else {
@@ -346,17 +257,27 @@ const handleEditStore = async (storeToEdit: Partial<StoreType>) => {
         });
         toast.success('Store created successfully');
       }
+
+      // Refresh data
+      const storesSnapshot = await getDocs(collection(db, 'stores'));
+      const updatedStores = storesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+        updatedAt: doc.data().updatedAt?.toDate() || new Date()
+      })) as StoreType[];
+      setStores(updatedStores);
+
+      setIsStoreDialogOpen(false);
+      setCurrentStore(null);
+      return true;
+    } catch (error) {
+      console.error('Error saving store:', error);
+      toast.error(`Error saving store: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return false;
     }
+  };
 
-    return true;
-  } catch (error) {
-    console.error('Error saving store:', error);
-    toast.error(`Error saving store: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    return false;
-  }
-};
-
-  
   const handleDeleteStore = async (storeId: string) => {
     if (!storeId) return false;
 
@@ -373,18 +294,6 @@ const handleEditStore = async (storeToEdit: Partial<StoreType>) => {
         return false;
       }
 
-      // Check if store exists
-      const storeQuery = query(
-        collection(db, 'stores'),
-        where('__name__', '==', storeId)
-      );
-      const storeSnapshot = await getDocs(storeQuery);
-
-      if (storeSnapshot.empty) {
-        toast.error('Store not found');
-        return false;
-      }
-
       await deleteDoc(doc(db, 'stores', storeId));
       toast.success('Store deleted successfully');
       return true;
@@ -394,51 +303,6 @@ const handleEditStore = async (storeToEdit: Partial<StoreType>) => {
       return false;
     }
   };
-
-  // Update the refreshStores function to include contactNumber in the mapping
-const refreshStores = async () => {
-  try {
-    const storesSnapshot = await getDocs(collection(db, 'stores'));
-    return storesSnapshot.docs.map(doc => ({
-      id: doc.id,
-      name: doc.data().name || '',
-      storeLocation: doc.data().storeLocation || '',
-      address: doc.data().address || '',
-      contactNumber: doc.data().contactNumber || '',
-      referralCommission: Number(doc.data().referralCommission) || 0,
-      surabhiCommission: Number(doc.data().surabhiCommission) || 0,
-      sevaCommission: Number(doc.data().sevaCommission) || 0,
-      status: doc.data().status || 'active',
-      createdAt: doc.data().createdAt?.toDate() || new Date(),
-      updatedAt: doc.data().updatedAt?.toDate() || new Date()
-    })) as StoreType[];
-  } catch (error) {
-    console.error('Error refreshing stores:', error);
-    toast.error('Failed to load stores');
-    return [];
-  }
-};
-
-  const handleSaveClick = async (e: React.MouseEvent) => {
-  e.preventDefault();
-  console.log("THe currentStore info in line 424 is", currentStore)
-  if (!currentStore) return;
-
-  if (currentStore.id) {
-    // Editing existing store
-    await handleEditStore(currentStore);
-  } else {
-    // Creating new store (keep your existing create logic)
-    const success = await handleSaveStore(currentStore);
-    if (success) {
-      const updatedStores = await refreshStores();
-      setStores(updatedStores);
-      setIsStoreDialogOpen(false);
-      setCurrentStore(null);
-    }
-  }
-};
-
 
   return (
     <div className="space-y-6">
@@ -481,7 +345,10 @@ const refreshStores = async () => {
               <Button onClick={() => {
                 setCurrentStaff({
                   role: 'staff',
-                  status: 'active'
+                  status: 'active',
+                  salesCount: 0,
+                  staffPin: '',
+                  staffPassword: ''
                 });
                 setIsStaffDialogOpen(true);
               }}>
@@ -495,9 +362,11 @@ const refreshStores = async () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
+                  <TableHead>Contact</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Store</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Sales</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -509,6 +378,9 @@ const refreshStores = async () => {
                       <Skeleton className="h-3 w-[100px] mt-2" />
                     </TableCell>
                     <TableCell>
+                      <Skeleton className="h-4 w-[120px]" />
+                    </TableCell>
+                    <TableCell>
                       <Skeleton className="h-4 w-[80px]" />
                     </TableCell>
                     <TableCell>
@@ -516,6 +388,9 @@ const refreshStores = async () => {
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-4 w-[70px]" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-[50px]" />
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
@@ -541,17 +416,23 @@ const refreshStores = async () => {
                         </div>
                       </TableCell>
                       <TableCell>
+                        {member.mobile}
+                      </TableCell>
+                      <TableCell>
                         <Badge variant={member.role === 'admin' ? 'default' : 'outline'}>
                           {member.role}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {stores.find(s => s.name === member.storeLocation)?.name || 'Unassigned'}
+                        {stores.find(s => s.id === member.storeLocation)?.name || 'Unassigned'}
                       </TableCell>
                       <TableCell>
                         <Badge variant={member.status === 'active' ? 'default' : 'secondary'}>
                           {member.status}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {member.salesCount}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
@@ -600,7 +481,11 @@ const refreshStores = async () => {
               </div>
               <Button onClick={() => {
                 setCurrentStore({
-                  status: 'active'
+                  status: 'active',
+                  referralCommission: 0,
+                  surabhiCommission: 0,
+                  sevaCommission: 0,
+                  cashOnlyCommission: 0
                 });
                 setIsStoreDialogOpen(true);
               }}>
@@ -613,44 +498,54 @@ const refreshStores = async () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[200px]">Name</TableHead>
-                  <TableHead className="w-[150px]">Location</TableHead>
-                  <TableHead className="text-right w-[100px]">Referral Commission</TableHead>
-                  <TableHead className="text-right w-[100px]">Surabhi Commission</TableHead>
-                  <TableHead className="text-right w-[100px]">Cash Only Commission</TableHead>
-                  <TableHead className="text-right w-[100px]">Seva Commission</TableHead>
-                  <TableHead className="text-right w-[200px]">Actions</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Referral</TableHead>
+                  <TableHead>Surabhi</TableHead>
+                  <TableHead>Cash Only</TableHead>
+                  <TableHead>Seva</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {stores.map((store) => (
                   <TableRow key={store.id}>
-                    <TableCell className="font-medium w-[200px]">
+                    <TableCell className="font-medium">
                       {store.name}
                       <div className="text-sm text-muted-foreground">
-                        {store.contactNumber}
+                        {store.address}
                       </div>
                     </TableCell>
-                    <TableCell className="w-[150px]">
+                    <TableCell>
                       <div className="flex items-center gap-1">
                         <MapPin className="h-4 w-4" />
                         {store.storeLocation}
                       </div>
                     </TableCell>
-                    <TableCell className="text-right w-[100px]">
+                    <TableCell>
+                      {store.contactNumber}
+                    </TableCell>
+                    <TableCell>
                       {store.referralCommission}%
                     </TableCell>
-                    <TableCell className="text-right w-[100px]">
+                    <TableCell>
                       {store.surabhiCommission}%
                     </TableCell>
-                    <TableCell className="text-right w-[100px]">
+                    <TableCell>
                       {store.cashOnlyCommission}%
                     </TableCell>
-                    <TableCell className="text-right w-[100px]">
+                    <TableCell>
                       {store.sevaCommission}%
                     </TableCell>
-                    <TableCell className="text-right w-[200px]">
-                      <div className="flex gap-2 justify-end">
+                    <TableCell>
+                      <Badge variant={store.status === 'active' ? 'default' : 'secondary'}>
+                        {store.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
                         <Button
                           variant="outline"
                           size="sm"
@@ -685,134 +580,192 @@ const refreshStores = async () => {
       )}
 
       {/* Staff Dialog */}
-      <Dialog open={isStaffDialogOpen} onOpenChange={setIsStaffDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>
-              {currentStaff?.id ? 'Edit Staff Member' : 'Add New Staff Member'}
-            </DialogTitle>
-            <DialogDescription>
-              {currentStaff?.id ? 'Update staff details' : 'Create a new staff account'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {/* Basic Information Section */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Full Name *</Label>
-                <Input
-                  value={currentStaff?.name || ''}
-                  onChange={(e) => setCurrentStaff({
-                    ...currentStaff,
-                    name: e.target.value
-                  })}
-                  placeholder="Enter staff name"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Mobile Number *</Label>
-                <Input
-                  type="tel"
-                  value={currentStaff?.mobile || ''}
-                  onChange={(e) => setCurrentStaff({
-                    ...currentStaff,
-                    mobile: e.target.value.replace(/\D/g, '')
-                  })}
-                  placeholder="Enter mobile number"
-                />
-              </div>
-            </div>
+      {/* Staff Dialog */}
+<Dialog open={isStaffDialogOpen} onOpenChange={setIsStaffDialogOpen}>
+  <DialogContent className="sm:max-w-[600px]">
+    <DialogHeader>
+      <DialogTitle>
+        {currentStaff?.id ? 'Edit Staff Member' : 'Add New Staff Member'}
+      </DialogTitle>
+      <DialogDescription>
+        {currentStaff?.id ? 'Update staff details' : 'Create a new staff account'}
+      </DialogDescription>
+    </DialogHeader>
+    
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Full Name *</Label>
+          <Input
+            value={currentStaff?.name || ''}
+            onChange={(e) => setCurrentStaff({
+              ...currentStaff,
+              name: e.target.value
+            })}
+            placeholder="Enter staff name"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label>Mobile Number *</Label>
+          <Input
+            type="tel"
+            value={currentStaff?.mobile || ''}
+            onChange={(e) => setCurrentStaff({
+              ...currentStaff,
+              mobile: e.target.value.replace(/\D/g, '')
+            })}
+            placeholder="Enter mobile number"
+            disabled={!!currentStaff?.id}
+          />
+        </div>
+      </div>
 
-            <div className="space-y-2">
-              <Label>Email *</Label>
-              <Input
-                type="email"
-                value={currentStaff?.email || ''}
-                onChange={(e) => setCurrentStaff({
-                  ...currentStaff,
-                  email: e.target.value
-                })}
-                placeholder="Enter email address"
-                disabled={!!currentStaff?.id}
-              />
-            </div>
+      <div className="space-y-2">
+        <Label>Email *</Label>
+        <Input
+          type="email"
+          value={currentStaff?.email || ''}
+          onChange={(e) => setCurrentStaff({
+            ...currentStaff,
+            email: e.target.value
+          })}
+          placeholder="Enter email address"
+          disabled={!!currentStaff?.id}
+        />
+      </div>
 
-            {/* Role and Status Section */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Role *</Label>
-                <Select
-                  value={currentStaff?.role || 'staff'}
-                  onValueChange={(value) => setCurrentStaff({
-                    ...currentStaff,
-                    role: value as 'admin' | 'staff',
-                    ...(value === 'admin' ? { storeLocation: 'All Locations' } : {})
-                  })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="staff">Staff</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Status *</Label>
-                <Select
-                  value={currentStaff?.status || 'active'}
-                  onValueChange={(value) => setCurrentStaff({
-                    ...currentStaff,
-                    status: value as 'active' | 'inactive'
-                  })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Assigned Store</Label>
-              <Select
-                value={currentStaff?.storeLocation || ''}
-                onValueChange={(value) => setCurrentStaff({
-                  ...currentStaff,
-                  storeLocation: value
-                })}
-                disabled={currentStaff?.role === 'admin'}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select store" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {stores.map(store => (
-                    <SelectItem key={store.id} value={store.name}>
-                      {store.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Role *</Label>
+          <Select
+            value={currentStaff?.role || 'staff'}
+            onValueChange={(value) => setCurrentStaff({
+              ...currentStaff,
+              role: value as 'admin' | 'staff',
+              ...(value === 'admin' ? { storeLocation: '' } : {})
+            })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="staff">Staff</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="space-y-2">
+          <Label>Status *</Label>
+          <Select
+            value={currentStaff?.status || 'active'}
+            onValueChange={(value) => setCurrentStaff({
+              ...currentStaff,
+              status: value as 'active' | 'inactive'
+            })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      
+      <div className="space-y-2">
+        <Label>Assigned Store</Label>
+        <Select
+          value={currentStaff?.storeLocation || undefined}
+          onValueChange={(value) => setCurrentStaff({
+            ...currentStaff,
+            storeLocation: value
+          })}
+          disabled={currentStaff?.role === 'admin'}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select store" />
+          </SelectTrigger>
+          <SelectContent>
+            {stores.map(store => (
+              <SelectItem key={store.id} value={store.id}>
+                {store.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Sales Count</Label>
+          <Input
+            type="number"
+            value={currentStaff?.salesCount || 0}
+            onChange={(e) => setCurrentStaff({
+              ...currentStaff,
+              salesCount: Number(e.target.value)
+            })}
+            placeholder="Enter sales count"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Staff PIN</Label>
+          <Input
+            type="text"
+            value={currentStaff?.staffPin || ''}
+            onChange={(e) => setCurrentStaff({
+              ...currentStaff,
+              staffPin: e.target.value
+            })}
+            placeholder="Enter staff PIN"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Staff Password</Label>
+        <Input
+          type="password"
+          value={currentStaff?.staffPassword || ''}
+          onChange={(e) => setCurrentStaff({
+            ...currentStaff,
+            staffPassword: e.target.value
+          })}
+          placeholder="Enter staff password"
+        />
+      </div>
+
+      {currentStaff?.lastActive && (
+        <div className="space-y-2">
+          <Label>Last Active</Label>
+          <div className="text-sm text-muted-foreground">
+            {currentStaff.lastActive.toLocaleString()}
           </div>
-          <DialogFooter>
-            <Button onClick={handleSaveStaff}>
-              {currentStaff?.id ? 'Save Changes' : 'Create Staff'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
+
+      {currentStaff?.createdAt && (
+        <div className="space-y-2">
+          <Label>Created At</Label>
+          <div className="text-sm text-muted-foreground">
+            {currentStaff.createdAt.toLocaleString()}
+          </div>
+        </div>
+      )}
+    </div>
+
+    <DialogFooter>
+      <Button onClick={handleSaveStaff}>
+        {currentStaff?.id ? 'Save Changes' : 'Create Staff'}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
 
       {/* Delete Staff Dialog */}
       <Dialog open={isDeleteStaffDialogOpen} onOpenChange={setIsDeleteStaffDialogOpen}>
@@ -845,7 +798,6 @@ const refreshStores = async () => {
           </DialogHeader>
           
           <div className="space-y-4">
-            {/* Basic Information Section */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Store Name *</Label>
@@ -884,34 +836,25 @@ const refreshStores = async () => {
               />
             </div>
 
-             <div className="space-y-2">
-      <Label>Contact Number *</Label>
-      {currentStore?.id ? (
-        // Display as read-only for existing stores
-        <div className="flex items-center gap-2 p-2 border rounded-md bg-gray-100">
-          <Phone className="h-4 w-4" />
-          <span>{currentStore?.contactNumber || 'Not provided'}</span>
-        </div>
-      ) : (
-        // Editable for new stores
-        <Input
-          type="tel"
-          value={currentStore?.contactNumber || ''}
-          onChange={(e) => setCurrentStore({
-            ...currentStore,
-            contactNumber: e.target.value.replace(/\D/g, '')
-          })}
-          placeholder="Enter contact number"
-        />
-      )}
-    </div>
+            <div className="space-y-2">
+              <Label>Contact Number *</Label>
+              <Input
+                type="tel"
+                value={currentStore?.contactNumber || ''}
+                onChange={(e) => setCurrentStore({
+                  ...currentStore,
+                  contactNumber: e.target.value.replace(/\D/g, '')
+                })}
+                placeholder="Enter contact number"
+                disabled={!!currentStore?.id}
+              />
+            </div>
 
-            {/* Commission Section */}
             <div className="border-t pt-4">
               <h4 className="font-medium mb-4">Commission Rates</h4>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Wallet (%)</Label>
+                  <Label>Referral (%)</Label>
                   <Input
                     type="number"
                     min="0"
@@ -939,7 +882,7 @@ const refreshStores = async () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Surabhi (%)</Label>
+                  <Label>Cash Only (%)</Label>
                   <Input
                     type="number"
                     min="0"
@@ -968,7 +911,6 @@ const refreshStores = async () => {
               </div>
             </div>
 
-            {/* Status Section */}
             <div className="space-y-2">
               <Label>Status *</Label>
               <Select
@@ -990,7 +932,7 @@ const refreshStores = async () => {
           </div>
           
           <DialogFooter>
-            <Button onClick={handleSaveClick}>
+            <Button onClick={handleSaveStore}>
               {currentStore?.id ? 'Save Changes' : 'Create Store'}
             </Button>
           </DialogFooter>
@@ -1008,7 +950,23 @@ const refreshStores = async () => {
           </DialogHeader>
           
           <DialogFooter>
-            <Button variant="destructive" onClick={() => handleDeleteStore(currentStore.id)}>
+            <Button 
+              variant="destructive" 
+              onClick={async () => {
+                if (currentStore?.id && await handleDeleteStore(currentStore.id)) {
+                  const storesSnapshot = await getDocs(collection(db, 'stores'));
+                  const updatedStores = storesSnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    createdAt: doc.data().createdAt?.toDate() || new Date(),
+                    updatedAt: doc.data().updatedAt?.toDate() || new Date()
+                  })) as StoreType[];
+                  setStores(updatedStores);
+                  setIsDeleteStoreDialogOpen(false);
+                  setCurrentStore(null);
+                }
+              }}
+            >
               Confirm Delete
             </Button>
           </DialogFooter>
