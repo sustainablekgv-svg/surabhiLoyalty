@@ -29,7 +29,8 @@ import {
   setDoc,
   getDoc,
   increment,
-  Timestamp
+  Timestamp,
+  arrayUnion
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { 
@@ -146,7 +147,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     let walletDeduction = 0;
     let cashPayment = 0;
     let surabhiCoinsEarned = 0;
-    // let referrerCoinsEarned = 0;
+    let referrerSurabhiCoinsEarned = 0;
     let goSevaContribution = Math.floor(saleAmount * (storeDetails.sevaCommission / 100));
 
     const remainingAfterCoins = saleAmount - coinsToUse;
@@ -160,7 +161,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     if (paymentMethod === 'wallet') {
       if (walletBalance >= remainingAfterCoins) {
         walletDeduction = remainingAfterCoins;
-        surabhiCoinsEarned = Math.floor(walletDeduction * (storeDetails.surabhiCommission / 100));
+        referrerSurabhiCoinsEarned +=  Math.floor(saleAmount * (storeDetails.referralCommission / 100));
       } else {
         return { isValid: false, error: 'Insufficient wallet balance' };
       }
@@ -168,14 +169,17 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     else if (paymentMethod === 'cash') {
       cashPayment = remainingAfterCoins;
       surabhiCoinsEarned = Math.floor(cashPayment * (storeDetails.cashOnlyCommission / 100));
+      referrerSurabhiCoinsEarned +=  Math.floor(saleAmount * (storeDetails.referralCommission / 100));
     } 
     else if (paymentMethod === 'mixed') {
       walletDeduction = Math.min(walletBalance, remainingAfterCoins);
       cashPayment = remainingAfterCoins - walletDeduction;
       // Wallet portion gets surabhi commission, cash portion gets cashOnly commission
       surabhiCoinsEarned = Math.floor(
-        walletDeduction * (storeDetails.surabhiCommission / 100) + 
         cashPayment * (storeDetails.cashOnlyCommission / 100)
+      );
+      referrerSurabhiCoinsEarned = Math.floor(
+        saleAmount * (storeDetails.referralCommission / 100)
       );
     }
 
@@ -187,11 +191,24 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       cashPayment,
       surabhiCoinsEarned,
       goSevaContribution,
+      referrerSurabhiCoinsEarned,
       isValid: true
     };
   };
 
   const saleCalculation = saleAmount ? calculateSale() : null;
+
+  const addActivityRecord = async (activityData: Omit<ActivityType, 'id' | 'date'>) => {
+    try {
+      await addDoc(collection(db, 'Activity'), {
+        ...activityData,
+        date: new Date()
+      });
+    } catch (error) {
+      console.error('Error adding activity record:', error);
+      toast.error('Failed to log activity');
+    }
+  };
 
   const handleRegisteredCustomerSale = async () => {
      console.log('Searching for customer with mobile:', selectedCustomer.mobile);
@@ -251,14 +268,58 @@ if (querySnapshot.empty) {
   
   await addDoc(collection(db, 'transactions'), saleData);
 
-  // Add AccountTx record based on payment method
+      // Handle Referrer Income 
+if (selectedCustomer.referredBy && saleCalculation.referrerSurabhiCoinsEarned > 0) {
+    try {
+        // Find referrer's document
+        const customersCollection = collection(db, 'customers');
+        const referrerQuery = query(
+            customersCollection, 
+            where('mobile', '==', selectedCustomer.referredBy)
+        );
+        const referrerSnapshot = await getDocs(referrerQuery);
+        
+        if (!referrerSnapshot.empty) {
+            const referrerDoc = referrerSnapshot.docs[0];
+            const referrerData = referrerDoc.data() as Customer;
+            const referralAmount = saleCalculation.referrerSurabhiCoinsEarned;
+
+            console.log('Referrer Data:', referrerData);
+            console.log('New Referred User:', selectedCustomer.name);
+            console.log('Referral Amount:', referralAmount);
+            
+            // Safely increment referral amount (handle null/NaN)
+            const incrementAmount = Number.isNaN(referralAmount) || referralAmount === null ? 0 : referralAmount;
+            
+            // Update referrer's data
+            await updateDoc(referrerDoc.ref, {
+                referralSurabhi: increment(incrementAmount),
+                surabhiCoins: increment(incrementAmount)
+            });
+
+            // Add activity record for referrer
+            await addActivityRecord({
+                type: 'referral',
+                description: `${selectedCustomer.referredBy} Earned ₹${incrementAmount} referral income from ${selectedCustomer.name}'s recharge`,
+                amount: incrementAmount,
+                user: selectedCustomer.referredBy,
+                location: selectedCustomer.storeLocation
+            });
+        } else {
+            console.warn(`Referrer with mobile ${selectedCustomer.referredBy} not found`);
+        }
+    } catch (error) {
+        console.error('Error processing referral:', error);
+        // Consider adding error handling/retry logic here
+    }
+}
   // Add AccountTx record(s) based on payment method
-if (paymentMethod === 'wallet') {
+if (paymentMethod === "wallet") {
   const adminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
   const accountTxData: Omit<AccountTx, 'id'> = {
     date: Timestamp.fromDate(new Date()),
     storeName: storeDetails.name,
-    type: 'wallet',
+    type: 'sale',
     amount: saleCalculation.totalAmount,
     debit: saleCalculation.totalAmount,
     adminCut: adminCut,
@@ -272,11 +333,11 @@ if (paymentMethod === 'wallet') {
   const accountTxData: Omit<AccountTx, 'id'> = {
     date: Timestamp.fromDate(new Date()),
     storeName: storeDetails.name,
-    type: 'cash',
+    type: 'sale',
     amount: saleCalculation.totalAmount,
     debit: saleCalculation.totalAmount,
     credit: 0,
-    balance: saleCalculation.totalAmount,
+    balance: 0 - saleCalculation.totalAmount,
     description: `Cash sale for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
     settled: false
   };
@@ -290,9 +351,9 @@ if (paymentMethod === 'wallet') {
     const walletTxData: Omit<AccountTx, 'id'> = {
       date: Timestamp.fromDate(new Date()),
       storeName: storeDetails.name,
-      type: 'wallet',
+      type: 'sale',
       amount: saleCalculation.walletDeduction,
-      debit: saleCalculation.walletDeduction,
+      debit: 0,
       adminCut: walletAdminCut,
       credit: saleCalculation.walletDeduction - walletAdminCut,
       balance: saleCalculation.walletDeduction - walletAdminCut,
@@ -304,14 +365,15 @@ if (paymentMethod === 'wallet') {
   
   // 2. Cash portion record
   if (saleCalculation.cashPayment > 0) {
+    const cashAdminCut = calculateAdminCut(saleCalculation.cashPayment,storeDetails);
     const cashTxData: Omit<AccountTx, 'id'> = {
       date: Timestamp.fromDate(new Date()),
       storeName: storeDetails.name,
-      type: 'cash',
+      type: 'sale',
       amount: saleCalculation.cashPayment,
       debit: saleCalculation.cashPayment,
-      credit: 0,
-      balance: saleCalculation.cashPayment,
+      credit: cashAdminCut,
+      balance: cashAdminCut - saleCalculation.cashPayment,
       description: `Cash portion (${saleCalculation.cashPayment}) of mixed payment for ${selectedCustomer.name}`,
       settled: false
     };
@@ -618,12 +680,12 @@ if (paymentMethod === 'wallet') {
                           <span className="font-bold text-green-600">₹{saleCalculation.cashPayment}</span>
                         </div>
                       )}
-                      {/* {saleCalculation.referrerCoinsEarned > 0 && (
+                      {saleCalculation.referrerSurabhiCoinsEarned > 0 && selectedCustomer.referredBy && (
                         <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
-                          <span className="text-sm font-medium text-indigo-900">Referral Bonus</span>
-                          <span className="font-bold text-indigo-600">+{saleCalculation.referrerCoinsEarned} (to referrer)</span>
+                          <span className="text-sm font-medium text-indigo-900">Referral Bonus  {storeDetails.referralCommission}%</span>
+                          <span className="font-bold text-indigo-600">+{saleCalculation.referrerSurabhiCoinsEarned} Referral to {selectedCustomer.referredBy} </span>
                         </div>
-                      )} */}
+                      )}
                     </div>
                   </div>
                 )}

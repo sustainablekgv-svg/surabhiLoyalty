@@ -133,7 +133,7 @@ const StaffDashboard = () => {
             </TabsContent>
 
             <TabsContent value="accounts">
-              <StoreAccounts storeLocation={user?.storeLocation || ''} />
+              <StoreAccounts storeLocation={user?.storeLocation || ''} userRole={''} />
             </TabsContent>
           </div>
         </Tabs>

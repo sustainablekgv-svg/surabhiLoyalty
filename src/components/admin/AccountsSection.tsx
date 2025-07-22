@@ -18,7 +18,9 @@ import {
   ChevronLeft, 
   ChevronRight,
   Check,
-  X
+  X,
+  Edit,
+  Plus
 } from 'lucide-react';
 import { 
   collection, 
@@ -28,15 +30,31 @@ import {
   orderBy, 
   Timestamp,
   updateDoc,
-  doc
+  doc,
+  addDoc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 
 import { AccountTx, StoreSummary, AdminDeck, StoreType } from '@/types/types';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
+
+// // Updated interface to include settlement functionality
+// export interface AdminDeck {
+//   totalBalance: number;
+//   recentTransactions: AccountTx[];
+//   shopsSummary: StoreSummary[];
+//   walletOverview: {
+//     totalCredits: number;
+//     totalDebits: number;
+//     netFlow: number;
+//   };
+// }
 
 // Helper function to format Firestore timestamp
 const formatTradeTimestamp = (timestamp: Date | Timestamp): string => {
@@ -55,6 +73,11 @@ const Accounts = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [updatingTx, setUpdatingTx] = useState<string | null>(null);
+  const [isSettlementDialogOpen, setIsSettlementDialogOpen] = useState(false);
+  const [settlementAmount, setSettlementAmount] = useState(0);
+  const [settlementDescription, setSettlementDescription] = useState('');
+  const [settlementStore, setSettlementStore] = useState('');
+  const [isSubmittingSettlement, setIsSubmittingSettlement] = useState(false);
 
   const fetchAccountData = async () => {
     try {
@@ -120,7 +143,7 @@ const Accounts = () => {
       // Prepare admin deck
       const adminDeck: AdminDeck = {
         totalBalance,
-        recentTransactions: transactions.slice(0, 5),
+        recentTransactions: transactions,
         shopsSummary: Object.values(storeSummaries),
         walletOverview: {
           totalCredits,
@@ -158,6 +181,48 @@ const Accounts = () => {
     } finally {
       setUpdatingTx(null);
     }
+  };
+
+  const handleAddSettlement = async () => {
+    if (!settlementAmount || !settlementStore) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+
+    try {
+      setIsSubmittingSettlement(true);
+      
+      // Create a settlement transaction
+      const newTx: Omit<AccountTx, 'id'> = {
+        date: Timestamp.now(),
+        amount: Math.abs(settlementAmount),
+        credit: settlementAmount > 0 ? Math.abs(settlementAmount) : 0,
+        debit: settlementAmount < 0 ? Math.abs(settlementAmount) : 0,
+        balance: accountData?.totalBalance || 0 + (settlementAmount > 0 ? Math.abs(settlementAmount) : -Math.abs(settlementAmount)),
+        settled: true,
+        description: settlementDescription || 'Manual settlement adjustment',
+        storeName: settlementStore,
+        type: 'settlement'
+      };
+
+      await addDoc(collection(db, 'AccountTx'), newTx);
+      
+      toast.success('Settlement transaction added successfully');
+      fetchAccountData();
+      setIsSettlementDialogOpen(false);
+      resetSettlementForm();
+    } catch (err) {
+      console.error('Error adding settlement:', err);
+      toast.error('Failed to add settlement transaction');
+    } finally {
+      setIsSubmittingSettlement(false);
+    }
+  };
+
+  const resetSettlementForm = () => {
+    setSettlementAmount(0);
+    setSettlementDescription('');
+    setSettlementStore('');
   };
 
   const filteredTransactions = accountData?.recentTransactions.filter(tx => {
@@ -218,11 +283,95 @@ const Accounts = () => {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
-          <CardHeader>
+          <CardHeader className="relative">
             <CardTitle className="text-sm font-medium text-gray-500">Total Balance</CardTitle>
             <CardDescription className="text-2xl font-bold">
               ₹{accountData?.totalBalance.toFixed(2) || '0.00'}
             </CardDescription>
+            <Dialog open={isSettlementDialogOpen} onOpenChange={setIsSettlementDialogOpen}>
+              <DialogTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="absolute top-4 right-4 h-8 w-8"
+                  title="Add settlement"
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add Settlement Transaction</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="store">Store</Label>
+                    <Select 
+                      value={settlementStore} 
+                      onValueChange={setSettlementStore}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select store" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stores.map(store => (
+                          <SelectItem key={store.id} value={store.name}>
+                            {store.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="amount">Amount</Label>
+                    <Input
+                      id="amount"
+                      type="number"
+                      value={settlementAmount}
+                      onChange={(e) => setSettlementAmount(Number(e.target.value))}
+                      placeholder="Enter amount"
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Positive for credit, negative for debit
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="description">Description</Label>
+                    <Input
+                      id="description"
+                      value={settlementDescription}
+                      onChange={(e) => setSettlementDescription(e.target.value)}
+                      placeholder="Transaction description"
+                    />
+                  </div>
+                  
+                  <div className="flex justify-end gap-2">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setIsSettlementDialogOpen(false);
+                        resetSettlementForm();
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={handleAddSettlement}
+                      disabled={isSubmittingSettlement}
+                    >
+                      {isSubmittingSettlement ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Plus className="h-4 w-4" />
+                      )}
+                      <span className="ml-2">Add Settlement</span>
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </CardHeader>
         </Card>
         
@@ -267,12 +416,12 @@ const Accounts = () => {
         </CardContent>
       </Card>
 
-      {/* Transaction History */}
+      {/* Accounts History */}
       <Card>
         <CardHeader>
           <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
             <div>
-              <CardTitle>Transaction History</CardTitle>
+              <CardTitle>Accounts History</CardTitle>
               <CardDescription>
                 Showing {paginatedTransactions.length} of {filteredTransactions.length} transactions
               </CardDescription>
@@ -364,7 +513,7 @@ const Accounts = () => {
                       <TableCell>
                         <Badge variant={
                           tx.type === 'recharge' ? 'default' :
-                          tx.type === 'wallet' ? 'secondary' : 'outline'
+                          tx.type === 'sale' ? 'secondary' : 'outline'
                         }>
                           {tx.type}
                         </Badge>

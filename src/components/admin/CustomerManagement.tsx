@@ -72,7 +72,8 @@ export const CustomerManagement = () => {
           sevaCoinsTotal: data.sevaCoinsTotal || 0,
           sevaCoinsCurrentMonth: data.sevaCoinsCurrentMonth || 0,
           referredBy: data.referredBy || null,
-          referralIncome: data.referralIncome || null,
+          saleElgibility: data.saleElgibility || false,
+          referralSurabhi: data.referralSurabhi || 0,
           referredUsers: (data.referredUsers || []).map((ref: any) => ({
           mobile: ref.mobile,
           name: ref.name || '',
@@ -331,7 +332,7 @@ export const CustomerManagement = () => {
                 <h4 className="font-medium">Referral Information</h4>
                 <div className="space-y-2 mt-2 text-sm">
                   <p><span className="text-muted-foreground">Referred By:</span> {selectedCustomer.referredBy || 'N/A'}</p>
-                  <p><span className="text-muted-foreground">Referral Income:</span> {selectedCustomer.referralIncome ? `₹${selectedCustomer.referralIncome.toFixed(2)}` : 'N/A'}</p>
+                  <p><span className="text-muted-foreground">Referral Income:</span> {selectedCustomer.referralSurabhi ? `₹${selectedCustomer.referralSurabhi.toFixed(2)}` : 'N/A'}</p>
                   
                   {selectedCustomer.referredUsers && selectedCustomer.referredUsers.length > 0 && (
                     <div>
@@ -567,10 +568,6 @@ export const CustomerManagement = () => {
             <div className="flex items-center gap-1 mt-2">
               <span className="text-sm text-muted-foreground">
                 {totalStats.registeredCustomers} registered
-              </span>
-              <span className="text-sm text-muted-foreground">•</span>
-              <span className="text-sm text-muted-foreground">
-                {totalStats.guestCustomers} guests
               </span>
             </div>
           </CardContent>

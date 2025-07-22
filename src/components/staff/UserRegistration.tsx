@@ -86,9 +86,9 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
           
           if (!querySnapshot.empty) {
           const referralData = querySnapshot.docs[0].data() as Customer;
-
+            console.log("THe referral Data is", referralData);
           // Check if wallet recharge is done
-          if (referralData.walletRechargeDone === false) {
+          if (referralData.walletRechargeDone === false && referralData.saleElgibility === false) {
           setReferralName(null);
           toast.error('This customer is not eligible for referral (wallet recharge not done)');
           } else {
@@ -198,7 +198,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
         name: formData.name,
         mobile: formData.mobile,
         email: formData.email,
-        walletRechargeDone: Boolean(false),
+        walletRechargeDone: false,
         storeLocation,
         walletBalance: 0,
         walletBalanceCurrentMonth: 0,
@@ -211,10 +211,11 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
         walletId,
         customerPassword: formData.password,
         tpin: formData.tpin,
+        saleElgibility: false,
         registered: true,
         lastTransactionDate: null,
         referredBy: formData.referredBy || null,
-        referralIncome: null,
+        referralSurabhi: null,
         referredUsers: null
       };
 

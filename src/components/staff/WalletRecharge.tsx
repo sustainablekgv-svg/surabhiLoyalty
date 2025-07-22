@@ -19,12 +19,32 @@ import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, updateDoc, addDoc, serverTimestamp, doc, getDoc, Timestamp, arrayUnion, increment } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Customer, WalletRechargeProps, ActivityType, StoreType, RechargeRecord, AccountTx } from '@/types/types';
+import { Customer, WalletRechargeProps, ActivityType, StoreType, RechargeRecord, AccountTx, SevaPool } from '@/types/types';
 import { FieldValue } from 'firebase/firestore';
 import { useAuth } from '@/hooks/auth-context';
 
+function safeConvertToTimestamp(date: any): Timestamp {
+  if (date instanceof Timestamp) {
+    return date;
+  }
+  if (date?.toDate instanceof Function) {
+    return Timestamp.fromDate(date.toDate());
+  }
+  if (date instanceof Date) {
+    return Timestamp.fromDate(date);
+  }
+  if (typeof date === 'string' || typeof date === 'number') {
+    try {
+      return Timestamp.fromDate(new Date(date));
+    } catch {
+      return Timestamp.now();
+    }
+  }
+  return Timestamp.now();
+}
+
 export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
-  console.log("The storeLocation is", storeLocation);
+  // console.log("The storeLocation is", storeLocation);
   const { user, logout, isLoading: authLoading } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -38,6 +58,37 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
   const [storeDetails, setStoreDetails] = useState<StoreType | null>(null);
   // const [hasReferrer, setHasReferrer] = useState<Boolean> (false);
 
+    const [sevaPool, setSevaPool] = useState<SevaPool>({
+      currentBalance: 0,
+      totalContributions: 0,
+      totalAllocations: 0,
+      contributionsCurrentMonth: 0,
+      allocationsCurrentMonth: 0,
+      lastResetDate: Timestamp.now(),
+      lastAllocatedDate: Timestamp.now()
+    });
+
+          // Fetch Seva Pool data
+            const fetchData = async () => {
+          const poolRef = doc(db, 'SevaPool', 'main');
+          const poolSnapshot = await getDoc(poolRef);
+          if (poolSnapshot.exists()) {
+            const data = poolSnapshot.data();
+            const poolData: SevaPool = {
+              currentBalance: data.currentBalance ?? 0,
+              totalContributions: data.totalContributions ?? 0,
+              totalAllocations: data.totalAllocations ?? 0,
+              contributionsCurrentMonth: data.contributionsCurrentMonth ?? 0,
+              allocationsCurrentMonth: data.allocationsCurrentMonth ?? 0,
+              lastResetDate: safeConvertToTimestamp(data.lastResetDate),
+              lastAllocatedDate: safeConvertToTimestamp(data.lastAllocatedDate)
+            };
+            setSevaPool(poolData);
+          } else {
+            toast.error('Seva Pool document not found');
+          }
+        }
+        fetchData();
   // Fetch customers and store details from Firestore
   useEffect(() => {
     const fetchData = async () => {
@@ -138,16 +189,16 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
 
   setIsProcessing(true);
   setIsLoading(true); // Ensure both are set when starting
-  
+
     try {
 
-      toast.loading('Processing recharge...');
+      // toast.loading('Processing recharge...');
 
       // Find customer document by mobile number
       const customersCollection = collection(db, 'customers');
       const q = query(customersCollection, where('mobile', '==', selectedCustomer.mobile));
       const querySnapshot = await getDocs(q);
-
+      
       if (querySnapshot.empty) {
         throw new Error('Customer not found in database');
       }
@@ -158,14 +209,15 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       // Handle lastTransactionDate properly
       const lastTransactionDate = currentData.lastTransactionDate || null;
       const resetMonthlyFields = needsMonthlyReset(lastTransactionDate);
-      const currentTimestamp = new Date();
+      // const currentTimestamp = new Date();
 
       // Prepare update data
       const updateData: Partial<Customer> = {
         walletBalance: currentData.walletBalance + rechargeAmountNum,
         surabhiCoins: currentData.surabhiCoins + surabhiCoinsEarned,
         sevaCoinsTotal: (currentData.sevaCoinsTotal || 0) + sevaAmountEarned,
-        lastTransactionDate: Timestamp.fromDate(new Date())
+        lastTransactionDate: Timestamp.fromDate(new Date()),
+        saleElgibility: true
       };
 
       // Handle monthly fields
@@ -211,7 +263,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
 
       await addDoc(collection(db, 'AccountTx'), accountTxData);
 
-       // Handle referral income if customer has a referrer
+       // Handle referral Surabhi Coins if customer has a referrer
       if (currentData.referredBy && referralAmount > 0) {
         // Find referrer's document
         const referrerQuery = query(customersCollection, where('mobile', '==', currentData.referredBy));
@@ -226,7 +278,6 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
           mobile: currentData.mobile,
           name: currentData.name,
           referralDate: new Date(), // Use regular Date here
-          amount: 0 // Initial amount is 0 since no recharge yet
         };
 
           console.log('currentData:', currentData);
@@ -235,9 +286,18 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
           
           // Update referrer's data
           await updateDoc(referrerDoc.ref, {
-          referralIncome: increment(referralAmount),
+          surabhiCoins: increment(referralAmount),
+          referralSurabhi: increment(referralAmount),
           referredUsers: arrayUnion(newReferredUser)
         });
+
+        const poolRef = doc(db, 'SevaPool', 'main');
+      await updateDoc(poolRef, {
+        currentBalance: sevaPool.currentBalance + sevaAmountEarned,
+        totalAllocations: sevaPool.totalAllocations,
+        allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
+        lastAllocatedDate: serverTimestamp()
+      });
 
           // Add activity record for referrer
           await addActivityRecord({
@@ -263,7 +323,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       // Add activity records for the recharge and commissions
       await addActivityRecord({
         type: 'recharge',
-        description: `Wallet recharge of ₹${rechargeAmountNum}`,
+        description: `${selectedCustomer.name} made Wallet recharge of ₹${rechargeAmountNum}`,
         amount: rechargeAmountNum,
         user: selectedCustomer.mobile,
         location: storeLocation
@@ -271,7 +331,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
 
       await addActivityRecord({
         type: 'recharge',
-        description: `Earned ${surabhiCoinsEarned} Surabhi Coins from recharge`,
+        description: `${selectedCustomer.name} Earned ${surabhiCoinsEarned} Surabhi Coins from recharge`,
         amount: surabhiCoinsEarned,
         user: selectedCustomer.mobile,
         location: storeLocation
@@ -279,24 +339,24 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
 
        // Add activity records for the recharge and commissions
       await addActivityRecord({
-        type: 'recharge',
-        description: `Wallet recharge of ₹${rechargeAmountNum}`,
+        type: 'referral',
+        description: `${selectedCustomer.referredBy} - Earned Surabhi Referral of ₹${referralAmount}`,
         amount: rechargeAmountNum,
-        user: selectedCustomer.mobile,
+        user: selectedCustomer.referredBy,
         location: storeLocation
       });
 
-      await addActivityRecord({
-        type: 'recharge',
-        description: `Earned ${surabhiCoinsEarned} Surabhi Coins from recharge`,
-        amount: surabhiCoinsEarned,
-        user: selectedCustomer.mobile,
-        location: storeLocation
-      });
+      // await addActivityRecord({
+      //   type: 'recharge',
+      //   description: `Earned ${surabhiCoinsEarned} Surabhi Coins from recharge`,
+      //   amount: surabhiCoinsEarned,
+      //   user: selectedCustomer.mobile,
+      //   location: storeLocation
+      // });
 
       await addActivityRecord({
         type: 'contribution',
-        description: `Added ₹${sevaAmountEarned} to Seva Wallet from recharge`,
+        description: `${selectedCustomer.name} contributed ₹${sevaAmountEarned} to Seva Pool from recharge`,
         amount: sevaAmountEarned,
         user: selectedCustomer.mobile,
         location: storeLocation
@@ -394,17 +454,17 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
           <p className="text-gray-600">Recharge customer wallets at {storeLocation}</p>
           {storeDetails && (
             <div className="flex gap-4 mt-2 text-sm">
+              <Badge variant="outline" className="border-green-200 text-red-800">
+              Surabhi: {storeDetails.surabhiCommission}%
+              </Badge>
               <Badge variant="outline" className="border-blue-200 text-blue-800">
               Referral: {storeDetails.referralCommission}%
-              </Badge>
-              <Badge variant="outline" className="border-green-200 text-red-800">
-                Surabhi: {storeDetails.surabhiCommission}%
               </Badge>
               <Badge variant="outline" className="border-blue-200 text-green-800">
                 Cash Only: {storeDetails.cashOnlyCommission}%
               </Badge>
               <Badge variant="outline" className="border-blue-200 text-purple-800">
-                Seva: {storeDetails.sevaCommission}%
+              Seva: {storeDetails.sevaCommission}%
               </Badge>
             </div>
           )}
@@ -481,11 +541,14 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                           </p>
                           <p className="text-xs text-gray-500">Current Balance</p>
                           <p className="text-sm font-medium text-amber-600 mt-1">
-                            {customer.surabhiCoins} Surabhi Coins
+                            {customer.surabhiCoins} Surabhi
+                          </p>
+                          <p className="text-sm font-medium text-amber-600 mt-1">
+                            {customer.referralSurabhi >0 ? customer.referralSurabhi : 0 } Referral
                           </p>
                           {customer.sevaCoinsTotal && customer.sevaCoinsTotal > 0 && (
                             <p className="text-sm font-medium text-blue-600 mt-1">
-                              ₹{customer.sevaCoinsTotal} All Time Seva
+                              ₹{customer.sevaCoinsTotal} Seva
                             </p>
                           )}
                         </div>
@@ -669,11 +732,11 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
             <div className="space-y-2">
               <h4 className="font-medium">Recharge Details</h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="text-gray-500">Amount:</div>
+                <div className="text-gray-500"> Recharge Amount:</div>
                 <div className="font-medium">₹{rechargeAmountNum.toLocaleString()}</div>
-                <div className="text-gray-500">Coins Earned:</div>
+                <div className="text-gray-500">Surabhi Coins Earned:</div>
                 <div className="font-medium">+{surabhiCoinsEarned}</div>
-                <div className="text-gray-500">Referral Coins:</div>
+                <div className="text-gray-500">Referral Surabhi Coins:</div>
                 <div className="font-medium">+₹{referralAmount}</div>
                 <div className="text-gray-500">Seva Amount:</div>
                 <div className="font-medium">+₹{sevaAmountEarned}</div>

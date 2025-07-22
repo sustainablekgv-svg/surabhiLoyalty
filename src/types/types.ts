@@ -6,6 +6,7 @@ export interface Customer {
   storeLocation: string;
   walletBalance: number;
   walletRechargeDone: Boolean;
+  saleElgibility : Boolean;
   walletBalanceCurrentMonth : number;
   role: string;
   walletId: string;
@@ -14,7 +15,7 @@ export interface Customer {
   sevaCoinsTotal: number;
   sevaCoinsCurrentMonth:number;
   referredBy: string | null;
-  referralIncome: number | null;
+  referralSurabhi: number;
   referredUsers: { mobile:number; name: string; referralDate: Timestamp; }[] | null;
   registered: Boolean;
   lastTransactionDate: Timestamp | null;
@@ -152,7 +153,7 @@ export interface AccountTx {
   id: string;
   date: Timestamp;
   storeName: string;
-  type: 'cash' | 'recharge' | 'wallet';
+  type: 'recharge' | 'sale' | 'settlement';
   amount: number;
   debit: number;
   adminCut?:number;
@@ -165,6 +166,10 @@ export interface AccountTx {
 export interface StoreSummary {
   storeName: string;
   currentBalance: number;
+}
+
+export interface StoreAccountsProps {
+  storeLocation: string;
 }
 
 export interface AdminDeck {
