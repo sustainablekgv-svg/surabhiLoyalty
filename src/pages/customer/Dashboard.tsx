@@ -101,9 +101,9 @@ const CustomerDashboard = () => {
             <CustomerStats userId={user.id} />
           </TabsContent>
 
-          {/* <TabsContent value="referrals">
+          <TabsContent value="referrals">
             <ReferralSystem userId={user.id} userName={user.name || ''} userMobile={user.mobile} />
-          </TabsContent> */}
+          </TabsContent>
 
           <TabsContent value="history">
             <TransactionHistory userId={user.id} />

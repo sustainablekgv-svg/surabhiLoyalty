@@ -11,27 +11,40 @@ import {
   Phone,
   Calendar,
   Wallet,
-  Coins
+  Coins,
+  CreditCard,
+  Store,
+  Check,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useAuth } from '@/hooks/auth-context';
 
 interface ReferralSystemProps {
   userMobile: string;
   userName: string;
 }
 
-interface Referral {
+interface ReferredCustomer {
   name: string;
   mobile: string;
-  joinDate: string;
-  bonusEarned: number;
-  status: 'active' | 'inactive';
+  email: string;
+  storeLocation: string;
+  walletBalance: number;
+  walletRechargeDone: boolean;
+  saleEligibility: boolean;
+  surabhiCoins: number;
+  sevaCoinsTotal: number;
+  registered: boolean;
+  createdAt: Timestamp;
+  lastTransactionDate: Timestamp | null;
 }
 
 export const ReferralSystem = ({ userMobile, userName }: ReferralSystemProps) => {
-  const [referrals, setReferrals] = useState<Referral[]>([]);
+  const { user, logout, isLoading: authLoading } = useAuth();
+  const [referredCustomers, setReferredCustomers] = useState<ReferredCustomer[]>([]);
   const [loading, setLoading] = useState(true);
   const [referralIncome, setReferralIncome] = useState(0);
   const [userData, setUserData] = useState<any>(null);
@@ -41,36 +54,43 @@ export const ReferralSystem = ({ userMobile, userName }: ReferralSystemProps) =>
       try {
         // Fetch current user data to get referralIncome
         const usersRef = collection(db, 'customers');
-        const q = query(usersRef, where('mobile', '==', userMobile));
+        const q = query(usersRef, where('mobile', '==', user.mobile));
         const querySnapshot = await getDocs(q);
         
         if (!querySnapshot.empty) {
           const userDoc = querySnapshot.docs[0];
           const userData = userDoc.data();
           setUserData(userData);
-          setReferralIncome(userData.referralIncome || 0);
+          setReferralIncome(userData.referralSurabhi || 0);
         }
 
-        // Fetch referred users
-        const referredUsersQuery = query(
+        // Fetch referred customers
+        const referredCustomersQuery = query(
           collection(db, 'customers'),
-          where('referredBy', '==', userMobile)
+          where('referredBy', '==', user.mobile)
         );
-        const referredUsersSnapshot = await getDocs(referredUsersQuery);
+        const referredCustomersSnapshot = await getDocs(referredCustomersQuery);
         
-        const referralsData: Referral[] = [];
-        referredUsersSnapshot.forEach(doc => {
+        const customersData: ReferredCustomer[] = [];
+        referredCustomersSnapshot.forEach(doc => {
           const data = doc.data();
-          referralsData.push({
+          customersData.push({
             name: data.name,
             mobile: data.mobile,
-            joinDate: data.createdAt?.toDate().toLocaleDateString() || 'N/A',
-            bonusEarned: data.sevaCoinsTotal * 0.075 || 0, // 7.5% of their seva coins
-            status: data.registered ? 'active' : 'inactive'
+            email: data.email,
+            storeLocation: data.storeLocation,
+            walletBalance: data.walletBalance,
+            walletRechargeDone: data.walletRechargeDone,
+            saleEligibility: data.saleEligibility,
+            surabhiCoins: data.surabhiCoins,
+            sevaCoinsTotal: data.sevaCoinsTotal,
+            registered: data.registered,
+            createdAt: data.createdAt,
+            lastTransactionDate: data.lastTransactionDate
           });
         });
 
-        setReferrals(referralsData);
+        setReferredCustomers(customersData);
       } catch (error) {
         console.error('Error fetching referral data:', error);
         toast.error('Failed to load referral data');
@@ -82,8 +102,11 @@ export const ReferralSystem = ({ userMobile, userName }: ReferralSystemProps) =>
     fetchReferralData();
   }, [userMobile]);
 
-  const totalReferrals = referrals.length;
-  const activeReferrals = referrals.filter(ref => ref.status === 'active').length;
+  const totalReferrals = referredCustomers.length;
+  const activeReferrals = referredCustomers.filter(c => c.registered).length;
+  const totalReferralEarnings = referredCustomers.reduce((sum, customer) => {
+    return sum + (customer.sevaCoinsTotal); 
+  }, 0);
 
   const copyReferralNumber = async () => {
     try {
@@ -95,7 +118,7 @@ export const ReferralSystem = ({ userMobile, userName }: ReferralSystemProps) =>
   };
 
   const shareReferral = async () => {
-    const shareText = `Join ${userName}'s network on our loyalty program! Use my referral number ${userMobile} when signing up to get benefits. I've earned ₹${referralIncome} in referral bonuses so far!`;
+    const shareText = `Join ${userName}'s network on our loyalty program! Use my referral number ${userMobile} when signing up to get benefits. I've earned ${referralIncome} Surabhi Coins in referral bonuses so far!`;
     
     if (navigator.share) {
       try {
@@ -112,8 +135,22 @@ export const ReferralSystem = ({ userMobile, userName }: ReferralSystemProps) =>
     }
   };
 
+  const formatDate = (timestamp: Timestamp) => {
+    if (!timestamp) return 'N/A';
+    const date = timestamp.toDate();
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
   if (loading) {
-    return <div className="flex justify-center py-8">Loading referral data...</div>;
+    return (
+      <div className="flex justify-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
   }
 
   return (
@@ -124,7 +161,7 @@ export const ReferralSystem = ({ userMobile, userName }: ReferralSystemProps) =>
         </div>
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Referral Program</h2>
-          <p className="text-gray-600">Invite friends and earn 7.5% of their spending as Surabhi Coins</p>
+          <p className="text-gray-600">Invite friends and earn on their spendings</p>
         </div>
       </div>
 
@@ -160,12 +197,12 @@ export const ReferralSystem = ({ userMobile, userName }: ReferralSystemProps) =>
           <CardContent className="p-6">
             <div className="flex items-center gap-3 mb-3">
               <div className="bg-purple-100 p-2 rounded-full">
-                <Wallet className="h-5 w-5 text-purple-600" />
+                <TrendingUp className="h-5 w-5 text-purple-600" />
               </div>
               <span className="text-sm font-medium text-purple-600">Potential Earnings</span>
             </div>
             <div className="text-3xl font-bold text-purple-900 mb-1">
-              {referrals.reduce((sum, ref) => sum + ref.bonusEarned, 0)}
+              {totalReferralEarnings.toFixed(1)}
             </div>
             <div className="text-xs text-purple-700">From current referrals</div>
           </CardContent>
@@ -216,67 +253,99 @@ export const ReferralSystem = ({ userMobile, userName }: ReferralSystemProps) =>
                 </div>
                 <div className="flex items-start gap-2">
                   <div className="bg-green-100 text-green-600 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">3</div>
-                  <p>You earn 7.5% Surabhi Coins on their purchases</p>
+                  <p>You earn Surabhi Coins on their purchases</p>
                 </div>
               </div>
             </div>
             
-            <Button
+            {/* <Button
               onClick={shareReferral}
               className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
             >
               <Share2 className="h-4 w-4 mr-2" />
               Share Referral Number
-            </Button>
+            </Button> */}
           </CardContent>
         </Card>
 
-        {/* Referral List */}
+        {/* Referred Customers List */}
         <Card className="shadow-lg border-0 bg-white">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5 text-blue-600" />
-              Your Referrals
+              Your Referred Customers
             </CardTitle>
             <CardDescription>
-              Friends who joined using your referral number
+              Customers who joined using your referral number
             </CardDescription>
           </CardHeader>
           
           <CardContent>
-            {referrals.length > 0 ? (
-              <div className="space-y-3">
-                {referrals.map((referral, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium text-gray-900">{referral.name}</h3>
-                        <Badge variant={referral.status === 'active' ? 'default' : 'secondary'} className="text-xs">
-                          {referral.status}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs text-gray-600">
-                        <div className="flex items-center gap-1">
-                          <Phone className="h-3 w-3" />
-                          <span>{referral.mobile}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          <span>Joined {referral.joinDate}</span>
+            {referredCustomers.length > 0 ? (
+              <div className="space-y-4">
+                {referredCustomers.map((customer, index) => (
+                  <div key={index} className="p-4 border rounded-lg hover:shadow-sm transition-shadow">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <h3 className="font-medium text-gray-900">{customer.name}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant={customer.registered ? 'default' : 'secondary'} className="text-xs">
+                            {customer.registered ? 'Active' : 'Pending'}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {customer.saleEligibility ? 'Eligible' : 'Not Eligible'}
+                          </Badge>
                         </div>
                       </div>
+                      <div className="text-right">
+                        <p className="font-bold text-amber-600">+{(customer.sevaCoinsTotal * 0.075).toFixed(1)} coins</p>
+                        <p className="text-xs text-gray-500">Earned for you</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-amber-600">{referral.bonusEarned} coins</p>
-                      <p className="text-xs text-gray-500">Earned for you</p>
+                    
+                    <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4" />
+                        <span>{customer.mobile}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Store className="h-4 w-4" />
+                        <span>{customer.storeLocation || 'N/A'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>Joined {formatDate(customer.createdAt)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        <span>₹{customer.walletBalance.toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Coins className="h-4 w-4" />
+                        <span>{customer.surabhiCoins} coins</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {customer.walletRechargeDone ? (
+                          <Check className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <X className="h-4 w-4 text-red-500" />
+                        )}
+                        <span>Recharged</span>
+                      </div>
                     </div>
+                    
+                    {customer.lastTransactionDate && (
+                      <div className="mt-3 text-xs text-gray-500">
+                        Last transaction: {formatDate(customer.lastTransactionDate)}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             ) : (
               <div className="text-center py-8 text-gray-500">
                 <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p className="text-lg font-medium mb-2">No referrals yet</p>
+                <p className="text-lg font-medium mb-2">No referred customers yet</p>
                 <p className="text-sm">Share your mobile number to start earning Surabhi Coins!</p>
               </div>
             )}

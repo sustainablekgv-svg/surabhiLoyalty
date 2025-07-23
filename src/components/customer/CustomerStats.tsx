@@ -11,40 +11,67 @@ import {
   User
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { doc, getDoc, Timestamp, FieldValue  } from 'firebase/firestore';
+import { doc, getDoc, Timestamp, collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Customer } from '@/types/types';
+import { Customer, ActivityType } from '@/types/types';
+import { useAuth } from '@/hooks/auth-context';
 
 interface CustomerStatsProps {
   userId: string;
 }
 
 export const CustomerStats = ({ userId }: CustomerStatsProps) => {
+  const { user, logout, isLoading: authLoading } = useAuth();
   const [customerData, setCustomerData] = useState<Customer | null>(null);
+  const [activities, setActivities] = useState<ActivityType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchCustomerData = async () => {
-      try {
-        const docRef = doc(db, 'customers', userId);
-        const docSnap = await getDoc(docRef);
-        
-        if (docSnap.exists()) {
-          setCustomerData(docSnap.data() as Customer);
-        } else {
-          setError('No customer data found');
-        }
-      } catch (err) {
-        setError('Failed to fetch customer data');
-        console.error('Error fetching customer data:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+useEffect(() => {
+  const fetchCustomerData = async () => {
+    if (!userId) return;
 
-    fetchCustomerData();
-  }, [userId]);
+    setLoading(true);
+    try {
+      // Fetch the customer document with the given userId
+      const docRef = doc(db, 'customers', userId);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const customer = docSnap.data() as Customer;
+        setCustomerData(customer);
+
+        // Only fetch activities if customer has a mobile number
+        if (customer.mobile) {
+          const activitiesQuery = query(
+            collection(db, 'Activity'),
+            where('user', '==', user.mobile),
+            orderBy('date', 'desc'),
+            limit(3)
+          );
+
+          const querySnapshot = await getDocs(activitiesQuery);
+          const activitiesData = querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          })) as ActivityType[];
+
+          setActivities(activitiesData);
+        }
+      } else {
+        setError('No customer data found');
+      }
+    } catch (err) {
+      console.error('Error fetching customer data:', err);
+      setError('Failed to fetch customer data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchCustomerData();
+}, [userId]);
+
 
   if (loading) {
     return <div>Loading customer data...</div>;
@@ -84,15 +111,41 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       });
     }
   
-    // It’s likely a FieldValue or undefined/null
     return 'N/A';
   }
   
   const memberSince = formatCreatedAt(customerData.createdAt);
 
-
   // Calculate referrals count
   const totalReferrals = customerData.referredUsers?.length || 0;
+
+  // Format activity date
+  const formatActivityDate = (timestamp: Timestamp) => {
+    return timestamp.toDate().toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Get icon for activity type
+  const getActivityIcon = (type: ActivityType['type']) => {
+    switch (type) {
+      case 'recharge':
+        return <Wallet className="h-4 w-4 text-green-600" />;
+      case 'transaction':
+        return <Coins className="h-4 w-4 text-blue-600" />;
+      case 'referral':
+        return <Gift className="h-4 w-4 text-purple-600" />;
+      case 'contribution':
+        return <Heart className="h-4 w-4 text-red-600" />;
+      case 'allocation':
+        return <Target className="h-4 w-4 text-amber-600" />;
+      default:
+        return <User className="h-4 w-4 text-gray-600" />;
+    }
+  };
 
   const stats = [
     {
@@ -197,54 +250,35 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {customerData.lastTransactionDate && (
-                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-green-100 p-2 rounded-full">
-                      <Wallet className="h-4 w-4 text-green-600" />
+              {activities.length > 0 ? (
+                activities.map((activity) => (
+                  <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-white p-2 rounded-full border">
+                        {getActivityIcon(activity.type)}
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{activity.description}</p>
+                        <p className="text-xs text-gray-600">
+                          {formatActivityDate(activity.date)} • {activity.location}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-sm">Last Wallet Recharge</p>
-                      <p className="text-xs text-gray-600">
-                        {new Date(customerData.lastTransactionDate).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </p>
-                    </div>
+                    {activity.amount && (
+                      <span className={`font-bold ${
+                        activity.type === 'recharge' || activity.type === 'referral' 
+                          ? 'text-green-600' 
+                          : 'text-blue-600'
+                      }`}>
+                        {activity.type === 'recharge' || activity.type === 'referral' ? '+' : ''}
+                        {activity.type === 'recharge' ? `₹${activity.amount}` : `${activity.amount} coins`}
+                      </span>
+                    )}
                   </div>
-                  <span className="font-bold text-green-600">+₹{customerData.walletBalance}</span>
-                </div>
-              )}
-              
-              <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="bg-amber-100 p-2 rounded-full">
-                    <Coins className="h-4 w-4 text-amber-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">Current Month Surabhi Coins</p>
-                    <p className="text-xs text-gray-600">Earned this month</p>
-                  </div>
-                </div>
-                <span className="font-bold text-amber-600">+{customerData.sevaCoinsCurrentMonth} coins</span>
-              </div>
-              
-              {totalReferrals > 0 && (
-                <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-purple-100 p-2 rounded-full">
-                      <Gift className="h-4 w-4 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">Referral Bonus</p>
-                      <p className="text-xs text-gray-600">From your referrals</p>
-                    </div>
-                  </div>
-                  <span className="font-bold text-purple-600">+{totalReferrals * 7.5} coins</span>
+                ))
+              ) : (
+                <div className="text-center py-4 text-gray-500">
+                  No recent activities found
                 </div>
               )}
             </div>
@@ -270,7 +304,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                   </div>
                   <h3 className="font-medium text-purple-900">Recharge Wallet</h3>
                 </div>
-                <p className="text-sm text-purple-700 mb-2">Earn 10% Surabhi Coins on every recharge</p>
+                <p className="text-sm text-purple-700 mb-2">Earn Surabhi Coins on every recharge</p>
                 <div className="text-xs text-purple-600">Visit store to recharge</div>
               </div>
               
@@ -281,10 +315,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                   </div>
                   <h3 className="font-medium text-green-900">Refer Friends</h3>
                 </div>
-                {/* <p className="text-sm text-green-700 mb-2">
-                  Share your referral number: <span className="font-bold">{customerData.mobile}</span>
-                </p> */}
-                <p className="text-sm text-green-700 mb-2">Earn 7.5% on friend's purchases</p>
+                <p className="text-sm text-green-700 mb-2">Earn Referral coins on friend's purchases</p>
                 <div className="text-xs text-green-600">Ask friends to use your number when signing up</div>
               </div>
             </div>
