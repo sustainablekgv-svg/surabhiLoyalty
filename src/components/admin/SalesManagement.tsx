@@ -35,7 +35,10 @@ export const SalesManagement = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [searchTerm, setSearchTerm] = useState('');
+  // Separate search terms for transactions and recharges
+  const [transactionsSearchTerm, setTransactionsSearchTerm] = useState('');
+  const [rechargesSearchTerm, setRechargesSearchTerm] = useState('');
+
   const [filterStore, setFilterStore] = useState('all');
   const [filterPayment, setFilterPayment] = useState('all');
 
@@ -122,8 +125,8 @@ export const SalesManagement = () => {
   };
 
   const filteredTransactions = transactions.filter(transaction => {
-    const matchesSearch = transaction.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         transaction.customerMobile.includes(searchTerm);
+    const matchesSearch = transaction.customerName.toLowerCase().includes(transactionsSearchTerm.toLowerCase());
+                        //  transaction.customerMobile.includes(transactionsSearchTerm);
     const matchesStore = filterStore === 'all' || transaction.storeLocation === filterStore;
     const matchesPayment = filterPayment === 'all' || transaction.paymentMethod === filterPayment;
     
@@ -131,8 +134,8 @@ export const SalesManagement = () => {
   });
 
   const filteredRecharges = recharges.filter(recharge => {
-    return recharge.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           recharge.customerMobile.includes(searchTerm);
+    return recharge.customerName.toLowerCase().includes(rechargesSearchTerm.toLowerCase()) ||
+           recharge.customerMobile.includes(rechargesSearchTerm);
   });
 
   // Pagination logic for transactions
@@ -259,7 +262,7 @@ export const SalesManagement = () => {
                   <CardTitle>Sales Transactions</CardTitle>
                   <CardDescription>
                     {filteredTransactions.length} transactions found
-                    {(searchTerm || filterStore !== 'all' || filterPayment !== 'all') && 
+                    {(transactionsSearchTerm || filterStore !== 'all' || filterPayment !== 'all') && 
                       ' (filtered)'}
                   </CardDescription>
                 </div>
@@ -268,11 +271,11 @@ export const SalesManagement = () => {
                   <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
-                      placeholder="Search customers..."
-                      value={searchTerm}
+                      placeholder="Search transactions..."
+                      value={transactionsSearchTerm}
                       onChange={(e) => {
-                        setSearchTerm(e.target.value);
-                        setTransactionsPage(1); // Reset to first page when searching
+                        setTransactionsSearchTerm(e.target.value);
+                        setTransactionsPage(1);
                       }}
                       className="pl-10 w-full sm:w-64"
                     />
@@ -280,7 +283,7 @@ export const SalesManagement = () => {
                   
                   <Select value={filterStore} onValueChange={(value) => {
                     setFilterStore(value);
-                    setTransactionsPage(1); // Reset to first page when filtering
+                    setTransactionsPage(1);
                   }}>
                     <SelectTrigger className="w-full sm:w-48">
                       <SelectValue placeholder="Filter by store" />
@@ -297,7 +300,7 @@ export const SalesManagement = () => {
                   
                   <Select value={filterPayment} onValueChange={(value) => {
                     setFilterPayment(value);
-                    setTransactionsPage(1); // Reset to first page when filtering
+                    setTransactionsPage(1);
                   }}>
                     <SelectTrigger className="w-full sm:w-40">
                       <SelectValue placeholder="Payment" />
@@ -318,9 +321,9 @@ export const SalesManagement = () => {
                 <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-500">
                   <Search className="h-8 w-8" />
                   <p>No transactions found</p>
-                  {(searchTerm || filterStore !== 'all' || filterPayment !== 'all') && (
+                  {(transactionsSearchTerm || filterStore !== 'all' || filterPayment !== 'all') && (
                     <Button variant="ghost" onClick={() => {
-                      setSearchTerm('');
+                      setTransactionsSearchTerm('');
                       setFilterStore('all');
                       setFilterPayment('all');
                     }}>
@@ -482,10 +485,10 @@ export const SalesManagement = () => {
                   <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
                     placeholder="Search recharges..."
-                    value={searchTerm}
+                    value={rechargesSearchTerm}
                     onChange={(e) => {
-                      setSearchTerm(e.target.value);
-                      setRechargesPage(1); // Reset to first page when searching
+                      setRechargesSearchTerm(e.target.value);
+                      setRechargesPage(1);
                     }}
                     className="pl-10 w-full sm:w-64"
                   />
@@ -498,8 +501,8 @@ export const SalesManagement = () => {
                 <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-500">
                   <Search className="h-8 w-8" />
                   <p>No recharge records found</p>
-                  {searchTerm && (
-                    <Button variant="ghost" onClick={() => setSearchTerm('')}>
+                  {rechargesSearchTerm && (
+                    <Button variant="ghost" onClick={() => setRechargesSearchTerm('')}>
                       Clear search
                     </Button>
                   )}

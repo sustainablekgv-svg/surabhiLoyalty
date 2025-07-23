@@ -59,6 +59,16 @@ export interface StaffType {
   staffPassword: string;
 }
 
+export interface StorePerformance {
+  name: string;
+  transactions: number;
+  sales: number;
+  surabhiCoinsUsed: number;
+  walletDeduction: number;
+  cashPayment: number;
+  lastUpdated?: Timestamp;
+}
+
 export interface StoreType {
   id: string;
   name: string;

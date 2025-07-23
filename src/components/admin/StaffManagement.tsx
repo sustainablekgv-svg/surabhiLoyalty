@@ -50,36 +50,23 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-interface StoreType {
-  id: string;
-  name: string;
-  storeLocation: string;
-  address: string;
-  referralCommission: number;
-  surabhiCommission: number;
-  sevaCommission: number;
-  cashOnlyCommission: number;
-  contactNumber: string;
-  status: 'active' | 'inactive';
-  createdAt: Date;
-  updatedAt: Date;
+async function checkContactNumberExists(contactNumber: string, currentStoreId?: string): Promise<boolean> {
+  if (!contactNumber) return false;
+  
+  const storesRef = collection(db, 'stores');
+  const q = query(storesRef, where('contactNumber', '==', contactNumber));
+  
+  const querySnapshot = await getDocs(q);
+  
+  // If editing, exclude the current store from the check
+  if (currentStoreId) {
+    return querySnapshot.docs.some(doc => doc.id !== currentStoreId);
+  }
+  
+  return !querySnapshot.empty;
 }
 
-interface StaffType {
-  id: string;
-  name: string;
-  mobile: string;
-  email: string;
-  storeLocation: string;
-  role: 'admin' | 'staff';
-  createdAt: Date;
-  status: 'active' | 'inactive';
-  salesCount: number;
-  staffPin: string;
-  lastActive?: Date;
-  staffPassword: string;
-}
-
+import { StaffType, StoreType } from '@/types/types';
 export const StaffManagement = () => {
   const [emailError, setEmailError] = useState<string>('');
   const [mobileError, setMobileError] = useState<string>('');
@@ -87,6 +74,7 @@ export const StaffManagement = () => {
   const [staff, setStaff] = useState<StaffType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'staff' | 'stores'>('staff');
+  const [contactNumberError, setContactNumberError] = useState('');
   
   // Staff state
   const [isStaffDialogOpen, setIsStaffDialogOpen] = useState(false);
@@ -361,6 +349,22 @@ const handleSaveStaff = async () => {
       return false;
     }
   };
+
+  useEffect(() => {
+  const timer = setTimeout(async () => {
+    if (currentStore?.contactNumber && currentStore.contactNumber.length === 10) {
+      const exists = await checkContactNumberExists(
+        currentStore.contactNumber,
+        currentStore?.id
+      );
+      if (exists) {
+        setContactNumberError('This contact number is already registered to another store');
+      }
+    }
+  }, 500);
+
+  return () => clearTimeout(timer);
+}, [currentStore?.contactNumber, currentStore?.id]);
 
   return (
     <div className="space-y-6">
@@ -913,19 +917,24 @@ const handleSaveStaff = async () => {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Contact Number *</Label>
-              <Input
-                type="tel"
-                value={currentStore?.contactNumber || ''}
-                onChange={(e) => setCurrentStore({
-                  ...currentStore,
-                  contactNumber: e.target.value.replace(/\D/g, '')
-                })}
-                placeholder="Enter contact number"
-                disabled={!!currentStore?.id}
-              />
-            </div>
+        <div className="space-y-2">
+        <Label>Contact Number *</Label>
+        <Input
+        type="tel"
+        value={currentStore?.contactNumber || ''}
+        onChange={(e) => {
+        const number = e.target.value.replace(/\D/g, '');
+        setCurrentStore({
+        ...currentStore,
+        contactNumber: number
+        });
+        setContactNumberError('');
+        }}
+        placeholder="Enter contact number"
+        disabled={!!currentStore?.id}
+        />
+        {contactNumberError && <p className="text-sm text-red-500">{contactNumberError}</p>}
+        </div>
 
             <div className="border-t pt-4">
               <h4 className="font-medium mb-4">Commission Rates</h4>

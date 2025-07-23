@@ -23,7 +23,16 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { Customer, SevaPool, SevaTransaction, RechargeRecord } from '@/types/types';
+import { ActivityType, SevaPool } from '@/types/types';
+
+interface Customer {
+  id?: string;
+  name: string;
+  mobile: string;
+  storeLocation: string;
+  sevaCoinsCurrentMonth: number;
+  sevaCoinsTotal: number;
+}
 
 // Safe timestamp conversion utility
 function safeConvertToTimestamp(date: any): Timestamp {
@@ -76,9 +85,8 @@ export const GoSevaPool = () => {
     lastAllocatedDate: Timestamp.now()
   });
   
-  const [transactions, setTransactions] = useState<SevaTransaction[]>([]);
+  const [activities, setActivities] = useState<ActivityType[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [recharges, setRecharges] = useState<RechargeRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
@@ -87,122 +95,77 @@ export const GoSevaPool = () => {
   const [isAllocationDialogOpen, setIsAllocationDialogOpen] = useState(false);
 
   const fetchData = async () => {
-    try {
-      setLoading(true);
-      await checkAndResetMonthlySevaCoins();
-      
-      // Fetch Seva Pool data
-      const poolRef = doc(db, 'SevaPool', 'main');
-      const poolSnapshot = await getDoc(poolRef);
-      if (poolSnapshot.exists()) {
-        const data = poolSnapshot.data();
-        const poolData: SevaPool = {
-          currentBalance: data.currentBalance ?? 0,
-          totalContributions: data.totalContributions ?? 0,
-          totalAllocations: data.totalAllocations ?? 0,
-          contributionsCurrentMonth: data.contributionsCurrentMonth ?? 0,
-          allocationsCurrentMonth: data.allocationsCurrentMonth ?? 0,
-          lastResetDate: safeConvertToTimestamp(data.lastResetDate),
-          lastAllocatedDate: safeConvertToTimestamp(data.lastAllocatedDate)
-        };
-        setSevaPool(poolData);
-      } else {
-        toast.error('Seva Pool document not found');
-      }
-      
-      // Fetch recharges with seva contributions
-      const rechargesQuery = query(
-        collection(db, 'recharges'),
-        where('timestamp', '>=', startOfMonth(new Date())),
-        where('sevaAmountEarned', '>', 0)
-      );
-      const rechargesSnapshot = await getDocs(rechargesQuery);
-      const rechargesData = rechargesSnapshot.docs.map(doc => ({
+  try {
+    setLoading(true);
+    await checkAndResetMonthlySevaCoins();
+    
+    // Fetch Seva Pool data (unchanged)
+    const poolRef = doc(db, 'SevaPool', 'main');
+    const poolSnapshot = await getDoc(poolRef);
+    if (poolSnapshot.exists()) {
+      const data = poolSnapshot.data();
+      const poolData: SevaPool = {
+        currentBalance: data.currentBalance ?? 0,
+        totalContributions: data.totalContributions ?? 0,
+        totalAllocations: data.totalAllocations ?? 0,
+        contributionsCurrentMonth: data.contributionsCurrentMonth ?? 0,
+        allocationsCurrentMonth: data.allocationsCurrentMonth ?? 0,
+        lastResetDate: safeConvertToTimestamp(data.lastResetDate),
+        lastAllocatedDate: safeConvertToTimestamp(data.lastAllocatedDate)
+      };
+      setSevaPool(poolData);
+    } else {
+      toast.error('Seva Pool document not found');
+    }
+    
+    // Fetch activities for this month (contributions and allocations)
+    const activitiesQuery = query(
+      collection(db, 'Activity'),
+      where('date', '>=', startOfMonth(new Date())),
+      where('type', 'in', ['contribution', 'allocation'])
+    );
+    const activitiesSnapshot = await getDocs(activitiesQuery);
+    const activitiesData = activitiesSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
         id: doc.id,
-        ...doc.data()
-      })) as RechargeRecord[];
-      setRecharges(rechargesData);
+        type: data.type,
+        description: data.description,
+        amount: data.amount || 0,
+        user: data.user,
+        location: data.location,
+        date: safeConvertToTimestamp(data.date)
+      } as ActivityType;
+    });
+    setActivities(activitiesData.sort((a, b) => b.date.toMillis() - a.date.toMillis()));
 
-      // Create transactions from recharges
-      const rechargeTransactions: SevaTransaction[] = rechargesData.map(recharge => ({
-        type: 'contribution',
-        amount: recharge.sevaAmountEarned,
-        description: `Recharge by ${recharge.customerName}`,
-        date: safeConvertToTimestamp(recharge.timestamp),
-        monthYear: safeFormatDate(recharge.timestamp, 'yyyy-MM'),
-        customerName: recharge.customerName,
-        storeLocation: recharge.storeLocation
-      }));
-
-      // Fetch allocation transactions
-      const transactionsQuery = query(
-        collection(db, 'SevaTransaction'),
-        where('date', '>=', startOfMonth(new Date()))
-      );
-      const transactionsSnapshot = await getDocs(transactionsQuery);
-      const allocationTransactions = transactionsSnapshot.docs.map(doc => {
-        const data = doc.data();
-        
-        return {
-          id: doc.id,
-          type: data.type as 'contribution' | 'allocation',
-          amount: data.amount,
-          description: data.description,
-          date: safeConvertToTimestamp(data.date),
-          monthYear: data.monthYear,
-          customerMobile: data.customerMobile || undefined,
-          customerName: data.customerName || undefined,
-          storeLocation: data.storeLocation || undefined
-        } as SevaTransaction;
-      });
-
-      // Combine transactions
-      const allTransactions = [...rechargeTransactions, ...allocationTransactions].sort((a, b) => {
-        const dateA = a.date instanceof Timestamp ? a.date.toDate() : new Date(a.date);
-        const dateB = b.date instanceof Timestamp ? b.date.toDate() : new Date(b.date);
-        return dateB.getTime() - dateA.getTime();
-      });
-      setTransactions(allTransactions);
-      
-      // Process customers
-      const contributingCustomers = rechargesData.reduce((acc: Customer[], recharge) => {
-        if (!acc.some(c => c.mobile === recharge.customerMobile)) {
+    // First get all customers who have made contributions this month
+    const contributingCustomersData = activitiesData
+      .filter(activity => activity.type === 'contribution')
+      .reduce((acc: {mobile: string; amount: number}[], activity) => {
+        const mobile = activity.user.split('|')[1] || activity.user;
+        const existingCustomer = acc.find(c => c.mobile === mobile);
+        if (existingCustomer) {
+          existingCustomer.amount += activity.amount || 0;
+        } else {
           acc.push({
-            name: recharge.customerName,
-            mobile: recharge.customerMobile,
-            storeLocation: recharge.storeLocation,
-            sevaCoinsCurrentMonth: recharge.sevaAmountEarned,
-            email: '',
-            walletBalance: 0,
-            walletRechargeDone: false,
-            walletBalanceCurrentMonth: 0,
-            role: 'customer',
-            walletId: '',
-            surabhiCoins: 0,
-            surabhiCoinsCurrentMonth: 0,
-            sevaCoinsTotal: 0,
-            referredBy: null,
-            referralSurabhi: 0,
-            saleElgibility: false,
-            referredUsers: null,
-            registered: true,
-            lastTransactionDate: Timestamp.now(),
-            createdAt: Timestamp.now(),
-            customerPassword: '',
-            tpin: ''
+            mobile,
+            amount: activity.amount || 0
           });
         }
         return acc;
       }, []);
 
-      // Fetch customers with seva contributions
+    // Now fetch full customer data for these mobile numbers
+    if (contributingCustomersData.length > 0) {
       const customersQuery = query(
         collection(db, 'customers'),
-        where('sevaCoinsCurrentMonth', '>', 0)
+        where('mobile', 'in', contributingCustomersData.map(c => c.mobile))
       );
       const customersSnapshot = await getDocs(customersQuery);
       const customersData = customersSnapshot.docs.map(doc => {
         const data = doc.data();
+        const contribution = contributingCustomersData.find(c => c.mobile === data.mobile);
         
         return {
           id: doc.id,
@@ -217,11 +180,11 @@ export const GoSevaPool = () => {
           walletId: data.walletId || '',
           surabhiCoins: data.surabhiCoins || 0,
           surabhiCoinsCurrentMonth: data.surabhiCoinsCurrentMonth || 0,
-          saleElgibility : data.saleElgibility || false,
+          saleElgibility: data.saleElgibility || false,
           sevaCoinsTotal: data.sevaCoinsTotal || 0,
-          sevaCoinsCurrentMonth: data.sevaCoinsCurrentMonth || 0,
+          sevaCoinsCurrentMonth: contribution?.amount || 0,
           referredBy: data.referredBy || null,
-          referralSurabhi: data.referralSurabhi || null,
+          referralSurabhi: data.referralSurabhi || 0,
           referredUsers: data.referredUsers || null,
           registered: data.registered || false,
           lastTransactionDate: safeConvertToTimestamp(data.lastTransactionDate),
@@ -231,56 +194,31 @@ export const GoSevaPool = () => {
         } as Customer;
       });
 
-      // Merge customers
-      const mergedCustomers = [...customersData, ...contributingCustomers].reduce((acc: Customer[], customer) => {
-        const existingIndex = acc.findIndex(c => c.mobile === customer.mobile);
-        if (existingIndex >= 0) {
-          acc[existingIndex].sevaCoinsCurrentMonth += customer.sevaCoinsCurrentMonth;
-        } else {
-          acc.push(customer);
-        }
-        return acc;
-      }, []);
-
-      setCustomers(mergedCustomers.sort((a, b) => b.sevaCoinsCurrentMonth - a.sevaCoinsCurrentMonth));
-      
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      toast.error('Failed to load data');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+      setCustomers(customersData.sort((a, b) => b.sevaCoinsCurrentMonth - a.sevaCoinsCurrentMonth));
+    } else {
+      setCustomers([]);
     }
-  };
+    
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    toast.error('Failed to load data');
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+};
 
   const checkAndResetMonthlySevaCoins = async () => {
     if (isFirstDayOfMonth(new Date())) {
       try {
-        // Reset customer seva coins
-        const customersQuery = query(
-          collection(db, 'customers'),
-          where('sevaCoinsCurrentMonth', '>', 0)
-        );
-        const snapshot = await getDocs(customersQuery);
-        
-        const batch = writeBatch(db);
-        snapshot.forEach(doc => {
-          const customerRef = doc.ref;
-          batch.update(customerRef, { 
-            sevaCoinsCurrentMonth: 0,
-            sevaCoinsTotal: doc.data().sevaCoinsTotal
-          });
-        });
-        
         // Reset Seva Pool monthly counts
         const poolRef = doc(db, 'SevaPool', 'main');
-        batch.update(poolRef, { 
+        await updateDoc(poolRef, { 
           lastResetDate: Timestamp.fromDate(new Date()),
           contributionsCurrentMonth: 0,
           allocationsCurrentMonth: 0
         });
         
-        await batch.commit();
         toast.success('Monthly Seva coins reset successfully');
       } catch (error) {
         console.error('Error resetting monthly Seva coins:', error);
@@ -297,17 +235,18 @@ export const GoSevaPool = () => {
     }
 
     try {
-      // Create transaction
-      const newTransaction: Omit<SevaTransaction, 'id'> = {
+      // Create activity record
+      const newActivity: Omit<ActivityType, 'id'> = {
         type: 'allocation',
-        amount: -amount,
         description: allocationDescription,
-        date: Timestamp.fromDate(new Date()),
-        monthYear: format(new Date(), 'yyyy-MM')
+        amount: amount,
+        user: 'System Allocation',
+        location: 'System',
+        date: Timestamp.fromDate(new Date())
       };
 
-      // Add transaction
-      const docRef = await addDoc(collection(db, 'sevaTransactions'), newTransaction);
+      // Add activity
+      await addDoc(collection(db, 'Activity'), newActivity);
       
       // Update Seva Pool
       const poolRef = doc(db, 'SevaPool', 'main');
@@ -319,7 +258,7 @@ export const GoSevaPool = () => {
       });
 
       // Update state
-      setTransactions([{ ...newTransaction}, ...transactions]);
+      setActivities([{ ...newActivity, id: 'temp-id' }, ...activities]);
       setSevaPool({
         ...sevaPool,
         currentBalance: sevaPool.currentBalance - amount,
@@ -521,21 +460,21 @@ export const GoSevaPool = () => {
         
         <CardContent>
           <div className="space-y-3">
-            {transactions.length === 0 ? (
+            {activities.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-500">
                 <History className="h-8 w-8" />
                 <p>No transactions found for this month</p>
               </div>
             ) : (
-              transactions.map((transaction) => (
-                <div key={transaction.customerMobile || transaction.customerMobile} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+              activities.map((activity) => (
+                <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                   <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-full ${
-                      transaction.type === 'contribution' 
+                      activity.type === 'contribution' 
                         ? 'bg-green-100' 
                         : 'bg-red-100'
                     }`}>
-                      {transaction.type === 'contribution' ? (
+                      {activity.type === 'contribution' ? (
                         <TrendingUp className="h-4 w-4 text-green-600" />
                       ) : (
                         <Gift className="h-4 w-4 text-red-600" />
@@ -544,20 +483,20 @@ export const GoSevaPool = () => {
                     
                     <div>
                       <p className="font-medium text-sm text-gray-900">
-                        {transaction.description}
+                        {activity.description}
                       </p>
                       <div className="flex items-center gap-2 text-xs text-gray-600">
                         <span>
-                          {safeFormatDate(transaction.date)}
+                          {safeFormatDate(activity.date)}
                         </span>
-                        {transaction.customerName && (
+                        {activity.user && (
                           <>
                             <span>•</span>
-                            <span>{transaction.customerName}</span>
-                            {transaction.storeLocation && (
+                            <span>{activity.user.split('|')[0] || activity.user}</span>
+                            {activity.location && (
                               <>
                                 <span>•</span>
-                                <span>{transaction.storeLocation}</span>
+                                <span>{activity.location}</span>
                               </>
                             )}
                           </>
@@ -568,14 +507,14 @@ export const GoSevaPool = () => {
                   
                   <div className="text-right">
                     <p className={`font-bold ${
-                      transaction.amount > 0 
+                      activity.type === 'contribution' 
                         ? 'text-green-600' 
                         : 'text-red-600'
                     }`}>
-                      {transaction.amount > 0 ? '+' : ''}₹{Math.abs(transaction.amount).toLocaleString()}
+                      {activity.type === 'contribution' ? '+' : '-'}₹{Math.abs(activity.amount || 0).toLocaleString()}
                     </p>
-                    <Badge variant={transaction.type === 'contribution' ? 'default' : 'destructive'} className="mt-1">
-                      {transaction.type}
+                    <Badge variant={activity.type === 'contribution' ? 'default' : 'destructive'} className="mt-1">
+                      {activity.type}
                     </Badge>
                   </div>
                 </div>
@@ -585,53 +524,63 @@ export const GoSevaPool = () => {
         </CardContent>
       </Card>
 
+
       {/* Top Contributors */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-gray-600" />
-            Top Contributors This Month
-          </CardTitle>
-          <CardDescription>
-            Customers who have contributed to the Seva Pool
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {customers.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-500">
-              <Users className="h-8 w-8" />
-              <p>No contributors found for this month</p>
+<Card>
+  <CardHeader>
+    <CardTitle className="flex items-center gap-2">
+      <Users className="h-5 w-5 text-gray-600" />
+      Top Contributors This Month
+    </CardTitle>
+    <CardDescription>
+      Customers who have contributed to the Seva Pool
+    </CardDescription>
+  </CardHeader>
+  <CardContent>
+    {customers.length === 0 ? (
+      <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-500">
+        <Users className="h-8 w-8" />
+        <p>No contributors found for this month</p>
+      </div>
+    ) : (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {customers.map(customer => (
+          <div key={customer.mobile} className="flex flex-col p-4 border rounded-lg gap-3">
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                <span className="font-medium text-gray-700">
+                  {customer.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-gray-900 truncate">{customer.name}</p>
+                <p className="text-sm text-gray-600">{customer.mobile}</p>
+                {customer.storeLocation && (
+                  <p className="text-xs text-gray-500">{customer.storeLocation}</p>
+                )}
+              </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {customers.map(customer => (
-                <div key={customer.mobile} className="flex items-center gap-4 p-4 border rounded-lg">
-                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                    <span className="font-medium text-gray-700">
-                      {customer.name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 truncate">{customer.name}</p>
-                    <p className="text-sm text-gray-600">{customer.mobile}</p>
-                    {customer.storeLocation && (
-                      <p className="text-xs text-gray-500">{customer.storeLocation}</p>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-green-600">
-                      ₹{customer.sevaCoinsCurrentMonth.toFixed(2)}
-                    </p>
-                    <Badge variant="outline" className="mt-1">
-                      {customer.sevaCoinsTotal} Lifetime coins
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+            
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="space-y-1">
+                <p className="text-gray-500">Seva Contribution</p>
+                <p className="font-bold text-green-600">
+                  ₹{customer.sevaCoinsCurrentMonth.toFixed(2)}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-gray-500">Total Seva</p>
+                <p className="font-medium">
+                  ₹{customer.sevaCoinsTotal.toFixed(2)}
+                </p>
+              </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        ))}
+      </div>
+    )}
+  </CardContent>
+</Card>
     </div>
   );
 };
