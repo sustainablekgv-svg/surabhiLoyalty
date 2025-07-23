@@ -133,10 +133,12 @@ export interface SevaPool {
   currentBalance: number;
   totalContributions: number;
   totalAllocations: number;
-  contributionsCurrentMonth : number;
+  contributionsCurrentMonth: number;
   allocationsCurrentMonth: number;
   lastResetDate: Timestamp;
   lastAllocatedDate: Timestamp;
+  // currentMonth: number; // 1-12
+  // currentYear: number;
 }
 
 export interface ActivityType {
