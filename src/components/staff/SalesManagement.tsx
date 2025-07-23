@@ -165,25 +165,25 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       } else {
         return { isValid: false, error: 'Insufficient wallet balance' };
       }
-    } 
-    else if (paymentMethod === 'cash') {
-      cashPayment = remainingAfterCoins;
-      surabhiCoinsEarned = Math.floor(cashPayment * (storeDetails.cashOnlyCommission / 100));
-      referrerSurabhiCoinsEarned +=  Math.floor(saleAmount * (storeDetails.referralCommission / 100));
-    } 
-    else if (paymentMethod === 'mixed') {
-      walletDeduction = Math.min(walletBalance, remainingAfterCoins);
-      cashPayment = remainingAfterCoins - walletDeduction;
-      // Wallet portion gets surabhi commission, cash portion gets cashOnly commission
-      surabhiCoinsEarned = Math.floor(
-        cashPayment * (storeDetails.cashOnlyCommission / 100)
-      );
-      referrerSurabhiCoinsEarned = Math.floor(
-        saleAmount * (storeDetails.referralCommission / 100)
-      );
-    }
-
-
+    } else if (paymentMethod === 'mixed') {
+        if(selectedCustomer.walletBalance + selectedCustomer.surabhiCoins <= saleAmount){
+                walletDeduction = Math.min(walletBalance, remainingAfterCoins);
+                cashPayment = remainingAfterCoins - walletDeduction;
+                // Wallet portion gets surabhi commission, cash portion gets cashOnly commission
+                surabhiCoinsEarned = Math.floor(
+                  cashPayment * (storeDetails.cashOnlyCommission / 100));
+                referrerSurabhiCoinsEarned = Math.floor(
+                saleAmount * (storeDetails.referralCommission / 100)
+                );
+        } else {
+        return { isValid: false, error: 'Mixed is not needed' };
+      }
+    } else if (paymentMethod === 'cash') {
+            cashPayment = remainingAfterCoins;
+            surabhiCoinsEarned = Math.floor(cashPayment * (storeDetails.cashOnlyCommission / 100));
+            referrerSurabhiCoinsEarned +=  Math.floor(saleAmount * (storeDetails.referralCommission / 100));
+      }
+  
     return {
       totalAmount: saleAmount,
       surabhiCoinsUsed: coinsToUse,
@@ -641,6 +641,11 @@ if (paymentMethod === "wallet") {
                     {paymentMethod === 'wallet' && (
                       <p className="text-xs text-blue-600">
                         Full amount (after coins) will be deducted from wallet
+                      </p>
+                    )}
+                    {paymentMethod === 'cash' && (
+                      <p className="text-xs text-blue-600">
+                        Full amount (after coins) will be paid in cash
                       </p>
                     )}
                     {paymentMethod === 'mixed' && (

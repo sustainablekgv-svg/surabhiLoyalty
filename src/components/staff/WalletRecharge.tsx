@@ -650,15 +650,16 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                         <span className="font-bold text-amber-600">+{surabhiCoinsEarned}</span>
                       </div>
 
-                      <div className="flex items-center justify-between p-3 bg-green-100 rounded-lg">
+                    {selectedCustomer.referredBy && <div className="flex items-center justify-between p-3 bg-green-100 rounded-lg">
                         <div className="flex items-center gap-2">
                           <HandCoins className="h-4 w-4 text-green-600" />
                           <span className="text-sm font-medium text-green-900">
                             Referral Coins ({storeDetails.referralCommission}%)
                           </span>
                         </div>
-                        <span className="font-bold text-green-600">+{referralAmount}</span>
+                        <span className="font-bold text-green-600">+{referralAmount} to {selectedCustomer.referredBy}</span>
                       </div>
+                    }
 
                       <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                         <div className="flex items-center gap-2">
