@@ -44,7 +44,9 @@ import {
 import { toast } from 'sonner';
 import { 
   collection, doc, setDoc, updateDoc, deleteDoc, getDocs,
-  query, where, serverTimestamp 
+  query, where, serverTimestamp, 
+  addDoc,
+  Timestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -79,6 +81,8 @@ interface StaffType {
 }
 
 export const StaffManagement = () => {
+  const [emailError, setEmailError] = useState<string>('');
+  const [mobileError, setMobileError] = useState<string>('');
   const [stores, setStores] = useState<StoreType[]>([]);
   const [staff, setStaff] = useState<StaffType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -145,56 +149,110 @@ export const StaffManagement = () => {
     fetchData();
   }, []);
 
-  // Staff CRUD operations
-  const handleSaveStaff = async () => {
-    if (!currentStaff?.name || !currentStaff.email || !currentStaff.mobile || !currentStaff.role) {
-      toast.error('Please fill all required fields');
-      return;
+const validateStaff = async () => {
+  let isValid = true;
+  
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!currentStaff?.email || !emailRegex.test(currentStaff.email)) {
+    setEmailError('Please enter a valid email address');
+    isValid = false;
+  } else {
+    // Check if email exists
+    const emailQuery = query(
+      collection(db, 'staff'),
+      where('email', '==', currentStaff.email)
+    );
+    const emailSnapshot = await getDocs(emailQuery);
+    if (!emailSnapshot.empty && emailSnapshot.docs[0].id !== currentStaff?.id) {
+      setEmailError('This email is already registered');
+      isValid = false;
+    } else {
+      setEmailError('');
+    }
+  }
+
+  // Validate mobile format (10 digits for Indian numbers)
+  if (!currentStaff?.mobile || currentStaff.mobile.length !== 10) {
+    setMobileError('Please enter a valid 10-digit mobile number');
+    isValid = false;
+  } else {
+    // Check if mobile exists
+    const mobileQuery = query(
+      collection(db, 'staff'),
+      where('mobile', '==', currentStaff.mobile)
+    );
+    const mobileSnapshot = await getDocs(mobileQuery);
+    if (!mobileSnapshot.empty && mobileSnapshot.docs[0].id !== currentStaff?.id) {
+      setMobileError('This mobile number is already registered');
+      isValid = false;
+    } else {
+      setMobileError('');
+    }
+  }
+
+  return isValid;
+};
+
+const handleSaveStaff = async () => {
+  if (!currentStaff) return;
+
+  const isValid = await validateStaff();
+  if (!isValid) return;
+
+  try {
+    setIsLoading(true);
+    
+    const staffData = {
+      name: currentStaff.name,
+      mobile: currentStaff.mobile,
+      email: currentStaff.email,
+      role: currentStaff.role,
+      status: currentStaff.status,
+      storeLocation: currentStaff.storeLocation,
+      salesCount: currentStaff.salesCount || 0,
+      staffPin: currentStaff.staffPin || '',
+      staffPassword: currentStaff.staffPassword || '',
+      lastActive: currentStaff.lastActive || null,
+      createdAt: currentStaff.createdAt || Timestamp.now(),
+      updatedAt: Timestamp.now()
+    };
+
+    if (currentStaff.id) {
+      // Update existing staff
+      await updateDoc(doc(db, 'staff', currentStaff.id), staffData);
+      toast.success('Staff updated successfully');
+    } else {
+      // Create new staff
+      await addDoc(collection(db, 'staff'), staffData);
+      toast.success('Staff created successfully');
     }
 
-    try {
-      const staffData = {
-        name: currentStaff.name,
-        email: currentStaff.email,
-        mobile: currentStaff.mobile,
-        role: currentStaff.role,
-        status: currentStaff.status || 'active',
-        storeLocation: currentStaff.storeLocation || '',
-        salesCount: currentStaff.salesCount || 0,
-        staffPin: currentStaff.staffPin || '',
-        staffPassword: currentStaff.staffPassword || '',
-        updatedAt: serverTimestamp(),
-        ...(currentStaff.id ? {} : { createdAt: serverTimestamp() })
-      };
-
-      if (currentStaff.id) {
-        // Update existing staff
-        await updateDoc(doc(db, 'staff', currentStaff.id), staffData);
-        toast.success('Staff updated successfully');
-      } else {
-        // Create new staff
-        const newStaffRef = doc(collection(db, 'staff'));
-        await setDoc(newStaffRef, staffData);
-        toast.success('Staff created successfully');
-      }
-
-      // Refresh data
-      const staffSnapshot = await getDocs(collection(db, 'staff'));
-      const updatedStaff = staffSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        lastActive: doc.data().lastActive?.toDate()
-      })) as StaffType[];
-      setStaff(updatedStaff);
-
-      setIsStaffDialogOpen(false);
-      setCurrentStaff(null);
-    } catch (error) {
-      toast.error('Error saving staff');
-      console.error('Error saving staff:', error);
-    }
-  };
+    setIsStaffDialogOpen(false);
+    // Refresh staff list
+        const staffSnapshot = await getDocs(collection(db, 'staff'));
+        const refreshedStaffData = staffSnapshot.docs.map(doc => ({
+          id: doc.id,
+          name: doc.data().name || '',
+          mobile: doc.data().mobile || '',
+          email: doc.data().email || '',
+          storeLocation: doc.data().storeLocation || '',
+          role: doc.data().role || 'staff',
+          status: doc.data().status || 'active',
+          salesCount: Number(doc.data().salesCount) || 0,
+          staffPin: doc.data().staffPin || '',
+          staffPassword: doc.data().staffPassword || '',
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
+          lastActive: doc.data().lastActive?.toDate()
+        })) as StaffType[];
+        setStaff(refreshedStaffData);
+  } catch (error) {
+    console.error('Error saving staff:', error);
+    toast.error('Failed to save staff');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleDeleteStaff = async () => {
     if (!currentStaff?.id) return;
@@ -367,6 +425,9 @@ export const StaffManagement = () => {
                   <TableHead>Store</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Sales</TableHead>
+                  <TableHead>Staff Pin</TableHead>
+                  <TableHead>Password</TableHead>
+                  {/* <TableHead>Last Active</TableHead> */}
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -424,7 +485,7 @@ export const StaffManagement = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {stores.find(s => s.id === member.storeLocation)?.name || 'Unassigned'}
+                        {stores.find(s => s.name === member.storeLocation)?.name || 'Unassigned'}
                       </TableCell>
                       <TableCell>
                         <Badge variant={member.status === 'active' ? 'default' : 'secondary'}>
@@ -434,6 +495,15 @@ export const StaffManagement = () => {
                       <TableCell>
                         {member.salesCount}
                       </TableCell>
+                       <TableCell>
+                        {member.staffPin}
+                      </TableCell>
+                       <TableCell>
+                        {member.staffPassword}
+                      </TableCell>
+                      {/* <TableCell>
+                      {member.lastActive.toLocaleString()}
+                      </TableCell> */}
                       <TableCell>
                         <div className="flex gap-2">
                           <Button
@@ -580,7 +650,6 @@ export const StaffManagement = () => {
       )}
 
       {/* Staff Dialog */}
-      {/* Staff Dialog */}
 <Dialog open={isStaffDialogOpen} onOpenChange={setIsStaffDialogOpen}>
   <DialogContent className="sm:max-w-[600px]">
     <DialogHeader>
@@ -599,7 +668,7 @@ export const StaffManagement = () => {
           <Input
             value={currentStaff?.name || ''}
             onChange={(e) => setCurrentStaff({
-              ...currentStaff,
+              ...currentStaff || {},
               name: e.target.value
             })}
             placeholder="Enter staff name"
@@ -609,30 +678,38 @@ export const StaffManagement = () => {
         <div className="space-y-2">
           <Label>Mobile Number *</Label>
           <Input
-            type="tel"
-            value={currentStaff?.mobile || ''}
-            onChange={(e) => setCurrentStaff({
-              ...currentStaff,
-              mobile: e.target.value.replace(/\D/g, '')
-            })}
-            placeholder="Enter mobile number"
-            disabled={!!currentStaff?.id}
+          type="tel"
+          value={currentStaff?.mobile || ''}
+          onChange={(e) => {
+          setCurrentStaff({
+          ...currentStaff || {},
+          mobile: e.target.value.replace(/\D/g, '')
+          });
+          setMobileError(''); // Clear error when typing
+          }}
+          placeholder="Enter mobile number"
+          disabled={!!currentStaff?.id}
           />
+          {mobileError && <p className="text-sm text-red-500">{mobileError}</p>}
         </div>
       </div>
 
       <div className="space-y-2">
         <Label>Email *</Label>
         <Input
-          type="email"
-          value={currentStaff?.email || ''}
-          onChange={(e) => setCurrentStaff({
-            ...currentStaff,
-            email: e.target.value
-          })}
-          placeholder="Enter email address"
-          disabled={!!currentStaff?.id}
+        type="email"
+        value={currentStaff?.email || ''}
+        onChange={(e) => {
+        setCurrentStaff({
+        ...currentStaff || {},
+        email: e.target.value
+        });
+        setEmailError(''); // Clear error when typing
+        }}
+        placeholder="Enter email address"
+        disabled={!!currentStaff?.id}
         />
+        {emailError && <p className="text-sm text-red-500">{emailError}</p>}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -641,7 +718,7 @@ export const StaffManagement = () => {
           <Select
             value={currentStaff?.role || 'staff'}
             onValueChange={(value) => setCurrentStaff({
-              ...currentStaff,
+              ...currentStaff || {},
               role: value as 'admin' | 'staff',
               ...(value === 'admin' ? { storeLocation: '' } : {})
             })}
@@ -661,7 +738,7 @@ export const StaffManagement = () => {
           <Select
             value={currentStaff?.status || 'active'}
             onValueChange={(value) => setCurrentStaff({
-              ...currentStaff,
+              ...currentStaff || {},
               status: value as 'active' | 'inactive'
             })}
           >
@@ -679,9 +756,9 @@ export const StaffManagement = () => {
       <div className="space-y-2">
         <Label>Assigned Store</Label>
         <Select
-          value={currentStaff?.storeLocation || undefined}
+          value={currentStaff?.storeLocation || ''}
           onValueChange={(value) => setCurrentStaff({
-            ...currentStaff,
+            ...currentStaff || {},
             storeLocation: value
           })}
           disabled={currentStaff?.role === 'admin'}
@@ -706,7 +783,7 @@ export const StaffManagement = () => {
             type="number"
             value={currentStaff?.salesCount || 0}
             onChange={(e) => setCurrentStaff({
-              ...currentStaff,
+              ...currentStaff || {},
               salesCount: Number(e.target.value)
             })}
             placeholder="Enter sales count"
@@ -719,7 +796,7 @@ export const StaffManagement = () => {
             type="text"
             value={currentStaff?.staffPin || ''}
             onChange={(e) => setCurrentStaff({
-              ...currentStaff,
+              ...currentStaff || {},
               staffPin: e.target.value
             })}
             placeholder="Enter staff PIN"
@@ -730,10 +807,10 @@ export const StaffManagement = () => {
       <div className="space-y-2">
         <Label>Staff Password</Label>
         <Input
-          type="password"
+          type="text"
           value={currentStaff?.staffPassword || ''}
           onChange={(e) => setCurrentStaff({
-            ...currentStaff,
+            ...currentStaff || {},
             staffPassword: e.target.value
           })}
           placeholder="Enter staff password"
@@ -760,7 +837,7 @@ export const StaffManagement = () => {
     </div>
 
     <DialogFooter>
-      <Button onClick={handleSaveStaff}>
+      <Button onClick={handleSaveStaff} disabled={!!emailError || !!mobileError}>
         {currentStaff?.id ? 'Save Changes' : 'Create Staff'}
       </Button>
     </DialogFooter>
