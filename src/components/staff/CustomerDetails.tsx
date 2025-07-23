@@ -235,10 +235,10 @@ export const CustomerDetails = () => {
                   </Button>
                 </div>
               )}
-              {customer.referralIncome !== null && (
+              {customer.referralSurabhi !== null && (
                 <div>
                   <p className="text-xs text-muted-foreground">Referral Income</p>
-                  <p>₹{customer.referralIncome?.toLocaleString('en-IN') || '0'}</p>
+                  <p>₹{customer.referralSurabhi?.toLocaleString('en-IN') || '0'}</p>
                 </div>
               )}
               {customer.referredUsers && customer.referredUsers.length > 0 && (

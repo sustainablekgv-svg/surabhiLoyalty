@@ -40,9 +40,11 @@ import {
   SevaTransaction,
   ActivityType,
   StoreType,
-  AccountTx
+  AccountTx,
+  StaffType
 } from '@/types/types';
 import { serverTimestamp } from 'firebase/firestore';
+import { useAuth } from '@/hooks/auth-context';
 
 const calculateAdminCut = (saleAmount: number, storeDetails: StoreType) => {
   if (!storeDetails) return 0;
@@ -55,6 +57,7 @@ const calculateAdminCut = (saleAmount: number, storeDetails: StoreType) => {
 };
 
 export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
+  const { user, logout, isLoading: authLoading } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [saleAmount, setSaleAmount] = useState<number | undefined>(undefined);
@@ -321,7 +324,7 @@ if (paymentMethod === "wallet") {
     storeName: storeDetails.name,
     type: 'sale',
     amount: saleCalculation.totalAmount,
-    debit: saleCalculation.totalAmount,
+    debit: 0,
     adminCut: adminCut,
     credit: saleCalculation.totalAmount - adminCut,
     balance: saleCalculation.totalAmount - adminCut,
@@ -330,14 +333,16 @@ if (paymentMethod === "wallet") {
   };
   await addDoc(collection(db, 'AccountTx'), accountTxData);
 } else if (paymentMethod === 'cash') {
+  const adminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
   const accountTxData: Omit<AccountTx, 'id'> = {
     date: Timestamp.fromDate(new Date()),
     storeName: storeDetails.name,
     type: 'sale',
     amount: saleCalculation.totalAmount,
-    debit: saleCalculation.totalAmount,
-    credit: 0,
-    balance: 0 - saleCalculation.totalAmount,
+    debit: saleCalculation.cashPayment,
+    credit: saleCalculation.totalAmount - adminCut,
+    adminCut: adminCut,
+    balance: saleCalculation.totalAmount - adminCut + saleCalculation.cashPayment,
     description: `Cash sale for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
     settled: false
   };
@@ -355,7 +360,7 @@ if (paymentMethod === "wallet") {
       amount: saleCalculation.walletDeduction,
       debit: 0,
       adminCut: walletAdminCut,
-      credit: saleCalculation.walletDeduction - walletAdminCut,
+      credit: saleCalculation.totalAmount - walletAdminCut,
       balance: saleCalculation.walletDeduction - walletAdminCut,
       description: `Wallet portion (${saleCalculation.walletDeduction}) of mixed payment for ${selectedCustomer.name}`,
       settled: false
@@ -372,14 +377,33 @@ if (paymentMethod === "wallet") {
       type: 'sale',
       amount: saleCalculation.cashPayment,
       debit: saleCalculation.cashPayment,
-      credit: cashAdminCut,
-      balance: cashAdminCut - saleCalculation.cashPayment,
+      credit: saleCalculation.cashPayment - cashAdminCut,
+      balance: cashAdminCut,
       description: `Cash portion (${saleCalculation.cashPayment}) of mixed payment for ${selectedCustomer.name}`,
       settled: false
     };
     await addDoc(collection(db, 'AccountTx'), cashTxData);
   }
 }
+
+    const staffCollection = collection(db, 'staff');
+    const staffQuery = query(staffCollection, where('mobile', '==', user.mobile));
+    const staffSnapshot = await getDocs(staffQuery);
+    
+    if (staffSnapshot.empty) {
+      throw new Error('Staff member not found in database');
+    }
+    
+    const staffDoc = staffSnapshot.docs[0];
+    const staffRef = staffDoc.ref;
+
+    // Validate updateData against StaffType interface
+    const staffUpdates: Partial<StaffType> = {
+      salesCount: increment(1) as unknown as number,
+      lastActive: Timestamp.fromDate(new Date())
+    };
+
+    await updateDoc(staffRef, staffUpdates);
   
   // Record activity
   const activity: ActivityType = {

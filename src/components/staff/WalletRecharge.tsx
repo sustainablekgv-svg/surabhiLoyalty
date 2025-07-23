@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, updateDoc, addDoc, serverTimestamp, doc, getDoc, Timestamp, arrayUnion, increment } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Customer, WalletRechargeProps, ActivityType, StoreType, RechargeRecord, AccountTx, SevaPool } from '@/types/types';
+import { Customer, WalletRechargeProps, ActivityType, StoreType, RechargeRecord, AccountTx, SevaPool, StaffType } from '@/types/types';
 import { FieldValue } from 'firebase/firestore';
 import { useAuth } from '@/hooks/auth-context';
 
@@ -263,6 +263,25 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
 
       await addDoc(collection(db, 'AccountTx'), accountTxData);
 
+    const staffCollection = collection(db, 'staff');
+    const staffQuery = query(staffCollection, where('mobile', '==', user.mobile));
+    const staffSnapshot = await getDocs(staffQuery);
+    
+    if (staffSnapshot.empty) {
+      throw new Error('Staff member not found in database');
+    }
+    
+    const staffDoc = staffSnapshot.docs[0];
+    const staffRef = staffDoc.ref;
+
+    // Validate updateData against StaffType interface
+    const staffUpdates: Partial<StaffType> = {
+      rechargesCount: increment(1) as unknown as number,
+      lastActive: Timestamp.fromDate(new Date())
+    };
+
+    await updateDoc(staffRef, staffUpdates);
+      
        // Handle referral Surabhi Coins if customer has a referrer
       if (currentData.referredBy && referralAmount > 0) {
         // Find referrer's document
