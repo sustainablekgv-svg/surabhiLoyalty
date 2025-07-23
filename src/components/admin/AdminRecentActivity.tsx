@@ -13,10 +13,18 @@ import {
   Loader2,
   Store
 } from 'lucide-react';
-import { collection, getDocs, query, orderBy, limit, where } from 'firebase/firestore';
+import { 
+  collection, 
+  getDocs, 
+  query, 
+  orderBy, 
+  limit,
+  onSnapshot,
+  Timestamp
+} from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-import { StoreType, ActivityType, StorePerformance } from '@/types/types';
+import { StorePerformance, ActivityType, StoreType } from '@/types/types';
 
 export const AdminRecentActivity = () => {
   const [filter, setFilter] = useState('all');
@@ -27,7 +35,7 @@ export const AdminRecentActivity = () => {
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchInitialData = async () => {
       setIsLoading(true);
       try {
         // Fetch stores first
@@ -41,55 +49,7 @@ export const AdminRecentActivity = () => {
         })) as StoreType[];
         setStores(storesData);
 
-        // Fetch recent sales transactions
-        const salesQuery = query(
-          collection(db, 'SalesTransaction'),
-          orderBy('date', 'desc'),
-          limit(20)
-        );
-        const salesSnapshot = await getDocs(salesQuery);
-        
-        // Fetch recent seva transactions
-        const sevaQuery = query(
-          collection(db, 'SevaTransaction'),
-          orderBy('date', 'desc'),
-          limit(5)
-        );
-        const sevaSnapshot = await getDocs(sevaQuery);
-        
-        // Process sales transactions
-        const salesActivities = salesSnapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            type: 'transaction',
-            description: `Sale - ${data.paymentMethod === 'cash' ? 'Cash' : 
-                         data.paymentMethod === 'wallet' ? 'Wallet' : 'Mixed'} Payment`,
-            amount: data.amount,
-            user: data.customerName,
-            location: data.storeLocation,
-            timestamp: formatTimestamp(data.date),
-            date: data.date
-          } as ActivityType;
-        });
-        
-        // Process seva transactions
-        const sevaActivities = sevaSnapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            type: data.type as 'contribution' | 'allocation',
-            description: `Seva ${data.type}`,
-            amount: data.amount,
-            user: data.customerName || 'System',
-            location: data.storeLocation || 'N/A',
-            timestamp: formatTimestamp(data.date),
-            date: data.date
-          } as ActivityType;
-        });
-
-        // Calculate store performance
-        const today = new Date().toISOString().split('T')[0];
+        // Initialize store performance data
         const performanceMap: Record<string, StorePerformance> = {};
 
         storesData.forEach(store => {
@@ -99,63 +59,156 @@ export const AdminRecentActivity = () => {
             sales: 0,
             surabhiCoinsUsed: 0,
             walletDeduction: 0,
-            cashPayment: 0
+            cashPayment: 0,
+            lastUpdated: Timestamp.fromDate(new Date())
           };
-        });
-
-        salesSnapshot.docs.forEach(doc => {
-          const sale = doc.data();
-          const saleDate = sale.date?.toDate?.().toISOString().split('T')[0];
-          const storeName = sale.storeLocation;
-          
-          if (performanceMap[storeName]) {
-            performanceMap[storeName].transactions++;
-            performanceMap[storeName].sales += sale.amount;
-            performanceMap[storeName].surabhiCoinsUsed += sale.surabhiCoinsUsed || 0;
-            performanceMap[storeName].walletDeduction += sale.walletDeduction || 0;
-            performanceMap[storeName].cashPayment += sale.cashPayment || 0;
-          }
         });
 
         setStorePerformance(Object.values(performanceMap));
         
-        // Combine and sort all activities by date
-        const allActivities = [...salesActivities, ...sevaActivities]
-  .sort((a, b) => {
-    const getDate = (d: any) => {
-      if (!d) return undefined;
-      if (typeof d.toDate === 'function') return d.toDate();
-      if (d instanceof Date) return d;
-      if (d.seconds) return new Date(d.seconds * 1000);
-      return undefined;
-    };
-
-    const aDate = getDate(a.date);
-    const bDate = getDate(b.date);
-
-    const aMillis = aDate instanceof Date ? aDate.getTime() : 0;
-    const bMillis = bDate instanceof Date ? bDate.getTime() : 0;
-
-    return bMillis - aMillis; // Descending: latest first
-  })
-  .slice(0, 15);
-
-        
-        setActivities(allActivities);
+        // Process initial activities
+        await processActivities();
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching initial data:', error);
       } finally {
         setIsLoading(false);
       }
     };
-    
-    fetchData();
+
+    const processActivities = async () => {
+      try {
+        // Fetch recent activities
+        const activitiesQuery = query(
+          collection(db, 'Activity'),
+          orderBy('date', 'desc'),
+          limit(20)
+        );
+        const activitiesSnapshot = await getDocs(activitiesQuery);
+        
+        // Process activities
+        const activitiesData = activitiesSnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            type: data.type,
+            description: data.description,
+            amount: data.amount,
+            user: data.user,
+            location: data.location,
+            date: data.date
+          } as ActivityType;
+        });
+
+        setActivities(activitiesData);
+
+        // Calculate store performance
+        const newPerformanceMap: Record<string, StorePerformance> = {};
+
+        // Initialize performance map with all stores
+        stores.forEach(store => {
+          newPerformanceMap[store.name] = {
+            name: store.name,
+            transactions: 0,
+            sales: 0,
+            surabhiCoinsUsed: 0,
+            walletDeduction: 0,
+            cashPayment: 0,
+            lastUpdated: Timestamp.fromDate(new Date())
+          };
+        });
+
+        // Update performance based on activities
+        activitiesData.forEach(activity => {
+          if (activity.type === 'transaction' && activity.location && activity.amount) {
+            if (!newPerformanceMap[activity.location]) {
+              newPerformanceMap[activity.location] = {
+                name: activity.location,
+                transactions: 0,
+                sales: 0,
+                surabhiCoinsUsed: 0,
+                walletDeduction: 0,
+                cashPayment: 0,
+                lastUpdated: Timestamp.fromDate(new Date())
+              };
+            }
+            newPerformanceMap[activity.location].transactions += 1;
+            newPerformanceMap[activity.location].sales += activity.amount;
+            // Note: You might need additional fields in ActivityType for these values
+            // newPerformanceMap[activity.location].surabhiCoinsUsed += activity.coinsUsed || 0;
+            // newPerformanceMap[activity.location].walletDeduction += activity.walletDeduction || 0;
+            // newPerformanceMap[activity.location].cashPayment += activity.cashPayment || 0;
+          }
+        });
+
+        setStorePerformance(Object.values(newPerformanceMap));
+      } catch (error) {
+        console.error('Error processing activities:', error);
+      }
+    };
+
+    // Set up real-time listeners
+    const setupListeners = () => {
+      // Activities listener
+      const activitiesQuery = query(
+        collection(db, 'Activity'),
+        orderBy('date', 'desc'),
+        limit(1)
+      );
+      const activitiesUnsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'added') {
+            const data = change.doc.data();
+            const newActivity: ActivityType = {
+              id: change.doc.id,
+              type: data.type,
+              description: data.description,
+              amount: data.amount,
+              user: data.user,
+              location: data.location,
+              date: data.date
+            };
+
+            // Update activities
+            setActivities(prev => [newActivity, ...prev.slice(0, 14)]);
+
+            // Update store performance if it's a transaction
+            if (newActivity.type === 'transaction' && newActivity.location) {
+              setStorePerformance(prev => {
+                return prev.map(store => {
+                  if (store.name === newActivity.location) {
+                    return {
+                      ...store,
+                      transactions: store.transactions + 1,
+                      sales: store.sales + (newActivity.amount || 0),
+                      // Add other fields as needed
+                      lastUpdated: Timestamp.fromDate(new Date())
+                    };
+                  }
+                  return store;
+                });
+              });
+            }
+          }
+        });
+      });
+
+      return () => {
+        activitiesUnsubscribe();
+      };
+    };
+
+    fetchInitialData();
+    const unsubscribe = setupListeners();
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
-  
-  const formatTimestamp = (firestoreTimestamp: any) => {
+
+  const formatTimestamp = (firestoreTimestamp: Timestamp) => {
     if (!firestoreTimestamp?.seconds) return 'Just now';
     
-    const date = new Date(firestoreTimestamp.seconds * 1000);
+    const date = firestoreTimestamp.toDate();
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
     
@@ -200,8 +253,7 @@ export const AdminRecentActivity = () => {
   };
 
   return (
-  <div className="flex flex-col gap-6 lg:flex-row">
-
+    <div className="flex flex-col gap-6 lg:flex-row">
       {/* Recent Activity Section */}
       <Card className="flex-1 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
         <CardHeader>
@@ -227,6 +279,9 @@ export const AdminRecentActivity = () => {
                   <SelectItem value="transaction">Sales</SelectItem>
                   <SelectItem value="contribution">Seva Contributions</SelectItem>
                   <SelectItem value="allocation">Seva Allocations</SelectItem>
+                  <SelectItem value="signup">Signups</SelectItem>
+                  <SelectItem value="recharge">Recharges</SelectItem>
+                  <SelectItem value="referral">Referrals</SelectItem>
                 </SelectContent>
               </Select>
               
@@ -275,11 +330,9 @@ export const AdminRecentActivity = () => {
                       </div>
                     </div>
                   </div>
-                  {activity.amount && (
+                  {activity.amount !== undefined && (
                     <Badge variant="secondary">
-                      {activity.type === 'contribution' || activity.type === 'allocation' 
-                        ? `₹${activity.amount}` 
-                        : `₹${activity.amount}`}
+                      ₹{activity.amount}
                     </Badge>
                   )}
                 </div>

@@ -353,7 +353,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       //   user: selectedCustomer.mobile,
       //   location: storeLocation
       // });
-
+       
       await addActivityRecord({
         type: 'contribution',
         description: `${selectedCustomer.name} contributed ₹${sevaAmountEarned} to Seva Pool from recharge`,

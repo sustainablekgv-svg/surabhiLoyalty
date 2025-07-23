@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, limit, query, Timestamp, where } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Coins, LogOut, Settings } from 'lucide-react';
@@ -50,7 +50,7 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
     role: user.role,
     status: user.status,
     staffPin: user.staffPin,
-    staffPassword: '',
+    staffPassword: user.staffPassword,
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
@@ -91,40 +91,72 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
     if (!user.id) return;
     
     setIsUpdating(true);
-    try {
-      const updateData: Partial<StaffType> = {
-        name: formData.name,
-        email: formData.email,
-        storeLocation: formData.storeLocation,
-        role: formData.role,
-        status: formData.status,
-      };
+try {
+  // Only include fields that have values and are different from current
+  const updateData: Partial<StaffType> = {};
+  
+  // Required fields that should always be included if they exist in formData
+  if (formData.name) updateData.name = formData.name;
+  if (formData.email) updateData.email = formData.email;
+  if (formData.storeLocation) updateData.storeLocation = formData.storeLocation;
+  if (formData.role) updateData.role = formData.role;
+  if (formData.status) updateData.status = formData.status;
 
-      // Only update these if they've been changed
-      if (formData.staffPin && formData.staffPin !== user.staffPin) {
-        updateData.staffPin = formData.staffPin;
-      }
-      if (formData.staffPassword) {
-        updateData.staffPassword = formData.staffPassword;
-      }
+  // Conditional updates for sensitive fields
+  if (formData.staffPin && formData.staffPin !== user.staffPin) {
+    updateData.staffPin = formData.staffPin;
+  }
+  if (formData.staffPassword && formData.staffPassword !== user.staffPassword) {
+    updateData.staffPassword = formData.staffPassword;
+  }
 
-      const staffRef = doc(db, 'staff', user.id);
-      await updateDoc(staffRef, updateData);
+  // Verify we have at least one field to update
+  if (Object.keys(updateData).length === 0) {
+    toast({
+      title: "No changes detected",
+      description: "Make changes before saving.",
+      variant: "default",
+    });
+    return;
+  }
 
-      toast({
-        title: "Profile updated",
-        description: "Your changes have been saved successfully.",
-        variant: "default",
-      });
-      setIsSettingsOpen(false);
-    } catch (error) {
-      console.error('Error updating staff profile:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update profile. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
+  const staffQuery = query(
+    collection(db, 'staff'),
+    where('mobile', '==', user.mobile),
+    limit(1)
+  );
+  
+  const querySnapshot = await getDocs(staffQuery);
+
+  if (querySnapshot.empty) {
+    console.error('No staff found with mobile:', user.mobile);
+    toast({
+      title: "Update failed",
+      description: "No staff record found for your account.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  const staffRef = doc(db, 'staff', querySnapshot.docs[0].id);
+  await updateDoc(staffRef, updateData);
+
+  console.log('Staff record updated for:', user.mobile);
+  toast({
+    title: "Profile updated",
+    description: "Your changes have been saved successfully.",
+    variant: "default",
+  });
+  
+  setIsSettingsOpen(false);
+} catch (error) {
+  console.error('Error updating staff profile:', error);
+  toast({
+    title: "Update failed",
+    description: error instanceof Error ? error.message : "There was an error saving your changes.",
+    variant: "destructive",
+  });
+} finally {
       setIsUpdating(false);
     }
   };
@@ -277,10 +309,10 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
                 <Input
                   id="staffPin"
                   name="staffPin"
-                  type="password"
+                  type="text"
                   value={formData.staffPin || ''}
                   onChange={handleInputChange}
-                  placeholder="4-6 digit PIN"
+                  // placeholder="4-6 digit PIN"
                 />
               </div>
               <div>
@@ -288,10 +320,10 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
                 <Input
                   id="staffPassword"
                   name="staffPassword"
-                  type="password"
+                  type="text"
                   value={formData.staffPassword || ''}
                   onChange={handleInputChange}
-                  placeholder="Leave blank to keep current"
+                  // placeholder="Leave blank to keep current"
                 />
               </div>
             </div>
