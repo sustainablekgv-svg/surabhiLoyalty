@@ -22,6 +22,10 @@ export interface Customer {
   createdAt: Timestamp;
   customerPassword: string;
   tpin: string;
+  quarterlyPurchaseTotal: number; 
+  lastQuarterCheck: Timestamp | null; 
+  coinsFrozen: boolean; 
+  currentQuarterStart: Timestamp | null;
 }
 
 export interface TransactionsPageProps {

@@ -23,6 +23,24 @@ import { Customer, WalletRechargeProps, ActivityType, StoreType, RechargeRecord,
 import { FieldValue } from 'firebase/firestore';
 import { useAuth } from '@/hooks/auth-context';
 
+function getCurrentQuarterStart(): Date {
+  const now = new Date();
+  const month = now.getMonth();
+  const year = now.getFullYear();
+  
+  if (month < 3) return new Date(year, 0, 1); // Q1
+  if (month < 6) return new Date(year, 3, 1); // Q2
+  if (month < 9) return new Date(year, 6, 1); // Q3
+  return new Date(year, 9, 1); // Q4
+}
+
+function isNewQuarter(customer: Customer): boolean {
+  if (!customer.currentQuarterStart) return true;
+  const lastQuarterStart = customer.currentQuarterStart.toDate();
+  const currentQuarterStart = getCurrentQuarterStart();
+  return currentQuarterStart > lastQuarterStart;
+}
+
 function safeConvertToTimestamp(date: any): Timestamp {
   if (date instanceof Timestamp) {
     return date;
@@ -217,8 +235,13 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         surabhiCoins: currentData.surabhiCoins + surabhiCoinsEarned,
         sevaCoinsTotal: (currentData.sevaCoinsTotal || 0) + sevaAmountEarned,
         lastTransactionDate: Timestamp.fromDate(new Date()),
-        saleElgibility: true
+        saleElgibility: true,
+        quarterlyPurchaseTotal: (currentData.quarterlyPurchaseTotal || 0) + rechargeAmountNum,
       };
+
+      if (updateData.quarterlyPurchaseTotal >= 2000 && currentData.coinsFrozen) {
+      updateData.coinsFrozen = false;
+      }
 
       // Handle monthly fields
       if (resetMonthlyFields) {
@@ -613,6 +636,11 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                       {selectedCustomer.email && (
                         <p className="text-sm text-blue-700">{selectedCustomer.email}</p>
                       )}
+                    {selectedCustomer.coinsFrozen && (
+                    <Badge variant="destructive" className="mt-1">
+                    Coins Frozen
+                    </Badge>
+                    )}
                     </div>
                     <div className="flex flex-col items-end">
                       <Badge variant="secondary" className="mb-1">

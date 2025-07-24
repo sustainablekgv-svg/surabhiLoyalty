@@ -83,7 +83,11 @@ export const CustomerManagement = () => {
           lastTransactionDate: data.lastTransactionDate || Timestamp.now(),
           createdAt: data.createdAt || Timestamp.now(),
           customerPassword: data.customerPassword || '',
-          tpin: data.tpin || ''
+          tpin: data.tpin || '',
+          quarterlyPurchaseTotal: data.quarterlyPurchaseTotal || 0,
+          coinsFrozen: data.coinsFrozen || false,
+          currentQuarterStart: data.currentQuarterStart || null,
+          lastQuarterCheck: data.lastQuarterCheck|| null
           });
         });
         setCustomers(customersData);
