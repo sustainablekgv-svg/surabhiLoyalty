@@ -353,7 +353,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       }
 
       // If this was their first recharge, add a special activity
-      if (currentData.walletBalance === 0) {
+      if (currentData.walletRechargeDone === false) {
         await addActivityRecord({
           type: 'signup',
           description: `First wallet recharge after registration`,

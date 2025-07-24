@@ -220,7 +220,11 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
         lastTransactionDate: null,
         referredBy: formData.referredBy || null,
         referralSurabhi: null,
-        referredUsers: null
+        referredUsers: null,
+        quarterlyPurchaseTotal: 0,
+        coinsFrozen:true,
+        currentQuarterStart: null,
+        lastQuarterCheck: null
       };
 
       await setDoc(doc(customersCollection, newUserUid), newUserData);

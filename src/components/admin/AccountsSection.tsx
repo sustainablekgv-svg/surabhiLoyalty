@@ -191,7 +191,6 @@ const Accounts = () => {
 
     try {
       setIsSubmittingSettlement(true);
-      
       // Create a settlement transaction
       const newTx: Omit<AccountTx, 'id'> = {
         date: Timestamp.now(),
