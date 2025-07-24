@@ -199,6 +199,7 @@ const handleSaveStaff = async () => {
       status: currentStaff.status,
       storeLocation: currentStaff.storeLocation,
       salesCount: currentStaff.salesCount || 0,
+      rechargesCount: currentStaff.rechargesCount || 0,
       staffPin: currentStaff.staffPin || '',
       staffPassword: currentStaff.staffPassword || '',
       lastActive: currentStaff.lastActive || null,
@@ -229,6 +230,7 @@ const handleSaveStaff = async () => {
           status: doc.data().status || 'active',
           salesCount: Number(doc.data().salesCount) || 0,
           staffPin: doc.data().staffPin || '',
+          rechargesCount: doc.data().rechargesCount || 0,
           staffPassword: doc.data().staffPassword || '',
           createdAt: doc.data().createdAt?.toDate() || new Date(),
           lastActive: doc.data().lastActive?.toDate()
@@ -428,7 +430,8 @@ const handleSaveStaff = async () => {
                   <TableHead>Role</TableHead>
                   <TableHead>Store</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Sales</TableHead>
+                  <TableHead>Sales Count</TableHead>
+                  <TableHead>Recharges Count</TableHead>
                   <TableHead>Staff Pin</TableHead>
                   <TableHead>Password</TableHead>
                   {/* <TableHead>Last Active</TableHead> */}
@@ -497,7 +500,10 @@ const handleSaveStaff = async () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {member.salesCount}
+                        {member.salesCount || 0}
+                      </TableCell>
+                       <TableCell>
+                        {member.rechargesCount || 0}
                       </TableCell>
                        <TableCell>
                         {member.staffPin}
@@ -757,6 +763,7 @@ const handleSaveStaff = async () => {
         </div>
       </div>
       
+       <div className="grid grid-cols-2 gap-4">
       <div className="space-y-2">
         <Label>Assigned Store</Label>
         <Select
@@ -780,6 +787,20 @@ const handleSaveStaff = async () => {
         </Select>
       </div>
 
+      <div className="space-y-2">
+          <Label>Staff PIN</Label>
+          <Input
+            type="text"
+            value={currentStaff?.staffPin || ''}
+            onChange={(e) => setCurrentStaff({
+              ...currentStaff || {},
+              staffPin: e.target.value
+            })}
+            placeholder="Enter staff PIN"
+          />
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Sales Count</Label>
@@ -793,17 +814,16 @@ const handleSaveStaff = async () => {
             placeholder="Enter sales count"
           />
         </div>
-
-        <div className="space-y-2">
-          <Label>Staff PIN</Label>
+               <div className="space-y-2">
+          <Label>Recharges Count</Label>
           <Input
-            type="text"
-            value={currentStaff?.staffPin || ''}
+            type="number"
+            value={currentStaff?.rechargesCount || 0}
             onChange={(e) => setCurrentStaff({
               ...currentStaff || {},
-              staffPin: e.target.value
+              rechargesCount: Number(e.target.value)
             })}
-            placeholder="Enter staff PIN"
+            placeholder="Enter Recharges count"
           />
         </div>
       </div>

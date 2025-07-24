@@ -55,6 +55,7 @@ export interface StaffType {
   status: 'active' | 'inactive';
   salesCount: number;
   staffPin: string;
+  rechargesCount: number;
   lastActive?: Timestamp;
   staffPassword: string;
 }
