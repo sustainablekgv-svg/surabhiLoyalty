@@ -88,15 +88,14 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
           const referralData = querySnapshot.docs[0].data() as Customer;
             console.log("THe referral Data is", referralData);
           // Check if wallet recharge is done
-          if (referralData.walletRechargeDone === false) {
+          if (referralData.walletRechargeDone === false || referralData.saleElgibility == false) {
           setReferralName(null);
+          if(referralData.walletRechargeDone === false){
           toast.error('This customer is not eligible for referral (wallet recharge not done)');
-          } 
-          // check if sale is done
-          else if (referralData.saleElgibility === false) {
-          setReferralName(null);
+          }else{
           toast.error('This customer is not eligible for referral (no sale is done)');
-          }else {
+          }} 
+          else {
           setReferralName(referralData.name);
           setIsElgibleForReferral(true);
           toast.success(`Referral found: ${referralData.name}`);

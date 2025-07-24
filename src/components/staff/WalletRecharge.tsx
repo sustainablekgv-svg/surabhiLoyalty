@@ -357,13 +357,15 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       });
 
        // Add activity records for the recharge and commissions
-      await addActivityRecord({
+      if(selectedCustomer.referredBy){
+        await addActivityRecord({
         type: 'referral',
         description: `${selectedCustomer.referredBy} - Earned Surabhi Referral of ₹${referralAmount}`,
         amount: rechargeAmountNum,
         user: selectedCustomer.referredBy,
         location: storeLocation
       });
+      }
 
       // await addActivityRecord({
       //   type: 'recharge',
