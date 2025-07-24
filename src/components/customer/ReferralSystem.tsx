@@ -193,7 +193,7 @@ export const ReferralSystem = ({ userMobile, userName }: ReferralSystemProps) =>
           </CardContent>
         </Card>
         
-        <Card className="bg-purple-50 border-purple-200 shadow-lg">
+        {/* <Card className="bg-purple-50 border-purple-200 shadow-lg">
           <CardContent className="p-6">
             <div className="flex items-center gap-3 mb-3">
               <div className="bg-purple-100 p-2 rounded-full">
@@ -206,7 +206,7 @@ export const ReferralSystem = ({ userMobile, userName }: ReferralSystemProps) =>
             </div>
             <div className="text-xs text-purple-700">From current referrals</div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
