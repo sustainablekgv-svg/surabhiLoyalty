@@ -772,7 +772,7 @@ const handleSaveStaff = async () => {
           </SelectTrigger>
           <SelectContent>
             {stores.map(store => (
-              <SelectItem key={store.id} value={store.storeLocation}>
+              <SelectItem key={store.id} value={store.name}>
                 {store.name}
               </SelectItem>
             ))}
