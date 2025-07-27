@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  ShoppingCart, 
-  Search, 
-  DollarSign, 
+import {
+  ShoppingCart,
+  Search,
+  DollarSign,
   Coins,
   Calculator,
   CheckCircle,
@@ -18,14 +18,14 @@ import {
 } from 'lucide-react';
 import { Badge } from "@/components/ui/badge"
 import { toast } from 'sonner';
-import { 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  doc, 
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  updateDoc,
+  doc,
   setDoc,
   getDoc,
   increment,
@@ -33,9 +33,9 @@ import {
   arrayUnion
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { 
-  Customer, 
-  SalesManagementProps, 
+import {
+  Customer,
+  SalesManagementProps,
   SalesTransaction,
   SevaTransaction,
   ActivityType,
@@ -48,11 +48,11 @@ import { useAuth } from '@/hooks/auth-context';
 
 const calculateAdminCut = (saleAmount: number, storeDetails: StoreType) => {
   if (!storeDetails) return 0;
-  
+
   const referralAmount = Math.floor(saleAmount * (storeDetails.referralCommission / 100));
   const sevaAmount = Math.floor(saleAmount * (storeDetails.sevaCommission / 100));
   const surabhiAmount = Math.floor(saleAmount * (storeDetails.surabhiCommission / 100));
-  
+
   return referralAmount + sevaAmount + surabhiAmount;
 };
 
@@ -143,7 +143,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
   const calculateSale = () => {
     if (!saleAmount || saleAmount <= 0 || !storeDetails) return null;
 
-    const coinsToUse = selectedCustomer 
+    const coinsToUse = selectedCustomer
       ? Math.min(surabhiCoinsToUse || 0, selectedCustomer.surabhiCoins || 0)
       : 0;
 
@@ -164,29 +164,29 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     if (paymentMethod === 'wallet') {
       if (walletBalance >= remainingAfterCoins) {
         walletDeduction = remainingAfterCoins;
-        referrerSurabhiCoinsEarned +=  Math.floor(saleAmount * (storeDetails.referralCommission / 100));
+        referrerSurabhiCoinsEarned += Math.floor(saleAmount * (storeDetails.referralCommission / 100));
       } else {
         return { isValid: false, error: 'Insufficient wallet balance' };
       }
     } else if (paymentMethod === 'mixed') {
-        if(selectedCustomer.walletBalance + selectedCustomer.surabhiCoins <= saleAmount){
-                walletDeduction = Math.min(walletBalance, remainingAfterCoins);
-                cashPayment = remainingAfterCoins - walletDeduction;
-                // Wallet portion gets surabhi commission, cash portion gets cashOnly commission
-                surabhiCoinsEarned = Math.floor(
-                  cashPayment * (storeDetails.cashOnlyCommission / 100));
-                referrerSurabhiCoinsEarned = Math.floor(
-                saleAmount * (storeDetails.referralCommission / 100)
-                );
-        } else {
+      if (selectedCustomer.walletBalance + selectedCustomer.surabhiCoins <= saleAmount) {
+        walletDeduction = Math.min(walletBalance, remainingAfterCoins);
+        cashPayment = remainingAfterCoins - walletDeduction;
+        // Wallet portion gets surabhi commission, cash portion gets cashOnly commission
+        surabhiCoinsEarned = Math.floor(
+          cashPayment * (storeDetails.cashOnlyCommission / 100));
+        referrerSurabhiCoinsEarned = Math.floor(
+          saleAmount * (storeDetails.referralCommission / 100)
+        );
+      } else {
         return { isValid: false, error: 'Mixed is not needed' };
       }
     } else if (paymentMethod === 'cash') {
-            cashPayment = remainingAfterCoins;
-            surabhiCoinsEarned = Math.floor(cashPayment * (storeDetails.cashOnlyCommission / 100));
-            referrerSurabhiCoinsEarned +=  Math.floor(saleAmount * (storeDetails.referralCommission / 100));
-      }
-  
+      cashPayment = remainingAfterCoins;
+      surabhiCoinsEarned = Math.floor(cashPayment * (storeDetails.cashOnlyCommission / 100));
+      referrerSurabhiCoinsEarned += Math.floor(saleAmount * (storeDetails.referralCommission / 100));
+    }
+
     return {
       totalAmount: saleAmount,
       surabhiCoinsUsed: coinsToUse,
@@ -214,75 +214,75 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
   };
 
   const handleRegisteredCustomerSale = async () => {
-     console.log('Searching for customer with mobile:', selectedCustomer.mobile);
+    console.log('Searching for customer with mobile:', selectedCustomer.mobile);
     console.log('Selected customer object:', selectedCustomer);
     if (!selectedCustomer || !saleAmount || !saleCalculation || !saleCalculation.isValid) {
       toast.error('Invalid sale calculation');
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     try {
-  // First check if customer exists in database
-const customersRef = collection(db, "customers");
-const q = query(customersRef, where("mobile", "==", selectedCustomer.mobile));
-const querySnapshot = await getDocs(q);
-    console.log('Query snapshot empty:', querySnapshot.empty);
-    console.log('Query snapshot size:', querySnapshot.size);
-if (querySnapshot.empty) {
-  throw new Error('Customer not found in database');
-}
+      // First check if customer exists in database
+      const customersRef = collection(db, "customers");
+      const q = query(customersRef, where("mobile", "==", selectedCustomer.mobile));
+      const querySnapshot = await getDocs(q);
+      console.log('Query snapshot empty:', querySnapshot.empty);
+      console.log('Query snapshot size:', querySnapshot.size);
+      if (querySnapshot.empty) {
+        throw new Error('Customer not found in database');
+      }
 
-  const newWalletBalance = (selectedCustomer.walletBalance || 0) - saleCalculation.walletDeduction;
-  const newSurabhiCoins = (selectedCustomer.surabhiCoins || 0) - saleCalculation.surabhiCoinsUsed + saleCalculation.surabhiCoinsEarned;
+      const newWalletBalance = (selectedCustomer.walletBalance || 0) - saleCalculation.walletDeduction;
+      const newSurabhiCoins = (selectedCustomer.surabhiCoins || 0) - saleCalculation.surabhiCoinsUsed + saleCalculation.surabhiCoinsEarned;
 
-  // Update customer balances
-  const customerDoc = querySnapshot.docs[0];
-  const customerRef = customerDoc.ref;
-  await updateDoc(customerRef, {
-      walletBalance: newWalletBalance,
-      surabhiCoins: newSurabhiCoins,
-      lastTransactionDate: serverTimestamp(),
-    });
+      // Update customer balances
+      const customerDoc = querySnapshot.docs[0];
+      const customerRef = customerDoc.ref;
+      await updateDoc(customerRef, {
+        walletBalance: newWalletBalance,
+        surabhiCoins: newSurabhiCoins,
+        lastTransactionDate: serverTimestamp(),
+      });
 
-  // Record transaction
-  const saleData: SalesTransaction = {
-    customerName: selectedCustomer.name,
-    customerMobile: selectedCustomer.mobile,
-    amount: saleCalculation.totalAmount,
-    paymentMethod,
-    surabhiCoinsUsed: saleCalculation.surabhiCoinsUsed,
-    walletDeduction: saleCalculation.walletDeduction,
-    cashPayment: saleCalculation.cashPayment,
-    storeLocation,
-    processedBy: 'system',
-    isCustomerRegistered: true,
-    previousBalance: {
-      wallet: selectedCustomer.walletBalance || 0,
-      surabhiCoins: selectedCustomer.surabhiCoins || 0,
-    },
-    newBalance: {
-      wallet: newWalletBalance,
-      surabhiCoins: newSurabhiCoins,
-    },
-    createdAt: Timestamp.fromDate(new Date())
-  };
-  
-  await addDoc(collection(db, 'transactions'), saleData);
+      // Record transaction
+      const saleData: SalesTransaction = {
+        customerName: selectedCustomer.name,
+        customerMobile: selectedCustomer.mobile,
+        amount: saleCalculation.totalAmount,
+        paymentMethod,
+        surabhiCoinsUsed: saleCalculation.surabhiCoinsUsed,
+        walletDeduction: saleCalculation.walletDeduction,
+        cashPayment: saleCalculation.cashPayment,
+        storeLocation,
+        processedBy: 'system',
+        isCustomerRegistered: true,
+        previousBalance: {
+          wallet: selectedCustomer.walletBalance || 0,
+          surabhiCoins: selectedCustomer.surabhiCoins || 0,
+        },
+        newBalance: {
+          wallet: newWalletBalance,
+          surabhiCoins: newSurabhiCoins,
+        },
+        createdAt: Timestamp.fromDate(new Date())
+      };
+
+      await addDoc(collection(db, 'transactions'), saleData);
 
       // Handle Referrer Income 
-if (selectedCustomer.referredBy && saleCalculation.referrerSurabhiCoinsEarned > 0) {
-    try {
-        // Find referrer's document
-        const customersCollection = collection(db, 'customers');
-        const referrerQuery = query(
-            customersCollection, 
+      if (selectedCustomer.referredBy && saleCalculation.referrerSurabhiCoinsEarned > 0) {
+        try {
+          // Find referrer's document
+          const customersCollection = collection(db, 'customers');
+          const referrerQuery = query(
+            customersCollection,
             where('mobile', '==', selectedCustomer.referredBy)
-        );
-        const referrerSnapshot = await getDocs(referrerQuery);
-        
-        if (!referrerSnapshot.empty) {
+          );
+          const referrerSnapshot = await getDocs(referrerQuery);
+
+          if (!referrerSnapshot.empty) {
             const referrerDoc = referrerSnapshot.docs[0];
             const referrerData = referrerDoc.data() as Customer;
             const referralAmount = saleCalculation.referrerSurabhiCoinsEarned;
@@ -290,155 +290,155 @@ if (selectedCustomer.referredBy && saleCalculation.referrerSurabhiCoinsEarned > 
             console.log('Referrer Data:', referrerData);
             console.log('New Referred User:', selectedCustomer.name);
             console.log('Referral Amount:', referralAmount);
-            
+
             // Safely increment referral amount (handle null/NaN)
             const incrementAmount = Number.isNaN(referralAmount) || referralAmount === null ? 0 : referralAmount;
-            
+
             // Update referrer's data
             await updateDoc(referrerDoc.ref, {
-                referralSurabhi: increment(incrementAmount),
-                surabhiCoins: increment(incrementAmount)
+              referralSurabhi: increment(incrementAmount),
+              surabhiCoins: increment(incrementAmount)
             });
 
             // Add activity record for referrer
             await addActivityRecord({
-                type: 'referral',
-                description: `${selectedCustomer.referredBy} Earned ₹${incrementAmount} referral income from ${selectedCustomer.name}'s recharge`,
-                amount: incrementAmount,
-                user: selectedCustomer.referredBy,
-                location: selectedCustomer.storeLocation
+              type: 'referral',
+              description: `${selectedCustomer.referredBy} Earned ₹${incrementAmount} referral income from ${selectedCustomer.name}'s recharge`,
+              amount: incrementAmount,
+              user: selectedCustomer.referredBy,
+              location: selectedCustomer.storeLocation
             });
-        } else {
+          } else {
             console.warn(`Referrer with mobile ${selectedCustomer.referredBy} not found`);
+          }
+        } catch (error) {
+          console.error('Error processing referral:', error);
+          // Consider adding error handling/retry logic here
         }
+      }
+      // Add AccountTx record(s) based on payment method
+      if (paymentMethod === "wallet") {
+        const adminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
+        const accountTxData: Omit<AccountTx, 'id'> = {
+          date: Timestamp.fromDate(new Date()),
+          storeName: storeDetails.name,
+          type: 'sale',
+          amount: saleCalculation.totalAmount,
+          debit: 0,
+          adminCut: adminCut,
+          credit: saleCalculation.totalAmount - adminCut,
+          balance: saleCalculation.totalAmount - adminCut,
+          description: `Wallet sale for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
+          settled: false
+        };
+        await addDoc(collection(db, 'AccountTx'), accountTxData);
+      } else if (paymentMethod === 'cash') {
+        const adminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
+        const accountTxData: Omit<AccountTx, 'id'> = {
+          date: Timestamp.fromDate(new Date()),
+          storeName: storeDetails.name,
+          type: 'sale',
+          amount: saleCalculation.totalAmount,
+          debit: saleCalculation.cashPayment,
+          credit: saleCalculation.totalAmount - adminCut,
+          adminCut: adminCut,
+          balance: saleCalculation.totalAmount - adminCut + saleCalculation.cashPayment,
+          description: `Cash sale for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
+          settled: false
+        };
+        await addDoc(collection(db, 'AccountTx'), accountTxData);
+      } else {
+        // Mixed payment - create two separate records
+
+        // 1. Wallet portion record
+        if (saleCalculation.walletDeduction > 0) {
+          const walletAdminCut = calculateAdminCut(saleCalculation.walletDeduction, storeDetails);
+          const walletTxData: Omit<AccountTx, 'id'> = {
+            date: Timestamp.fromDate(new Date()),
+            storeName: storeDetails.name,
+            type: 'sale',
+            amount: saleCalculation.walletDeduction,
+            debit: 0,
+            adminCut: walletAdminCut,
+            credit: saleCalculation.totalAmount - walletAdminCut,
+            balance: saleCalculation.walletDeduction - walletAdminCut,
+            description: `Wallet portion (${saleCalculation.walletDeduction}) of mixed payment for ${selectedCustomer.name}`,
+            settled: false
+          };
+          await addDoc(collection(db, 'AccountTx'), walletTxData);
+        }
+
+        // 2. Cash portion record
+        if (saleCalculation.cashPayment > 0) {
+          const cashAdminCut = calculateAdminCut(saleCalculation.cashPayment, storeDetails);
+          const cashTxData: Omit<AccountTx, 'id'> = {
+            date: Timestamp.fromDate(new Date()),
+            storeName: storeDetails.name,
+            type: 'sale',
+            amount: saleCalculation.cashPayment,
+            debit: saleCalculation.cashPayment,
+            credit: saleCalculation.cashPayment - cashAdminCut,
+            balance: cashAdminCut,
+            description: `Cash portion (${saleCalculation.cashPayment}) of mixed payment for ${selectedCustomer.name}`,
+            settled: false
+          };
+          await addDoc(collection(db, 'AccountTx'), cashTxData);
+        }
+      }
+
+      const staffCollection = collection(db, 'staff');
+      const staffQuery = query(staffCollection, where('mobile', '==', user.mobile));
+      const staffSnapshot = await getDocs(staffQuery);
+
+      if (staffSnapshot.empty) {
+        throw new Error('Staff member not found in database');
+      }
+
+      const staffDoc = staffSnapshot.docs[0];
+      const staffRef = staffDoc.ref;
+
+      // Validate updateData against StaffType interface
+      const staffUpdates: Partial<StaffType> = {
+        salesCount: increment(1) as unknown as number,
+        lastActive: Timestamp.fromDate(new Date())
+      };
+
+      await updateDoc(staffRef, staffUpdates);
+
+      // Record activity
+      const activity: ActivityType = {
+        id: `act-${Date.now()}`,
+        type: 'transaction',
+        description: `Purchase of ₹${saleCalculation.totalAmount} by ${selectedCustomer.name}`,
+        amount: saleCalculation.totalAmount,
+        user: selectedCustomer.mobile,
+        location: storeLocation,
+        date: Timestamp.fromDate(new Date())
+      };
+
+      await addDoc(collection(db, 'Activity'), activity);
+
+      // Update local state
+      setCustomers(customers.map(c =>
+        c.mobile === selectedCustomer.mobile ?
+          {
+            ...c,
+            walletBalance: newWalletBalance,
+            surabhiCoins: newSurabhiCoins,
+            lastTransactionDate: Timestamp.fromDate(new Date())
+          } : c
+      ));
+
+      toast.success(`Sale of ₹${saleAmount} completed successfully!`);
+
+      // Reset form
+      setSaleAmount(undefined);
+      setPaymentMethod('wallet');
+      setSurabhiCoinsToUse(0);
+      setSelectedCustomer(null);
+      setSearchTerm('');
+
     } catch (error) {
-        console.error('Error processing referral:', error);
-        // Consider adding error handling/retry logic here
-    }
-}
-  // Add AccountTx record(s) based on payment method
-if (paymentMethod === "wallet") {
-  const adminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
-  const accountTxData: Omit<AccountTx, 'id'> = {
-    date: Timestamp.fromDate(new Date()),
-    storeName: storeDetails.name,
-    type: 'sale',
-    amount: saleCalculation.totalAmount,
-    debit: 0,
-    adminCut: adminCut,
-    credit: saleCalculation.totalAmount - adminCut,
-    balance: saleCalculation.totalAmount - adminCut,
-    description: `Wallet sale for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
-    settled: false
-  };
-  await addDoc(collection(db, 'AccountTx'), accountTxData);
-} else if (paymentMethod === 'cash') {
-  const adminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
-  const accountTxData: Omit<AccountTx, 'id'> = {
-    date: Timestamp.fromDate(new Date()),
-    storeName: storeDetails.name,
-    type: 'sale',
-    amount: saleCalculation.totalAmount,
-    debit: saleCalculation.cashPayment,
-    credit: saleCalculation.totalAmount - adminCut,
-    adminCut: adminCut,
-    balance: saleCalculation.totalAmount - adminCut + saleCalculation.cashPayment,
-    description: `Cash sale for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
-    settled: false
-  };
-  await addDoc(collection(db, 'AccountTx'), accountTxData);
-} else { 
-  // Mixed payment - create two separate records
-  
-  // 1. Wallet portion record
-  if (saleCalculation.walletDeduction > 0) {
-    const walletAdminCut = calculateAdminCut(saleCalculation.walletDeduction, storeDetails);
-    const walletTxData: Omit<AccountTx, 'id'> = {
-      date: Timestamp.fromDate(new Date()),
-      storeName: storeDetails.name,
-      type: 'sale',
-      amount: saleCalculation.walletDeduction,
-      debit: 0,
-      adminCut: walletAdminCut,
-      credit: saleCalculation.totalAmount - walletAdminCut,
-      balance: saleCalculation.walletDeduction - walletAdminCut,
-      description: `Wallet portion (${saleCalculation.walletDeduction}) of mixed payment for ${selectedCustomer.name}`,
-      settled: false
-    };
-    await addDoc(collection(db, 'AccountTx'), walletTxData);
-  }
-  
-  // 2. Cash portion record
-  if (saleCalculation.cashPayment > 0) {
-    const cashAdminCut = calculateAdminCut(saleCalculation.cashPayment,storeDetails);
-    const cashTxData: Omit<AccountTx, 'id'> = {
-      date: Timestamp.fromDate(new Date()),
-      storeName: storeDetails.name,
-      type: 'sale',
-      amount: saleCalculation.cashPayment,
-      debit: saleCalculation.cashPayment,
-      credit: saleCalculation.cashPayment - cashAdminCut,
-      balance: cashAdminCut,
-      description: `Cash portion (${saleCalculation.cashPayment}) of mixed payment for ${selectedCustomer.name}`,
-      settled: false
-    };
-    await addDoc(collection(db, 'AccountTx'), cashTxData);
-  }
-}
-
-    const staffCollection = collection(db, 'staff');
-    const staffQuery = query(staffCollection, where('mobile', '==', user.mobile));
-    const staffSnapshot = await getDocs(staffQuery);
-    
-    if (staffSnapshot.empty) {
-      throw new Error('Staff member not found in database');
-    }
-    
-    const staffDoc = staffSnapshot.docs[0];
-    const staffRef = staffDoc.ref;
-
-    // Validate updateData against StaffType interface
-    const staffUpdates: Partial<StaffType> = {
-      salesCount: increment(1) as unknown as number,
-      lastActive: Timestamp.fromDate(new Date())
-    };
-
-    await updateDoc(staffRef, staffUpdates);
-  
-  // Record activity
-  const activity: ActivityType = {
-    id: `act-${Date.now()}`,
-    type: 'transaction',
-    description: `Purchase of ₹${saleCalculation.totalAmount} by ${selectedCustomer.name}`,
-    amount: saleCalculation.totalAmount,
-    user: selectedCustomer.mobile,
-    location: storeLocation,
-    date: Timestamp.fromDate(new Date())
-  };
-  
-  await addDoc(collection(db, 'Activity'), activity);
-  
-  // Update local state
-  setCustomers(customers.map(c => 
-    c.mobile === selectedCustomer.mobile ? 
-    { 
-      ...c, 
-      walletBalance: newWalletBalance, 
-      surabhiCoins: newSurabhiCoins, 
-      lastTransactionDate: Timestamp.fromDate(new Date()) 
-    } : c
-  ));
-  
-  toast.success(`Sale of ₹${saleAmount} completed successfully!`);
-  
-  // Reset form
-  setSaleAmount(undefined);
-  setPaymentMethod('wallet');
-  setSurabhiCoinsToUse(0);
-  setSelectedCustomer(null);
-  setSearchTerm('');
-
-} catch (error) {
       console.error('Error processing sale:', error);
       toast.error('Sale failed. Please try again.');
     } finally {
@@ -451,7 +451,7 @@ if (paymentMethod === "wallet") {
       toast.error('Please select a customer and enter sale amount');
       return;
     }
-    
+
     if (paymentMethod === 'wallet') {
       const remainingAfterCoins = saleAmount - (saleCalculation?.surabhiCoinsUsed || 0);
       if ((selectedCustomer.walletBalance || 0) < remainingAfterCoins) {
@@ -459,7 +459,7 @@ if (paymentMethod === "wallet") {
         return;
       }
     }
-    
+
     await handleRegisteredCustomerSale();
   };
 
@@ -472,25 +472,25 @@ if (paymentMethod === "wallet") {
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Sales Management</h2>
           <p className="text-gray-600">Process customer purchases at {storeLocation}</p>
-            {storeDetails && (
-              <div className="flex gap-4 mt-2 text-sm flex-wrap">
-                <Badge variant="outline" className="border-blue-200 text-blue-800">
-                  Referral: {storeDetails.referralCommission}%
-                </Badge>
-                <Badge variant="outline" className="border-green-200 text-green-800">
-                  Surabhi: {storeDetails.surabhiCommission}%
-                </Badge>
-                <Badge variant="outline" className="border-red-200 text-red-800">
-                  Cash Only: {storeDetails.cashOnlyCommission}%
-                </Badge>
-                <Badge variant="outline" className="border-purple-200 text-purple-800">
-                  Seva: {storeDetails.sevaCommission}%
-                </Badge>
-              </div>
-            )}
+          {storeDetails && (
+            <div className="flex gap-4 mt-2 text-sm flex-wrap">
+              <Badge variant="outline" className="border-blue-200 text-blue-800">
+                Referral: {storeDetails.referralCommission}%
+              </Badge>
+              <Badge variant="outline" className="border-green-200 text-green-800">
+                Surabhi: {storeDetails.surabhiCommission}%
+              </Badge>
+              <Badge variant="outline" className="border-red-200 text-red-800">
+                Cash Only: {storeDetails.cashOnlyCommission}%
+              </Badge>
+              <Badge variant="outline" className="border-purple-200 text-purple-800">
+                Seva: {storeDetails.sevaCommission}%
+              </Badge>
+            </div>
+          )}
         </div>
       </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Customer Selection */}
         <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
@@ -525,11 +525,10 @@ if (paymentMethod === "wallet") {
                     onClick={() => {
                       setSelectedCustomer(customer);
                     }}
-                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                      selectedCustomer?.mobile === customer.mobile
-                        ? 'border-green-500 bg-green-50'
-                        : 'border-gray-200 hover:border-green-300 hover:bg-gray-50'
-                    }`}
+                    className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedCustomer?.mobile === customer.mobile
+                      ? 'border-green-500 bg-green-50'
+                      : 'border-gray-200 hover:border-green-300 hover:bg-gray-50'
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <div>
@@ -558,7 +557,7 @@ if (paymentMethod === "wallet") {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -586,20 +585,20 @@ if (paymentMethod === "wallet") {
                     <div>
                       <p className="text-purple-700">Last Purchase</p>
                       <p className="font-bold">
-                      {selectedCustomer.lastTransactionDate
-                      ? selectedCustomer.lastTransactionDate.toDate 
-                      ? new Date(selectedCustomer.lastTransactionDate.toDate()).toLocaleString()
-                      : selectedCustomer.lastTransactionDate instanceof Timestamp
-                      ? selectedCustomer.lastTransactionDate.toDate().toLocaleString()
-                      : typeof selectedCustomer.lastTransactionDate === 'string'
-                      ? new Date(selectedCustomer.lastTransactionDate).toLocaleString()
-                      : 'Never'
-                      : 'Never'}
+                        {selectedCustomer.lastTransactionDate
+                          ? selectedCustomer.lastTransactionDate.toDate
+                            ? new Date(selectedCustomer.lastTransactionDate.toDate()).toLocaleString()
+                            : selectedCustomer.lastTransactionDate instanceof Timestamp
+                              ? selectedCustomer.lastTransactionDate.toDate().toLocaleString()
+                              : typeof selectedCustomer.lastTransactionDate === 'string'
+                                ? new Date(selectedCustomer.lastTransactionDate).toLocaleString()
+                                : 'Never'
+                          : 'Never'}
                       </p>
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="amount">Sale Amount (₹) *</Label>
@@ -617,7 +616,7 @@ if (paymentMethod === "wallet") {
                       />
                     </div>
                   </div>
-                  
+
                   {selectedCustomer && selectedCustomer.surabhiCoins > 0 && (
                     <div className="space-y-2">
                       <Label htmlFor="coins">Use Surabhi Coins</Label>
@@ -631,7 +630,7 @@ if (paymentMethod === "wallet") {
                           onChange={(e) => {
                             const value = Number(e.target.value);
                             const maxCoins = Math.min(
-                              selectedCustomer.surabhiCoins, 
+                              selectedCustomer.surabhiCoins,
                               saleAmount || 0
                             );
                             setSurabhiCoinsToUse(Math.max(0, Math.min(value, maxCoins)));
@@ -646,11 +645,11 @@ if (paymentMethod === "wallet") {
                       </p>
                     </div>
                   )}
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="payment">Payment Method *</Label>
-                    <Select 
-                      value={paymentMethod} 
+                    <Select
+                      value={paymentMethod}
                       onValueChange={(value) => setPaymentMethod(value as 'wallet' | 'cash' | 'mixed')}
                     >
                       <SelectTrigger className="h-12">
@@ -679,7 +678,7 @@ if (paymentMethod === "wallet") {
                     )}
                   </div>
                 </div>
-                
+
                 {saleCalculation && (
                   <div className="space-y-3">
                     <h3 className="font-medium text-gray-900">Transaction Summary</h3>
@@ -688,28 +687,28 @@ if (paymentMethod === "wallet") {
                         <span className="text-sm font-medium text-purple-900">Total Amount</span>
                         <span className="font-bold text-purple-600">₹{saleCalculation.totalAmount}</span>
                       </div>
-                      
+
                       {saleCalculation.surabhiCoinsUsed > 0 && (
                         <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
                           <span className="text-sm font-medium text-amber-900">Surabhi Coins Used</span>
                           <span className="font-bold text-amber-600">-{saleCalculation.surabhiCoinsUsed}</span>
                         </div>
                       )}
-                      
+
                       {saleCalculation.walletDeduction > 0 && (
                         <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                           <span className="text-sm font-medium text-blue-900">Wallet Deduction</span>
                           <span className="font-bold text-blue-600">₹{saleCalculation.walletDeduction}</span>
                         </div>
                       )}
-                      
+
                       {saleCalculation.cashPayment > 0 && (
                         <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                           <span className="text-sm font-medium text-green-900">Cash Payment</span>
                           <span className="font-bold text-green-600">₹{saleCalculation.cashPayment}</span>
                         </div>
                       )}
-                      {saleCalculation.referrerSurabhiCoinsEarned > 0 && selectedCustomer.referredBy && (
+                      {paymentMethod !== 'wallet' && saleCalculation.referrerSurabhiCoinsEarned > 0 && selectedCustomer.referredBy && (
                         <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
                           <span className="text-sm font-medium text-indigo-900">Referral Bonus  {storeDetails.referralCommission}%</span>
                           <span className="font-bold text-indigo-600">+{saleCalculation.referrerSurabhiCoinsEarned} Referral to {selectedCustomer.referredBy} </span>
@@ -718,10 +717,10 @@ if (paymentMethod === "wallet") {
                     </div>
                   </div>
                 )}
-                
+
                 <Button
                   onClick={handleSale}
-                  disabled={isLoading || !saleAmount || 
+                  disabled={isLoading || !saleAmount ||
                     (selectedCustomer && !paymentMethod) ||
                     (saleCalculation && !saleCalculation.isValid)}
                   className="w-full h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium"
