@@ -279,26 +279,32 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
               <p className="text-2xl font-bold">₹{calculateTotal().toFixed(2)}</p>
             </CardContent>
           </Card>
-          <Card className="bg-purple-50">
-            <CardHeader className="p-4">
-              <CardTitle className="text-sm font-medium text-purple-600">Transactions</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <p className="text-2xl font-bold">
-                {filteredActivities.filter(a => a.type === 'transaction').length}
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="bg-amber-50">
-            <CardHeader className="p-4">
-              <CardTitle className="text-sm font-medium text-amber-600">Recharges</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <p className="text-2xl font-bold">
-                {filteredActivities.filter(a => a.type === 'recharge').length}
-              </p>
-            </CardContent>
-          </Card>
+
+          {activeTab === 'transactions' && (
+            <Card className="bg-purple-50">
+              <CardHeader className="p-4">
+                <CardTitle className="text-sm font-medium text-purple-600">Transactions</CardTitle>
+              </CardHeader>
+
+              <CardContent className="p-4 pt-0">
+                <p className="text-2xl font-bold">
+                  {filteredActivities.filter(a => a.type === 'transaction').length}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+          {activeTab === 'recharges' && (
+            <Card className="bg-amber-50">
+              <CardHeader className="p-4">
+                <CardTitle className="text-sm font-medium text-amber-600">Recharges</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <p className="text-2xl font-bold">
+                  {filteredActivities.filter(a => a.type === 'recharge').length}
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 
@@ -360,7 +366,7 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Date</TableHead>
-                        <TableHead>Type</TableHead>
+                        {/* <TableHead>Type</TableHead> */}
                         <TableHead>User</TableHead>
                         <TableHead>Description</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
@@ -372,12 +378,12 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                           <TableCell>
                             {formatTimestamp(activity.date)}
                           </TableCell>
-                          <TableCell>
+                          {/* <TableCell>
                             <div className="flex items-center">
                               {getActivityIcon(activity.type)}
                               {activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}
                             </div>
-                          </TableCell>
+                          </TableCell> */}
                           <TableCell className="font-medium">{activity.user || '-'}</TableCell>
                           <TableCell>{activity.description || '-'}</TableCell>
                           <TableCell className="text-right">
@@ -438,7 +444,7 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Date</TableHead>
-                        <TableHead>Type</TableHead>
+                        {/* <TableHead>Type</TableHead> */}
                         <TableHead>User</TableHead>
                         <TableHead>Description</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
@@ -450,12 +456,12 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                           <TableCell>
                             {formatTimestamp(activity.date)}
                           </TableCell>
-                          <TableCell>
+                          {/* <TableCell>
                             <div className="flex items-center">
                               {getActivityIcon(activity.type)}
                               {activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}
                             </div>
-                          </TableCell>
+                          </TableCell> */}
                           <TableCell className="font-medium">{activity.user || '-'}</TableCell>
                           <TableCell>{activity.description || '-'}</TableCell>
                           <TableCell className="text-right">

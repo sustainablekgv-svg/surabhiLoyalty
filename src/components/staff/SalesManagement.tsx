@@ -58,8 +58,10 @@ const calculateAdminCut = (saleAmount: number, storeDetails: StoreType) => {
 
 export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
   const { user, logout, isLoading: authLoading } = useAuth();
+  console.log("The user in line 61 is", user);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [isRegisteredAtSameStore, setIsRegisteredAtSameStore] = useState<boolean>(false);
   const [saleAmount, setSaleAmount] = useState<number | undefined>(undefined);
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'cash' | 'mixed'>('wallet');
   const [surabhiCoinsToUse, setSurabhiCoinsToUse] = useState<number>(0);
@@ -191,8 +193,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         return { isValid: false, error: 'Insufficient wallet balance' };
       }
     } else if (paymentMethod === 'mixed') {
-      if (remainingAfterCoins < saleAmount) {
-        cashPayment = remainingAfterCoins - walletDeduction;
+      if (walletBalance < remainingAfterCoins) {
+        cashPayment = saleAmount - walletBalance - coinsToUse;
         // Wallet portion gets surabhi commission, cash portion gets cashOnly commission
         surabhiCoinsEarned = Math.floor(
           cashPayment * (storeDetails.cashOnlyCommission / 100));
@@ -204,9 +206,9 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         return { isValid: false, error: 'Mixed is not needed' };
       }
     } else if (paymentMethod === 'cash') {
-      cashPayment = remainingAfterCoins;
+      cashPayment = saleAmount - walletBalance - coinsToUse;
       surabhiCoinsEarned = Math.floor(cashPayment * (storeDetails.cashOnlyCommission / 100));
-      referrerSurabhiCoinsEarned += Math.floor(saleAmount * (storeDetails.referralCommission / 100));
+      referrerSurabhiCoinsEarned += Math.floor(cashPayment * (storeDetails.referralCommission / 100));
       goSevaContribution = Math.floor(cashPayment * (storeDetails.sevaCommission / 100));
     }
 
@@ -256,14 +258,17 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       if (querySnapshot.empty) {
         throw new Error('Customer not found in database');
       }
-
+      console.log("Is it comig here in line 259")
       const newWalletBalance = (selectedCustomer.walletBalance || 0) - saleCalculation.walletDeduction;
       const newSurabhiCoins = (selectedCustomer.surabhiCoins || 0) - saleCalculation.surabhiCoinsUsed + saleCalculation.surabhiCoinsEarned;
-
+      console.log("Is it comig here in line 261", newWalletBalance, newSurabhiCoins)
       // Update customer balances
       const customerDoc = querySnapshot.docs[0];
       const customerRef = customerDoc.ref;
+      console.log('Customer document in line 266 is', customerRef);
+
       await updateDoc(customerRef, {
+        saleElgibility: true,
         walletBalance: newWalletBalance,
         surabhiCoins: newSurabhiCoins,
         lastTransactionDate: serverTimestamp(),
@@ -559,6 +564,13 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                     key={customer.mobile}
                     onClick={() => {
                       setSelectedCustomer(customer);
+                      // Check if customer is registered at the same store as the current user
+                      const isSameStore = customer.storeLocation === user?.storeLocation;
+                      setIsRegisteredAtSameStore(isSameStore);
+                      // Reset payment method to cash if not from same store
+                      if (!isSameStore) {
+                        setPaymentMethod('cash');
+                      }
                     }}
                     className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedCustomer?.mobile === customer.mobile
                       ? 'border-green-500 bg-green-50'
@@ -578,8 +590,21 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                         </div>}
                       </div>
                       <div className="text-right text-sm">
+                        <div className="flex items-center justify-end gap-2 mb-1">
+                          {customer.storeLocation === user?.storeLocation ? (
+                            <div className="flex items-center gap-1 text-green-600">
+                              <CheckCircle className="h-3 w-3" />
+                              <span className="text-xs font-medium">Same Store</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 text-orange-600">
+                              <Phone className="h-3 w-3" />
+                              <span className="text-xs font-medium">Other Store</span>
+                            </div>
+                          )}
+                        </div>
                         <p className="font-medium text-green-600">₹{customer.walletBalance}</p>
-                        <p className="text-amber-600">{customer.surabhiCoins} coins</p>
+                        <p className="text-amber-600">{customer.surabhiCoins} Surabhi coins</p>
                       </div>
                     </div>
                   </div>
@@ -691,9 +716,13 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                         <SelectValue placeholder="Select payment method" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="wallet">Wallet Only</SelectItem>
+                        {isRegisteredAtSameStore && (
+                          <SelectItem value="wallet">Wallet Only</SelectItem>
+                        )}
                         <SelectItem value="cash">Cash Only</SelectItem>
-                        <SelectItem value="mixed">Wallet + Cash</SelectItem>
+                        {isRegisteredAtSameStore && (
+                          <SelectItem value="mixed">Wallet + Cash</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                     {paymentMethod === 'wallet' && (
@@ -746,22 +775,22 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
                       {(paymentMethod === 'cash' || paymentMethod === 'mixed') && saleCalculation.surabhiCoinsEarned > 0 && (
                         <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
-                          <span className="text-sm font-medium text-indigo-900">Surabhi Coins Earned  {storeDetails.surabhiCommission}%</span>
+                          <span className="text-sm font-medium text-indigo-900">Surabhi Coins Earned  {paymentMethod === 'cash' || paymentMethod === 'mixed' ? storeDetails.cashOnlyCommission : storeDetails.surabhiCommission}%</span>
                           <span className="font-bold text-indigo-600">+{saleCalculation.surabhiCoinsEarned} </span>
                         </div>
                       )}
 
                       {(paymentMethod === 'cash' || paymentMethod === 'mixed') && saleCalculation.goSevaContribution > 0 && (
-                        <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
-                          <span className="text-sm font-medium text-indigo-900">Go Seva Contribution  {storeDetails.sevaCommission}%</span>
-                          <span className="font-bold text-indigo-600">+{saleCalculation.goSevaContribution} </span>
+                        <div className="flex items-center justify-between p-3 bg-pink-50 rounded-lg">
+                          <span className="text-sm font-medium text-pink-900">Go Seva Contribution  {storeDetails.sevaCommission}%</span>
+                          <span className="font-bold text-pink-600">+{saleCalculation.goSevaContribution} </span>
                         </div>
                       )}
 
                       {(paymentMethod === 'cash' || paymentMethod === 'mixed') && saleCalculation.referrerSurabhiCoinsEarned > 0 && selectedCustomer.referredBy && (
-                        <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
-                          <span className="text-sm font-medium text-indigo-900">Referral Bonus  {storeDetails.referralCommission}%</span>
-                          <span className="font-bold text-indigo-600">+{saleCalculation.referrerSurabhiCoinsEarned} Referral to {selectedCustomer.referredBy} </span>
+                        <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                          <span className="text-sm font-medium text-yellow-900">Referral Bonus  {storeDetails.referralCommission}%</span>
+                          <span className="font-bold text-yellow-600">+{saleCalculation.referrerSurabhiCoinsEarned} Referral to {selectedCustomer.referredBy} </span>
                         </div>
                       )}
                     </div>

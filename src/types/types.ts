@@ -26,6 +26,8 @@ export interface Customer {
   lastQuarterCheck: Timestamp | null;
   coinsFrozen: boolean;
   currentQuarterStart: Timestamp | null;
+  gender: string;
+  isStudent: boolean;
 }
 
 export interface TransactionsPageProps {

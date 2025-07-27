@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Wallet, 
-  Search, 
-  DollarSign, 
+import {
+  Wallet,
+  Search,
+  DollarSign,
   Coins,
   CheckCircle,
   Phone,
@@ -27,7 +27,7 @@ function getCurrentQuarterStart(): Date {
   const now = new Date();
   const month = now.getMonth();
   const year = now.getFullYear();
-  
+
   if (month < 3) return new Date(year, 0, 1); // Q1
   if (month < 6) return new Date(year, 3, 1); // Q2
   if (month < 9) return new Date(year, 6, 1); // Q3
@@ -76,54 +76,54 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
   const [storeDetails, setStoreDetails] = useState<StoreType | null>(null);
   // const [hasReferrer, setHasReferrer] = useState<Boolean> (false);
 
-    const [sevaPool, setSevaPool] = useState<SevaPool>({
-      currentBalance: 0,
-      totalContributions: 0,
-      totalAllocations: 0,
-      contributionsCurrentMonth: 0,
-      allocationsCurrentMonth: 0,
-      lastResetDate: Timestamp.now(),
-      lastAllocatedDate: Timestamp.now()
-    });
+  const [sevaPool, setSevaPool] = useState<SevaPool>({
+    currentBalance: 0,
+    totalContributions: 0,
+    totalAllocations: 0,
+    contributionsCurrentMonth: 0,
+    allocationsCurrentMonth: 0,
+    lastResetDate: Timestamp.now(),
+    lastAllocatedDate: Timestamp.now()
+  });
 
-          // Fetch Seva Pool data
-            const fetchData = async () => {
-          const poolRef = doc(db, 'SevaPool', 'main');
-          const poolSnapshot = await getDoc(poolRef);
-          if (poolSnapshot.exists()) {
-            const data = poolSnapshot.data();
-            const poolData: SevaPool = {
-              currentBalance: data.currentBalance ?? 0,
-              totalContributions: data.totalContributions ?? 0,
-              totalAllocations: data.totalAllocations ?? 0,
-              contributionsCurrentMonth: data.contributionsCurrentMonth ?? 0,
-              allocationsCurrentMonth: data.allocationsCurrentMonth ?? 0,
-              lastResetDate: safeConvertToTimestamp(data.lastResetDate),
-              lastAllocatedDate: safeConvertToTimestamp(data.lastAllocatedDate)
-            };
-            setSevaPool(poolData);
-          } else {
-            toast.error('Seva Pool document not found');
-          }
-        }
-        fetchData();
+  // Fetch Seva Pool data
+  const fetchData = async () => {
+    const poolRef = doc(db, 'SevaPool', 'main');
+    const poolSnapshot = await getDoc(poolRef);
+    if (poolSnapshot.exists()) {
+      const data = poolSnapshot.data();
+      const poolData: SevaPool = {
+        currentBalance: data.currentBalance ?? 0,
+        totalContributions: data.totalContributions ?? 0,
+        totalAllocations: data.totalAllocations ?? 0,
+        contributionsCurrentMonth: data.contributionsCurrentMonth ?? 0,
+        allocationsCurrentMonth: data.allocationsCurrentMonth ?? 0,
+        lastResetDate: safeConvertToTimestamp(data.lastResetDate),
+        lastAllocatedDate: safeConvertToTimestamp(data.lastAllocatedDate)
+      };
+      setSevaPool(poolData);
+    } else {
+      toast.error('Seva Pool document not found');
+    }
+  }
+  fetchData();
   // Fetch customers and store details from Firestore
   useEffect(() => {
     const fetchData = async () => {
       try {
         // Fetch store details first
         const q = query(
-        collection(db, 'stores'),
-        where('name', '==', storeLocation) // exact match
+          collection(db, 'stores'),
+          where('name', '==', storeLocation) // exact match
         );
 
         const querySnapshotStores = await getDocs(q);
         if (!querySnapshotStores.empty) {
-        querySnapshotStores.forEach((doc) => {
-        setStoreDetails(doc.data() as StoreType);
-        });
+          querySnapshotStores.forEach((doc) => {
+            setStoreDetails(doc.data() as StoreType);
+          });
         } else {
-        toast.error('No stores found with that name');
+          toast.error('No stores found with that name');
         }
 
         // Then fetch customers
@@ -150,18 +150,18 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
     customer.mobile.includes(searchTerm) ||
     (customer.email && customer.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
- 
+
   const calculateCommissions = (amount: number) => {
     if (!storeDetails) return { surabhiCoins: 0, sevaAmount: 0 };
-    
+
     const surabhiCoins = Math.floor(amount * (storeDetails.surabhiCommission / 100));
     const sevaAmount = Math.floor(amount * (storeDetails.sevaCommission / 100));
     const referralAmount = Math.floor(amount * (storeDetails.referralCommission / 100));
-    return { surabhiCoins, sevaAmount, referralAmount  };
+    return { surabhiCoins, sevaAmount, referralAmount };
   };
 
   const rechargeAmountNum = parseFloat(rechargeAmount) || 0;
-  const { surabhiCoins: surabhiCoinsEarned, sevaAmount: sevaAmountEarned, referralAmount:referralAmount} = calculateCommissions(rechargeAmountNum);
+  const { surabhiCoins: surabhiCoinsEarned, sevaAmount: sevaAmountEarned, referralAmount: referralAmount } = calculateCommissions(rechargeAmountNum);
 
   const addActivityRecord = async (activityData: Omit<ActivityType, 'id' | 'date'>) => {
     try {
@@ -181,9 +181,9 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
 
   const needsMonthlyReset = (lastTransactionDate: FieldValue | Date | string | null): boolean => {
     if (!lastTransactionDate) return true;
-    
+
     let lastDate: Date;
-    
+
     if (lastTransactionDate instanceof Date) {
       lastDate = lastTransactionDate;
     } else if (typeof lastTransactionDate === 'string') {
@@ -191,22 +191,22 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
     } else {
       return false;
     }
-    
+
     const currentDate = new Date();
-    
-    return lastDate.getMonth() !== currentDate.getMonth() || 
-           lastDate.getFullYear() !== currentDate.getFullYear();
+
+    return lastDate.getMonth() !== currentDate.getMonth() ||
+      lastDate.getFullYear() !== currentDate.getFullYear();
   };
 
   const processRecharge = async () => {
     if (!selectedCustomer || !rechargeAmount || !storeDetails) {
-    setIsLoading(false);
-    setIsProcessing(false);
-    return;
-  }
+      setIsLoading(false);
+      setIsProcessing(false);
+      return;
+    }
 
-  setIsProcessing(true);
-  setIsLoading(true); // Ensure both are set when starting
+    setIsProcessing(true);
+    setIsLoading(true); // Ensure both are set when starting
 
     try {
 
@@ -216,14 +216,14 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       const customersCollection = collection(db, 'customers');
       const q = query(customersCollection, where('mobile', '==', selectedCustomer.mobile));
       const querySnapshot = await getDocs(q);
-      
+
       if (querySnapshot.empty) {
         throw new Error('Customer not found in database');
       }
 
       const customerDoc = querySnapshot.docs[0];
       const currentData = customerDoc.data() as Customer;
-      
+
       // Handle lastTransactionDate properly
       const lastTransactionDate = currentData.lastTransactionDate || null;
       const resetMonthlyFields = needsMonthlyReset(lastTransactionDate);
@@ -240,7 +240,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       };
 
       if (updateData.quarterlyPurchaseTotal >= 2000 && currentData.coinsFrozen) {
-      updateData.coinsFrozen = false;
+        updateData.coinsFrozen = false;
       }
 
       // Handle monthly fields
@@ -254,92 +254,92 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         updateData.sevaCoinsCurrentMonth = (currentData.sevaCoinsCurrentMonth || 0) + sevaAmountEarned;
       }
 
-       // Update customer document in Firestore
+      // Update customer document in Firestore
       await updateDoc(customerDoc.ref, updateData);
 
       const rechargeData: Omit<RechargeRecord, 'id'> = {
-      customerMobile: selectedCustomer.mobile,
-      customerName: selectedCustomer.name,
-      amount: rechargeAmountNum,
-      storeLocation: storeLocation,
-      staffName:user.name,
-      storeName: storeDetails.name,
-      surabhiCoinsEarned: surabhiCoinsEarned,
-      sevaAmountEarned: sevaAmountEarned,
-      timestamp: Timestamp.fromDate(new Date()),
-      paymentMethod: 'cash', // Adjust as needed
-    };
+        customerMobile: selectedCustomer.mobile,
+        customerName: selectedCustomer.name,
+        amount: rechargeAmountNum,
+        storeLocation: storeLocation,
+        staffName: user.name,
+        storeName: storeDetails.name,
+        surabhiCoinsEarned: surabhiCoinsEarned,
+        sevaAmountEarned: sevaAmountEarned,
+        timestamp: Timestamp.fromDate(new Date()),
+        paymentMethod: 'cash', // Adjust as needed
+      };
 
       const rechargeRef = await addDoc(collection(db, 'recharges'), rechargeData);
 
       const accountTxData: Omit<AccountTx, 'id'> = {
-      date: Timestamp.fromDate(new Date()),
-      storeName: storeDetails.name,
-      type: 'recharge',
-      amount: rechargeAmountNum,
-      debit: rechargeAmountNum,
-      credit: 0,
-      balance: rechargeAmountNum, // Since credit is 0, balance equals debit
-      description: `Recharge for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
-      settled: false
+        date: Timestamp.fromDate(new Date()),
+        storeName: storeDetails.name,
+        type: 'recharge',
+        amount: rechargeAmountNum,
+        debit: rechargeAmountNum,
+        credit: 0,
+        balance: rechargeAmountNum, // Since credit is 0, balance equals debit
+        description: `Recharge for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
+        settled: false
       };
 
       await addDoc(collection(db, 'AccountTx'), accountTxData);
 
-    const staffCollection = collection(db, 'staff');
-    const staffQuery = query(staffCollection, where('mobile', '==', user.mobile));
-    const staffSnapshot = await getDocs(staffQuery);
-    
-    if (staffSnapshot.empty) {
-      throw new Error('Staff member not found in database');
-    }
-    
-    const staffDoc = staffSnapshot.docs[0];
-    const staffRef = staffDoc.ref;
+      const staffCollection = collection(db, 'staff');
+      const staffQuery = query(staffCollection, where('mobile', '==', user.mobile));
+      const staffSnapshot = await getDocs(staffQuery);
 
-    // Validate updateData against StaffType interface
-    const staffUpdates: Partial<StaffType> = {
-      rechargesCount: increment(1) as unknown as number,
-      lastActive: Timestamp.fromDate(new Date())
-    };
+      if (staffSnapshot.empty) {
+        throw new Error('Staff member not found in database');
+      }
 
-    await updateDoc(staffRef, staffUpdates);
-      
-       // Handle referral Surabhi Coins if customer has a referrer
+      const staffDoc = staffSnapshot.docs[0];
+      const staffRef = staffDoc.ref;
+
+      // Validate updateData against StaffType interface
+      const staffUpdates: Partial<StaffType> = {
+        rechargesCount: increment(1) as unknown as number,
+        lastActive: Timestamp.fromDate(new Date())
+      };
+
+      await updateDoc(staffRef, staffUpdates);
+
+      // Handle referral Surabhi Coins if customer has a referrer
       if (currentData.referredBy && referralAmount > 0) {
         // Find referrer's document
         const referrerQuery = query(customersCollection, where('mobile', '==', currentData.referredBy));
         const referrerSnapshot = await getDocs(referrerQuery);
         // console.log("The line 188 data is", referrerSnapshot);
-        
+
         if (!referrerSnapshot.empty) {
           const referrerDoc = referrerSnapshot.docs[0];
           const referrerData = referrerDoc.data() as Customer;
 
           const newReferredUser = {
-          mobile: currentData.mobile,
-          name: currentData.name,
-          referralDate: new Date(), // Use regular Date here
-        };
+            mobile: currentData.mobile,
+            name: currentData.name,
+            referralDate: new Date(), // Use regular Date here
+          };
 
           console.log('currentData:', currentData);
-        console.log('newReferredUser:', newReferredUser);
-        console.log('referralAmount:', referralAmount);
-          
+          console.log('newReferredUser:', newReferredUser);
+          console.log('referralAmount:', referralAmount);
+
           // Update referrer's data
           await updateDoc(referrerDoc.ref, {
-          surabhiCoins: increment(referralAmount),
-          referralSurabhi: increment(referralAmount),
-          referredUsers: arrayUnion(newReferredUser)
-        });
+            surabhiCoins: increment(referralAmount),
+            referralSurabhi: increment(referralAmount),
+            referredUsers: arrayUnion(newReferredUser)
+          });
 
-        const poolRef = doc(db, 'SevaPool', 'main');
-      await updateDoc(poolRef, {
-        currentBalance: sevaPool.currentBalance + sevaAmountEarned,
-        totalAllocations: sevaPool.totalAllocations,
-        allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
-        lastAllocatedDate: serverTimestamp()
-      });
+          const poolRef = doc(db, 'SevaPool', 'main');
+          await updateDoc(poolRef, {
+            currentBalance: sevaPool.currentBalance + sevaAmountEarned,
+            totalAllocations: sevaPool.totalAllocations,
+            allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
+            lastAllocatedDate: serverTimestamp()
+          });
 
           // Add activity record for referrer
           await addActivityRecord({
@@ -361,7 +361,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
           location: storeLocation
         });
       }
-    
+
       // Add activity records for the recharge and commissions
       await addActivityRecord({
         type: 'recharge',
@@ -379,15 +379,15 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         location: storeLocation
       });
 
-       // Add activity records for the recharge and commissions
-      if(selectedCustomer.referredBy){
+      // Add activity records for the recharge and commissions
+      if (selectedCustomer.referredBy) {
         await addActivityRecord({
-        type: 'referral',
-        description: `${selectedCustomer.referredBy} - Earned Surabhi Referral of ₹${referralAmount}`,
-        amount: rechargeAmountNum,
-        user: selectedCustomer.referredBy,
-        location: storeLocation
-      });
+          type: 'referral',
+          description: `${selectedCustomer.referredBy} - Earned Surabhi Referral of ₹${referralAmount}`,
+          amount: rechargeAmountNum,
+          user: selectedCustomer.referredBy,
+          location: storeLocation
+        });
       }
 
       // await addActivityRecord({
@@ -397,7 +397,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       //   user: selectedCustomer.mobile,
       //   location: storeLocation
       // });
-       
+
       await addActivityRecord({
         type: 'contribution',
         description: `${selectedCustomer.name} contributed ₹${sevaAmountEarned} to Seva Pool from recharge`,
@@ -409,13 +409,13 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       // Update local state for selected customer
       const updatedCustomers = customers.map(c => {
         if (c.mobile === selectedCustomer.mobile) {
-          return { 
-            ...c, 
+          return {
+            ...c,
             walletBalance: c.walletBalance + rechargeAmountNum,
             surabhiCoins: c.surabhiCoins + surabhiCoinsEarned,
             sevaCoinsTotal: (c.sevaCoinsTotal || 0) + sevaAmountEarned,
-            walletBalanceCurrentMonth: resetMonthlyFields 
-              ? rechargeAmountNum 
+            walletBalanceCurrentMonth: resetMonthlyFields
+              ? rechargeAmountNum
               : (c.walletBalanceCurrentMonth || 0) + rechargeAmountNum,
             surabhiCoinsCurrentMonth: resetMonthlyFields
               ? surabhiCoinsEarned
@@ -434,19 +434,19 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
 
       let successMessage = `₹${rechargeAmountNum.toLocaleString()} recharged successfully!`;
       let successDescription = `Customer earned ${surabhiCoinsEarned} Surabhi Coins and ₹${sevaAmountEarned} Seva Wallet`;
-      
+
       if (selectedCustomer.referredBy && referralAmount > 0) {
         successDescription += ` | Referrer earned ₹${referralAmount}`;
       }
 
-      toast.success(successMessage, { 
+      toast.success(successMessage, {
         description: successDescription,
       });
 
       toast.success(`Recharge of ₹${rechargeAmountNum} completed!`, {
-      description: `Receipt #${rechargeRef.id}`,
-    });
-      
+        description: `Receipt #${rechargeRef.id}`,
+      });
+
       // Reset form
       setRechargeAmount('');
       setSelectedCustomer(null);
@@ -473,12 +473,12 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       toast.error('Please enter a valid amount');
       return;
     }
-    
+
     if (amount < 2000) {
       toast.error('Minimum recharge amount is ₹2,000');
       return;
     }
-    
+
     if (amount > 50000) {
       toast.error('Maximum recharge amount is ₹50,000');
       return;
@@ -499,16 +499,16 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
           {storeDetails && (
             <div className="flex gap-4 mt-2 text-sm">
               <Badge variant="outline" className="border-green-200 text-red-800">
-              Surabhi: {storeDetails.surabhiCommission}%
+                Surabhi: {storeDetails.surabhiCommission}%
               </Badge>
               <Badge variant="outline" className="border-blue-200 text-blue-800">
-              Referral: {storeDetails.referralCommission}%
+                Referral: {storeDetails.referralCommission}%
               </Badge>
               <Badge variant="outline" className="border-blue-200 text-green-800">
                 Cash Only: {storeDetails.cashOnlyCommission}%
               </Badge>
               <Badge variant="outline" className="border-blue-200 text-purple-800">
-              Seva: {storeDetails.sevaCommission}%
+                Seva: {storeDetails.sevaCommission}%
               </Badge>
             </div>
           )}
@@ -527,7 +527,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
               Search by name, mobile or email to find customers
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent className="space-y-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -538,7 +538,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                 className="pl-10 h-12"
               />
             </div>
-            
+
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {isFetchingCustomers ? (
                 <div className="flex justify-center py-8">
@@ -553,11 +553,10 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                         setSelectedCustomer(customer);
                         setRechargeAmount('');
                       }}
-                      className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                        selectedCustomer?.mobile === customer.mobile
-                          ? 'border-green-500 bg-green-50'
-                          : 'border-gray-200 hover:border-green-300 hover:bg-gray-50'
-                      }`}
+                      className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedCustomer?.mobile === customer.mobile
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-gray-200 hover:border-green-300 hover:bg-gray-50'
+                        }`}
                     >
                       <div className="flex items-center justify-between">
                         <div>
@@ -588,7 +587,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                             {customer.surabhiCoins} Surabhi
                           </p>
                           <p className="text-sm font-medium text-amber-600 mt-1">
-                            {customer.referralSurabhi >0 ? customer.referralSurabhi : 0 } Referral
+                            {customer.referralSurabhi > 0 ? customer.referralSurabhi : 0} Referral
                           </p>
                           {customer.sevaCoinsTotal && customer.sevaCoinsTotal > 0 && (
                             <p className="text-sm font-medium text-blue-600 mt-1">
@@ -599,7 +598,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                       </div>
                     </div>
                   ))}
-                  
+
                   {filteredCustomers.length === 0 && searchTerm && !isFetchingCustomers && (
                     <div className="text-center py-8 text-gray-500">
                       <Search className="h-8 w-8 mx-auto mb-2 text-gray-300" />
@@ -623,7 +622,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
               Enter recharge amount (minimum ₹2,000)
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent className="space-y-6">
             {selectedCustomer ? (
               <>
@@ -636,11 +635,11 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                       {selectedCustomer.email && (
                         <p className="text-sm text-blue-700">{selectedCustomer.email}</p>
                       )}
-                    {selectedCustomer.coinsFrozen && (
-                    <Badge variant="destructive" className="mt-1">
-                    Coins Frozen
-                    </Badge>
-                    )}
+                      {selectedCustomer.coinsFrozen && (
+                        <Badge variant="destructive" className="mt-1">
+                          Coins Frozen
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex flex-col items-end">
                       <Badge variant="secondary" className="mb-1">
@@ -654,7 +653,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="amount">Recharge Amount (₹)</Label>
                   <div className="relative">
@@ -675,11 +674,11 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                     <p className="text-sm text-red-500">Minimum recharge amount is ₹2,000</p>
                   )}
                 </div>
-                
+
                 {rechargeAmountNum >= 2000 && storeDetails && (
                   <div className="space-y-3">
                     <h3 className="font-medium text-gray-900">Reward Breakdown</h3>
-                    
+
                     <div className="grid grid-cols-1 gap-3">
                       <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
                         <div className="flex items-center gap-2">
@@ -688,7 +687,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                         </div>
                         <span className="font-bold text-purple-600">+₹{rechargeAmountNum.toLocaleString()}</span>
                       </div>
-                      
+
                       <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
                         <div className="flex items-center gap-2">
                           <Coins className="h-4 w-4 text-amber-600" />
@@ -699,7 +698,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                         <span className="font-bold text-amber-600">+{surabhiCoinsEarned}</span>
                       </div>
 
-                    {selectedCustomer.referredBy && <div className="flex items-center justify-between p-3 bg-green-100 rounded-lg">
+                      {selectedCustomer.referredBy && <div className="flex items-center justify-between p-3 bg-green-100 rounded-lg">
                         <div className="flex items-center gap-2">
                           <HandCoins className="h-4 w-4 text-green-600" />
                           <span className="text-sm font-medium text-green-900">
@@ -708,7 +707,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                         </div>
                         <span className="font-bold text-green-600">+{referralAmount} to {selectedCustomer.referredBy}</span>
                       </div>
-                    }
+                      }
 
                       <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                         <div className="flex items-center gap-2">
@@ -722,7 +721,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                     </div>
                   </div>
                 )}
-                
+
                 <Button
                   onClick={handleRechargeClick}
                   disabled={isLoading || !rechargeAmount || rechargeAmountNum < 2000 || !storeDetails}
@@ -795,14 +794,14 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
           </div>
 
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setShowConfirmation(false)}
               disabled={isProcessing}
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={processRecharge}
               disabled={isProcessing}
               className="bg-green-600 hover:bg-green-700"

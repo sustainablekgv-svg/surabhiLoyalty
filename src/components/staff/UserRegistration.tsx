@@ -49,6 +49,8 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
     email: '',
     password: '',
     referredBy: '',
+    gender: '',
+    isStudent: false,
     tpin: ''
   });
 
@@ -213,6 +215,8 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
         surabhiCoinsCurrentMonth: 0,
         sevaCoinsTotal: 0,
         sevaCoinsCurrentMonth: 0,
+        gender: formData.gender,
+        isStudent: formData.isStudent,
         createdAt: Timestamp.fromDate(new Date()),
         role: 'customer',
         walletId,
@@ -261,6 +265,8 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
         email: '',
         password: '',
         referredBy: '',
+        gender: '',
+        isStudent: false,
         tpin: ''
       });
       setReferralName(null);
@@ -401,6 +407,80 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                       className="w-full pl-10 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       required
                     />
+                  </div>
+                </div>
+
+                {/* Gender Field */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Gender <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex gap-4">
+                    <label className="inline-flex items-center">
+                      <input
+                        type="radio"
+                        name="gender"
+                        value="male"
+                        checked={formData.gender === 'male'}
+                        onChange={() => setFormData({ ...formData, gender: 'male' })}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                        required
+                      />
+                      <span className="ml-2 text-gray-700">Male</span>
+                    </label>
+                    <label className="inline-flex items-center">
+                      <input
+                        type="radio"
+                        name="gender"
+                        value="female"
+                        checked={formData.gender === 'female'}
+                        onChange={() => setFormData({ ...formData, gender: 'female' })}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="ml-2 text-gray-700">Female</span>
+                    </label>
+                    <label className="inline-flex items-center">
+                      <input
+                        type="radio"
+                        name="gender"
+                        value="other"
+                        checked={formData.gender === 'other'}
+                        onChange={() => setFormData({ ...formData, gender: 'other' })}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="ml-2 text-gray-700">Other</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Student Field */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Is Student?
+                  </label>
+                  <div className="flex gap-4">
+                    <label className="inline-flex items-center">
+                      <input
+                        type="radio"
+                        name="isStudent"
+                        value="yes"
+                        checked={formData.isStudent === true}
+                        onChange={() => setFormData({ ...formData, isStudent: true })}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="ml-2 text-gray-700">Yes</span>
+                    </label>
+                    <label className="inline-flex items-center">
+                      <input
+                        type="radio"
+                        name="isStudent"
+                        value="no"
+                        checked={formData.isStudent === false}
+                        onChange={() => setFormData({ ...formData, isStudent: false })}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="ml-2 text-gray-700">No</span>
+                    </label>
                   </div>
                 </div>
 
