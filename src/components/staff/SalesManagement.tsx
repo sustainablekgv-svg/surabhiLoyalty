@@ -392,33 +392,33 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         // Mixed payment - create two separate records
 
         // 1. Wallet portion record
-        if (saleCalculation.walletDeduction > 0) {
-          const walletAdminCut = calculateAdminCut(saleCalculation.walletDeduction, storeDetails, saleCalculation.surabhiCoinsUsed);
-          const walletTxData: Omit<AccountTx, 'id'> = {
-            date: Timestamp.fromDate(new Date()),
-            storeName: storeDetails.name,
-            type: 'sale',
-            amount: saleCalculation.walletDeduction,
-            debit: 0,
-            adminCut: walletAdminCut,
-            credit: saleCalculation.totalAmount - walletAdminCut,
-            balance: saleCalculation.walletDeduction - walletAdminCut,
-            description: `Wallet portion (${saleCalculation.walletDeduction}) of mixed payment for ${selectedCustomer.name}`,
-            settled: false
-          };
-          await addDoc(collection(db, 'AccountTx'), walletTxData);
-        }
+        // if (saleCalculation.walletDeduction > 0) {
+        //   const walletAdminCut = calculateAdminCut(saleCalculation.walletDeduction, storeDetails, saleCalculation.surabhiCoinsUsed);
+        //   const walletTxData: Omit<AccountTx, 'id'> = {
+        //     date: Timestamp.fromDate(new Date()),
+        //     storeName: storeDetails.name,
+        //     type: 'sale',
+        //     amount: saleCalculation.walletDeduction,
+        //     debit: 0,
+        //     adminCut: walletAdminCut,
+        //     credit: saleCalculation.totalAmount - walletAdminCut,
+        //     balance: saleCalculation.walletDeduction - walletAdminCut,
+        //     description: `Wallet portion (${saleCalculation.walletDeduction}) of mixed payment for ${selectedCustomer.name}`,
+        //     settled: false
+        //   };
+        //   await addDoc(collection(db, 'AccountTx'), walletTxData);
+        // }
 
         // 2. Cash portion record
         if (saleCalculation.cashPayment > 0) {
-          const cashAdminCut = calculateAdminCut(saleCalculation.cashPayment, storeDetails);
+          const cashAdminCut = calculateAdminCut(saleCalculation.cashPayment, storeDetails, saleCalculation.surabhiCoinsUsed);
           const cashTxData: Omit<AccountTx, 'id'> = {
             date: Timestamp.fromDate(new Date()),
             storeName: storeDetails.name,
             type: 'sale',
             amount: saleCalculation.cashPayment,
-            debit: saleCalculation.cashPayment,
-            credit: saleCalculation.cashPayment - cashAdminCut,
+            credit: saleCalculation.cashPayment,
+            debit: saleCalculation.cashPayment - cashAdminCut,
             balance: cashAdminCut,
             description: `Cash portion (${saleCalculation.cashPayment}) of mixed payment for ${selectedCustomer.name}`,
             settled: false
