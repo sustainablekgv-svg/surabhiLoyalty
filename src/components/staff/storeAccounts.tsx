@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react';
-import { 
-  Card, 
+import {
+  Card,
   CardContent,
-  CardHeader, 
-  CardTitle 
+  CardHeader,
+  CardTitle
 } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { 
+import {
   RefreshCw,
   Loader2,
 } from 'lucide-react';
-import { 
+import {
   collection,
   query,
   where,
@@ -45,18 +45,18 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      
+
       if (!storeLocation) return;
-      
+
       const txQuery = query(
         collection(db, 'AccountTx'),
         where('storeName', '==', storeLocation),
         orderBy('date', 'desc')
       );
-      
+
       const txSnapshot = await getDocs(txQuery);
       const txData: AccountTx[] = [];
-      
+
       txSnapshot.forEach(doc => {
         const data = doc.data();
         txData.push({
@@ -73,9 +73,9 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
           adminCut: data.adminCut || 0
         });
       });
-      
+
       setTransactions(txData);
-      
+
     } catch (err) {
       console.error('Error fetching transactions:', err);
     } finally {
@@ -86,14 +86,14 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
 
   const handleSettledToggle = async (txId: string, settled: boolean) => {
     if (!isAdmin) return; // Only allow admins to update the settled status
-    
+
     try {
       setUpdatingTx(txId);
       await updateDoc(doc(db, 'AccountTx', txId), {
         settled
       });
-      setTransactions(prev => prev.map(tx => 
-        tx.id === txId ? {...tx, settled} : tx
+      setTransactions(prev => prev.map(tx =>
+        tx.id === txId ? { ...tx, settled } : tx
       ));
     } catch (err) {
       console.error('Error updating transaction:', err);
@@ -161,7 +161,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
                   <TableCell>
                     <Badge variant={
                       tx.type === 'recharge' ? 'default' :
-                      tx.type === 'wallet' ? 'secondary' : 'outline'
+                        tx.type === 'sale' ? 'secondary' : 'outline'
                     }>
                       {tx.type}
                     </Badge>
@@ -185,7 +185,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
                     ) : isAdmin ? (
                       <Checkbox
                         checked={Boolean(tx.settled)}
-                        onCheckedChange={(checked) => 
+                        onCheckedChange={(checked) =>
                           handleSettledToggle(tx.id, Boolean(checked))
                         }
                         className="h-5 w-5 rounded-md"

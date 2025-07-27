@@ -6,25 +6,25 @@ export interface Customer {
   storeLocation: string;
   walletBalance: number;
   walletRechargeDone: Boolean;
-  saleElgibility : Boolean;
-  walletBalanceCurrentMonth : number;
+  saleElgibility: Boolean;
+  walletBalanceCurrentMonth: number;
   role: string;
   walletId: string;
   surabhiCoins: number;
-  surabhiCoinsCurrentMonth:number;
+  surabhiCoinsCurrentMonth: number;
   sevaCoinsTotal: number;
-  sevaCoinsCurrentMonth:number;
+  sevaCoinsCurrentMonth: number;
   referredBy: string | null;
   referralSurabhi: number;
-  referredUsers: { mobile:number; name: string; referralDate: Timestamp; }[] | null;
+  referredUsers: { mobile: number; name: string; referralDate: Timestamp; }[] | null;
   registered: Boolean;
   lastTransactionDate: Timestamp | null;
   createdAt: Timestamp;
   customerPassword: string;
   tpin: string;
-  quarterlyPurchaseTotal: number; 
-  lastQuarterCheck: Timestamp | null; 
-  coinsFrozen: boolean; 
+  quarterlyPurchaseTotal: number;
+  lastQuarterCheck: Timestamp | null;
+  coinsFrozen: boolean;
   currentQuarterStart: Timestamp | null;
 }
 
@@ -94,7 +94,7 @@ export interface AdminHeaderProps {
   onLogout: () => void;
 }
 export interface RechargeRecord {
-  id?: string; 
+  id?: string;
   customerMobile: string;
   customerName: string;
   amount: number;
@@ -109,7 +109,7 @@ export interface RechargeRecord {
   staffName: string; // ID of staff who processed
 }
 
-export interface SalesTransaction  {
+export interface SalesTransaction {
   id?: string;
   customerName: string;
   customerMobile: string;
@@ -173,7 +173,7 @@ export interface AccountTx {
   type: 'recharge' | 'sale' | 'settlement';
   amount: number;
   debit: number;
-  adminCut?:number;
+  adminCut?: number;
   credit: number;
   balance: number;
   description: string;

@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { Customer, StoreUsersProps } from "@/types/types";
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -39,50 +39,50 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-  const fetchCustomers = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+    const fetchCustomers = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-      const customersRef = collection(db, 'customers');
-      
-      // First query to get customers by store location
-      const q = query(
-        customersRef,
-        where('storeLocation', '==', storeLocation)
-      );
+        const customersRef = collection(db, 'customers');
 
-      const querySnapshot = await getDocs(q);
-      const customersData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as unknown as Customer[];
+        // First query to get customers by store location
+        const q = query(
+          customersRef,
+          where('storeLocation', '==', storeLocation)
+        );
 
-      // Sort locally by lastTransactionDate if needed
-      customersData.sort((a, b) => {
-        const dateA = a.lastTransactionDate ? new Date(a.lastTransactionDate).getTime() : 0;
-        const dateB = b.lastTransactionDate ? new Date(b.lastTransactionDate).getTime() : 0;
-        return dateB - dateA; // Descending order
-      });
+        const querySnapshot = await getDocs(q);
+        const customersData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as unknown as Customer[];
 
-      setCustomers(customersData);
+        // Sort locally by lastTransactionDate if needed
+        customersData.sort((a, b) => {
+          const dateA = a.lastTransactionDate ? a.lastTransactionDate.toDate().getTime() : 0;
+          const dateB = b.lastTransactionDate ? b.lastTransactionDate.toDate().getTime() : 0;
+          return dateB - dateA; // Descending order
+        });
 
-      // Get top customers by wallet balance (local sort)
-      const topByWallet = [...customersData]
-        .sort((a, b) => (b.walletBalance || 0) - (a.walletBalance || 0))
-        .slice(0, 5);
-      setTopCustomers(topByWallet);
+        setCustomers(customersData);
 
-    } catch (err) {
-      console.error('Error fetching customers:', err);
-      setError(`Failed to load customers. ${err instanceof Error ? err.message : 'Please try again.'}`);
-    } finally {
-      setLoading(false);
-    }
-  };
+        // Get top customers by wallet balance (local sort)
+        const topByWallet = [...customersData]
+          .sort((a, b) => (b.walletBalance || 0) - (a.walletBalance || 0))
+          .slice(0, 5);
+        setTopCustomers(topByWallet);
 
-  fetchCustomers();
-}, [storeLocation]);
+      } catch (err) {
+        console.error('Error fetching customers:', err);
+        setError(`Failed to load customers. ${err instanceof Error ? err.message : 'Please try again.'}`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCustomers();
+  }, [storeLocation]);
 
   const filteredCustomers = customers
     .filter(customer => {
@@ -100,7 +100,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
     })
     .sort((a, b) => {
       let comparison = 0;
-      
+
       if (sortField === 'name') {
         comparison = a.name.localeCompare(b.name);
       } else if (sortField === 'walletBalance') {
@@ -108,11 +108,11 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
       } else if (sortField === 'surabhiCoins') {
         comparison = (a.surabhiCoins || 0) - (b.surabhiCoins || 0);
       } else if (sortField === 'lastTransactionDate') {
-        const dateA = a.lastTransactionDate ? new Date(a.lastTransactionDate).getTime() : 0;
-        const dateB = b.lastTransactionDate ? new Date(b.lastTransactionDate).getTime() : 0;
+        const dateA = a.lastTransactionDate ? a.lastTransactionDate.toDate().getTime() : 0;
+        const dateB = b.lastTransactionDate ? b.lastTransactionDate.toDate().getTime() : 0;
         comparison = dateA - dateB;
       }
-      
+
       return sortDirection === 'asc' ? comparison : -comparison;
     });
 
@@ -133,12 +133,26 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
     }
   };
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Never';
+  const formatDate = (dateInput: string | Date | Timestamp): string => {
     try {
-      return format(new Date(dateString), 'MMM dd, yyyy');
-    } catch {
-      return dateString;
+      let date: Date;
+
+      if (dateInput instanceof Timestamp) {
+        date = dateInput.toDate();
+      } else if (typeof dateInput === 'string') {
+        date = new Date(dateInput);
+      } else if (dateInput instanceof Date) {
+        date = dateInput;
+      } else {
+        return 'Invalid date';
+      }
+
+      if (isNaN(date.getTime())) return 'Invalid date';
+
+      return format(date, 'MMM dd, yyyy');
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Invalid date';
     }
   };
 
@@ -233,8 +247,8 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               {topCustomers.map((customer, index) => (
-                <div 
-                  key={customer.mobile} 
+                <div
+                  key={customer.mobile}
                   className="bg-white p-4 rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer"
                   onClick={() => viewCustomerDetails(customer.mobile)}
                 >
@@ -288,8 +302,8 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                 <span className="text-sm text-gray-500">Filters:</span>
               </div>
 
-              <Select 
-                value={registrationFilter} 
+              <Select
+                value={registrationFilter}
                 onValueChange={(value: 'all' | 'registered' | 'unregistered') => setRegistrationFilter(value)}
               >
                 <SelectTrigger className="w-[180px]">
@@ -310,7 +324,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
             <table className="w-full">
               <thead>
                 <tr className="text-left text-sm text-gray-500 border-b">
-                  <th 
+                  <th
                     className="pb-3 px-4 cursor-pointer"
                     onClick={() => handleSort('name')}
                   >
@@ -322,7 +336,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                     </div>
                   </th>
                   <th className="pb-3 px-4">Contact</th>
-                  <th 
+                  <th
                     className="pb-3 px-4 cursor-pointer"
                     onClick={() => handleSort('walletBalance')}
                   >
@@ -333,7 +347,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                       )}
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="pb-3 px-4 cursor-pointer"
                     onClick={() => handleSort('surabhiCoins')}
                   >
@@ -344,7 +358,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                       )}
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="pb-3 px-4 cursor-pointer"
                     onClick={() => handleSort('lastTransactionDate')}
                   >
@@ -410,9 +424,9 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                       </Badge>
                     </td>
                     <td className="py-4 px-4">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => viewCustomerDetails(customer.mobile)}
                       >
                         <Eye className="h-3 w-3 mr-1" />

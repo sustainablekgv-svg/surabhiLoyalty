@@ -17,112 +17,118 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { CalendarIcon, Search, Filter, ShoppingCart, Loader2 } from 'lucide-react';
+import { CalendarIcon, Search, Filter, ShoppingCart, Loader2, Zap, UserPlus } from 'lucide-react';
 import { format } from 'date-fns';
 import { collection, query, where, getDocs, DocumentData, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from 'sonner';
+import { TransactionsPageProps, ActivityType } from '@/types/types';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-import { TransactionsPageProps, SalesTransaction } from '@/types/types';
+const formatTimestamp = (timestamp: Timestamp): string => {
+  return format(timestamp.toDate(), 'MMM dd, yyyy HH:mm');
+};
+
 export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
-  const [transactions, setTransactions] = useState<SalesTransaction[]>([]);
-  const [filteredTransactions, setFilteredTransactions] = useState<SalesTransaction[]>([]);
+  const [activities, setActivities] = useState<ActivityType[]>([]);
+  const [filteredActivities, setFilteredActivities] = useState<ActivityType[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isFiltering, setIsFiltering] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'transactions' | 'recharges'>('transactions');
 
   // Calculate pagination
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
-  const currentRecords = filteredTransactions.slice(indexOfFirstRecord, indexOfLastRecord);
-  const totalPages = Math.ceil(filteredTransactions.length / recordsPerPage);
+  const currentRecords = filteredActivities.slice(indexOfFirstRecord, indexOfLastRecord);
+  const totalPages = Math.ceil(filteredActivities.length / recordsPerPage);
 
   // Change page
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   // Handle records per page change
-  const handleRecordsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setRecordsPerPage(Number(e.target.value));
-    setCurrentPage(1); // Reset to first page when changing records per page
+  const handleRecordsPerPageChange = (value: string) => {
+    setRecordsPerPage(Number(value));
+    setCurrentPage(1);
   };
 
-  // Fetch all transactions for current store
+  // Fetch all activities for current store
   useEffect(() => {
-    const fetchTransactions = async () => {
+    const fetchActivities = async () => {
       if (!storeLocation) return;
 
       setIsLoading(true);
       setError(null);
-      
+
       try {
         const q = query(
-          collection(db, 'transactions'), 
-          where('storeLocation', '==', storeLocation)
+          collection(db, 'Activity'),
+          where('location', '==', storeLocation)
         );
         const querySnapshot = await getDocs(q);
-        const txns: SalesTransaction[] = [];
+        const fetchedActivities: ActivityType[] = [];
 
         querySnapshot.forEach((doc) => {
-          const data = doc.data() as DocumentData;
-          
-          txns.push({ 
+          const data = doc.data();
+          fetchedActivities.push({
             id: doc.id,
-            customerName: data.customerName || '',
-            customerMobile: data.customerMobile || '',
+            type: data.type,
+            description: data.description,
             amount: data.amount || 0,
-            surabhiCoinsUsed: data.surabhiCoinsUsed || 0,
-            walletDeduction: data.walletDeduction || 0,
-            cashPayment: data.cashPayment || 0,
-            paymentMethod: data.paymentMethod || 'cash',
-            storeLocation: data.storeLocation,
-            processedBy: data.processedBy || (data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : new Date().toISOString()),
-            isCustomerRegistered: data.isCustomerRegistered || false,
-            previousBalance: data.previousBalance,
-            newBalance: data.newBalance,
-            createdAt: data.createdAt
+            user: data.user,
+            location: data.location,
+            date: data.date as Timestamp
           });
         });
 
         // Sort by date (newest first)
-        txns.sort((a, b) => {
-          const dateA = new Date(a.processedBy).getTime();
-          const dateB = new Date(b.processedBy).getTime();
+        fetchedActivities.sort((a, b) => {
+          const dateA = a.date instanceof Timestamp ? a.date.toMillis() : new Date(a.date).getTime();
+          const dateB = b.date instanceof Timestamp ? b.date.toMillis() : new Date(b.date).getTime();
           return dateB - dateA;
         });
 
-        setTransactions(txns);
-        setFilteredTransactions(txns);
+        setActivities(fetchedActivities);
+        setFilteredActivities(fetchedActivities);
       } catch (err) {
-        console.error('Error fetching transactions:', err);
-        setError('Failed to load transactions. Please try again.');
-        toast.error('Failed to load transactions');
+        console.error('Error fetching activities:', err);
+        setError('Failed to load activities. Please try again.');
+        toast.error('Failed to load activities');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchTransactions();
+    fetchActivities();
   }, [storeLocation]);
 
   // Apply filters
   useEffect(() => {
-    if (!transactions.length) return;
+    if (!activities.length) return;
 
     setIsFiltering(true);
-    let result = [...transactions];
+    let result = [...activities];
 
-    // Search filter (name or mobile)
+    // Filter by tab
+    if (activeTab === 'transactions') {
+      result = result.filter(activity => activity.type === 'transaction');
+    } else if (activeTab === 'recharges') {
+      result = result.filter(activity => activity.type === 'recharge');
+    }
+
+    // Search filter (user or description)
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(
-        (tx) =>
-          tx.customerName?.toLowerCase().includes(term) ||
-          tx.customerMobile?.includes(term)
+        (activity) =>
+        (activity.user?.toLowerCase().includes(term) ||
+          activity.description?.toLowerCase().includes(term))
       );
     }
 
@@ -134,19 +140,21 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
       if (start) start.setHours(0, 0, 0, 0);
       if (end) end.setHours(23, 59, 59, 999);
 
-      result = result.filter((tx) => {
-        const txDate = new Date(tx.processedBy);
-        
-        if (start && txDate < start) return false;
-        if (end && txDate > end) return false;
+      result = result.filter((activity) => {
+        const activityDate = activity.date instanceof Timestamp
+          ? activity.date.toDate()
+          : new Date(activity.date);
+
+        if (start && activityDate < start) return false;
+        if (end && activityDate > end) return false;
         return true;
       });
     }
 
-    setFilteredTransactions(result);
-    setCurrentPage(1); // Reset to first page when filters change
+    setFilteredActivities(result);
+    setCurrentPage(1);
     setIsFiltering(false);
-  }, [searchTerm, startDate, endDate, transactions]);
+  }, [searchTerm, startDate, endDate, activities, activeTab]);
 
   const handleClearFilters = () => {
     setSearchTerm('');
@@ -154,21 +162,20 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
     setEndDate('');
   };
 
-  const calculateTotal = (field: keyof SalesTransaction) => {
-    return filteredTransactions.reduce((sum, tx) => sum + (Number(tx[field]) || 0), 0);
+  const calculateTotal = () => {
+    return filteredActivities.reduce((sum, activity) => sum + (Number(activity.amount) || 0), 0);
   };
 
-  const formatTransactionDate = (dateString: string | Timestamp) => {
-    if (dateString instanceof Timestamp) {
-      return format(dateString.toDate(), 'MMM dd, yyyy hh:mm a');
-    }
-    
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'Invalid date';
-      return format(date, 'MMM dd, yyyy hh:mm a');
-    } catch {
-      return 'Invalid date';
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case 'transaction':
+        return <ShoppingCart className="h-4 w-4 mr-2" />;
+      case 'recharge':
+        return <Zap className="h-4 w-4 mr-2" />;
+      case 'signup':
+        return <UserPlus className="h-4 w-4 mr-2" />;
+      default:
+        return <Zap className="h-4 w-4 mr-2" />;
     }
   };
 
@@ -179,8 +186,8 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
           <ShoppingCart className="h-6 w-6 text-blue-600" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Transaction History</h2>
-          <p className="text-gray-600">View sales transactions at {storeLocation}</p>
+          <h2 className="text-2xl font-bold text-gray-900">Activity History</h2>
+          <p className="text-gray-600">View transactions and recharges at {storeLocation}</p>
         </div>
       </div>
 
@@ -189,15 +196,15 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Filter className="h-5 w-5 text-gray-600" />
-            Filter Transactions
+            Filter Activities
           </CardTitle>
           <CardDescription>
-            Showing {indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredTransactions.length)} of {filteredTransactions.length} transaction(s) for {storeLocation}
+            Showing {indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredActivities.length)} of {filteredActivities.length} activity(s) for {storeLocation}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="search">Customer Name / Mobile</Label>
+            <Label htmlFor="search">Search User/Description</Label>
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
@@ -254,183 +261,300 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
       </Card>
 
       {/* Stats Summary */}
-      {!isLoading && filteredTransactions.length > 0 && (
+      {!isLoading && filteredActivities.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="bg-blue-50">
             <CardHeader className="p-4">
-              <CardTitle className="text-sm font-medium text-blue-600">Total Transactions</CardTitle>
+              <CardTitle className="text-sm font-medium text-blue-600">Total Activities</CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0">
-              <p className="text-2xl font-bold">{filteredTransactions.length}</p>
+              <p className="text-2xl font-bold">{filteredActivities.length}</p>
             </CardContent>
           </Card>
           <Card className="bg-green-50">
             <CardHeader className="p-4">
-              <CardTitle className="text-sm font-medium text-green-600">Total Sales</CardTitle>
+              <CardTitle className="text-sm font-medium text-green-600">Total Amount</CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0">
-              <p className="text-2xl font-bold">₹{calculateTotal('amount').toFixed(2)}</p>
+              <p className="text-2xl font-bold">₹{calculateTotal().toFixed(2)}</p>
             </CardContent>
           </Card>
           <Card className="bg-purple-50">
             <CardHeader className="p-4">
-              <CardTitle className="text-sm font-medium text-purple-600">Coins Used</CardTitle>
+              <CardTitle className="text-sm font-medium text-purple-600">Transactions</CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0">
-              <p className="text-2xl font-bold">{calculateTotal('surabhiCoinsUsed')}</p>
+              <p className="text-2xl font-bold">
+                {filteredActivities.filter(a => a.type === 'transaction').length}
+              </p>
             </CardContent>
           </Card>
           <Card className="bg-amber-50">
             <CardHeader className="p-4">
-              <CardTitle className="text-sm font-medium text-amber-600">Wallet Deductions</CardTitle>
+              <CardTitle className="text-sm font-medium text-amber-600">Recharges</CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0">
-              <p className="text-2xl font-bold">₹{calculateTotal('walletDeduction').toFixed(2)}</p>
+              <p className="text-2xl font-bold">
+                {filteredActivities.filter(a => a.type === 'recharge').length}
+              </p>
             </CardContent>
           </Card>
         </div>
       )}
 
-      {/* Transaction List */}
-      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle>Sales Transactions</CardTitle>
-              <CardDescription>
-                Showing {filteredTransactions.length} transaction(s) for {storeLocation}
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {error ? (
-            <div className="text-center py-8 text-red-500">
-              <p>{error}</p>
-              <Button 
-                variant="outline" 
-                className="mt-4"
-                onClick={() => window.location.reload()}
-              >
-                Retry
-              </Button>
-            </div>
-          ) : isLoading ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-4">
-              <Loader2 className="h-8 w-8 animate-spin text-green-500" />
-              <p>Loading transactions...</p>
-            </div>
-          ) : isFiltering ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-4">
-              <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
-              <p>Applying filters...</p>
-            </div>
-          ) : filteredTransactions.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p className="text-lg font-medium mb-2">No transactions found</p>
-              <p className="mb-4">
-                {transactions.length === 0 
-                  ? 'No transactions recorded for this store yet.'
-                  : 'No transactions match your current filters.'}
-              </p>
-              {transactions.length > 0 && (
-                <Button variant="outline" onClick={handleClearFilters}>
-                  Clear Filters
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Mobile</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Coins Used</TableHead>
-                    <TableHead>Payment Method</TableHead>
-                    <TableHead className="text-right">Cash Paid</TableHead>
-                    <TableHead className="text-right">Wallet Deducted</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {currentRecords.map((tx) => (
-                    <TableRow key={tx.id} className="hover:bg-gray-50">
-                      <TableCell>
-                        {formatTransactionDate(tx.processedBy)}
-                      </TableCell>
-                      <TableCell className="font-medium">{tx.customerName || '-'}</TableCell>
-                      <TableCell>{tx.customerMobile || '-'}</TableCell>
-                      <TableCell className="text-right">₹{Number(tx.amount).toFixed(2)}</TableCell>
-                      <TableCell className="text-right">{tx.surabhiCoinsUsed || 0}</TableCell>
-                      <TableCell>{tx.paymentMethod || '-'}</TableCell>
-                      <TableCell className="text-right">
-                        {tx.cashPayment ? `₹${Number(tx.cashPayment).toFixed(2)}` : '-'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {tx.walletDeduction ? `₹${Number(tx.walletDeduction).toFixed(2)}` : '-'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <div className="flex items-center justify-between mt-4">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="recordsPerPage">Records per page:</Label>
-                  <select
-                    id="recordsPerPage"
-                    value={recordsPerPage}
-                    onChange={handleRecordsPerPageChange}
-                    className="border rounded-md px-2 py-1 text-sm"
-                  >
-                    <option value="5">5</option>
-                    <option value="10">10</option>
-                    <option value="20">20</option>
-                    <option value="50">50</option>
-                  </select>
-                </div>
-                
-                <div className="flex items-center gap-2">
+      {/* Activity List with Tabs */}
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'transactions' | 'recharges')}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="transactions">
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            Transactions
+          </TabsTrigger>
+          <TabsTrigger value="recharges">
+            <Zap className="h-4 w-4 mr-2" />
+            Recharges
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="transactions">
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm mt-4">
+            <CardContent>
+              {error ? (
+                <div className="text-center py-8 text-red-500">
+                  <p>{error}</p>
                   <Button
                     variant="outline"
-                    size="sm"
-                    onClick={() => paginate(currentPage - 1)}
-                    disabled={currentPage === 1}
+                    className="mt-4"
+                    onClick={() => window.location.reload()}
                   >
-                    Previous
+                    Retry
                   </Button>
-                  
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((number) => (
-                    <Button
-                      key={number}
-                      variant={currentPage === number ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => paginate(number)}
-                    >
-                      {number}
+                </div>
+              ) : isLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-4">
+                  <Loader2 className="h-8 w-8 animate-spin text-green-500" />
+                  <p>Loading activities...</p>
+                </div>
+              ) : isFiltering ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+                  <p>Applying filters...</p>
+                </div>
+              ) : filteredActivities.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p className="text-lg font-medium mb-2">No activities found</p>
+                  <p className="mb-4">
+                    {activities.length === 0
+                      ? 'No activities recorded for this store yet.'
+                      : 'No activities match your current filters.'}
+                  </p>
+                  {activities.length > 0 && (
+                    <Button variant="outline" onClick={handleClearFilters}>
+                      Clear Filters
                     </Button>
-                  ))}
-                  
+                  )}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>User</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {currentRecords.map((activity) => (
+                        <TableRow key={activity.id} className="hover:bg-gray-50">
+                          <TableCell>
+                            {formatTimestamp(activity.date)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              {getActivityIcon(activity.type)}
+                              {activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-medium">{activity.user || '-'}</TableCell>
+                          <TableCell>{activity.description || '-'}</TableCell>
+                          <TableCell className="text-right">
+                            {activity.amount ? `₹${Number(activity.amount).toFixed(2)}` : '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="recharges">
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm mt-4">
+            <CardContent>
+              {error ? (
+                <div className="text-center py-8 text-red-500">
+                  <p>{error}</p>
                   <Button
                     variant="outline"
-                    size="sm"
-                    onClick={() => paginate(currentPage + 1)}
-                    disabled={currentPage === totalPages}
+                    className="mt-4"
+                    onClick={() => window.location.reload()}
                   >
-                    Next
+                    Retry
                   </Button>
                 </div>
-                
-                <div className="text-sm text-gray-600">
-                  Showing {indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredTransactions.length)} of {filteredTransactions.length} records
+              ) : isLoading ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-4">
+                  <Loader2 className="h-8 w-8 animate-spin text-green-500" />
+                  <p>Loading activities...</p>
                 </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              ) : isFiltering ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+                  <p>Applying filters...</p>
+                </div>
+              ) : filteredActivities.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Zap className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p className="text-lg font-medium mb-2">No activities found</p>
+                  <p className="mb-4">
+                    {activities.length === 0
+                      ? 'No activities recorded for this store yet.'
+                      : 'No activities match your current filters.'}
+                  </p>
+                  {activities.length > 0 && (
+                    <Button variant="outline" onClick={handleClearFilters}>
+                      Clear Filters
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>User</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {currentRecords.map((activity) => (
+                        <TableRow key={activity.id} className="hover:bg-gray-50">
+                          <TableCell>
+                            {formatTimestamp(activity.date)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              {getActivityIcon(activity.type)}
+                              {activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-medium">{activity.user || '-'}</TableCell>
+                          <TableCell>{activity.description || '-'}</TableCell>
+                          <TableCell className="text-right">
+                            {activity.amount ? `₹${Number(activity.amount).toFixed(2)}` : '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Pagination */}
+      {filteredActivities.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-4">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="recordsPerPage">Records per page:</Label>
+            <Select
+              value={recordsPerPage.toString()}
+              onValueChange={handleRecordsPerPageChange}
+            >
+              <SelectTrigger className="w-[100px]">
+                <SelectValue placeholder="Select" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5</SelectItem>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => paginate(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              // Show first, last and nearby pages
+              if (totalPages <= 5) {
+                return i + 1;
+              }
+              if (currentPage <= 3) {
+                return i + 1;
+              }
+              if (currentPage >= totalPages - 2) {
+                return totalPages - 4 + i;
+              }
+              return currentPage - 2 + i;
+            }).map((number) => (
+              <Button
+                key={number}
+                variant={currentPage === number ? "default" : "outline"}
+                size="sm"
+                onClick={() => paginate(number)}
+              >
+                {number}
+              </Button>
+            ))}
+
+            {totalPages > 5 && currentPage < totalPages - 2 && (
+              <span className="px-2">...</span>
+            )}
+
+            {totalPages > 5 && currentPage < totalPages - 2 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => paginate(totalPages)}
+              >
+                {totalPages}
+              </Button>
+            )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => paginate(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </Button>
+          </div>
+
+          <div className="text-sm text-gray-600">
+            Showing {indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredActivities.length)} of {filteredActivities.length} records
+          </div>
+        </div>
+      )}
     </div>
   );
 };
