@@ -743,6 +743,21 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                           <span className="font-bold text-green-600">₹{saleCalculation.cashPayment}</span>
                         </div>
                       )}
+
+                      {(paymentMethod === 'cash' || paymentMethod === 'mixed') && saleCalculation.surabhiCoinsEarned > 0 && (
+                        <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
+                          <span className="text-sm font-medium text-indigo-900">Surabhi Coins Earned  {storeDetails.surabhiCommission}%</span>
+                          <span className="font-bold text-indigo-600">+{saleCalculation.surabhiCoinsEarned} </span>
+                        </div>
+                      )}
+
+                      {(paymentMethod === 'cash' || paymentMethod === 'mixed') && saleCalculation.goSevaContribution > 0 && (
+                        <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
+                          <span className="text-sm font-medium text-indigo-900">Go Seva Contribution  {storeDetails.sevaCommission}%</span>
+                          <span className="font-bold text-indigo-600">+{saleCalculation.goSevaContribution} </span>
+                        </div>
+                      )}
+
                       {(paymentMethod === 'cash' || paymentMethod === 'mixed') && saleCalculation.referrerSurabhiCoinsEarned > 0 && selectedCustomer.referredBy && (
                         <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
                           <span className="text-sm font-medium text-indigo-900">Referral Bonus  {storeDetails.referralCommission}%</span>
