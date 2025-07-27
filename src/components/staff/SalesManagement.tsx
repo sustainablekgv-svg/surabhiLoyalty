@@ -85,7 +85,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       setEnteredTPIN("");
       handleSale();
     } else {
-      alert("Invalid TPIN. Please try again.");
+      toast.error("Invalid TPIN. Please try again.");
       setEnteredTPIN("");
     }
   };
@@ -173,7 +173,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     let cashPayment = 0;
     let surabhiCoinsEarned = 0;
     let referrerSurabhiCoinsEarned = 0;
-    let goSevaContribution = Math.floor(saleAmount * (storeDetails.sevaCommission / 100));
+    let goSevaContribution = 0;
 
     const remainingAfterCoins = saleAmount - coinsToUse;
 
@@ -199,6 +199,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         referrerSurabhiCoinsEarned = Math.floor(
           cashPayment * (storeDetails.referralCommission / 100)
         );
+        goSevaContribution = Math.floor(cashPayment * (storeDetails.sevaCommission / 100));
       } else {
         return { isValid: false, error: 'Mixed is not needed' };
       }
@@ -206,6 +207,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       cashPayment = remainingAfterCoins;
       surabhiCoinsEarned = Math.floor(cashPayment * (storeDetails.cashOnlyCommission / 100));
       referrerSurabhiCoinsEarned += Math.floor(saleAmount * (storeDetails.referralCommission / 100));
+      goSevaContribution = Math.floor(cashPayment * (storeDetails.sevaCommission / 100));
     }
 
     return {
@@ -337,6 +339,18 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           // Consider adding error handling/retry logic here
         }
       }
+
+      // Add seva contribution activity record for cash and mixed payments
+      if ((paymentMethod === 'cash' || paymentMethod === 'mixed') && saleCalculation.goSevaContribution > 0) {
+        await addActivityRecord({
+          type: 'contribution',
+          description: `Seva contribution of ₹${saleCalculation.goSevaContribution} from ${selectedCustomer.name}'s purchase`,
+          amount: saleCalculation.goSevaContribution,
+          user: selectedCustomer.mobile,
+          location: storeLocation
+        });
+      }
+
       // Add AccountTx record(s) based on payment method
       if (paymentMethod === "wallet") {
         const adminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
