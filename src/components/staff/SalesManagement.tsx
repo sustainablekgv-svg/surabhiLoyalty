@@ -68,6 +68,28 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
   const [isFetchingCustomers, setIsFetchingCustomers] = useState(false);
   const [storeDetails, setStoreDetails] = useState<StoreType | null>(null);
 
+  const [showTPINModal, setShowTPINModal] = useState(false);
+  const [enteredTPIN, setEnteredTPIN] = useState("");
+
+  const handleSaleWithTPIN = async () => {
+    if (selectedCustomer?.tpin) {
+      setShowTPINModal(true);
+    } else {
+      handleSale();
+    }
+  };
+
+  const verifyTPINAndProcess = () => {
+    if (enteredTPIN === selectedCustomer?.tpin) {
+      setShowTPINModal(false);
+      setEnteredTPIN("");
+      handleSale();
+    } else {
+      alert("Invalid TPIN. Please try again.");
+      setEnteredTPIN("");
+    }
+  };
+
   // Fetch customers from Firestore
   useEffect(() => {
     const fetchData = async () => {
@@ -717,20 +739,56 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                   </div>
                 )}
 
-                <Button
-                  onClick={handleSale}
-                  disabled={isLoading || !saleAmount ||
-                    (selectedCustomer && !paymentMethod) ||
-                    (saleCalculation && !saleCalculation.isValid)}
-                  className="w-full h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium"
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <CheckCircle className="h-4 w-4 mr-2" />
+                <>
+                  <Button
+                    onClick={handleSaleWithTPIN}
+                    disabled={isLoading || !saleAmount ||
+                      (selectedCustomer && !paymentMethod) ||
+                      (saleCalculation && !saleCalculation.isValid)}
+                    className="w-full h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                    )}
+                    Process Sale
+                  </Button>
+
+                  {/* TPIN Verification Modal */}
+                  {showTPINModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                      <div className="bg-white p-6 rounded-lg max-w-md w-full">
+                        <h3 className="text-lg font-medium mb-4">TPIN Verification</h3>
+                        <p className="mb-4">Please enter the customer's TPIN to proceed with the sale.</p>
+                        <input
+                          type="password"
+                          value={enteredTPIN}
+                          onChange={(e) => setEnteredTPIN(e.target.value)}
+                          className="w-full p-2 border rounded mb-4"
+                          placeholder="Enter TPIN"
+                        />
+                        <div className="flex justify-end space-x-2">
+                          <button
+                            onClick={() => {
+                              setShowTPINModal(false);
+                              setEnteredTPIN("");
+                            }}
+                            className="px-4 py-2 border rounded"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={verifyTPINAndProcess}
+                            className="px-4 py-2 bg-green-600 text-white rounded"
+                          >
+                            Verify
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   )}
-                  Process Sale
-                </Button>
+                </>
               </>
             ) : (
               <div className="text-center py-8 text-gray-500">
