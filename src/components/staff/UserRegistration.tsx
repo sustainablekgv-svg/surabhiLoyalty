@@ -15,21 +15,21 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { auth, db } from '@/lib/firebase';
-import { 
+import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   signInAnonymously,
   User as FirebaseUser
 } from 'firebase/auth';
-import { 
-  doc, 
-  setDoc, 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  updateDoc, 
-  arrayUnion, 
+import {
+  doc,
+  setDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  updateDoc,
+  arrayUnion,
   Timestamp
 } from 'firebase/firestore';
 
@@ -83,28 +83,31 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
             where('mobile', '==', formData.referredBy)
           );
           const querySnapshot = await getDocs(referralQuery);
-          
+
           if (!querySnapshot.empty) {
-          const referralData = querySnapshot.docs[0].data() as Customer;
+            const referralData = querySnapshot.docs[0].data() as Customer;
             console.log("THe referral Data is", referralData);
-          // Check if wallet recharge is done
-          if (referralData.walletRechargeDone === false || referralData.saleElgibility == false) {
-          setReferralName(null);
-          if(referralData.walletRechargeDone === false){
-          toast.error('This customer is not eligible for referral (wallet recharge not done)');
-          }else{
-          toast.error('This customer is not eligible for referral (no sale is done)');
-          }} 
-          else {
-          setReferralName(referralData.name);
-          setIsElgibleForReferral(true);
-          toast.success(`Referral found: ${referralData.name}`);
-          }
+            // Check if wallet recharge is done OR sale eligibility is true
+            if (referralData.walletRechargeDone === true || referralData.saleElgibility === true) {
+              setReferralName(referralData.name);
+              setIsElgibleForReferral(true);
+              toast.success(`Referral found: ${referralData.name}`);
+            } else {
+              setReferralName(null);
+              if (referralData.walletRechargeDone === false && referralData.saleElgibility === false) {
+                toast.error('This customer is not eligible for referral (wallet recharge not done and no sale is done)');
+              } else if (referralData.walletRechargeDone === false) {
+                toast.error('This customer is not eligible for referral (wallet recharge not done)');
+              } else {
+                toast.error('This customer is not eligible for referral (no sale is done)');
+              }
+            }
           } else {
-          setReferralName(null);
-          toast.error('No customer found with this mobile number');
+            setReferralName(null);
+            toast.error('No customer found with this mobile number');
           }
-        } catch (error) {
+        }
+        catch (error) {
           console.error('Error fetching referral:', error);
           toast.error('Failed to check referral');
           setReferralName(null);
@@ -222,7 +225,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
         referralSurabhi: null,
         referredUsers: null,
         quarterlyPurchaseTotal: 0,
-        coinsFrozen:true,
+        coinsFrozen: true,
         currentQuarterStart: null,
         lastQuarterCheck: null
       };
@@ -306,7 +309,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
     if (!formData.name || !formData.mobile || !formData.email || !formData.password) {
       toast.error('Please fill name, mobile and email first');
       return;
-    } 
+    }
     const tpin = Math.floor(1000 + Math.random() * 9000).toString();
     setFormData({ ...formData, tpin });
     toast.success('4-digit TPIN generated!');
@@ -411,11 +414,10 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                       type="button"
                       onClick={generatePassword}
                       disabled={!formData.name || !formData.mobile || !formData.email}
-                      className={`text-xs px-2 py-1 rounded ${
-                        !formData.name || !formData.mobile || !formData.email
-                          ? 'text-gray-400 cursor-not-allowed'
-                          : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
-                      }`}
+                      className={`text-xs px-2 py-1 rounded ${!formData.name || !formData.mobile || !formData.email
+                        ? 'text-gray-400 cursor-not-allowed'
+                        : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+                        }`}
                     >
                       Generate Password
                     </button>
@@ -451,11 +453,10 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                       type="button"
                       onClick={generateTPIN}
                       disabled={!formData.name || !formData.mobile || !formData.email || !formData.password}
-                      className={`text-xs px-2 py-1 rounded ${
-                        !formData.name || !formData.mobile || !formData.email || !formData.password
-                          ? 'text-gray-400 cursor-not-allowed'
-                          : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
-                      }`}
+                      className={`text-xs px-2 py-1 rounded ${!formData.name || !formData.mobile || !formData.email || !formData.password
+                        ? 'text-gray-400 cursor-not-allowed'
+                        : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+                        }`}
                     >
                       Generate TPIN
                     </button>
@@ -488,10 +489,11 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                       placeholder="Enter referrer's mobile number"
                       value={formData.referredBy}
                       onChange={(e) => {
-                        if(formData.referredBy.length == 10){
+                        if (formData.referredBy.length == 10) {
                           setIsReferralEntered(true);
                         }
-                        setFormData({ ...formData, referredBy: e.target.value })}}
+                        setFormData({ ...formData, referredBy: e.target.value })
+                      }}
                       className="w-full pl-10 pr-10 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       maxLength={10}
                     />

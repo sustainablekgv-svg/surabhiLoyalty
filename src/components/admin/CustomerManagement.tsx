@@ -8,11 +8,11 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { doc, query, updateDoc, where } from 'firebase/firestore';
-import { 
-  Search, 
-  Filter, 
-  Users, 
-  Phone, 
+import {
+  Search,
+  Filter,
+  Users,
+  Phone,
   MapPin,
   Wallet,
   Coins,
@@ -54,40 +54,40 @@ export const CustomerManagement = () => {
       try {
         const querySnapshot = await getDocs(collection(db, 'customers'));
         const customersData: Customer[] = [];
-        
+
         querySnapshot.forEach((doc) => {
           const data = doc.data();
           customersData.push({
-          name: data.name,
-          mobile: data.mobile,
-          email: data.email || '',
-          storeLocation: data.storeLocation || 'Unassigned',
-          walletBalance: data.walletBalance || 0,
-          walletRechargeDone: data.walletRechargeDone || false,
-          walletBalanceCurrentMonth: data.walletBalanceCurrentMonth || 0,
-          role: data.role || 'customer',
-          walletId: data.walletId || '',
-          surabhiCoins: data.surabhiCoins || 0,
-          surabhiCoinsCurrentMonth: data.surabhiCoinsCurrentMonth || 0,
-          sevaCoinsTotal: data.sevaCoinsTotal || 0,
-          sevaCoinsCurrentMonth: data.sevaCoinsCurrentMonth || 0,
-          referredBy: data.referredBy || null,
-          saleElgibility: data.saleElgibility || false,
-          referralSurabhi: data.referralSurabhi || 0,
-          referredUsers: (data.referredUsers || []).map((ref: any) => ({
-          mobile: ref.mobile,
-          name: ref.name || '',
-          referralDate: ref.referralDate || Timestamp.now()
-          })),
-          registered: data.registered ?? false,
-          lastTransactionDate: data.lastTransactionDate || Timestamp.now(),
-          createdAt: data.createdAt || Timestamp.now(),
-          customerPassword: data.customerPassword || '',
-          tpin: data.tpin || '',
-          quarterlyPurchaseTotal: data.quarterlyPurchaseTotal || 0,
-          coinsFrozen: data.coinsFrozen || false,
-          currentQuarterStart: data.currentQuarterStart || null,
-          lastQuarterCheck: data.lastQuarterCheck|| null
+            name: data.name,
+            mobile: data.mobile,
+            email: data.email || '',
+            storeLocation: data.storeLocation || 'Unassigned',
+            walletBalance: data.walletBalance || 0,
+            walletRechargeDone: data.walletRechargeDone || false,
+            walletBalanceCurrentMonth: data.walletBalanceCurrentMonth || 0,
+            role: data.role || 'customer',
+            walletId: data.walletId || '',
+            surabhiCoins: data.surabhiCoins || 0,
+            surabhiCoinsCurrentMonth: data.surabhiCoinsCurrentMonth || 0,
+            sevaCoinsTotal: data.sevaCoinsTotal || 0,
+            sevaCoinsCurrentMonth: data.sevaCoinsCurrentMonth || 0,
+            referredBy: data.referredBy || null,
+            saleElgibility: data.saleElgibility || false,
+            referralSurabhi: data.referralSurabhi || 0,
+            referredUsers: (data.referredUsers || []).map((ref: any) => ({
+              mobile: ref.mobile,
+              name: ref.name || '',
+              referralDate: ref.referralDate || Timestamp.now()
+            })),
+            registered: data.registered ?? false,
+            lastTransactionDate: data.lastTransactionDate || Timestamp.now(),
+            createdAt: data.createdAt || Timestamp.now(),
+            customerPassword: data.customerPassword || '',
+            tpin: data.tpin || '',
+            quarterlyPurchaseTotal: data.quarterlyPurchaseTotal || 0,
+            coinsFrozen: data.coinsFrozen || false,
+            currentQuarterStart: data.currentQuarterStart || null,
+            lastQuarterCheck: data.lastQuarterCheck || null
           });
         });
         setCustomers(customersData);
@@ -102,27 +102,27 @@ export const CustomerManagement = () => {
       try {
         const querySnapshot = await getDocs(collection(db, 'stores'));
         const storesData: StoreType[] = querySnapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-        id: doc.id,
-        name: data.name,
-        storeLocation: data.location || data.storeLocation || '',
-        address: data.address || '',
-        referralCommission: data.referralCommission ?? 0,
-        surabhiCommission: data.surabhiCommission ?? 0,
-        sevaCommission: data.sevaCommission ?? 0,
-        cashOnlyCommission: data.cashOnlyCommission ?? 0,
-        contactNumber: data.contactNumber || '',
-        status: data.status === 'active' || data.status === 'inactive' 
-        ? data.status 
-        : 'inactive', // Default to inactive if invalid status
-        createdAt: data.createdAt instanceof Timestamp 
-        ? data.createdAt 
-        : Timestamp.fromDate(new Date(data.createdAt || new Date())),
-        updatedAt: data.updatedAt instanceof Timestamp 
-        ? data.updatedAt 
-        : Timestamp.fromDate(new Date(data.updatedAt || new Date()))
-        };
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: data.name,
+            storeLocation: data.location || data.storeLocation || '',
+            address: data.address || '',
+            referralCommission: data.referralCommission ?? 0,
+            surabhiCommission: data.surabhiCommission ?? 0,
+            sevaCommission: data.sevaCommission ?? 0,
+            cashOnlyCommission: data.cashOnlyCommission ?? 0,
+            contactNumber: data.contactNumber || '',
+            status: data.status === 'active' || data.status === 'inactive'
+              ? data.status
+              : 'inactive', // Default to inactive if invalid status
+            createdAt: data.createdAt instanceof Timestamp
+              ? data.createdAt
+              : Timestamp.fromDate(new Date(data.createdAt || new Date())),
+            updatedAt: data.updatedAt instanceof Timestamp
+              ? data.updatedAt
+              : Timestamp.fromDate(new Date(data.updatedAt || new Date()))
+          };
         });
         setStores(storesData);
       } catch (error) {
@@ -138,13 +138,13 @@ export const CustomerManagement = () => {
 
   const filteredCustomers = customers.filter(customer => {
     const matchesSearch = customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         customer.mobile.includes(searchTerm) ||
-                         customer.email.toLowerCase().includes(searchTerm.toLowerCase());
-    
+      customer.mobile.includes(searchTerm) ||
+      customer.email.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesStore = filterStore === 'all' || customer.storeLocation === filterStore;
     // const matchesStatus = filterStatus === 'all' || 
     //                      (filterStatus === 'active' ? customer.registered : !customer.registered);
-    
+
     return matchesSearch && matchesStore;
   });
 
@@ -184,12 +184,14 @@ export const CustomerManagement = () => {
       surabhiCoins: customer.surabhiCoins,
       sevaCoinsTotal: customer.sevaCoinsTotal,
       registered: customer.registered,
-      tpin: customer.tpin
+      tpin: customer.tpin,
+      customerPassword: customer.customerPassword
     });
     setIsEditDialogOpen(true);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("THe line 194 is", e.target)
     const { name, value } = e.target;
     setEditedData(prev => ({
       ...prev,
@@ -214,78 +216,78 @@ export const CustomerManagement = () => {
   };
 
   const saveCustomerChanges = async () => {
-  if (!editCustomer?.mobile) {
-    toast({
-      title: "Error",
-      description: "No customer mobile number provided",
-      variant: "destructive",
-    });
-    return;
-  }
-
-  try {
-    setIsSaving(true);
-    
-    // Query customers by mobile number
-    const customersRef = collection(db, 'customers');
-    console.log("THe line 219 data is", customersRef);
-    const q = query(customersRef, where('mobile', '==', editCustomer.mobile));
-    const querySnapshot = await getDocs(q);
-        console.log("Query results:", {
-        size: querySnapshot.size,
-        docs: querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        data: doc.data()
-        }))
-        });
-    
-    if (querySnapshot.empty) {
+    if (!editCustomer?.mobile) {
       toast({
-        title: "Failure",
-        description: "No customer found with this mobile number",
+        title: "Error",
+        description: "No customer mobile number provided",
         variant: "destructive",
       });
       return;
     }
-    
-    // Get the first matching document (assuming mobile numbers are unique)
-    const customerDoc = querySnapshot.docs[0];
-    
-    // Update the document
-    await updateDoc(customerDoc.ref, {
-      name: editedData.name,
-      email: editedData.email,
-      storeLocation: editedData.storeLocation,
-      walletBalance: editedData.walletBalance,
-      surabhiCoins: editedData.surabhiCoins,
-      sevaCoinsTotal: editedData.sevaCoinsTotal,
-      registered: editedData.registered,
-      tpin: editedData.tpin,
-      updatedAt: Timestamp.fromDate(new Date())
-    });
 
-    // Update local state
-    setCustomers(prev => prev.map(c => 
-      c.mobile === editCustomer.mobile ? { ...c, ...editedData } : c
-    ));
+    try {
+      setIsSaving(true);
 
-    toast({
-      title: "Success",
-      description: "Customer details updated successfully",
-      variant: "default",
-    });
-    setIsEditDialogOpen(false);
-  } catch (error) {
-    console.error("Error updating customer:", error);
-    toast({
-      title: "Error",
-      description: "Failed to update customer details",
-      variant: "destructive",
-    });
-  } finally {
-    setIsSaving(false);
-  }
-};
+      // Query customers by mobile number
+      const customersRef = collection(db, 'customers');
+      console.log("THe line 219 data is", customersRef);
+      const q = query(customersRef, where('mobile', '==', editCustomer.mobile));
+      const querySnapshot = await getDocs(q);
+      console.log("Query results:", {
+        size: querySnapshot.size,
+        docs: querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          data: doc.data()
+        }))
+      });
+
+      if (querySnapshot.empty) {
+        toast({
+          title: "Failure",
+          description: "No customer found with this mobile number",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Get the first matching document (assuming mobile numbers are unique)
+      const customerDoc = querySnapshot.docs[0];
+
+      // Update the document
+      await updateDoc(customerDoc.ref, {
+        name: editedData.name,
+        email: editedData.email,
+        storeLocation: editedData.storeLocation,
+        walletBalance: editedData.walletBalance,
+        surabhiCoins: editedData.surabhiCoins,
+        sevaCoinsTotal: editedData.sevaCoinsTotal,
+        registered: editedData.registered,
+        tpin: editedData.tpin,
+        updatedAt: Timestamp.fromDate(new Date())
+      });
+
+      // Update local state
+      setCustomers(prev => prev.map(c =>
+        c.mobile === editCustomer.mobile ? { ...c, ...editedData } : c
+      ));
+
+      toast({
+        title: "Success",
+        description: "Customer details updated successfully",
+        variant: "default",
+      });
+      setIsEditDialogOpen(false);
+    } catch (error) {
+      console.error("Error updating customer:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update customer details",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -303,7 +305,7 @@ export const CustomerManagement = () => {
           <DialogHeader>
             <DialogTitle>Customer Details</DialogTitle>
           </DialogHeader>
-          
+
           {selectedCustomer && (
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
@@ -337,7 +339,7 @@ export const CustomerManagement = () => {
                 <div className="space-y-2 mt-2 text-sm">
                   <p><span className="text-muted-foreground">Referred By:</span> {selectedCustomer.referredBy || 'N/A'}</p>
                   <p><span className="text-muted-foreground">Referral Income:</span> {selectedCustomer.referralSurabhi ? `₹${selectedCustomer.referralSurabhi.toFixed(2)}` : 'N/A'}</p>
-                  
+
                   {selectedCustomer.referredUsers && selectedCustomer.referredUsers.length > 0 && (
                     <div>
                       <p className="font-medium mt-2">Referred Users:</p>
@@ -346,10 +348,10 @@ export const CustomerManagement = () => {
                           <div key={index} className="flex justify-between py-1 border-b last:border-b-0">
                             <span>{user.mobile}</span>
                             <span className="text-muted-foreground">
-                            {user.referralDate instanceof Timestamp 
-                              ? user.referralDate.toDate().toLocaleString() 
-                              : new Date(user.referralDate).toLocaleString()}
-                          </span>
+                              {user.referralDate instanceof Timestamp
+                                ? user.referralDate.toDate().toLocaleString()
+                                : new Date(user.referralDate).toLocaleString()}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -375,7 +377,8 @@ export const CustomerManagement = () => {
                 <div>
                   <h4 className="font-medium">Security</h4>
                   <div className="space-y-2 mt-2 text-sm">
-                    <p><span className="text-muted-foreground">TPIN Set:</span> {selectedCustomer.tpin ? 'Yes' : 'No'}</p>
+                    <p><span className="text-muted-foreground">Login Password:</span> {selectedCustomer.customerPassword}</p>
+                    <p><span className="text-muted-foreground">TPIN:</span> {selectedCustomer.tpin}</p>
                   </div>
                 </div>
               </div>
@@ -393,7 +396,7 @@ export const CustomerManagement = () => {
               Make changes to customer profile here. Click save when you're done.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="name" className="text-right">
@@ -498,6 +501,21 @@ export const CustomerManagement = () => {
             </div>
 
             <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="customerPassword" className="text-right">
+                Login Password
+              </Label>
+              <Input
+                id="customerPassword"
+                name="customerPassword"
+                type="text"
+                value={editedData.customerPassword || ''}
+                onChange={handleInputChange}
+                className="col-span-3"
+                placeholder="Set new Password"
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tpin" className="text-right">
                 Transaction PIN
               </Label>
@@ -532,14 +550,14 @@ export const CustomerManagement = () => {
           </div>
 
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setIsEditDialogOpen(false)}
               disabled={isSaving}
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={saveCustomerChanges}
               disabled={isSaving}
             >
@@ -644,7 +662,7 @@ export const CustomerManagement = () => {
                 {filteredCustomers.length} customers found
               </CardDescription>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -655,7 +673,7 @@ export const CustomerManagement = () => {
                   className="pl-10 w-full sm:w-64"
                 />
               </div>
-              
+
               <Select value={filterStore} onValueChange={setFilterStore}>
                 <SelectTrigger className="w-full sm:w-48">
                   <div className="flex items-center gap-2">
@@ -672,12 +690,12 @@ export const CustomerManagement = () => {
                   ))}
                 </SelectContent>
               </Select>
-              
+
               {/* <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger className="w-full sm:w-36">
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger> */}
-                {/* <SelectContent>
+              {/* <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="active">Registered</SelectItem>
                   <SelectItem value="inactive">Guests</SelectItem>
@@ -686,7 +704,7 @@ export const CustomerManagement = () => {
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent>
           <div className="space-y-4">
             {filteredCustomers.length === 0 ? (
@@ -708,7 +726,7 @@ export const CustomerManagement = () => {
                         </Badge>
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
                       <div className="flex items-center gap-2 text-gray-600">
                         <Phone className="h-3 w-3" />
@@ -728,20 +746,20 @@ export const CustomerManagement = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex gap-2 w-full lg:w-auto">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       className="flex-1 lg:flex-none"
                       onClick={() => viewCustomerDetails(customer)}
                     >
                       <Eye className="h-3 w-3 mr-1" />
                       View Details
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       className="flex-1 lg:flex-none"
                       onClick={() => handleEditClick(customer)}
                     >
