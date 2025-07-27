@@ -277,9 +277,10 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         storeName: storeDetails.name,
         type: 'recharge',
         amount: rechargeAmountNum,
-        debit: rechargeAmountNum,
-        credit: 0,
-        balance: rechargeAmountNum, // Since credit is 0, balance equals debit
+        credit: rechargeAmountNum,
+        adminCut: 0,
+        debit: 0,
+        balance: rechargeAmountNum,
         description: `Recharge for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
         settled: false
       };

@@ -46,12 +46,12 @@ import {
 import { serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/hooks/auth-context';
 
-const calculateAdminCut = (saleAmount: number, storeDetails: StoreType) => {
+const calculateAdminCut = (saleAmount: number, storeDetails: StoreType, surabhiCoinsToUse: number) => {
   if (!storeDetails) return 0;
-
-  const referralAmount = Math.floor(saleAmount * (storeDetails.referralCommission / 100));
-  const sevaAmount = Math.floor(saleAmount * (storeDetails.sevaCommission / 100));
-  const surabhiAmount = Math.floor(saleAmount * (storeDetails.surabhiCommission / 100));
+  const remainingAmount = saleAmount - surabhiCoinsToUse;
+  const surabhiAmount = Math.floor(remainingAmount * (storeDetails.surabhiCommission / 100));
+  const referralAmount = Math.floor(remainingAmount * (storeDetails.referralCommission / 100));
+  const sevaAmount = Math.floor(remainingAmount * (storeDetails.sevaCommission / 100));
 
   return referralAmount + sevaAmount + surabhiAmount;
 };
@@ -357,32 +357,33 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       }
 
       // Add AccountTx record(s) based on payment method
-      if (paymentMethod === "wallet") {
-        const adminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
+      // if (paymentMethod === "wallet") {
+      //   const adminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
+      //   const accountTxData: Omit<AccountTx, 'id'> = {
+      //     date: Timestamp.fromDate(new Date()),
+      //     storeName: storeDetails.name,
+      //     type: 'sale',
+      //     amount: saleCalculation.totalAmount,
+      //     debit: 0,
+      //     adminCut: adminCut,
+      //     credit: saleCalculation.totalAmount - adminCut,
+      //     balance: saleCalculation.totalAmount - adminCut,
+      //     description: `Wallet sale for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
+      //     settled: false
+      //   };
+      //   await addDoc(collection(db, 'AccountTx'), accountTxData);
+      // } else 
+      if (paymentMethod === 'cash') {
+        const adminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails, surabhiCoinsToUse);
         const accountTxData: Omit<AccountTx, 'id'> = {
           date: Timestamp.fromDate(new Date()),
           storeName: storeDetails.name,
           type: 'sale',
           amount: saleCalculation.totalAmount,
-          debit: 0,
+          credit: saleCalculation.cashPayment,
+          debit: saleCalculation.totalAmount - saleCalculation.surabhiCoinsUsed - adminCut,
           adminCut: adminCut,
-          credit: saleCalculation.totalAmount - adminCut,
-          balance: saleCalculation.totalAmount - adminCut,
-          description: `Wallet sale for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
-          settled: false
-        };
-        await addDoc(collection(db, 'AccountTx'), accountTxData);
-      } else if (paymentMethod === 'cash') {
-        const adminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
-        const accountTxData: Omit<AccountTx, 'id'> = {
-          date: Timestamp.fromDate(new Date()),
-          storeName: storeDetails.name,
-          type: 'sale',
-          amount: saleCalculation.totalAmount,
-          debit: saleCalculation.cashPayment,
-          credit: saleCalculation.totalAmount - adminCut,
-          adminCut: adminCut,
-          balance: saleCalculation.totalAmount - adminCut + saleCalculation.cashPayment,
+          balance: saleCalculation.totalAmount - saleCalculation.surabhiCoinsUsed - adminCut + saleCalculation.cashPayment,
           description: `Cash sale for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
           settled: false
         };
@@ -392,7 +393,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
         // 1. Wallet portion record
         if (saleCalculation.walletDeduction > 0) {
-          const walletAdminCut = calculateAdminCut(saleCalculation.walletDeduction, storeDetails);
+          const walletAdminCut = calculateAdminCut(saleCalculation.walletDeduction, storeDetails, saleCalculation.surabhiCoinsUsed);
           const walletTxData: Omit<AccountTx, 'id'> = {
             date: Timestamp.fromDate(new Date()),
             storeName: storeDetails.name,
