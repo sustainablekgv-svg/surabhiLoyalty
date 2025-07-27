@@ -1,33 +1,33 @@
 import { useState, useEffect } from 'react';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
 } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  RefreshCw, 
-  Loader2, 
-  Search, 
-  ChevronLeft, 
+import {
+  RefreshCw,
+  Loader2,
+  Search,
+  ChevronLeft,
   ChevronRight,
   Check,
   X,
   Edit,
   Plus
 } from 'lucide-react';
-import { 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  orderBy, 
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  orderBy,
   Timestamp,
   updateDoc,
   doc,
@@ -82,7 +82,7 @@ const Accounts = () => {
   const fetchAccountData = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch stores
       const storesSnapshot = await getDocs(collection(db, 'stores'));
       const storesData = storesSnapshot.docs.map(doc => ({
@@ -90,25 +90,25 @@ const Accounts = () => {
         ...doc.data()
       })) as StoreType[];
       setStores(storesData);
-      
+
       // Fetch transactions
       const txQuery = query(
         collection(db, 'AccountTx'),
         orderBy('date', 'desc')
       );
       const txSnapshot = await getDocs(txQuery);
-      
+
       // Process data
       const transactions: AccountTx[] = [];
       const storeSummaries: Record<string, StoreSummary> = {};
       let totalBalance = 0;
       let totalCredits = 0;
       let totalDebits = 0;
-      
+
       txSnapshot.forEach(doc => {
         const txData = doc.data();
         const txDate = txData.date instanceof Timestamp ? txData.date.toDate() : new Date(txData.date);
-        
+
         const tx: AccountTx = {
           id: doc.id,
           ...txData,
@@ -122,9 +122,9 @@ const Accounts = () => {
           storeName: txData.storeName || '',
           type: txData.type || 'other'
         };
-        
+
         transactions.push(tx);
-        
+
         // Update store summary
         if (!storeSummaries[tx.storeName]) {
           storeSummaries[tx.storeName] = {
@@ -132,14 +132,14 @@ const Accounts = () => {
             currentBalance: 0
           };
         }
-        
+
         // Update totals
         totalCredits += tx.credit;
         totalDebits += tx.debit;
         totalBalance += tx.credit - tx.debit;
         storeSummaries[tx.storeName].currentBalance += tx.credit - tx.debit;
       });
-      
+
       // Prepare admin deck
       const adminDeck: AdminDeck = {
         totalBalance,
@@ -151,9 +151,9 @@ const Accounts = () => {
           netFlow: totalCredits - totalDebits
         }
       };
-      
+
       setAccountData(adminDeck);
-      
+
     } catch (err) {
       console.error('Error fetching account data:', err);
       setError('Failed to load account data');
@@ -205,7 +205,7 @@ const Accounts = () => {
       };
 
       await addDoc(collection(db, 'AccountTx'), newTx);
-      
+
       toast.success('Settlement transaction added successfully');
       fetchAccountData();
       setIsSettlementDialogOpen(false);
@@ -226,7 +226,7 @@ const Accounts = () => {
 
   const filteredTransactions = accountData?.recentTransactions.filter(tx => {
     const matchesSearch = tx.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         tx.storeName.toLowerCase().includes(searchTerm.toLowerCase());
+      tx.storeName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStore = selectedStore === 'all' || tx.storeName === selectedStore;
     return matchesSearch && matchesStore;
   }) || [];
@@ -289,9 +289,9 @@ const Accounts = () => {
             </CardDescription>
             <Dialog open={isSettlementDialogOpen} onOpenChange={setIsSettlementDialogOpen}>
               <DialogTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="absolute top-4 right-4 h-8 w-8"
                   title="Add settlement"
                 >
@@ -305,8 +305,8 @@ const Accounts = () => {
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="store">Store</Label>
-                    <Select 
-                      value={settlementStore} 
+                    <Select
+                      value={settlementStore}
                       onValueChange={setSettlementStore}
                     >
                       <SelectTrigger>
@@ -321,7 +321,7 @@ const Accounts = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="amount">Amount</Label>
                     <Input
@@ -335,7 +335,7 @@ const Accounts = () => {
                       Positive for credit, negative for debit
                     </p>
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="description">Description</Label>
                     <Input
@@ -345,10 +345,10 @@ const Accounts = () => {
                       placeholder="Transaction description"
                     />
                   </div>
-                  
+
                   <div className="flex justify-end gap-2">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => {
                         setIsSettlementDialogOpen(false);
                         resetSettlementForm();
@@ -356,7 +356,7 @@ const Accounts = () => {
                     >
                       Cancel
                     </Button>
-                    <Button 
+                    <Button
                       onClick={handleAddSettlement}
                       disabled={isSubmittingSettlement}
                     >
@@ -373,7 +373,7 @@ const Accounts = () => {
             </Dialog>
           </CardHeader>
         </Card>
-        
+
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-gray-500">Total Credits</CardTitle>
@@ -382,7 +382,7 @@ const Accounts = () => {
             </CardDescription>
           </CardHeader>
         </Card>
-        
+
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium text-gray-500">Total Debits</CardTitle>
@@ -403,9 +403,8 @@ const Accounts = () => {
             {accountData?.shopsSummary.map(store => (
               <div key={store.storeName} className="border rounded-lg p-4">
                 <h3 className="font-medium">{store.storeName}</h3>
-                <p className={`text-xl mt-2 ${
-                  store.currentBalance >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
+                <p className={`text-xl mt-2 ${store.currentBalance >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
                   {store.currentBalance >= 0 ? '+' : ''}
                   ₹{store.currentBalance.toFixed(2)}
                 </p>
@@ -425,7 +424,7 @@ const Accounts = () => {
                 Showing {paginatedTransactions.length} of {filteredTransactions.length} transactions
               </CardDescription>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -439,8 +438,8 @@ const Accounts = () => {
                   className="pl-10 w-full sm:w-64"
                 />
               </div>
-              
-              <select 
+
+              <select
                 value={selectedStore}
                 onChange={(e) => {
                   setSelectedStore(e.target.value);
@@ -454,7 +453,7 @@ const Accounts = () => {
                 ))}
               </select>
 
-              <select 
+              <select
                 value={itemsPerPage}
                 onChange={(e) => {
                   setItemsPerPage(Number(e.target.value));
@@ -469,7 +468,7 @@ const Accounts = () => {
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent>
           {filteredTransactions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-500">
@@ -496,7 +495,7 @@ const Accounts = () => {
                     <TableHead className="text-right">Credit</TableHead>
                     <TableHead className="text-right">Debit</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
-                    <TableHead>Settled</TableHead>
+                    {/* <TableHead>Settled</TableHead> */}
                     <TableHead>Description</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -512,7 +511,7 @@ const Accounts = () => {
                       <TableCell>
                         <Badge variant={
                           tx.type === 'recharge' ? 'default' :
-                          tx.type === 'sale' ? 'secondary' : 'outline'
+                            tx.type === 'sale' ? 'secondary' : 'outline'
                         }>
                           {tx.type}
                         </Badge>
@@ -530,7 +529,7 @@ const Accounts = () => {
                       <TableCell className="text-right font-medium">
                         ₹{tx.balance.toFixed(2)}
                       </TableCell>
-                      <TableCell>
+                      {/* <TableCell>
                         {updatingTx === tx.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
@@ -542,7 +541,7 @@ const Accounts = () => {
                             className="h-5 w-5 rounded-md"
                           />
                         )}
-                      </TableCell>
+                      </TableCell>   */}
                       <TableCell className="max-w-xs truncate">
                         {tx.description}
                       </TableCell>

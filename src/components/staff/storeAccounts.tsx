@@ -12,6 +12,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   RefreshCw,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import {
   collection,
@@ -40,7 +42,12 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
   const [refreshing, setRefreshing] = useState(false);
   const [updatingTx, setUpdatingTx] = useState<string | null>(null);
 
-  const isAdmin = userRole === 'admin'; // Assuming 'admin' is the role name for administrators
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const isAdmin = userRole === 'admin';
 
   const fetchTransactions = async () => {
     try {
@@ -75,6 +82,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
       });
 
       setTransactions(txData);
+      setTotalPages(Math.ceil(txData.length / rowsPerPage));
 
     } catch (err) {
       console.error('Error fetching transactions:', err);
@@ -85,7 +93,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
   };
 
   const handleSettledToggle = async (txId: string, settled: boolean) => {
-    if (!isAdmin) return; // Only allow admins to update the settled status
+    if (!isAdmin) return;
 
     try {
       setUpdatingTx(txId);
@@ -106,9 +114,25 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
     return format(timestamp.toDate(), 'MMM dd, yyyy HH:mm');
   };
 
+  // Calculate paginated transactions
+  const getPaginatedTransactions = () => {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    return transactions.slice(startIndex, startIndex + rowsPerPage);
+  };
+
+  const handleRowsPerPageChange = (value: number) => {
+    setRowsPerPage(value);
+    setCurrentPage(1); // Reset to first page when changing rows per page
+    setTotalPages(Math.ceil(transactions.length / value));
+  };
+
   useEffect(() => {
     fetchTransactions();
   }, [storeLocation]);
+
+  useEffect(() => {
+    setTotalPages(Math.ceil(transactions.length / rowsPerPage));
+  }, [transactions, rowsPerPage]);
 
   if (loading) {
     return (
@@ -136,7 +160,23 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
 
       <Card>
         <CardHeader>
-          <CardTitle>Transaction History</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle>Transaction History</CardTitle>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-600">Rows per page:</span>
+              <select
+                value={rowsPerPage}
+                onChange={(e) => handleRowsPerPageChange(Number(e.target.value))}
+                className="border rounded-md px-2 py-1 text-sm"
+              >
+                {[5, 10, 20, 50, 100].map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -148,12 +188,11 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
                 <TableHead className="text-right">Credit</TableHead>
                 <TableHead className="text-right">Debit</TableHead>
                 <TableHead className="text-right">Balance</TableHead>
-                <TableHead>Settled</TableHead>
                 <TableHead>Description</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transactions.map((tx) => (
+              {getPaginatedTransactions().map((tx) => (
                 <TableRow key={tx.id}>
                   <TableCell>
                     {formatTimestamp(tx.date)}
@@ -179,21 +218,6 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
                   <TableCell className="text-right font-medium">
                     ₹{tx.balance.toFixed(2)}
                   </TableCell>
-                  <TableCell>
-                    {updatingTx === tx.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : isAdmin ? (
-                      <Checkbox
-                        checked={Boolean(tx.settled)}
-                        onCheckedChange={(checked) =>
-                          handleSettledToggle(tx.id, Boolean(checked))
-                        }
-                        className="h-5 w-5 rounded-md"
-                      />
-                    ) : (
-                      <span>{tx.settled ? '✔️' : '❌'}</span>
-                    )}
-                  </TableCell>
                   <TableCell className="max-w-xs truncate">
                     {tx.description}
                   </TableCell>
@@ -201,6 +225,36 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
               ))}
             </TableBody>
           </Table>
+
+          {/* Pagination Controls */}
+          <div className="flex items-center justify-between mt-4">
+            <div className="text-sm text-gray-600">
+              Showing {(currentPage - 1) * rowsPerPage + 1} to{' '}
+              {Math.min(currentPage * rowsPerPage, transactions.length)} of{' '}
+              {transactions.length} transactions
+            </div>
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="flex items-center px-4 text-sm">
+                Page {currentPage} of {totalPages}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages || totalPages === 0}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

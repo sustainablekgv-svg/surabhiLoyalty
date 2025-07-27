@@ -284,7 +284,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         walletDeduction: saleCalculation.walletDeduction,
         cashPayment: saleCalculation.cashPayment,
         storeLocation,
-        processedBy: 'system',
+        processedBy: user?.name,
         isCustomerRegistered: true,
         previousBalance: {
           wallet: selectedCustomer.walletBalance || 0,
