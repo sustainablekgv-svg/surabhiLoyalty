@@ -164,19 +164,18 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     if (paymentMethod === 'wallet') {
       if (walletBalance >= remainingAfterCoins) {
         walletDeduction = remainingAfterCoins;
-        referrerSurabhiCoinsEarned += Math.floor(saleAmount * (storeDetails.referralCommission / 100));
+        referrerSurabhiCoinsEarned = 0;
       } else {
         return { isValid: false, error: 'Insufficient wallet balance' };
       }
     } else if (paymentMethod === 'mixed') {
-      if (selectedCustomer.walletBalance + selectedCustomer.surabhiCoins <= saleAmount) {
-        walletDeduction = Math.min(walletBalance, remainingAfterCoins);
+      if (remainingAfterCoins < saleAmount) {
         cashPayment = remainingAfterCoins - walletDeduction;
         // Wallet portion gets surabhi commission, cash portion gets cashOnly commission
         surabhiCoinsEarned = Math.floor(
           cashPayment * (storeDetails.cashOnlyCommission / 100));
         referrerSurabhiCoinsEarned = Math.floor(
-          saleAmount * (storeDetails.referralCommission / 100)
+          cashPayment * (storeDetails.referralCommission / 100)
         );
       } else {
         return { isValid: false, error: 'Mixed is not needed' };
@@ -708,7 +707,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                           <span className="font-bold text-green-600">₹{saleCalculation.cashPayment}</span>
                         </div>
                       )}
-                      {paymentMethod !== 'wallet' && saleCalculation.referrerSurabhiCoinsEarned > 0 && selectedCustomer.referredBy && (
+                      {(paymentMethod === 'cash' || paymentMethod === 'mixed') && saleCalculation.referrerSurabhiCoinsEarned > 0 && selectedCustomer.referredBy && (
                         <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
                           <span className="text-sm font-medium text-indigo-900">Referral Bonus  {storeDetails.referralCommission}%</span>
                           <span className="font-bold text-indigo-600">+{saleCalculation.referrerSurabhiCoinsEarned} Referral to {selectedCustomer.referredBy} </span>
