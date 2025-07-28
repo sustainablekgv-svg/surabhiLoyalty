@@ -382,8 +382,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           amount: saleCalculation.totalAmount,
           credit: saleCalculation.cashPayment,
           adminCut: adminCut,
-          debit: saleCalculation.totalAmount - saleCalculation.surabhiCoinsUsed - adminCut,
-          balance: saleCalculation.totalAmount - saleCalculation.cashPayment - saleCalculation.surabhiCoinsUsed - adminCut,
+          debit: saleCalculation.totalAmount - adminCut,
+          balance: storeDetails.currentBalance + saleCalculation.cashPayment - saleCalculation.totalAmount + adminCut, // balance + credit + debot
           description: `Cash sale for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
           settled: false
         }
@@ -419,7 +419,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             amount: saleCalculation.cashPayment,
             credit: saleCalculation.cashPayment,
             debit: cashAdminCut,
-            balance: saleCalculation.cashPayment - cashAdminCut,
+            balance: storeDetails.currentBalance + saleCalculation.cashPayment - cashAdminCut,
             description: `Cash portion (${saleCalculation.cashPayment}) of mixed payment for ${selectedCustomer.name}`,
             settled: false
           };

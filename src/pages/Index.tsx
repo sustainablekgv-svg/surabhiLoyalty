@@ -17,12 +17,12 @@ const Index = () => {
   const [formData, setFormData] = useState({
     mobile: '',
     password: '',
-    role: ''
+    role: 'customer'
   });
   const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
   const [customerEmail, setCustomerEmail] = useState('');
   const [isLoadingEmail, setIsLoadingEmail] = useState(false);
-  
+
   const { login, isLoading, isAuthenticated, isInitialized } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -46,29 +46,29 @@ const Index = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.role) {
       toast.error('Please select your role');
       return;
     }
-    
+
     try {
       const user = await login(formData.mobile, formData.password, formData.role);
       console.log('Logged in user in Index.ts:', user);
-      
+
       if (user.role !== formData.role) {
         toast.error(`Access denied. You are not registered as ${formData.role}`);
         return;
       }
-      
+
       toast.success('Login successful!');
-      
+
       // Navigate based on role
-      const redirectPath = location.state?.from?.pathname || 
-        (user.role === 'admin' ? '/admin/dashboard' : 
-         user.role === 'staff' ? '/staff/dashboard' : 
-         '/customer/dashboard');
-      
+      const redirectPath = location.state?.from?.pathname ||
+        (user.role === 'admin' ? '/admin/dashboard' :
+          user.role === 'staff' ? '/staff/dashboard' :
+            '/customer/dashboard');
+
       navigate(redirectPath, { replace: true });
     } catch (error) {
       toast.error('Invalid credentials. Please try again.');
@@ -88,7 +88,7 @@ const Index = () => {
 
     try {
       setIsLoadingEmail(true);
-      
+
       if (formData.role === 'admin') {
         toast.info('Please contact the developer for password reset');
         return;
@@ -112,7 +112,7 @@ const Index = () => {
 
       setCustomerEmail(customer.email);
       setForgotPasswordMode(true);
-      
+
     } catch (error) {
       toast.error('Error processing your request. Please try again.');
     } finally {
@@ -170,7 +170,7 @@ const Index = () => {
                 {forgotPasswordMode ? 'We\'ll send a reset link to your registered email' : 'Sign in to access your loyalty rewards'}
               </CardDescription>
             </CardHeader>
-            
+
             <CardContent>
               {forgotPasswordMode ? (
                 <div className="space-y-4">
@@ -185,7 +185,7 @@ const Index = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex gap-3">
                     <Button
                       onClick={cancelForgotPassword}
@@ -256,7 +256,7 @@ const Index = () => {
                       />
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="password" className="text-sm font-medium text-gray-700">
                       Password
@@ -281,7 +281,7 @@ const Index = () => {
                       </button>
                     </div>
                   </div>
-                  
+
                   <div className="flex justify-end">
                     <button
                       type="button"
@@ -292,7 +292,7 @@ const Index = () => {
                       {isLoadingEmail ? 'Loading...' : 'Forgot Password?'}
                     </button>
                   </div>
-                  
+
                   <Button
                     type="submit"
                     disabled={isLoading}
@@ -304,7 +304,7 @@ const Index = () => {
               )}
             </CardContent>
           </Card>
-          
+
           {/* Features Section */}
           {!forgotPasswordMode && (
             <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -315,7 +315,7 @@ const Index = () => {
                 <h3 className="font-medium text-gray-900">Surabhi Coins</h3>
                 <p className="text-sm text-gray-600">Earn coins on every purchase</p>
               </div>
-              
+
               <div className="text-center p-4 bg-white/60 rounded-lg backdrop-blur-sm">
                 <div className="bg-amber-100 p-3 rounded-full w-fit mx-auto mb-2">
                   <Users className="h-6 w-6 text-amber-600" />
@@ -323,7 +323,7 @@ const Index = () => {
                 <h3 className="font-medium text-gray-900">Referral System</h3>
                 <p className="text-sm text-gray-600">Earn from referrals</p>
               </div>
-              
+
               <div className="text-center p-4 bg-white/60 rounded-lg backdrop-blur-sm">
                 <div className="bg-red-100 p-3 rounded-full w-fit mx-auto mb-2">
                   <Shield className="h-6 w-6 text-red-600" />

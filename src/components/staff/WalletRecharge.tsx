@@ -314,7 +314,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         credit: rechargeAmountNum,
         adminCut: 0,
         debit: 0,
-        balance: rechargeAmountNum,
+        balance: storeDetails.currentBalance + rechargeAmountNum, // rechargeAmountnUm+previosu Balance storeSummary + credit
         description: `Recharge for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
         settled: false
       };
@@ -600,13 +600,12 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                             {(() => {
                               const storeMatch = isSameStore(customer);
                               return (
-                                <Badge 
+                                <Badge
                                   variant={storeMatch ? "default" : "destructive"}
-                                  className={`text-xs px-2 py-0.5 ${
-                                    storeMatch 
-                                      ? 'bg-green-100 text-green-800 border-green-200' 
-                                      : 'bg-red-100 text-red-800 border-red-200'
-                                  }`}
+                                  className={`text-xs px-2 py-0.5 ${storeMatch
+                                    ? 'bg-green-100 text-green-800 border-green-200'
+                                    : 'bg-red-100 text-red-800 border-red-200'
+                                    }`}
                                 >
                                   {storeMatch ? (
                                     <>
@@ -721,39 +720,34 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                 </div>
 
                 {/* Store Match Status */}
-                <div className={`p-4 rounded-lg border-2 transition-colors duration-200 ${
-                  getStoreMatchStatus(selectedCustomer).isMatch 
-                    ? 'bg-green-50 border-green-200' 
-                    : 'bg-red-50 border-red-200'
-                }`}>
+                <div className={`p-4 rounded-lg border-2 transition-colors duration-200 ${getStoreMatchStatus(selectedCustomer).isMatch
+                  ? 'bg-green-50 border-green-200'
+                  : 'bg-red-50 border-red-200'
+                  }`}>
                   <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-full ${
-                      getStoreMatchStatus(selectedCustomer).isMatch 
-                        ? 'bg-green-100' 
-                        : 'bg-red-100'
-                    }`}>
+                    <div className={`p-2 rounded-full ${getStoreMatchStatus(selectedCustomer).isMatch
+                      ? 'bg-green-100'
+                      : 'bg-red-100'
+                      }`}>
                       {(() => {
                         const IconComponent = getStoreMatchStatus(selectedCustomer).icon;
-                        return <IconComponent className={`h-5 w-5 ${
-                          getStoreMatchStatus(selectedCustomer).isMatch 
-                            ? 'text-green-600' 
-                            : 'text-red-600'
-                        }`} />;
+                        return <IconComponent className={`h-5 w-5 ${getStoreMatchStatus(selectedCustomer).isMatch
+                          ? 'text-green-600'
+                          : 'text-red-600'
+                          }`} />;
                       })()}
                     </div>
                     <div className="flex-1">
-                      <h4 className={`font-medium ${
-                        getStoreMatchStatus(selectedCustomer).isMatch 
-                          ? 'text-green-900' 
-                          : 'text-red-900'
-                      }`}>
+                      <h4 className={`font-medium ${getStoreMatchStatus(selectedCustomer).isMatch
+                        ? 'text-green-900'
+                        : 'text-red-900'
+                        }`}>
                         {getStoreMatchStatus(selectedCustomer).isMatch ? 'Same Store Access' : 'Different Store Warning'}
                       </h4>
-                      <p className={`text-sm ${
-                        getStoreMatchStatus(selectedCustomer).isMatch 
-                          ? 'text-green-700' 
-                          : 'text-red-700'
-                      }`}>
+                      <p className={`text-sm ${getStoreMatchStatus(selectedCustomer).isMatch
+                        ? 'text-green-700'
+                        : 'text-red-700'
+                        }`}>
                         {getStoreMatchStatus(selectedCustomer).message}
                       </p>
                       {!getStoreMatchStatus(selectedCustomer).isMatch && (
@@ -836,11 +830,10 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                 <Button
                   onClick={handleRechargeClick}
                   disabled={isLoading || !rechargeAmount || rechargeAmountNum < 2000 || !storeDetails || !isSameStore(selectedCustomer)}
-                  className={`w-full h-12 font-medium transition-all ${
-                    isSameStore(selectedCustomer) 
-                      ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
+                  className={`w-full h-12 font-medium transition-all ${isSameStore(selectedCustomer)
+                    ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
                 >
                   {isLoading ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
