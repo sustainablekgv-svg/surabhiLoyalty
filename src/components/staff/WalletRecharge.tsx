@@ -13,7 +13,10 @@ import {
   Phone,
   Loader2,
   Mail,
-  HandCoins
+  HandCoins,
+  MapPin,
+  Shield,
+  AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
@@ -85,6 +88,37 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
     lastResetDate: Timestamp.now(),
     lastAllocatedDate: Timestamp.now()
   });
+
+  // Check if staff and customer are from same store
+  const isSameStore = (customer: Customer | null): boolean => {
+    if (!customer || !user) return false;
+    return customer.storeLocation === user.storeLocation;
+  };
+
+  // Get store match status for display
+  const getStoreMatchStatus = (customer: Customer | null) => {
+    if (!customer || !user) {
+      return { isMatch: false, message: 'No customer selected', icon: MapPin, color: 'text-gray-500' };
+    }
+
+    const isMatch = customer.storeLocation === user.storeLocation;
+
+    if (isMatch) {
+      return {
+        isMatch: true,
+        message: `Same Store: ${customer.storeLocation}`,
+        icon: Shield,
+        color: 'text-green-600'
+      };
+    } else {
+      return {
+        isMatch: false,
+        message: `Different Stores: Staff (${user.storeLocation}) ≠ Customer (${customer.storeLocation})`,
+        icon: AlertTriangle,
+        color: 'text-red-600'
+      };
+    }
+  };
 
   // Fetch Seva Pool data
   const fetchData = async () => {
@@ -560,11 +594,42 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                         }`}
                     >
                       <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-medium text-gray-900">{customer.name}</h3>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-medium text-gray-900">{customer.name}</h3>
+                            {(() => {
+                              const storeMatch = isSameStore(customer);
+                              return (
+                                <Badge 
+                                  variant={storeMatch ? "default" : "destructive"}
+                                  className={`text-xs px-2 py-0.5 ${
+                                    storeMatch 
+                                      ? 'bg-green-100 text-green-800 border-green-200' 
+                                      : 'bg-red-100 text-red-800 border-red-200'
+                                  }`}
+                                >
+                                  {storeMatch ? (
+                                    <>
+                                      <Shield className="h-3 w-3 mr-1" />
+                                      Same Store
+                                    </>
+                                  ) : (
+                                    <>
+                                      <AlertTriangle className="h-3 w-3 mr-1" />
+                                      Other Store
+                                    </>
+                                  )}
+                                </Badge>
+                              );
+                            })()}
+                          </div>
                           <div className="flex items-center gap-2 text-sm text-gray-600">
                             <Phone className="h-3 w-3" />
                             <span>{customer.mobile}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+                            <MapPin className="h-3 w-3" />
+                            <span>{customer.storeLocation}</span>
                           </div>
                           {customer.email && (
                             <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
@@ -655,6 +720,51 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                   </div>
                 </div>
 
+                {/* Store Match Status */}
+                <div className={`p-4 rounded-lg border-2 transition-colors duration-200 ${
+                  getStoreMatchStatus(selectedCustomer).isMatch 
+                    ? 'bg-green-50 border-green-200' 
+                    : 'bg-red-50 border-red-200'
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${
+                      getStoreMatchStatus(selectedCustomer).isMatch 
+                        ? 'bg-green-100' 
+                        : 'bg-red-100'
+                    }`}>
+                      {(() => {
+                        const IconComponent = getStoreMatchStatus(selectedCustomer).icon;
+                        return <IconComponent className={`h-5 w-5 ${
+                          getStoreMatchStatus(selectedCustomer).isMatch 
+                            ? 'text-green-600' 
+                            : 'text-red-600'
+                        }`} />;
+                      })()}
+                    </div>
+                    <div className="flex-1">
+                      <h4 className={`font-medium ${
+                        getStoreMatchStatus(selectedCustomer).isMatch 
+                          ? 'text-green-900' 
+                          : 'text-red-900'
+                      }`}>
+                        {getStoreMatchStatus(selectedCustomer).isMatch ? 'Same Store Access' : 'Different Store Warning'}
+                      </h4>
+                      <p className={`text-sm ${
+                        getStoreMatchStatus(selectedCustomer).isMatch 
+                          ? 'text-green-700' 
+                          : 'text-red-700'
+                      }`}>
+                        {getStoreMatchStatus(selectedCustomer).message}
+                      </p>
+                      {!getStoreMatchStatus(selectedCustomer).isMatch && (
+                        <p className="text-xs text-red-600 mt-1 font-medium">
+                          ⚠️ Recharge blocked: Only same store staff can process recharges
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="amount">Recharge Amount (₹)</Label>
                   <div className="relative">
@@ -725,8 +835,12 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
 
                 <Button
                   onClick={handleRechargeClick}
-                  disabled={isLoading || !rechargeAmount || rechargeAmountNum < 2000 || !storeDetails}
-                  className="w-full h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium"
+                  disabled={isLoading || !rechargeAmount || rechargeAmountNum < 2000 || !storeDetails || !isSameStore(selectedCustomer)}
+                  className={`w-full h-12 font-medium transition-all ${
+                    isSameStore(selectedCustomer) 
+                      ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
                 >
                   {isLoading ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />

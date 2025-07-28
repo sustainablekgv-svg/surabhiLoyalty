@@ -381,12 +381,12 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           type: 'sale',
           amount: saleCalculation.totalAmount,
           credit: saleCalculation.cashPayment,
-          debit: saleCalculation.totalAmount - saleCalculation.surabhiCoinsUsed - adminCut,
           adminCut: adminCut,
-          balance: saleCalculation.totalAmount - saleCalculation.surabhiCoinsUsed - adminCut + saleCalculation.cashPayment,
+          debit: saleCalculation.totalAmount - saleCalculation.surabhiCoinsUsed - adminCut,
+          balance: saleCalculation.totalAmount - saleCalculation.cashPayment - saleCalculation.surabhiCoinsUsed - adminCut,
           description: `Cash sale for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
           settled: false
-        };
+        }
         await addDoc(collection(db, 'AccountTx'), accountTxData);
       } else {
         // Mixed payment - create two separate records
@@ -418,8 +418,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             type: 'sale',
             amount: saleCalculation.cashPayment,
             credit: saleCalculation.cashPayment,
-            debit: saleCalculation.cashPayment - cashAdminCut,
-            balance: cashAdminCut,
+            debit: cashAdminCut,
+            balance: saleCalculation.cashPayment - cashAdminCut,
             description: `Cash portion (${saleCalculation.cashPayment}) of mixed payment for ${selectedCustomer.name}`,
             settled: false
           };
