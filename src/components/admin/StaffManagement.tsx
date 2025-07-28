@@ -582,6 +582,7 @@ export const StaffManagement = () => {
                   <TableHead>Name</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Contact</TableHead>
+                  <TableHead>Current</TableHead>
                   <TableHead>Referral</TableHead>
                   <TableHead>Surabhi</TableHead>
                   <TableHead>Cash Only</TableHead>
@@ -607,6 +608,9 @@ export const StaffManagement = () => {
                     </TableCell>
                     <TableCell>
                       {store.contactNumber}
+                    </TableCell>
+                    <TableCell>
+                      {store.currentBalance || 0}
                     </TableCell>
                     <TableCell>
                       {store.referralCommission}%

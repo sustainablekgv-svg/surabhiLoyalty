@@ -41,7 +41,8 @@ import {
   ActivityType,
   StoreType,
   AccountTx,
-  StaffType
+  StaffType,
+  SevaPool
 } from '@/types/types';
 import { serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/hooks/auth-context';
@@ -72,6 +73,16 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
   const [showTPINModal, setShowTPINModal] = useState(false);
   const [enteredTPIN, setEnteredTPIN] = useState("");
+
+  const [sevaPool, setSevaPool] = useState<SevaPool>({
+    currentBalance: 0,
+    totalContributions: 0,
+    totalAllocations: 0,
+    contributionsCurrentMonth: 0,
+    allocationsCurrentMonth: 0,
+    lastResetDate: Timestamp.now(),
+    lastAllocatedDate: Timestamp.now()
+  });
 
   const handleSaleWithTPIN = async () => {
     if (selectedCustomer?.tpin) {
@@ -206,7 +217,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         return { isValid: false, error: 'Mixed is not needed' };
       }
     } else if (paymentMethod === 'cash') {
-      cashPayment = saleAmount - walletBalance - coinsToUse;
+      cashPayment = saleAmount - coinsToUse;
       surabhiCoinsEarned = Math.floor(cashPayment * (storeDetails.cashOnlyCommission / 100));
       referrerSurabhiCoinsEarned += Math.floor(cashPayment * (storeDetails.referralCommission / 100));
       goSevaContribution = Math.floor(cashPayment * (storeDetails.sevaCommission / 100));
@@ -388,6 +399,13 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           settled: false
         }
         await addDoc(collection(db, 'AccountTx'), accountTxData);
+        const poolRef = doc(db, 'SevaPool', 'main');
+        await updateDoc(poolRef, {
+          currentBalance: sevaPool.currentBalance + saleCalculation.goSevaContribution,
+          totalAllocations: sevaPool.totalAllocations,
+          allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
+          lastAllocatedDate: serverTimestamp()
+        });
       } else {
         // Mixed payment - create two separate records
 
@@ -424,6 +442,13 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             settled: false
           };
           await addDoc(collection(db, 'AccountTx'), cashTxData);
+          const poolRef = doc(db, 'SevaPool', 'main');
+          await updateDoc(poolRef, {
+            currentBalance: sevaPool.currentBalance + saleCalculation.goSevaContribution,
+            totalAllocations: sevaPool.totalAllocations,
+            allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
+            lastAllocatedDate: serverTimestamp()
+          });
         }
       }
 
@@ -445,6 +470,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       };
 
       await updateDoc(staffRef, staffUpdates);
+
 
       // Record activity
       const activity: ActivityType = {

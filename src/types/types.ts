@@ -87,6 +87,7 @@ export interface StoreType {
   cashOnlyCommission: number;
   contactNumber: string;
   status: 'active' | 'inactive';
+  currentBalance: number;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

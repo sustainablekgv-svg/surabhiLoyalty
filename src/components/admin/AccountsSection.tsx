@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useEffect } from 'react';
 import {
   Card,
@@ -10,53 +12,41 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   RefreshCw,
   Loader2,
   Search,
   ChevronLeft,
   ChevronRight,
-  Check,
-  X,
-  Edit,
-  Plus
+  Plus,
+  ArrowDown,
+  ArrowUp,
+  Edit
 } from 'lucide-react';
 import {
   collection,
   query,
-  where,
   getDocs,
   orderBy,
   Timestamp,
   updateDoc,
   doc,
-  addDoc
+  writeBatch,
+  where
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
-
-import { AccountTx, StoreSummary, AdminDeck, StoreType } from '@/types/types';
+import { AccountTx, StoreType } from '@/types/types';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
-// // Updated interface to include settlement functionality
-// export interface AdminDeck {
-//   totalBalance: number;
-//   recentTransactions: AccountTx[];
-//   shopsSummary: StoreSummary[];
-//   walletOverview: {
-//     totalCredits: number;
-//     totalDebits: number;
-//     netFlow: number;
-//   };
-// }
+interface AdminDeck {
+  recentTransactions: AccountTx[];
+}
 
-// Helper function to format Firestore timestamp
 const formatTradeTimestamp = (timestamp: Date | Timestamp): string => {
   const date = timestamp instanceof Timestamp ? timestamp.toDate() : timestamp;
   return format(date, 'MMM dd, yyyy HH:mm');
@@ -72,24 +62,34 @@ const Accounts = () => {
   const [selectedStore, setSelectedStore] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [updatingTx, setUpdatingTx] = useState<string | null>(null);
   const [isSettlementDialogOpen, setIsSettlementDialogOpen] = useState(false);
   const [settlementAmount, setSettlementAmount] = useState(0);
   const [settlementDescription, setSettlementDescription] = useState('');
-  const [settlementStore, setSettlementStore] = useState('');
+  const [selectedStoreForSettlement, setSelectedStoreForSettlement] = useState<StoreType | null>(null);
   const [isSubmittingSettlement, setIsSubmittingSettlement] = useState(false);
 
-  const fetchAccountData = async () => {
+  const fetchStores = async () => {
     try {
-      setLoading(true);
-
-      // Fetch stores
       const storesSnapshot = await getDocs(collection(db, 'stores'));
       const storesData = storesSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as StoreType[];
       setStores(storesData);
+      return storesData;
+    } catch (err) {
+      console.error('Error fetching stores:', err);
+      throw err;
+    }
+  };
+
+  const fetchAccountData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch stores first
+      const storesData = await fetchStores();
 
       // Fetch transactions
       const txQuery = query(
@@ -98,13 +98,8 @@ const Accounts = () => {
       );
       const txSnapshot = await getDocs(txQuery);
 
-      // Process data
+      // Process transactions
       const transactions: AccountTx[] = [];
-      const storeSummaries: Record<string, StoreSummary> = {};
-      let totalBalance = 0;
-      let totalCredits = 0;
-      let totalDebits = 0;
-
       txSnapshot.forEach(doc => {
         const txData = doc.data();
         const txDate = txData.date instanceof Timestamp ? txData.date.toDate() : new Date(txData.date);
@@ -124,32 +119,11 @@ const Accounts = () => {
         };
 
         transactions.push(tx);
-
-        // Update store summary
-        if (!storeSummaries[tx.storeName]) {
-          storeSummaries[tx.storeName] = {
-            storeName: tx.storeName,
-            currentBalance: 0
-          };
-        }
-
-        // Update totals
-        totalCredits += tx.credit;
-        totalDebits += tx.debit;
-        totalBalance += tx.credit - tx.debit;
-        storeSummaries[tx.storeName].currentBalance += tx.credit - tx.debit;
       });
 
       // Prepare admin deck
       const adminDeck: AdminDeck = {
-        totalBalance,
-        recentTransactions: transactions,
-        shopsSummary: Object.values(storeSummaries),
-        walletOverview: {
-          totalCredits,
-          totalDebits,
-          netFlow: totalCredits - totalDebits
-        }
+        recentTransactions: transactions
       };
 
       setAccountData(adminDeck);
@@ -168,43 +142,59 @@ const Accounts = () => {
     fetchAccountData();
   };
 
-  const handleSettledToggle = async (txId: string, settled: boolean) => {
-    try {
-      setUpdatingTx(txId);
-      await updateDoc(doc(db, 'AccountTx', txId), {
-        settled
-      });
-      fetchAccountData(); // Refresh data
-    } catch (err) {
-      console.error('Error updating transaction:', err);
-      toast.error('Failed to update transaction status');
-    } finally {
-      setUpdatingTx(null);
-    }
-  };
-
   const handleAddSettlement = async () => {
-    if (!settlementAmount || !settlementStore) {
+    if (!settlementAmount || !selectedStoreForSettlement) {
       toast.error('Please fill all required fields');
       return;
     }
 
     try {
       setIsSubmittingSettlement(true);
-      // Create a settlement transaction
-      const newTx: Omit<AccountTx, 'id'> = {
+
+      const amount = Number(settlementAmount);
+      const newStoreBalance = (selectedStoreForSettlement.currentBalance || 0) + amount;
+
+      // Create the transaction
+      const newTx = {
         date: Timestamp.now(),
-        amount: Math.abs(settlementAmount),
-        credit: settlementAmount > 0 ? Math.abs(settlementAmount) : 0,
-        debit: settlementAmount < 0 ? Math.abs(settlementAmount) : 0,
-        balance: accountData?.totalBalance || 0 + (settlementAmount > 0 ? Math.abs(settlementAmount) : -Math.abs(settlementAmount)),
+        amount: Math.abs(amount),
+        credit: amount > 0 ? Math.abs(amount) : 0,
+        debit: amount < 0 ? Math.abs(amount) : 0,
+        balance: newStoreBalance,
         settled: true,
-        description: settlementDescription || 'Manual settlement adjustment',
-        storeName: settlementStore,
+        description: settlementDescription || `Settlement adjustment for ${selectedStoreForSettlement.name}`,
+        storeName: selectedStoreForSettlement.name,
         type: 'settlement'
       };
 
-      await addDoc(collection(db, 'AccountTx'), newTx);
+      // Query for the store by name
+      const storeQuery = query(
+        collection(db, 'stores'),
+        where('name', '==', selectedStoreForSettlement.name)
+      );
+      const storeSnapshot = await getDocs(storeQuery);
+      
+      if (storeSnapshot.empty) {
+        throw new Error(`Store with name '${selectedStoreForSettlement.name}' not found`);
+      }
+      
+      const storeDoc = storeSnapshot.docs[0];
+      const storeRef = doc(db, 'stores', storeDoc.id);
+
+      // Update store balance and add transaction in a batch
+      const batch = writeBatch(db);
+
+      // Add the new transaction
+      const txRef = doc(collection(db, 'AccountTx'));
+      batch.set(txRef, newTx);
+
+      // Update store balance
+      batch.update(storeRef, {
+        currentBalance: newStoreBalance,
+        updatedAt: Timestamp.now()
+      });
+
+      await batch.commit();
 
       toast.success('Settlement transaction added successfully');
       fetchAccountData();
@@ -221,7 +211,12 @@ const Accounts = () => {
   const resetSettlementForm = () => {
     setSettlementAmount(0);
     setSettlementDescription('');
-    setSettlementStore('');
+    setSelectedStoreForSettlement(null);
+  };
+
+  const openSettlementDialog = (store: StoreType) => {
+    setSelectedStoreForSettlement(store);
+    setIsSettlementDialogOpen(true);
   };
 
   const filteredTransactions = accountData?.recentTransactions.filter(tx => {
@@ -267,7 +262,7 @@ const Accounts = () => {
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Accounts Dashboard</h2>
-          <p className="text-gray-600">Financial overview and transaction history</p>
+          <p className="text-gray-600">Store balances and transaction history</p>
         </div>
         <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
           {refreshing ? (
@@ -279,147 +274,122 @@ const Accounts = () => {
         </Button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="relative">
-            <CardTitle className="text-sm font-medium text-gray-500">Total Balance</CardTitle>
-            <CardDescription className="text-2xl font-bold">
-              ₹{accountData?.totalBalance.toFixed(2) || '0.00'}
-            </CardDescription>
-            <Dialog open={isSettlementDialogOpen} onOpenChange={setIsSettlementDialogOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-4 right-4 h-8 w-8"
-                  title="Add settlement"
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add Settlement Transaction</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="store">Store</Label>
-                    <Select
-                      value={settlementStore}
-                      onValueChange={setSettlementStore}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select store" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {stores.map(store => (
-                          <SelectItem key={store.id} value={store.name}>
-                            {store.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="amount">Amount</Label>
-                    <Input
-                      id="amount"
-                      type="number"
-                      value={settlementAmount}
-                      onChange={(e) => setSettlementAmount(Number(e.target.value))}
-                      placeholder="Enter amount"
-                    />
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Positive for credit, negative for debit
-                    </p>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="description">Description</Label>
-                    <Input
-                      id="description"
-                      value={settlementDescription}
-                      onChange={(e) => setSettlementDescription(e.target.value)}
-                      placeholder="Transaction description"
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setIsSettlementDialogOpen(false);
-                        resetSettlementForm();
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleAddSettlement}
-                      disabled={isSubmittingSettlement}
-                    >
-                      {isSubmittingSettlement ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Plus className="h-4 w-4" />
-                      )}
-                      <span className="ml-2">Add Settlement</span>
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </CardHeader>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-500">Total Credits</CardTitle>
-            <CardDescription className="text-2xl font-bold text-green-600">
-              +₹{accountData?.walletOverview.totalCredits.toFixed(2) || '0.00'}
-            </CardDescription>
-          </CardHeader>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-500">Total Debits</CardTitle>
-            <CardDescription className="text-2xl font-bold text-red-600">
-              -₹{accountData?.walletOverview.totalDebits.toFixed(2) || '0.00'}
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-
-      {/* Store Summary */}
+      {/* Store Balances */}
       <Card>
         <CardHeader>
           <CardTitle>Store Balances</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {accountData?.shopsSummary.map(store => (
-              <div key={store.storeName} className="border rounded-lg p-4">
-                <h3 className="font-medium">{store.storeName}</h3>
-                <p className={`text-xl mt-2 ${store.currentBalance >= 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                  {store.currentBalance >= 0 ? '+' : ''}
-                  ₹{store.currentBalance.toFixed(2)}
-                </p>
-              </div>
+            {stores.map(store => (
+              <Card key={store.id} className="relative">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">{store.name}</CardTitle>
+                  <CardDescription>{store.storeLocation}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${(store.currentBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {(store.currentBalance || 0) >= 0 ? '+' : ''}
+                    ₹{(store.currentBalance || 0).toFixed(2)}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => openSettlementDialog(store)}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Adjust Balance
+                  </Button>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </CardContent>
       </Card>
+
+      {/* Settlement Dialog */}
+      <Dialog open={isSettlementDialogOpen} onOpenChange={setIsSettlementDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Adjust Balance for {selectedStoreForSettlement?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <Label htmlFor="amount">Amount</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  value={settlementAmount}
+                  onChange={(e) => setSettlementAmount(Number(e.target.value))}
+                  placeholder="Enter amount"
+                />
+              </div>
+              <div className="flex flex-col gap-1 pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSettlementAmount(Math.abs(settlementAmount))}
+                >
+                  <ArrowUp className="h-4 w-4 mr-1" />
+                  Credit
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSettlementAmount(-Math.abs(settlementAmount))}
+                >
+                  <ArrowDown className="h-4 w-4 mr-1" />
+                  Debit
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Input
+                id="description"
+                value={settlementDescription}
+                onChange={(e) => setSettlementDescription(e.target.value)}
+                placeholder="Reason for adjustment"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsSettlementDialogOpen(false);
+                  resetSettlementForm();
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAddSettlement}
+                disabled={isSubmittingSettlement}
+              >
+                {isSubmittingSettlement ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                <span className="ml-2">Apply Adjustment</span>
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Accounts History */}
       <Card>
         <CardHeader>
           <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
             <div>
-              <CardTitle>Accounts History</CardTitle>
+              <CardTitle>Transaction History</CardTitle>
               <CardDescription>
                 Showing {paginatedTransactions.length} of {filteredTransactions.length} transactions
               </CardDescription>
@@ -495,7 +465,6 @@ const Accounts = () => {
                     <TableHead className="text-right">Credit</TableHead>
                     <TableHead className="text-right">Debit</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
-                    {/* <TableHead>Settled</TableHead> */}
                     <TableHead>Description</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -521,27 +490,14 @@ const Accounts = () => {
                         ₹{tx.amount.toFixed(2)}
                       </TableCell>
                       <TableCell className="text-right text-green-600">
-                        {tx.debit > 0 ? `₹${tx.debit.toFixed(2)}` : '-'}
+                        {tx.credit > 0 ? `+₹${tx.credit.toFixed(2)}` : '-'}
                       </TableCell>
                       <TableCell className="text-right text-red-600">
-                        {tx.credit > 0 ? `₹${tx.credit.toFixed(2)}` : '-'}
+                        {tx.debit > 0 ? `-₹${tx.debit.toFixed(2)}` : '-'}
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         ₹{tx.balance.toFixed(2)}
                       </TableCell>
-                      {/* <TableCell>
-                        {updatingTx === tx.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Checkbox
-                            checked={!!tx.settled} 
-                            onCheckedChange={(checked) => 
-                              handleSettledToggle(tx.id, !!checked)
-                            }
-                            className="h-5 w-5 rounded-md"
-                          />
-                        )}
-                      </TableCell>   */}
                       <TableCell className="max-w-xs truncate">
                         {tx.description}
                       </TableCell>
