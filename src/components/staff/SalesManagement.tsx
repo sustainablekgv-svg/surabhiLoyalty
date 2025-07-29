@@ -47,12 +47,12 @@ import {
 import { serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/hooks/auth-context';
 
-const calculateAdminCut = (saleAmount: number, storeDetails: StoreType, surabhiCoinsToUse: number) => {
+const calculateAdminCut = (saleAmount: number, storeDetails: StoreType) => {
   if (!storeDetails) return 0;
-  const remainingAmount = saleAmount - surabhiCoinsToUse;
-  const surabhiAmount = Math.floor(remainingAmount * (storeDetails.surabhiCommission / 100));
-  const referralAmount = Math.floor(remainingAmount * (storeDetails.referralCommission / 100));
-  const sevaAmount = Math.floor(remainingAmount * (storeDetails.sevaCommission / 100));
+  // const remainingAmount = saleAmount - surabhiCoinsToUse;
+  const surabhiAmount = Math.floor(saleAmount * (storeDetails.surabhiCommission / 100));
+  const referralAmount = Math.floor(saleAmount * (storeDetails.referralCommission / 100));
+  const sevaAmount = Math.floor(saleAmount * (storeDetails.sevaCommission / 100));
 
   return referralAmount + sevaAmount + surabhiAmount;
 };
@@ -368,80 +368,37 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       }
 
       // Add AccountTx record(s) based on payment method
-      // if (paymentMethod === "wallet") {
-      //   const adminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
-      //   const accountTxData: Omit<AccountTx, 'id'> = {
-      //     date: Timestamp.fromDate(new Date()),
-      //     storeName: storeDetails.name,
-      //     type: 'sale',
-      //     amount: saleCalculation.totalAmount,
-      //     debit: 0,
-      //     adminCut: adminCut,
-      //     credit: saleCalculation.totalAmount - adminCut,
-      //     balance: saleCalculation.totalAmount - adminCut,
-      //     description: `Wallet sale for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
-      //     settled: false
-      //   };
-      //   await addDoc(collection(db, 'AccountTx'), accountTxData);
-      // } else 
-      if (paymentMethod === 'cash') {
-        const adminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails, surabhiCoinsToUse);
+      if (paymentMethod === "wallet") {
+        const adminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
         const accountTxData: Omit<AccountTx, 'id'> = {
           date: Timestamp.fromDate(new Date()),
           storeName: storeDetails.name,
           type: 'sale',
           amount: saleCalculation.totalAmount,
-          credit: saleCalculation.cashPayment,
-          adminCut: adminCut,
+          credit: 0,
           debit: saleCalculation.totalAmount - adminCut,
-          balance: storeDetails.currentBalance + saleCalculation.cashPayment - saleCalculation.totalAmount + adminCut, // balance + credit + debot
-          description: `Cash sale for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
+          adminCut: adminCut,
+          balance: storeDetails.currentBalance - saleCalculation.totalAmount + adminCut,
+          description: `Wallet sale for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
           settled: false
-        }
+        };
         await addDoc(collection(db, 'AccountTx'), accountTxData);
-        const poolRef = doc(db, 'SevaPool', 'main');
-        await updateDoc(poolRef, {
-          currentBalance: sevaPool.currentBalance + saleCalculation.goSevaContribution,
-          totalAllocations: sevaPool.totalAllocations,
-          allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
-          lastAllocatedDate: serverTimestamp()
-        });
-      } else {
-        // Mixed payment - create two separate records
-
-        // 1. Wallet portion record
-        // if (saleCalculation.walletDeduction > 0) {
-        //   const walletAdminCut = calculateAdminCut(saleCalculation.walletDeduction, storeDetails, saleCalculation.surabhiCoinsUsed);
-        //   const walletTxData: Omit<AccountTx, 'id'> = {
-        //     date: Timestamp.fromDate(new Date()),
-        //     storeName: storeDetails.name,
-        //     type: 'sale',
-        //     amount: saleCalculation.walletDeduction,
-        //     debit: 0,
-        //     adminCut: walletAdminCut,
-        //     credit: saleCalculation.totalAmount - walletAdminCut,
-        //     balance: saleCalculation.walletDeduction - walletAdminCut,
-        //     description: `Wallet portion (${saleCalculation.walletDeduction}) of mixed payment for ${selectedCustomer.name}`,
-        //     settled: false
-        //   };
-        //   await addDoc(collection(db, 'AccountTx'), walletTxData);
-        // }
-
-        // 2. Cash portion record
-        if (saleCalculation.cashPayment > 0) {
-          const cashAdminCut = calculateAdminCut(saleCalculation.cashPayment, storeDetails, saleCalculation.surabhiCoinsUsed);
-          const cashTxData: Omit<AccountTx, 'id'> = {
+      } else
+        if (paymentMethod === 'cash') {
+          const adminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
+          const accountTxData: Omit<AccountTx, 'id'> = {
             date: Timestamp.fromDate(new Date()),
             storeName: storeDetails.name,
             type: 'sale',
-            amount: saleCalculation.cashPayment,
+            amount: saleCalculation.totalAmount,
             credit: saleCalculation.cashPayment,
-            debit: cashAdminCut,
-            balance: storeDetails.currentBalance + saleCalculation.cashPayment - cashAdminCut,
-            description: `Cash portion (${saleCalculation.cashPayment}) of mixed payment for ${selectedCustomer.name}`,
+            adminCut: adminCut,
+            debit: saleCalculation.totalAmount - adminCut,
+            balance: storeDetails.currentBalance + saleCalculation.cashPayment - saleCalculation.totalAmount + adminCut, // balance + credit + debot
+            description: `Cash sale for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
             settled: false
-          };
-          await addDoc(collection(db, 'AccountTx'), cashTxData);
+          }
+          await addDoc(collection(db, 'AccountTx'), accountTxData);
           const poolRef = doc(db, 'SevaPool', 'main');
           await updateDoc(poolRef, {
             currentBalance: sevaPool.currentBalance + saleCalculation.goSevaContribution,
@@ -449,8 +406,75 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
             lastAllocatedDate: serverTimestamp()
           });
+        } else {
+          // Mixed payment - create two separate records
+
+          // 1. Wallet portion record
+          // if (saleCalculation.walletDeduction > 0) {
+          //   const walletAdminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
+          //   const walletTxData: Omit<AccountTx, 'id'> = {
+          //     date: Timestamp.fromDate(new Date()),
+          //     storeName: storeDetails.name,
+          //     type: 'sale',
+          //     amount: saleCalculation.totalAmount,
+          //     debit: saleCalculation.walletDeduction - walletAdminCut,
+          //     adminCut: walletAdminCut,
+          //     credit: 0,
+          //     balance: storeDetails.currentBalance - saleCalculation.walletDeduction - walletAdminCut,
+          //     description: `Wallet portion (${saleCalculation.walletDeduction}) of mixed payment for ${selectedCustomer.name}`,
+          //     settled: false
+          //   };
+          //   await addDoc(collection(db, 'AccountTx'), walletTxData);
+          // }
+
+          // 2. Cash portion record
+          // if (saleCalculation.cashPayment > 0) {
+          //   const cashAdminCut = calculateAdminCut(saleCalculation.cashPayment, storeDetails, saleCalculation.surabhiCoinsUsed);
+          //   const cashTxData: Omit<AccountTx, 'id'> = {
+          //     date: Timestamp.fromDate(new Date()),
+          //     storeName: storeDetails.name,
+          //     type: 'sale',
+          //     amount: saleCalculation.cashPayment,
+          //     credit: saleCalculation.cashPayment,
+          //     debit: cashAdminCut,
+          //     balance: storeDetails.currentBalance + saleCalculation.cashPayment - cashAdminCut,
+          //     description: `Cash portion (${saleCalculation.cashPayment}) of mixed payment for ${selectedCustomer.name}`,
+          //     settled: false
+          //   };
+          //   await addDoc(collection(db, 'AccountTx'), cashTxData);
+          //   const poolRef = doc(db, 'SevaPool', 'main');
+          //   await updateDoc(poolRef, {
+          //     currentBalance: sevaPool.currentBalance + saleCalculation.goSevaContribution,
+          //     totalAllocations: sevaPool.totalAllocations,
+          //     allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
+          //     lastAllocatedDate: serverTimestamp()
+          //   });
+          // }
+
+          if (saleCalculation.cashPayment > 0) {
+            const adminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
+            const cashTxData: Omit<AccountTx, 'id'> = {
+              date: Timestamp.fromDate(new Date()),
+              storeName: storeDetails.name,
+              type: 'sale',
+              amount: saleCalculation.totalAmount,
+              credit: saleCalculation.cashPayment,
+              debit: saleCalculation.totalAmount - adminCut,
+              balance: storeDetails.currentBalance + saleCalculation.cashPayment - saleCalculation.totalAmount + adminCut,
+              description: `Mixed sale of ₹${saleCalculation.totalAmount} with cash payment of ₹${saleCalculation.cashPayment} and wallet payment of ₹${saleCalculation.walletDeduction} by ${selectedCustomer.name}`,
+              settled: false
+            };
+            await addDoc(collection(db, 'AccountTx'), cashTxData);
+            const poolRef = doc(db, 'SevaPool', 'main');
+            await updateDoc(poolRef, {
+              currentBalance: sevaPool.currentBalance + saleCalculation.goSevaContribution,
+              totalAllocations: sevaPool.totalAllocations,
+              allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
+              lastAllocatedDate: serverTimestamp()
+            });
+          }
+
         }
-      }
 
       const staffCollection = collection(db, 'staff');
       const staffQuery = query(staffCollection, where('mobile', '==', user.mobile));

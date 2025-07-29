@@ -602,14 +602,14 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                               return (
                                 <Badge
                                   variant={storeMatch ? "default" : "destructive"}
-                                  className={`text-xs px-2 py-0.5 ${storeMatch
+                                  className={`group text-xs px-2 py-0.5 ${storeMatch
                                     ? 'bg-green-100 text-green-800 border-green-200'
                                     : 'bg-red-100 text-red-800 border-red-200'
                                     }`}
                                 >
                                   {storeMatch ? (
                                     <>
-                                      <Shield className="h-3 w-3 mr-1" />
+                                      <Shield className="h-3 w-3 mr-1 text-green-800 group-hover:text-green-400 transition-colors duration-200" />
                                       Same Store
                                     </>
                                   ) : (
