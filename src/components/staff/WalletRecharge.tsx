@@ -65,8 +65,8 @@ function safeConvertToTimestamp(date: any): Timestamp {
 }
 
 export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
-  // console.log("The storeLocation is", storeLocation);
   const { user, logout, isLoading: authLoading } = useAuth();
+  console.log("The storeLocation is", user.storeLocation);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [rechargeAmount, setRechargeAmount] = useState('');
@@ -321,6 +321,21 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
 
       await addDoc(collection(db, 'AccountTx'), accountTxData);
 
+      // Update store balance
+      const storeQuery = query(
+        collection(db, 'stores'),
+        where('name', '==', user.storeLocation)
+      );
+      const storeSnapshot = await getDocs(storeQuery);
+      console.log("storeSnapshot in line 330 is", storeSnapshot);
+      if (!storeSnapshot.empty) {
+        const storeDoc = storeSnapshot.docs[0];
+        await updateDoc(storeDoc.ref, {
+          currentBalance: accountTxData.balance,
+          updatedAt: serverTimestamp()
+        });
+      }
+
       const staffCollection = collection(db, 'staff');
       const staffQuery = query(staffCollection, where('mobile', '==', user.mobile));
       const staffSnapshot = await getDocs(staffQuery);
@@ -369,8 +384,11 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
           });
 
           const poolRef = doc(db, 'SevaPool', 'main');
+          const poolDoc = await getDoc(poolRef);
+          const sevaPool = poolDoc.data();
+
           await updateDoc(poolRef, {
-            currentBalance: sevaPool.currentBalance + sevaAmountEarned,
+            currentBalance: (sevaPool?.currentBalance || 0) + sevaAmountEarned,
             totalAllocations: sevaPool.totalAllocations,
             allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
             lastAllocatedDate: serverTimestamp()
@@ -391,7 +409,16 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       if (currentData.walletRechargeDone === false) {
         await addActivityRecord({
           type: 'signup',
-          description: `First wallet recharge after registration`,
+          description: `${selectedCustomer.name} successfully registered`,
+          amount: 0,
+          user: selectedCustomer.mobile,
+          location: storeLocation
+        });
+
+        await addActivityRecord({
+          type: 'recharge',
+          description: `${selectedCustomer.name} recharged for the first time`,
+          amount: rechargeAmountNum,
           user: selectedCustomer.mobile,
           location: storeLocation
         });
@@ -407,7 +434,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       });
 
       await addActivityRecord({
-        type: 'recharge',
+        type: 'surabhi_earn',
         description: `${selectedCustomer.name} Earned ${surabhiCoinsEarned} Surabhi Coins from recharge`,
         amount: surabhiCoinsEarned,
         user: selectedCustomer.mobile,

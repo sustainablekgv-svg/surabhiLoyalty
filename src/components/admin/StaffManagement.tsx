@@ -99,6 +99,7 @@ export const StaffManagement = () => {
           storeLocation: doc.data().storeLocation || '',
           address: doc.data().address || '',
           contactNumber: doc.data().contactNumber || '',
+          currentBalance: Number(doc.data().currentBalance) || 0,
           referralCommission: Number(doc.data().referralCommission) || 0,
           surabhiCommission: Number(doc.data().surabhiCommission) || 0,
           sevaCommission: Number(doc.data().sevaCommission) || 0,

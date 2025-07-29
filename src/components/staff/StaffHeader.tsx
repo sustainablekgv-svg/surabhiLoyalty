@@ -1,10 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Coins, 
-  LogOut, 
-  Store,
-  Bell
+import {
+  Coins,
+  LogOut,
 } from 'lucide-react';
 
 interface StaffHeaderProps {
@@ -31,7 +29,7 @@ export const StaffHeader = ({ user, onLogout }: StaffHeaderProps) => {
               <p className="text-sm text-gray-600">Staff Portal</p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-4">
             {/* <Button variant="ghost" size="sm" className="relative">
               <Bell className="h-5 w-5" />
@@ -39,7 +37,7 @@ export const StaffHeader = ({ user, onLogout }: StaffHeaderProps) => {
                 1
               </span>
             </Button> */}
-            
+
             <div className="flex items-center gap-3">
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-900">
@@ -52,10 +50,10 @@ export const StaffHeader = ({ user, onLogout }: StaffHeaderProps) => {
                   <span className="text-xs text-gray-600">{user.mobile}</span>
                 </div>
               </div>
-              
-              <Button 
-                variant="ghost" 
-                size="sm" 
+
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={onLogout}
                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
               >

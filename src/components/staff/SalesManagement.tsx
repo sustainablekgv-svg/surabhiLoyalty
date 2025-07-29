@@ -383,6 +383,20 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           settled: false
         };
         await addDoc(collection(db, 'AccountTx'), accountTxData);
+
+        // Update store balance
+        const storeQuery = query(
+          collection(db, 'stores'),
+          where('name', '==', user.storeLocation)
+        );
+        const storeSnapshot = await getDocs(storeQuery);
+        if (!storeSnapshot.empty) {
+          const storeDoc = storeSnapshot.docs[0];
+          await updateDoc(storeDoc.ref, {
+            currentBalance: accountTxData.balance,
+            updatedAt: serverTimestamp()
+          });
+        }
       } else
         if (paymentMethod === 'cash') {
           const adminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
@@ -399,13 +413,32 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             settled: false
           }
           await addDoc(collection(db, 'AccountTx'), accountTxData);
+
+          // Fetch current SevaPool data to increment balance properly
           const poolRef = doc(db, 'SevaPool', 'main');
+          const poolDoc = await getDoc(poolRef);
+          const sevaPool = poolDoc.data();
+
           await updateDoc(poolRef, {
-            currentBalance: sevaPool.currentBalance + saleCalculation.goSevaContribution,
+            currentBalance: (sevaPool?.currentBalance || 0) + saleCalculation.goSevaContribution,
             totalAllocations: sevaPool.totalAllocations,
             allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
             lastAllocatedDate: serverTimestamp()
           });
+
+          // Update store balance
+          const storeQuery = query(
+            collection(db, 'stores'),
+            where('name', '==', user.storeLocation)
+          );
+          const storeSnapshot = await getDocs(storeQuery);
+          if (!storeSnapshot.empty) {
+            const storeDoc = storeSnapshot.docs[0];
+            await updateDoc(storeDoc.ref, {
+              currentBalance: accountTxData.balance,
+              updatedAt: serverTimestamp()
+            });
+          }
         } else {
           // Mixed payment - create two separate records
 
@@ -464,14 +497,33 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               description: `Mixed sale of ₹${saleCalculation.totalAmount} with cash payment of ₹${saleCalculation.cashPayment} and wallet payment of ₹${saleCalculation.walletDeduction} by ${selectedCustomer.name}`,
               settled: false
             };
+
+
             await addDoc(collection(db, 'AccountTx'), cashTxData);
             const poolRef = doc(db, 'SevaPool', 'main');
+            const poolDoc = await getDoc(poolRef);
+            const sevaPool = poolDoc.data();
+
             await updateDoc(poolRef, {
-              currentBalance: sevaPool.currentBalance + saleCalculation.goSevaContribution,
+              currentBalance: (sevaPool?.currentBalance || 0) + saleCalculation.goSevaContribution,
               totalAllocations: sevaPool.totalAllocations,
               allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
               lastAllocatedDate: serverTimestamp()
             });
+
+            // Update store balance
+            const storeQuery = query(
+              collection(db, 'stores'),
+              where('name', '==', user.storeLocation)
+            );
+            const storeSnapshot = await getDocs(storeQuery);
+            if (!storeSnapshot.empty) {
+              const storeDoc = storeSnapshot.docs[0];
+              await updateDoc(storeDoc.ref, {
+                currentBalance: cashTxData.balance,
+                updatedAt: serverTimestamp()
+              });
+            }
           }
 
         }
@@ -500,7 +552,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       const activity: ActivityType = {
         id: `act-${Date.now()}`,
         type: 'transaction',
-        description: `Purchase of ₹${saleCalculation.totalAmount} by ${selectedCustomer.name}`,
+        description: `${paymentMethod} Purchase of ₹${saleCalculation.totalAmount} by ${selectedCustomer.name}`,
         amount: saleCalculation.totalAmount,
         user: selectedCustomer.mobile,
         location: storeLocation,

@@ -161,7 +161,7 @@ export interface SevaPool {
 
 export interface ActivityType {
   id: string;
-  type: 'signup' | 'transaction' | 'recharge' | 'referral' | 'contribution' | 'allocation';
+  type: 'signup' | 'transaction' | 'recharge' | 'referral' | 'contribution' | 'allocation' | 'surabhi_earn' | 'referral_bonus' | 'goseva_contribution' | 'purchase' | 'allocation' | 'surabhi_coins';
   description: string;
   amount?: number;
   user: string;
