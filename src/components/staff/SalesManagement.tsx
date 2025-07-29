@@ -42,7 +42,8 @@ import {
   StoreType,
   AccountTx,
   StaffType,
-  SevaPool
+  SevaPool,
+  CustomerTx
 } from '@/types/types';
 import { serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/hooks/auth-context';
@@ -384,6 +385,25 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         };
         await addDoc(collection(db, 'AccountTx'), accountTxData);
 
+
+        // Create CustomerTx record
+        const customerTxData: Omit<CustomerTx, 'id'> = {
+          createdAt: Timestamp.fromDate(new Date()),
+          mobile: selectedCustomer.mobile,
+          storeLocation: storeLocation,
+          walletCredit: 0,
+          walletDebit: saleCalculation.walletDeduction,
+          walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
+          surabhiDebit: saleCalculation.surabhiCoinsUsed,
+          surabhiCredit: saleCalculation.surabhiCoinsEarned,
+          surabhiBalance: selectedCustomer.surabhiCoins + saleCalculation.surabhiCoinsEarned,
+          sevaCredit: saleCalculation.goSevaContribution,
+          sevaDebit: 0,
+          sevaBalance: (selectedCustomer.sevaCoinsCurrentMonth || 0) + saleCalculation.goSevaContribution,
+          sevaTotal: (selectedCustomer.sevaCoinsTotal || 0) + saleCalculation.goSevaContribution
+        };
+
+        await addDoc(collection(db, 'CustomerTx'), customerTxData);
         // Update store balance
         const storeQuery = query(
           collection(db, 'stores'),
@@ -425,6 +445,26 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
             lastAllocatedDate: serverTimestamp()
           });
+
+          // Create CustomerTx record
+          const customerTxData: Omit<CustomerTx, 'id'> = {
+            createdAt: Timestamp.fromDate(new Date()),
+            mobile: selectedCustomer.mobile,
+            storeLocation: storeLocation,
+            walletCredit: 0,
+            walletDebit: saleCalculation.walletDeduction,
+            walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
+            surabhiDebit: saleCalculation.surabhiCoinsUsed,
+            surabhiCredit: saleCalculation.surabhiCoinsEarned,
+            surabhiBalance: selectedCustomer.surabhiCoins + saleCalculation.surabhiCoinsEarned,
+            sevaCredit: saleCalculation.goSevaContribution,
+            sevaDebit: 0,
+            sevaBalance: (selectedCustomer.sevaCoinsCurrentMonth || 0) + saleCalculation.goSevaContribution,
+            sevaTotal: (selectedCustomer.sevaCoinsTotal || 0) + saleCalculation.goSevaContribution
+          };
+
+          await addDoc(collection(db, 'CustomerTx'), customerTxData);
+
 
           // Update store balance
           const storeQuery = query(
@@ -510,6 +550,26 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
               lastAllocatedDate: serverTimestamp()
             });
+
+
+            // Create CustomerTx record
+            const customerTxData: Omit<CustomerTx, 'id'> = {
+              createdAt: Timestamp.fromDate(new Date()),
+              mobile: selectedCustomer.mobile,
+              storeLocation: storeLocation,
+              walletCredit: 0,
+              walletDebit: saleCalculation.walletDeduction,
+              walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
+              surabhiDebit: saleCalculation.surabhiCoinsUsed,
+              surabhiCredit: saleCalculation.surabhiCoinsEarned,
+              surabhiBalance: selectedCustomer.surabhiCoins + saleCalculation.surabhiCoinsEarned,
+              sevaCredit: saleCalculation.goSevaContribution,
+              sevaDebit: 0,
+              sevaBalance: (selectedCustomer.sevaCoinsCurrentMonth || 0) + saleCalculation.goSevaContribution,
+              sevaTotal: (selectedCustomer.sevaCoinsTotal || 0) + saleCalculation.goSevaContribution
+            };
+
+            await addDoc(collection(db, 'CustomerTx'), customerTxData);
 
             // Update store balance
             const storeQuery = query(

@@ -42,6 +42,23 @@ export interface WalletRechargeProps {
   storeLocation: string;
 }
 
+export interface CustomerTx {
+  id?: string;
+  createdAt: Date;
+  mobile: string;
+  storeLocation: string;
+  walletCredit: number;
+  walletDebit: number;
+  walletBalance: number;
+  surabhiCoins: number;
+  surabhiCoinsCredit: number;
+  surabhiBalance: number;
+  sevaCoinsCredit: number;
+  sevaCoinsDebit: number;
+  sevaCoinsBalance: number;
+  sevaCoinsTotal: number;
+}
+
 export interface SalesManagementProps {
   storeLocation: string;
 }

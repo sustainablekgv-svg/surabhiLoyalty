@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, updateDoc, addDoc, serverTimestamp, doc, getDoc, Timestamp, arrayUnion, increment } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Customer, WalletRechargeProps, ActivityType, StoreType, RechargeRecord, AccountTx, SevaPool, StaffType } from '@/types/types';
+import { Customer, WalletRechargeProps, ActivityType, StoreType, RechargeRecord, AccountTx, SevaPool, StaffType, CustomerTx } from '@/types/types';
 import { FieldValue } from 'firebase/firestore';
 import { useAuth } from '@/hooks/auth-context';
 
@@ -335,6 +335,25 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
           updatedAt: serverTimestamp()
         });
       }
+
+      // Create CustomerTx record
+      const customerTxData: Omit<CustomerTx, 'id'> = {
+        createdAt: Timestamp.fromDate(new Date()),
+        mobile: selectedCustomer.mobile,
+        storeLocation: storeLocation,
+        walletCredit: rechargeAmountNum,
+        walletDebit: 0,
+        walletBalance: currentData.walletBalance + rechargeAmountNum,
+        surabhiDebit: 0,
+        surabhiCredit: surabhiCoinsEarned,
+        surabhiBalance: currentData.surabhiCoins + surabhiCoinsEarned,
+        sevaCredit: sevaAmountEarned,
+        sevaDebit: 0,
+        sevaBalance: (currentData.sevaCoinsCurrentMonth || 0) + sevaAmountEarned,
+        sevaTotal: (currentData.sevaCoinsTotal || 0) + sevaAmountEarned
+      };
+
+      await addDoc(collection(db, 'CustomerTx'), customerTxData);
 
       const staffCollection = collection(db, 'staff');
       const staffQuery = query(staffCollection, where('mobile', '==', user.mobile));
