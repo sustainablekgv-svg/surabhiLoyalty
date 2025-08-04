@@ -10,13 +10,15 @@ import {
   Gift,
   Loader2
 } from 'lucide-react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useEffect, useState } from 'react';
-import { Customer } from '@/types/types';
+import { CustomerType, SevaPoolType } from '@/types/types';
 import { AdminRecentActivity } from './AdminRecentActivity';
+import { toast } from 'sonner';
 
 export const AdminStats = () => {
+  const [sevaPoolAmount, setSevaPoolAmount] = useState<Number>(0);
   const [stats, setStats] = useState([
     {
       title: 'Total Users',
@@ -62,14 +64,37 @@ export const AdminStats = () => {
   ]);
   const [storeLoading, setStoreLoading] = useState(true);
 
+
   useEffect(() => {
+    const fetchSevaPoolData = async () => {
+      try {
+        setLoading(true);
+        // await checkAndResetMonthlySevaCoins();
+    
+        // Fetch Seva Pool data
+        const poolRef = doc(db, 'SevaPool', 'main');
+        const poolSnapshot = await getDoc(poolRef);
+        if (poolSnapshot.exists()) {
+          const data = poolSnapshot.data();
+          setSevaPoolAmount(data.currentBalance);
+          console.log("THe seva Pool baalnce is", sevaPoolAmount, data.currentBalance)
+        }
+      } catch (error) {
+        console.error('Error fetching SevaPool data:', error);
+        toast.error('Failed to load Seva Pool data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSevaPoolData();
+
     const fetchData = async () => {
       try {
         // Fetch customer data
         const customersQuery = await getDocs(collection(db, 'customers'));
-        const customers: Customer[] = [];
+        const customers: CustomerType[] = [];
         customersQuery.forEach((doc) => {
-          customers.push(doc.data() as Customer);
+          customers.push(doc.data() as CustomerType);
         });
 
         // Fetch sales data for store performance
@@ -99,8 +124,8 @@ export const AdminStats = () => {
         // Calculate statistics
         const totalUsers = customers.length;
         const totalRecharge = customers.reduce((sum, customer) => sum + (customer.walletBalance || 0), 0);
-        const totalSurabhiCoins = customers.reduce((sum, customer) => sum + (customer.surabhiCoins || 0), 0);
-        const totalSevaPool = customers.reduce((sum, customer) => sum + (customer.sevaCoinsCurrentMonth || 0), 0);
+        const totalSurabhiCoins = customers.reduce((sum, customer) => sum + (customer.surabhiBalance || 0), 0);
+        const totalSevaPool = sevaPoolAmount;
 
         setStats([
           {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, query, where, doc, updateDoc, writeBatch, serverTimestamp, Timestamp, getDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, query, where, doc, updateDoc, serverTimestamp, Timestamp, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { format, startOfMonth, isFirstDayOfMonth } from 'date-fns';
+import { format, startOfMonth } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,11 +19,12 @@ import {
   History,
   Download,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Table
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { ActivityType, SevaPool } from '@/types/types';
+import { CustomerTxType, SevaPoolType } from '@/types/types';
 
 interface Customer {
   id?: string;
@@ -75,7 +76,7 @@ function safeFormatDate(date: any, dateFormat: string = 'dd MMM yyyy'): string {
 }
 
 export const GoSevaPool = () => {
-  const [sevaPool, setSevaPool] = useState<SevaPool>({
+  const [sevaPool, setSevaPool] = useState<SevaPoolType>({
     currentBalance: 0,
     totalContributions: 0,
     totalAllocations: 0,
@@ -85,7 +86,7 @@ export const GoSevaPool = () => {
     lastAllocatedDate: Timestamp.now()
   });
 
-  const [activities, setActivities] = useState<ActivityType[]>([]);
+  const [transactions, setTransactions] = useState<CustomerTxType[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -97,14 +98,13 @@ export const GoSevaPool = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      // await checkAndResetMonthlySevaCoins();
-
-      // Fetch Seva Pool data (unchanged)
+      
+      // Fetch Seva Pool data
       const poolRef = doc(db, 'SevaPool', 'main');
       const poolSnapshot = await getDoc(poolRef);
       if (poolSnapshot.exists()) {
         const data = poolSnapshot.data();
-        const poolData: SevaPool = {
+        const poolData: SevaPoolType = {
           currentBalance: data.currentBalance ?? 0,
           totalContributions: data.totalContributions ?? 0,
           totalAllocations: data.totalAllocations ?? 0,
@@ -118,86 +118,71 @@ export const GoSevaPool = () => {
         toast.error('Seva Pool document not found');
       }
 
-      // Fetch activities for this month (contributions and allocations)
-      const activitiesQuery = query(
-        collection(db, 'Activity'),
-        where('date', '>=', startOfMonth(new Date())),
-        where('type', 'in', ['contribution', 'allocation'])
+      // Fetch transactions with seva_contribution type and sevaEarned > 0
+      const transactionsQuery = query(
+        collection(db, 'CustomerTx'),
+        // where('createdAt', '>=', startOfMonth(new Date())),
+        // where('type', '==', 'seva_contribution'),
+        where('sevaEarned', '>', 0)
       );
-      const activitiesSnapshot = await getDocs(activitiesQuery);
-      const activitiesData = activitiesSnapshot.docs.map(doc => {
+      const transactionsSnapshot = await getDocs(transactionsQuery);
+      const transactionsData = transactionsSnapshot.docs.map(doc => {
         const data = doc.data();
         return {
           id: doc.id,
           type: data.type,
-          description: data.description,
-          amount: data.amount || 0,
-          user: data.user,
-          location: data.location,
-          date: safeConvertToTimestamp(data.date)
-        } as ActivityType;
+          customerMobile: data.customerMobile,
+          customerName: data.customerName,
+          storeLocation: data.storeLocation,
+          storeName: data.storeName,
+          createdAt: safeConvertToTimestamp(data.createdAt),
+          paymentMethod: data.paymentMethod,
+          processedBy: data.processedBy,
+          amount: data.amount,
+          surabhiEarned: data.surabhiEarned,
+          sevaEarned: data.sevaEarned,
+          referralEarned: data.referralEarned,
+          referredBy: data.referredBy,
+          surabhiUsed: data.surabhiUsed,
+          walletDeduction: data.walletDeduction,
+          cashPayment: data.cashPayment,
+          previousBalance: data.previousBalance,
+          newBalance: data.newBalance,
+          walletCredit: data.walletCredit,
+          walletDebit: data.walletDebit,
+          walletBalance: data.walletBalance,
+          surabhiDebit: data.surabhiDebit,
+          surabhiCredit: data.surabhiCredit,
+          surabhiBalance: data.surabhiBalance,
+          sevaCredit: data.sevaCredit,
+          sevaDebit: data.sevaDebit,
+          sevaBalance: data.sevaBalance,
+          sevaTotal: data.sevaTotal
+        } as CustomerTxType;
       });
-      setActivities(activitiesData.sort((a, b) => b.date.toMillis() - a.date.toMillis()));
+      setTransactions(transactionsData.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
 
-      // First get all customers who have made contributions this month
-      const contributingCustomersData = activitiesData
-        .filter(activity => activity.type === 'contribution')
-        .reduce((acc: { mobile: string; amount: number }[], activity) => {
-          const mobile = activity.user.split('|')[1] || activity.user;
-          const existingCustomer = acc.find(c => c.mobile === mobile);
-          if (existingCustomer) {
-            existingCustomer.amount += activity.amount || 0;
-          } else {
-            acc.push({
-              mobile,
-              amount: activity.amount || 0
-            });
-          }
-          return acc;
-        }, []);
+      // Calculate top customers based on sevaEarned
+      const customerContributions = transactionsData.reduce((acc: Record<string, Customer>, tx) => {
+        const mobile = tx.customerMobile;
+        if (!acc[mobile]) {
+          acc[mobile] = {
+            name: tx.customerName,
+            mobile,
+            storeLocation: tx.storeLocation,
+            sevaCoinsCurrentMonth: 0,
+            sevaCoinsTotal: tx.sevaTotal || 0
+          };
+        }
+        acc[mobile].sevaCoinsCurrentMonth += tx.sevaEarned || 0;
+        return acc;
+      }, {});
 
-      // Now fetch full customer data for these mobile numbers
-      if (contributingCustomersData.length > 0) {
-        const customersQuery = query(
-          collection(db, 'customers'),
-          where('mobile', 'in', contributingCustomersData.map(c => c.mobile))
-        );
-        const customersSnapshot = await getDocs(customersQuery);
-        const customersData = customersSnapshot.docs.map(doc => {
-          const data = doc.data();
-          const contribution = contributingCustomersData.find(c => c.mobile === data.mobile);
+      const topCustomers = Object.values(customerContributions)
+        .sort((a, b) => b.sevaCoinsCurrentMonth - a.sevaCoinsCurrentMonth)
+        .slice(0, 10); // Get top 10 customers
 
-          return {
-            id: doc.id,
-            name: data.name || '',
-            mobile: data.mobile || '',
-            email: data.email || '',
-            storeLocation: data.storeLocation || '',
-            walletBalance: data.walletBalance || 0,
-            walletRechargeDone: data.walletRechargeDone || false,
-            walletBalanceCurrentMonth: data.walletBalanceCurrentMonth || 0,
-            role: data.role || 'customer',
-            walletId: data.walletId || '',
-            surabhiCoins: data.surabhiCoins || 0,
-            surabhiCoinsCurrentMonth: data.surabhiCoinsCurrentMonth || 0,
-            saleElgibility: data.saleElgibility || false,
-            sevaCoinsTotal: data.sevaCoinsTotal || 0,
-            sevaCoinsCurrentMonth: contribution?.amount || 0,
-            referredBy: data.referredBy || null,
-            referralSurabhi: data.referralSurabhi || 0,
-            referredUsers: data.referredUsers || null,
-            registered: data.registered || false,
-            lastTransactionDate: safeConvertToTimestamp(data.lastTransactionDate),
-            createdAt: safeConvertToTimestamp(data.createdAt),
-            customerPassword: data.customerPassword || '',
-            tpin: data.tpin || ''
-          } as Customer;
-        });
-
-        setCustomers(customersData.sort((a, b) => b.sevaCoinsCurrentMonth - a.sevaCoinsCurrentMonth));
-      } else {
-        setCustomers([]);
-      }
+      setCustomers(topCustomers);
 
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -208,25 +193,6 @@ export const GoSevaPool = () => {
     }
   };
 
-  // const checkAndResetMonthlySevaCoins = async () => {
-  //   if (isFirstDayOfMonth(new Date())) {
-  //     try {
-  //       // Reset Seva Pool monthly counts
-  //       const poolRef = doc(db, 'SevaPool', 'main');
-  //       await updateDoc(poolRef, { 
-  //         lastResetDate: Timestamp.fromDate(new Date()),
-  //         contributionsCurrentMonth: 0,
-  //         allocationsCurrentMonth: 0
-  //       });
-
-  //       toast.success('Monthly Seva coins reset successfully');
-  //     } catch (error) {
-  //       console.error('Error resetting monthly Seva coins:', error);
-  //       toast.error('Failed to reset monthly Seva coins');
-  //     }
-  //   }
-  // };
-
   const handleAllocation = async () => {
     const amount = parseFloat(allocationAmount);
     if (!amount || amount <= 0 || amount > sevaPool.currentBalance) {
@@ -235,19 +201,6 @@ export const GoSevaPool = () => {
     }
 
     try {
-      // Create activity record
-      const newActivity: Omit<ActivityType, 'id'> = {
-        type: 'allocation',
-        description: allocationDescription,
-        amount: amount,
-        user: 'System Allocation',
-        location: 'System',
-        date: Timestamp.fromDate(new Date())
-      };
-
-      // Add activity
-      await addDoc(collection(db, 'Activity'), newActivity);
-
       // Update Seva Pool
       const poolRef = doc(db, 'SevaPool', 'main');
       const poolDoc = await getDoc(poolRef);
@@ -261,7 +214,6 @@ export const GoSevaPool = () => {
       });
 
       // Update state
-      setActivities([{ ...newActivity, id: 'temp-id' }, ...activities]);
       setSevaPool({
         ...sevaPool,
         currentBalance: sevaPool.currentBalance - amount,
@@ -290,11 +242,11 @@ export const GoSevaPool = () => {
   }, []);
 
   const monthlyStats = {
-    totalContributions: sevaPool.contributionsCurrentMonth,
+    totalContributions: transactions.reduce((sum, tx) => sum + (tx.sevaEarned || 0), 0),
     totalAllocations: sevaPool.allocationsCurrentMonth,
     contributorCount: customers.length,
     avgContribution: customers.length > 0
-      ? sevaPool.contributionsCurrentMonth / customers.length
+      ? transactions.reduce((sum, tx) => sum + (tx.sevaEarned || 0), 0) / customers.length
       : 0
   };
 
@@ -447,10 +399,10 @@ export const GoSevaPool = () => {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <History className="h-5 w-5 text-gray-600" />
-                Recent Transactions
+                Recent Seva Contributions
               </CardTitle>
               <CardDescription>
-                Latest contributions and allocations
+                Transactions with Seva contributions this month
               </CardDescription>
             </div>
 
@@ -462,69 +414,56 @@ export const GoSevaPool = () => {
         </CardHeader>
 
         <CardContent>
-          <div className="space-y-3">
-            {activities.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-500">
-                <History className="h-8 w-8" />
-                <p>No transactions found for this month</p>
-              </div>
-            ) : (
-              activities.map((activity) => (
-                <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-full ${activity.type === 'contribution'
-                      ? 'bg-green-100'
-                      : 'bg-red-100'
-                      }`}>
-                      {activity.type === 'contribution' ? (
-                        <TrendingUp className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <Gift className="h-4 w-4 text-red-600" />
-                      )}
-                    </div>
-
-                    <div>
-                      <p className="font-medium text-sm text-gray-900">
-                        {activity.description}
-                      </p>
-                      <div className="flex items-center gap-2 text-xs text-gray-600">
-                        <span>
-                          {safeFormatDate(activity.date)}
-                        </span>
-                        {activity.user && (
-                          <>
-                            <span>•</span>
-                            <span>{activity.user.split('|')[0] || activity.user}</span>
-                            {activity.location && (
-                              <>
-                                <span>•</span>
-                                <span>{activity.location}</span>
-                              </>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <p className={`font-bold ${activity.type === 'contribution'
-                      ? 'text-green-600'
-                      : 'text-red-600'
-                      }`}>
-                      {activity.type === 'contribution' ? '+' : '-'}₹{Math.abs(activity.amount || 0).toLocaleString()}
-                    </p>
-                    <Badge variant={activity.type === 'contribution' ? 'default' : 'destructive'} className="mt-1">
-                      {activity.type}
-                    </Badge>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+          {transactions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-500">
+              <History className="h-8 w-8" />
+              <p>No Seva contributions found for this month</p>
+            </div>
+          ) : (
+            <div className="border rounded-lg overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Store</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seva Earned</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {transactions.map((tx) => (
+                    <tr key={tx.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {safeFormatDate(tx.createdAt)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{tx.customerName}</div>
+                        <div className="text-sm text-gray-500">{tx.customerMobile}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {tx.storeName || tx.storeLocation}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ₹{tx.amount.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                        ₹{tx.sevaEarned?.toLocaleString() || 0}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge variant="outline">
+                          {tx.paymentMethod || 'unknown'}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
-
 
       {/* Top Contributors */}
       <Card>
@@ -534,7 +473,7 @@ export const GoSevaPool = () => {
             Top Contributors This Month
           </CardTitle>
           <CardDescription>
-            Customers who have contributed to the Seva Pool
+            Customers who have contributed the most to the Seva Pool
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -49,12 +49,13 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { StoreType, StaffType } from '@/types/types';
 
 async function checkContactNumberExists(contactNumber: string, currentStoreId?: string): Promise<boolean> {
   if (!contactNumber) return false;
 
   const storesRef = collection(db, 'stores');
-  const q = query(storesRef, where('contactNumber', '==', contactNumber));
+  const q = query(storesRef, where('storeContactNumber', '==', contactNumber));
 
   const querySnapshot = await getDocs(q);
 
@@ -66,7 +67,6 @@ async function checkContactNumberExists(contactNumber: string, currentStoreId?: 
   return !querySnapshot.empty;
 }
 
-import { StaffType, StoreType } from '@/types/types';
 export const StaffManagement = () => {
   const [emailError, setEmailError] = useState<string>('');
   const [mobileError, setMobileError] = useState<string>('');
@@ -95,18 +95,18 @@ export const StaffManagement = () => {
         const storesSnapshot = await getDocs(collection(db, 'stores'));
         const storesData = storesSnapshot.docs.map(doc => ({
           id: doc.id,
-          name: doc.data().name || '',
+          storeName: doc.data().storeName || '',
           storeLocation: doc.data().storeLocation || '',
-          address: doc.data().address || '',
-          contactNumber: doc.data().contactNumber || '',
-          currentBalance: Number(doc.data().currentBalance) || 0,
+          storeAddress: doc.data().storeAddress || '',
+          storeContactNumber: doc.data().storeContactNumber || '',
+          storeCurrentBalance: Number(doc.data().storeCurrentBalance) || 0,
           referralCommission: Number(doc.data().referralCommission) || 0,
           surabhiCommission: Number(doc.data().surabhiCommission) || 0,
           sevaCommission: Number(doc.data().sevaCommission) || 0,
           cashOnlyCommission: Number(doc.data().cashOnlyCommission) || 0,
-          status: doc.data().status || 'active',
-          createdAt: doc.data().createdAt?.toDate() || new Date(),
-          updatedAt: doc.data().updatedAt?.toDate() || new Date()
+          storeStatus: doc.data().storeStatus || 'active',
+          storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
+          storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date()
         })) as StoreType[];
         setStores(storesData);
 
@@ -114,17 +114,19 @@ export const StaffManagement = () => {
         const staffSnapshot = await getDocs(collection(db, 'staff'));
         const staffData = staffSnapshot.docs.map(doc => ({
           id: doc.id,
-          name: doc.data().name || '',
-          mobile: doc.data().mobile || '',
-          email: doc.data().email || '',
+          staffName: doc.data().staffName || '',
+          staffMobile: doc.data().staffMobile || '',
+          staffEmail: doc.data().staffEmail || '',
           storeLocation: doc.data().storeLocation || '',
           role: doc.data().role || 'staff',
-          status: doc.data().status || 'active',
-          salesCount: Number(doc.data().salesCount) || 0,
+          staffStatus: doc.data().staffStatus || 'active',
+          staffSalesCount: Number(doc.data().staffSalesCount) || 0,
           staffPin: doc.data().staffPin || '',
           staffPassword: doc.data().staffPassword || '',
-          createdAt: doc.data().createdAt?.toDate() || new Date(),
-          lastActive: doc.data().lastActive?.toDate()
+          staffRechargesCount: Number(doc.data().staffRechargesCount) || 0,
+          staffCreatedAt: doc.data().staffCreatedAt?.toDate() || new Date(),
+          lastActive: doc.data().lastActive?.toDate(),
+          createdAt: doc.data().createdAt?.toDate()
         })) as StaffType[];
         setStaff(staffData);
       } catch (error) {
@@ -143,14 +145,14 @@ export const StaffManagement = () => {
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!currentStaff?.email || !emailRegex.test(currentStaff.email)) {
+    if (!currentStaff?.staffEmail || !emailRegex.test(currentStaff.staffEmail)) {
       setEmailError('Please enter a valid email address');
       isValid = false;
     } else {
       // Check if email exists
       const emailQuery = query(
         collection(db, 'staff'),
-        where('email', '==', currentStaff.email)
+        where('staffEmail', '==', currentStaff.staffEmail)
       );
       const emailSnapshot = await getDocs(emailQuery);
       if (!emailSnapshot.empty && emailSnapshot.docs[0].id !== currentStaff?.id) {
@@ -162,14 +164,14 @@ export const StaffManagement = () => {
     }
 
     // Validate mobile format (10 digits for Indian numbers)
-    if (!currentStaff?.mobile || currentStaff.mobile.length !== 10) {
+    if (!currentStaff?.staffMobile || currentStaff.staffMobile.length !== 10) {
       setMobileError('Please enter a valid 10-digit mobile number');
       isValid = false;
     } else {
       // Check if mobile exists
       const mobileQuery = query(
         collection(db, 'staff'),
-        where('mobile', '==', currentStaff.mobile)
+        where('staffMobile', '==', currentStaff.staffMobile)
       );
       const mobileSnapshot = await getDocs(mobileQuery);
       if (!mobileSnapshot.empty && mobileSnapshot.docs[0].id !== currentStaff?.id) {
@@ -193,19 +195,19 @@ export const StaffManagement = () => {
       setIsLoading(true);
 
       const staffData = {
-        name: currentStaff.name,
-        mobile: currentStaff.mobile,
-        email: currentStaff.email,
+        staffName: currentStaff.staffName,
+        staffMobile: currentStaff.staffMobile,
+        staffEmail: currentStaff.staffEmail,
         role: currentStaff.role,
-        status: currentStaff.status,
+        staffStatus: currentStaff.staffStatus,
         storeLocation: currentStaff.storeLocation,
-        salesCount: currentStaff.salesCount || 0,
-        rechargesCount: currentStaff.rechargesCount || 0,
+        staffSalesCount: currentStaff.staffSalesCount || 0,
+        staffRechargesCount: currentStaff.staffRechargesCount || 0,
         staffPin: currentStaff.staffPin || '',
         staffPassword: currentStaff.staffPassword || '',
         lastActive: currentStaff.lastActive || null,
-        createdAt: currentStaff.createdAt || Timestamp.now(),
-        updatedAt: Timestamp.now()
+        staffCreatedAt: currentStaff.createdAt,
+        staffUpdatedAt: Timestamp.now()
       };
 
       if (currentStaff.id) {
@@ -223,18 +225,19 @@ export const StaffManagement = () => {
       const staffSnapshot = await getDocs(collection(db, 'staff'));
       const refreshedStaffData = staffSnapshot.docs.map(doc => ({
         id: doc.id,
-        name: doc.data().name || '',
-        mobile: doc.data().mobile || '',
-        email: doc.data().email || '',
+        staffName: doc.data().staffName || '',
+        staffMobile: doc.data().staffMobile || '',
+        staffEmail: doc.data().staffEmail || '',
         storeLocation: doc.data().storeLocation || '',
         role: doc.data().role || 'staff',
-        status: doc.data().status || 'active',
-        salesCount: Number(doc.data().salesCount) || 0,
+        staffStatus: doc.data().staffStatus || 'active',
+        staffSalesCount: Number(doc.data().staffSalesCount) || 0,
         staffPin: doc.data().staffPin || '',
-        rechargesCount: doc.data().rechargesCount || 0,
+        staffRechargesCount: doc.data().staffRechargesCount || 0,
         staffPassword: doc.data().staffPassword || '',
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        lastActive: doc.data().lastActive?.toDate()
+        staffCreatedAt: doc.data().staffCreatedAt?.toDate() || new Date(),
+        lastActive: doc.data().lastActive?.toDate(),
+        createdAt : doc.data().createdAt
       })) as StaffType[];
       setStaff(refreshedStaffData);
     } catch (error) {
@@ -257,7 +260,7 @@ export const StaffManagement = () => {
       const updatedStaff = staffSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
+        createdAt: doc.data().staffCreatedAt?.toDate() || new Date(),
         lastActive: doc.data().lastActive?.toDate()
       })) as StaffType[];
       setStaff(updatedStaff);
@@ -274,24 +277,24 @@ export const StaffManagement = () => {
   const handleSaveStore = async () => {
     if (!currentStore) return false;
 
-    if (!currentStore.name || !currentStore.storeLocation || !currentStore.address || !currentStore.contactNumber) {
+    if (!currentStore.storeName || !currentStore.storeLocation || !currentStore.storeAddress || !currentStore.storeContactNumber) {
       toast.error('Please fill all required fields');
       return false;
     }
 
     try {
       const storeData = {
-        name: currentStore.name.trim(),
+        storeName: currentStore.storeName.trim(),
         storeLocation: currentStore.storeLocation.trim(),
-        address: currentStore.address.trim(),
-        contactNumber: currentStore.contactNumber.trim(),
+        storeAddress: currentStore.storeAddress.trim(),
+        storeContactNumber: currentStore.storeContactNumber.trim(),
         referralCommission: Number(currentStore.referralCommission) || 0,
         surabhiCommission: Number(currentStore.surabhiCommission) || 0,
         sevaCommission: Number(currentStore.sevaCommission) || 0,
-        currentBalance: Number(currentStore.currentBalance) || 0,
+        storeCurrentBalance: Number(currentStore.storeCurrentBalance) || 0,
         cashOnlyCommission: Number(currentStore.cashOnlyCommission) || 0,
-        status: currentStore.status || 'active',
-        updatedAt: serverTimestamp()
+        storeStatus: currentStore.storeStatus || 'active',
+        storeUpdatedAt: serverTimestamp()
       };
 
       if (currentStore.id) {
@@ -303,7 +306,7 @@ export const StaffManagement = () => {
         const newStoreRef = doc(collection(db, 'stores'));
         await setDoc(newStoreRef, {
           ...storeData,
-          createdAt: serverTimestamp()
+          storeCreatedAt: serverTimestamp()
         });
         toast.success('Store created successfully');
       }
@@ -313,8 +316,8 @@ export const StaffManagement = () => {
       const updatedStores = storesSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        updatedAt: doc.data().updatedAt?.toDate() || new Date()
+        storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
+        storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date()
       })) as StoreType[];
       setStores(updatedStores);
 
@@ -356,9 +359,9 @@ export const StaffManagement = () => {
 
   useEffect(() => {
     const timer = setTimeout(async () => {
-      if (currentStore?.contactNumber && currentStore.contactNumber.length === 10) {
+      if (currentStore?.storeContactNumber && currentStore.storeContactNumber.length === 10) {
         const exists = await checkContactNumberExists(
-          currentStore.contactNumber,
+          currentStore.storeContactNumber,
           currentStore?.id
         );
         if (exists) {
@@ -368,7 +371,7 @@ export const StaffManagement = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [currentStore?.contactNumber, currentStore?.id]);
+  }, [currentStore?.storeContactNumber, currentStore?.id]);
 
   return (
     <div className="space-y-6">
@@ -411,8 +414,9 @@ export const StaffManagement = () => {
               <Button onClick={() => {
                 setCurrentStaff({
                   role: 'staff',
-                  status: 'active',
-                  salesCount: 0,
+                  staffStatus: 'active',
+                  staffSalesCount: 0,
+                  staffRechargesCount: 0,
                   staffPin: '',
                   staffPassword: ''
                 });
@@ -436,7 +440,6 @@ export const StaffManagement = () => {
                   <TableHead>Recharges Count</TableHead>
                   <TableHead>Staff Pin</TableHead>
                   <TableHead>Password</TableHead>
-                  {/* <TableHead>Last Active</TableHead> */}
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -476,17 +479,17 @@ export const StaffManagement = () => {
                     <TableRow key={member.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
-                          {member.name}
+                          {member.staffName}
                           {member.role === 'admin' && (
                             <Shield className="h-4 w-4 text-primary" />
                           )}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {member.email}
+                          {member.staffEmail}
                         </div>
                       </TableCell>
                       <TableCell>
-                        {member.mobile}
+                        {member.staffMobile}
                       </TableCell>
                       <TableCell>
                         <Badge variant={member.role === 'admin' ? 'default' : 'outline'}>
@@ -494,18 +497,18 @@ export const StaffManagement = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {stores.find(s => s.name === member.storeLocation)?.name || 'Unassigned'}
+                        {stores.find(s => s.storeName === member.storeLocation)?.storeName || 'Unassigned'}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={member.status === 'active' ? 'default' : 'secondary'}>
-                          {member.status}
+                        <Badge variant={member.staffStatus === 'active' ? 'default' : 'secondary'}>
+                          {member.staffStatus}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {member.salesCount || 0}
+                        {member.staffSalesCount || 0}
                       </TableCell>
                       <TableCell>
-                        {member.rechargesCount || 0}
+                        {member.staffRechargesCount || 0}
                       </TableCell>
                       <TableCell>
                         {member.staffPin}
@@ -513,9 +516,6 @@ export const StaffManagement = () => {
                       <TableCell>
                         {member.staffPassword}
                       </TableCell>
-                      {/* <TableCell>
-                      {member.lastActive.toLocaleString()}
-                      </TableCell> */}
                       <TableCell>
                         <div className="flex gap-2">
                           <Button
@@ -563,7 +563,7 @@ export const StaffManagement = () => {
               </div>
               <Button onClick={() => {
                 setCurrentStore({
-                  status: 'active',
+                  storeStatus: 'active',
                   referralCommission: 0,
                   surabhiCommission: 0,
                   sevaCommission: 0,
@@ -583,7 +583,7 @@ export const StaffManagement = () => {
                   <TableHead>Name</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Contact</TableHead>
-                  <TableHead>Current</TableHead>
+                  <TableHead>Current Balance</TableHead>
                   <TableHead>Referral</TableHead>
                   <TableHead>Surabhi</TableHead>
                   <TableHead>Cash Only</TableHead>
@@ -596,9 +596,9 @@ export const StaffManagement = () => {
                 {stores.map((store) => (
                   <TableRow key={store.id}>
                     <TableCell className="font-medium">
-                      {store.name}
+                      {store.storeName}
                       <div className="text-sm text-muted-foreground">
-                        {store.address}
+                        {store.storeAddress}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -608,10 +608,10 @@ export const StaffManagement = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {store.contactNumber}
+                      {store.storeContactNumber}
                     </TableCell>
                     <TableCell>
-                      {store.currentBalance || 0}
+                      {store.storeCurrentBalance || 0}
                     </TableCell>
                     <TableCell>
                       {store.referralCommission}%
@@ -626,8 +626,8 @@ export const StaffManagement = () => {
                       {store.sevaCommission}%
                     </TableCell>
                     <TableCell>
-                      <Badge variant={store.status === 'active' ? 'default' : 'secondary'}>
-                        {store.status}
+                      <Badge variant={store.storeStatus === 'active' ? 'default' : 'secondary'}>
+                        {store.storeStatus}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -682,10 +682,10 @@ export const StaffManagement = () => {
               <div className="space-y-2">
                 <Label>Full Name *</Label>
                 <Input
-                  value={currentStaff?.name || ''}
+                  value={currentStaff?.staffName || ''}
                   onChange={(e) => setCurrentStaff({
                     ...currentStaff || {},
-                    name: e.target.value
+                    staffName: e.target.value
                   })}
                   placeholder="Enter staff name"
                 />
@@ -695,11 +695,11 @@ export const StaffManagement = () => {
                 <Label>Mobile Number *</Label>
                 <Input
                   type="tel"
-                  value={currentStaff?.mobile || ''}
+                  value={currentStaff?.staffMobile || ''}
                   onChange={(e) => {
                     setCurrentStaff({
                       ...currentStaff || {},
-                      mobile: e.target.value.replace(/\D/g, '')
+                      staffMobile: e.target.value.replace(/\D/g, '')
                     });
                     setMobileError(''); // Clear error when typing
                   }}
@@ -714,11 +714,11 @@ export const StaffManagement = () => {
               <Label>Email *</Label>
               <Input
                 type="email"
-                value={currentStaff?.email || ''}
+                value={currentStaff?.staffEmail || ''}
                 onChange={(e) => {
                   setCurrentStaff({
                     ...currentStaff || {},
-                    email: e.target.value
+                    staffEmail: e.target.value
                   });
                   setEmailError(''); // Clear error when typing
                 }}
@@ -752,10 +752,10 @@ export const StaffManagement = () => {
               <div className="space-y-2">
                 <Label>Status *</Label>
                 <Select
-                  value={currentStaff?.status || 'active'}
+                  value={currentStaff?.staffStatus || 'active'}
                   onValueChange={(value) => setCurrentStaff({
                     ...currentStaff || {},
-                    status: value as 'active' | 'inactive'
+                    staffStatus: value as 'active' | 'inactive'
                   })}
                 >
                   <SelectTrigger>
@@ -785,8 +785,8 @@ export const StaffManagement = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {stores.map(store => (
-                      <SelectItem key={store.id} value={store.name}>
-                        {store.name}
+                      <SelectItem key={store.id} value={store.storeName}>
+                        {store.storeName}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -812,10 +812,10 @@ export const StaffManagement = () => {
                 <Label>Sales Count</Label>
                 <Input
                   type="number"
-                  value={currentStaff?.salesCount || 0}
+                  value={currentStaff?.staffSalesCount || 0}
                   onChange={(e) => setCurrentStaff({
                     ...currentStaff || {},
-                    salesCount: Number(e.target.value)
+                    staffSalesCount: Number(e.target.value)
                   })}
                   placeholder="Enter sales count"
                 />
@@ -824,10 +824,10 @@ export const StaffManagement = () => {
                 <Label>Recharges Count</Label>
                 <Input
                   type="number"
-                  value={currentStaff?.rechargesCount || 0}
+                  value={currentStaff?.staffRechargesCount || 0}
                   onChange={(e) => setCurrentStaff({
                     ...currentStaff || {},
-                    rechargesCount: Number(e.target.value)
+                    staffRechargesCount: Number(e.target.value)
                   })}
                   placeholder="Enter Recharges count"
                 />
@@ -880,7 +880,7 @@ export const StaffManagement = () => {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete {currentStaff?.name}? This action cannot be undone.
+              Are you sure you want to delete {currentStaff?.staffName}? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
 
@@ -909,10 +909,10 @@ export const StaffManagement = () => {
               <div className="space-y-2">
                 <Label>Store Name *</Label>
                 <Input
-                  value={currentStore?.name || ''}
+                  value={currentStore?.storeName || ''}
                   onChange={(e) => setCurrentStore({
                     ...currentStore,
-                    name: e.target.value
+                    storeName: e.target.value
                   })}
                   placeholder="Enter store name"
                 />
@@ -934,10 +934,10 @@ export const StaffManagement = () => {
             <div className="space-y-2">
               <Label>Address *</Label>
               <Input
-                value={currentStore?.address || ''}
+                value={currentStore?.storeAddress || ''}
                 onChange={(e) => setCurrentStore({
                   ...currentStore,
-                  address: e.target.value
+                  storeAddress: e.target.value
                 })}
                 placeholder="Enter full address"
               />
@@ -947,12 +947,12 @@ export const StaffManagement = () => {
               <Label>Contact Number *</Label>
               <Input
                 type="tel"
-                value={currentStore?.contactNumber || ''}
+                value={currentStore?.storeContactNumber || ''}
                 onChange={(e) => {
                   const number = e.target.value.replace(/\D/g, '');
                   setCurrentStore({
                     ...currentStore,
-                    contactNumber: number
+                    storeContactNumber: number
                   });
                   setContactNumberError('');
                 }}
@@ -960,6 +960,19 @@ export const StaffManagement = () => {
                 disabled={!!currentStore?.id}
               />
               {contactNumberError && <p className="text-sm text-red-500">{contactNumberError}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Current Balance</Label>
+              <Input
+                type="number"
+                value={currentStore?.storeCurrentBalance || 0}
+                onChange={(e) => setCurrentStore({
+                  ...currentStore,
+                  storeCurrentBalance: Number(e.target.value)
+                })}
+                placeholder="Enter current balance"
+              />
             </div>
 
             <div className="border-t pt-4">
@@ -1026,10 +1039,10 @@ export const StaffManagement = () => {
             <div className="space-y-2">
               <Label>Status *</Label>
               <Select
-                value={currentStore?.status || 'active'}
+                value={currentStore?.storeStatus || 'active'}
                 onValueChange={(value) => setCurrentStore({
                   ...currentStore,
-                  status: value as 'active' | 'inactive'
+                  storeStatus: value as 'active' | 'inactive'
                 })}
               >
                 <SelectTrigger>
@@ -1057,7 +1070,7 @@ export const StaffManagement = () => {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete {currentStore?.name}? This action cannot be undone.
+              Are you sure you want to delete {currentStore?.storeName}? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
 
@@ -1070,8 +1083,8 @@ export const StaffManagement = () => {
                   const updatedStores = storesSnapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data(),
-                    createdAt: doc.data().createdAt?.toDate() || new Date(),
-                    updatedAt: doc.data().updatedAt?.toDate() || new Date()
+                    storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
+                    storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date()
                   })) as StoreType[];
                   setStores(updatedStores);
                   setIsDeleteStoreDialogOpen(false);

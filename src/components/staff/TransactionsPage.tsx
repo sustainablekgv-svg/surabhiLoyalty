@@ -274,22 +274,22 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
               <p className="text-2xl font-bold">₹{calculateTotalAmount().toFixed(2)}</p>
             </CardContent>
           </Card>
-          <Card className="bg-purple-50">
+          {activeTab=='sales' && <Card className="bg-purple-50">
             <CardHeader className="p-4">
               <CardTitle className="text-sm font-medium text-purple-600">Total Sales</CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0">
               <p className="text-2xl font-bold">₹{calculateTotalSales().toFixed(2)}</p>
             </CardContent>
-          </Card>
-          <Card className="bg-amber-50">
+          </Card>}
+          {activeTab=='recharges' && <Card className="bg-amber-50">
             <CardHeader className="p-4">
               <CardTitle className="text-sm font-medium text-amber-600">Total Recharges</CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0">
               <p className="text-2xl font-bold">₹{calculateTotalRecharges().toFixed(2)}</p>
             </CardContent>
-          </Card>
+          </Card>}
         </div>
       )}
 

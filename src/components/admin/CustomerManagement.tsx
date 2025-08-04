@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { collection, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Customer, StoreType } from '@/types/types';
+import { CustomerType, StoreType } from '@/types/types';
 import {
   Dialog,
   DialogContent,
@@ -35,61 +35,67 @@ import { Label } from '@/components/ui/label';
 
 export const CustomerManagement = () => {
   const navigate = useNavigate();
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<CustomerType[]>([]);
   const [stores, setStores] = useState<StoreType[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStore, setFilterStore] = useState('all');
-  // const [filterStatus, setFilterStatus] = useState('all');
-  const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
+  const [editCustomer, setEditCustomer] = useState<CustomerType | null>(null);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerType | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [editedData, setEditedData] = useState<Partial<Customer>>({});
+  const [editedData, setEditedData] = useState<Partial<CustomerType>>({});
 
   // Fetch customers from Firestore
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, 'customers'));
-        const customersData: Customer[] = [];
+        const customersData: CustomerType[] = [];
 
         querySnapshot.forEach((doc) => {
           const data = doc.data();
           customersData.push({
-            name: data.name,
-            mobile: data.mobile,
-            email: data.email || '',
-            storeLocation: data.storeLocation || 'Unassigned',
-            walletBalance: data.walletBalance || 0,
-            walletRechargeDone: data.walletRechargeDone || false,
-            walletBalanceCurrentMonth: data.walletBalanceCurrentMonth || 0,
+            id: doc.id,
             role: data.role || 'customer',
-            walletId: data.walletId || '',
-            surabhiCoins: data.surabhiCoins || 0,
-            surabhiCoinsCurrentMonth: data.surabhiCoinsCurrentMonth || 0,
-            sevaCoinsTotal: data.sevaCoinsTotal || 0,
-            sevaCoinsCurrentMonth: data.sevaCoinsCurrentMonth || 0,
-            referredBy: data.referredBy || null,
+            customerName: data.customerName || data.name || '',
             gender: data.gender || '',
             isStudent: data.isStudent || false,
-            saleElgibility: data.saleElgibility || false,
-            referralSurabhi: data.referralSurabhi || 0,
+            customerMobile: data.customerMobile || data.mobile || '',
+            customerEmail: data.customerEmail || data.email || '',
+            storeLocation: data.storeLocation || 'Unassigned',
+            referredBy: data.referredBy || null,
             referredUsers: (data.referredUsers || []).map((ref: any) => ({
-              mobile: ref.mobile,
-              name: ref.name || '',
-              referralDate: ref.referralDate || Timestamp.now()
+              customerMobile: ref.customerMobile || ref.mobile,
+              customerName: ref.customerName || ref.name || '',
+              createdAt: ref.createdAt || Timestamp.now()
             })),
-            registered: data.registered ?? false,
-            lastTransactionDate: data.lastTransactionDate || Timestamp.now(),
-            createdAt: data.createdAt || Timestamp.now(),
             customerPassword: data.customerPassword || '',
             tpin: data.tpin || '',
+            createdAt: data.createdAt || Timestamp.now(),
+            walletRechargeDone: data.walletRechargeDone || false,
+            saleElgibility: data.saleElgibility || false,
+            walletId: data.walletId || '',
+            walletBalance: data.walletBalance || 0,
+            walletCredit: data.walletCredit || 0,
+            walletDebit: data.walletDebit || 0,
+            walletBalanceCurrentMonth: data.walletBalanceCurrentMonth || 0,
+            surabhiBalance: data.surabhiBalance || data.surabhiCoins || 0,
+            surabhiCredit: data.surabhiCredit || 0,
+            surabhiDebit: data.surabhiDebit || 0,
+            surabhiReferral: data.surabhiReferral || data.referralSurabhi || 0,
+            surabhiBalanceCurrentMonth: data.surabhiBalanceCurrentMonth || data.surabhiCoinsCurrentMonth || 0,
+            sevaBalance: data.sevaBalance || 0,
+            sevaCredit: data.sevaCredit || 0,
+            sevaDebit: data.sevaDebit || 0,
+            sevaTotal: data.sevaTotal || data.sevaCoinsTotal || 0,
+            sevaBalanceCurrentMonth: data.sevaBalanceCurrentMonth || data.sevaCoinsCurrentMonth || 0,
+            lastTransactionDate: data.lastTransactionDate || null,
             quarterlyPurchaseTotal: data.quarterlyPurchaseTotal || 0,
+            lastQuarterCheck: data.lastQuarterCheck || null,
             coinsFrozen: data.coinsFrozen || false,
-            currentQuarterStart: data.currentQuarterStart || null,
-            lastQuarterCheck: data.lastQuarterCheck || null
+            currentQuarterStart: data.currentQuarterStart || null
           });
         });
         setCustomers(customersData);
@@ -107,24 +113,22 @@ export const CustomerManagement = () => {
           const data = doc.data();
           return {
             id: doc.id,
-            name: data.name,
-            storeLocation: data.location || data.storeLocation || '',
-            address: data.address || '',
-            referralCommission: data.referralCommission ?? 0,
-            surabhiCommission: data.surabhiCommission ?? 0,
-            sevaCommission: data.sevaCommission ?? 0,
-            cashOnlyCommission: data.cashOnlyCommission ?? 0,
-            contactNumber: data.contactNumber || '',
-            currentBalance: data.currentBalance || 0,
-            status: data.status === 'active' || data.status === 'inactive'
-              ? data.status
-              : 'inactive', // Default to inactive if invalid status
-            createdAt: data.createdAt instanceof Timestamp
-              ? data.createdAt
-              : Timestamp.fromDate(new Date(data.createdAt || new Date())),
-            updatedAt: data.updatedAt instanceof Timestamp
-              ? data.updatedAt
-              : Timestamp.fromDate(new Date(data.updatedAt || new Date()))
+            storeName: data.storeName || data.name || '',
+            storeLocation: data.storeLocation || data.location || '',
+            storeAddress: data.storeAddress || data.address || '',
+            referralCommission: data.referralCommission || 0,
+            surabhiCommission: data.surabhiCommission || 0,
+            sevaCommission: data.sevaCommission || 0,
+            cashOnlyCommission: data.cashOnlyCommission || 0,
+            storeContactNumber: data.storeContactNumber || data.contactNumber || '',
+            storeStatus: data.storeStatus === 'active' ? 'active' : 'inactive',
+            storeCurrentBalance: data.storeCurrentBalance || data.currentBalance || 0,
+            storeCreatedAt: data.storeCreatedAt instanceof Timestamp
+              ? data.storeCreatedAt
+              : Timestamp.fromDate(new Date(data.storeCreatedAt || new Date())),
+            storeUpdatedAt: data.storeUpdatedAt instanceof Timestamp
+              ? data.storeUpdatedAt
+              : Timestamp.fromDate(new Date(data.storeUpdatedAt || new Date()))
           };
         });
         setStores(storesData);
@@ -140,13 +144,11 @@ export const CustomerManagement = () => {
   }, []);
 
   const filteredCustomers = customers.filter(customer => {
-    const matchesSearch = customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.mobile.includes(searchTerm) ||
-      customer.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = customer.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.customerMobile.includes(searchTerm) ||
+      customer.customerEmail.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStore = filterStore === 'all' || customer.storeLocation === filterStore;
-    // const matchesStatus = filterStatus === 'all' || 
-    //                      (filterStatus === 'active' ? customer.registered : !customer.registered);
 
     return matchesSearch && matchesStore;
   });
@@ -154,39 +156,38 @@ export const CustomerManagement = () => {
   // Calculate analytics
   const totalStats = {
     totalCustomers: customers.length,
-    registeredCustomers: customers.filter(c => c.registered).length,
-    guestCustomers: customers.filter(c => !c.registered).length,
+    registeredCustomers: customers.filter(c => c.walletRechargeDone).length,
+    guestCustomers: customers.filter(c => !c.walletRechargeDone).length,
     totalWalletBalance: customers.reduce((sum, c) => sum + c.walletBalance, 0),
-    totalSurabhiCoins: customers.reduce((sum, c) => sum + c.surabhiCoins, 0),
-    totalSevaCoins: customers.reduce((sum, c) => sum + c.sevaCoinsTotal, 0),
+    totalSurabhiCoins: customers.reduce((sum, c) => sum + c.surabhiBalance, 0),
+    totalSevaCoins: customers.reduce((sum, c) => sum + c.sevaTotal, 0),
     totalReferrals: customers.reduce((sum, c) => sum + (c.referredUsers?.length || 0), 0),
     activeThisMonth: customers.filter(c => {
       if (!c.lastTransactionDate) return false;
       const monthAgo = new Date();
       monthAgo.setMonth(monthAgo.getMonth() - 1);
-      const lastTxDate = typeof c.lastTransactionDate === 'string'
-        ? new Date(c.lastTransactionDate)
-        : c.lastTransactionDate;
+      const lastTxDate = c.lastTransactionDate instanceof Timestamp
+        ? c.lastTransactionDate.toDate()
+        : new Date(c.lastTransactionDate);
       return lastTxDate > monthAgo;
     }).length
   };
 
-  const viewCustomerDetails = (customer: Customer) => {
-    console.log("Viewing customer details:", customer);
+  const viewCustomerDetails = (customer: CustomerType) => {
     setSelectedCustomer(customer);
     setIsCustomerDialogOpen(true);
   };
 
-  const handleEditClick = (customer: Customer) => {
+  const handleEditClick = (customer: CustomerType) => {
     setEditCustomer(customer);
     setEditedData({
-      name: customer.name,
-      email: customer.email,
+      customerName: customer.customerName,
+      customerEmail: customer.customerEmail,
       storeLocation: customer.storeLocation,
       walletBalance: customer.walletBalance,
-      surabhiCoins: customer.surabhiCoins,
-      sevaCoinsTotal: customer.sevaCoinsTotal,
-      registered: customer.registered,
+      surabhiBalance: customer.surabhiBalance,
+      sevaTotal: customer.sevaTotal,
+      walletRechargeDone: customer.walletRechargeDone,
       tpin: customer.tpin,
       customerPassword: customer.customerPassword
     });
@@ -194,11 +195,10 @@ export const CustomerManagement = () => {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log("THe line 194 is", e.target)
     const { name, value } = e.target;
     setEditedData(prev => ({
       ...prev,
-      [name]: name === 'walletBalance' || name === 'surabhiCoins' || name === 'sevaCoinsTotal'
+      [name]: name === 'walletBalance' || name === 'surabhiBalance' || name === 'sevaTotal'
         ? parseFloat(value) || 0
         : value
     }));
@@ -219,7 +219,7 @@ export const CustomerManagement = () => {
   };
 
   const saveCustomerChanges = async () => {
-    if (!editCustomer?.mobile) {
+    if (!editCustomer?.customerMobile) {
       toast({
         title: "Error",
         description: "No customer mobile number provided",
@@ -233,16 +233,8 @@ export const CustomerManagement = () => {
 
       // Query customers by mobile number
       const customersRef = collection(db, 'customers');
-      console.log("THe line 219 data is", customersRef);
-      const q = query(customersRef, where('mobile', '==', editCustomer.mobile));
+      const q = query(customersRef, where('customerMobile', '==', editCustomer.customerMobile));
       const querySnapshot = await getDocs(q);
-      console.log("Query results:", {
-        size: querySnapshot.size,
-        docs: querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          data: doc.data()
-        }))
-      });
 
       if (querySnapshot.empty) {
         toast({
@@ -258,20 +250,21 @@ export const CustomerManagement = () => {
 
       // Update the document
       await updateDoc(customerDoc.ref, {
-        name: editedData.name,
-        email: editedData.email,
+        customerName: editedData.customerName,
+        customerEmail: editedData.customerEmail,
         storeLocation: editedData.storeLocation,
         walletBalance: editedData.walletBalance,
-        surabhiCoins: editedData.surabhiCoins,
-        sevaCoinsTotal: editedData.sevaCoinsTotal,
-        registered: editedData.registered,
+        surabhiBalance: editedData.surabhiBalance,
+        sevaTotal: editedData.sevaTotal,
+        walletRechargeDone: editedData.walletRechargeDone,
         tpin: editedData.tpin,
-        updatedAt: Timestamp.fromDate(new Date())
+        customerPassword: editedData.customerPassword,
+        updatedAt: Timestamp.now()
       });
 
       // Update local state
       setCustomers(prev => prev.map(c =>
-        c.mobile === editCustomer.mobile ? { ...c, ...editedData } : c
+        c.customerMobile === editCustomer.customerMobile ? { ...c, ...editedData } : c
       ));
 
       toast({
@@ -315,11 +308,11 @@ export const CustomerManagement = () => {
                 <div>
                   <h4 className="font-medium">Basic Information</h4>
                   <div className="space-y-2 mt-2 text-sm">
-                    <p><span className="text-muted-foreground">Name:</span> {selectedCustomer.name}</p>
-                    <p><span className="text-muted-foreground">Mobile:</span> {selectedCustomer.mobile}</p>
-                    <p><span className="text-muted-foreground">Email:</span> {selectedCustomer.email || 'N/A'}</p>
+                    <p><span className="text-muted-foreground">Name:</span> {selectedCustomer.customerName}</p>
+                    <p><span className="text-muted-foreground">Mobile:</span> {selectedCustomer.customerMobile}</p>
+                    <p><span className="text-muted-foreground">Email:</span> {selectedCustomer.customerEmail || 'N/A'}</p>
                     <p><span className="text-muted-foreground">Store Location:</span> {selectedCustomer.storeLocation}</p>
-                    <p><span className="text-muted-foreground">Registered:</span> {selectedCustomer.registered ? 'Yes' : 'No'}</p>
+                    <p><span className="text-muted-foreground">Registered:</span> {selectedCustomer.walletRechargeDone ? 'Yes' : 'No'}</p>
                     <p><span className="text-muted-foreground">Role:</span> {selectedCustomer.role}</p>
                   </div>
                 </div>
@@ -329,10 +322,10 @@ export const CustomerManagement = () => {
                   <div className="space-y-2 mt-2 text-sm">
                     <p><span className="text-muted-foreground">Wallet Balance:</span> ₹{selectedCustomer.walletBalance.toFixed(2)}</p>
                     <p><span className="text-muted-foreground">This Month:</span> ₹{selectedCustomer.walletBalanceCurrentMonth.toFixed(2)}</p>
-                    <p><span className="text-muted-foreground">Surabhi Coins:</span> {selectedCustomer.surabhiCoins}</p>
-                    <p><span className="text-muted-foreground">This Month:</span> {selectedCustomer.surabhiCoinsCurrentMonth}</p>
-                    <p><span className="text-muted-foreground">Seva Coins:</span> {selectedCustomer.sevaCoinsTotal}</p>
-                    <p><span className="text-muted-foreground">This Month:</span> {selectedCustomer.sevaCoinsCurrentMonth}</p>
+                    <p><span className="text-muted-foreground">Surabhi Coins:</span> {selectedCustomer.surabhiBalance}</p>
+                    <p><span className="text-muted-foreground">This Month:</span> {selectedCustomer.surabhiBalanceCurrentMonth}</p>
+                    <p><span className="text-muted-foreground">Seva Coins:</span> {selectedCustomer.sevaTotal}</p>
+                    <p><span className="text-muted-foreground">This Month:</span> {selectedCustomer.sevaBalanceCurrentMonth}</p>
                   </div>
                 </div>
               </div>
@@ -341,7 +334,7 @@ export const CustomerManagement = () => {
                 <h4 className="font-medium">Referral Information</h4>
                 <div className="space-y-2 mt-2 text-sm">
                   <p><span className="text-muted-foreground">Referred By:</span> {selectedCustomer.referredBy || 'N/A'}</p>
-                  <p><span className="text-muted-foreground">Referral Income:</span> {selectedCustomer.referralSurabhi ? `₹${selectedCustomer.referralSurabhi.toFixed(2)}` : 'N/A'}</p>
+                  <p><span className="text-muted-foreground">Referral Income:</span> {selectedCustomer.surabhiReferral ? `₹${selectedCustomer.surabhiReferral.toFixed(2)}` : 'N/A'}</p>
 
                   {selectedCustomer.referredUsers && selectedCustomer.referredUsers.length > 0 && (
                     <div>
@@ -349,11 +342,11 @@ export const CustomerManagement = () => {
                       <div className="border rounded p-2 mt-1">
                         {selectedCustomer.referredUsers.map((user, index) => (
                           <div key={index} className="flex justify-between py-1 border-b last:border-b-0">
-                            <span>{user.mobile}</span>
+                            <span>{user.customerMobile}</span>
                             <span className="text-muted-foreground">
-                              {user.referralDate instanceof Timestamp
-                                ? user.referralDate.toDate().toLocaleString()
-                                : new Date(user.referralDate).toLocaleString()}
+                              {user.createdAt instanceof Timestamp
+                                ? user.createdAt.toDate().toLocaleString()
+                                : new Date(user.createdAt).toLocaleString()}
                             </span>
                           </div>
                         ))}
@@ -402,39 +395,39 @@ export const CustomerManagement = () => {
 
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
+              <Label htmlFor="customerName" className="text-right">
                 Full Name
               </Label>
               <Input
-                id="name"
-                name="name"
-                value={editedData.name || ''}
+                id="customerName"
+                name="customerName"
+                value={editedData.customerName || ''}
                 onChange={handleInputChange}
                 className="col-span-3"
               />
             </div>
 
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="mobile" className="text-right">
+              <Label htmlFor="customerMobile" className="text-right">
                 Mobile
               </Label>
               <Input
-                id="mobile"
-                value={editCustomer?.mobile || ''}
+                id="customerMobile"
+                value={editCustomer?.customerMobile || ''}
                 className="col-span-3"
                 disabled
               />
             </div>
 
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
+              <Label htmlFor="customerEmail" className="text-right">
                 Email
               </Label>
               <Input
-                id="email"
-                name="email"
+                id="customerEmail"
+                name="customerEmail"
                 type="email"
-                value={editedData.email || ''}
+                value={editedData.customerEmail || ''}
                 onChange={handleInputChange}
                 className="col-span-3"
               />
@@ -453,8 +446,8 @@ export const CustomerManagement = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {stores.map((store) => (
-                    <SelectItem key={store.id} value={store.name}>
-                      {store.name}
+                    <SelectItem key={store.id} value={store.storeName}>
+                      {store.storeName}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -476,28 +469,28 @@ export const CustomerManagement = () => {
             </div>
 
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="surabhiCoins" className="text-right">
+              <Label htmlFor="surabhiBalance" className="text-right">
                 Surabhi Coins
               </Label>
               <Input
-                id="surabhiCoins"
-                name="surabhiCoins"
+                id="surabhiBalance"
+                name="surabhiBalance"
                 type="number"
-                value={editedData.surabhiCoins || 0}
+                value={editedData.surabhiBalance || 0}
                 onChange={handleInputChange}
                 className="col-span-3"
               />
             </div>
 
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="sevaCoinsTotal" className="text-right">
+              <Label htmlFor="sevaTotal" className="text-right">
                 Seva Coins
               </Label>
               <Input
-                id="sevaCoinsTotal"
-                name="sevaCoinsTotal"
+                id="sevaTotal"
+                name="sevaTotal"
                 type="number"
-                value={editedData.sevaCoinsTotal || 0}
+                value={editedData.sevaTotal || 0}
                 onChange={handleInputChange}
                 className="col-span-3"
               />
@@ -540,12 +533,12 @@ export const CustomerManagement = () => {
               <div className="col-span-3 flex items-center gap-2">
                 <input
                   type="checkbox"
-                  id="registered"
-                  checked={Boolean(editedData.registered) || false}
-                  onChange={() => handleToggleChange('registered')}
+                  id="walletRechargeDone"
+                  checked={Boolean(editedData.walletRechargeDone) || false}
+                  onChange={() => handleToggleChange('walletRechargeDone')}
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
-                <Label htmlFor="registered">
+                <Label htmlFor="walletRechargeDone">
                   Registered User
                 </Label>
               </div>
@@ -687,23 +680,12 @@ export const CustomerManagement = () => {
                 <SelectContent>
                   <SelectItem value="all">All Stores</SelectItem>
                   {stores.map((store) => (
-                    <SelectItem key={store.id} value={store.name}>
-                      {store.name}
+                    <SelectItem key={store.id} value={store.storeName}>
+                      {store.storeName}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-
-              {/* <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-full sm:w-36">
-                  <SelectValue placeholder="All Status" />
-                </SelectTrigger> */}
-              {/* <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Registered</SelectItem>
-                  <SelectItem value="inactive">Guests</SelectItem>
-                </SelectContent> */}
-              {/* </Select> */}
             </div>
           </div>
         </CardHeader>
@@ -716,13 +698,13 @@ export const CustomerManagement = () => {
               </div>
             ) : (
               filteredCustomers.map((customer) => (
-                <div key={customer.mobile} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-4 bg-gray-50 rounded-lg gap-4">
+                <div key={customer.customerMobile} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-4 bg-gray-50 rounded-lg gap-4">
                   <div className="flex-1 min-w-0 w-full lg:w-auto">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-3">
-                      <h3 className="font-medium text-gray-900">{customer.name}</h3>
+                      <h3 className="font-medium text-gray-900">{customer.customerName}</h3>
                       <div className="flex gap-2">
-                        <Badge variant={customer.registered ? 'default' : 'secondary'}>
-                          {customer.registered ? 'Registered' : 'Guest'}
+                        <Badge variant={customer.walletRechargeDone ? 'default' : 'secondary'}>
+                          {customer.walletRechargeDone ? 'Registered' : 'Guest'}
                         </Badge>
                         <Badge variant="outline" className="text-xs">
                           {customer.referredUsers?.length || 0} referrals
@@ -733,7 +715,7 @@ export const CustomerManagement = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
                       <div className="flex items-center gap-2 text-gray-600">
                         <Phone className="h-3 w-3" />
-                        <span>{customer.mobile}</span>
+                        <span>{customer.customerMobile}</span>
                       </div>
                       <div className="flex items-center gap-2 text-gray-600">
                         <MapPin className="h-3 w-3" />
@@ -745,7 +727,7 @@ export const CustomerManagement = () => {
                       </div>
                       <div className="flex items-center gap-2 text-amber-600">
                         <Coins className="h-3 w-3" />
-                        <span>{customer.surabhiCoins} coins</span>
+                        <span>{customer.surabhiBalance} coins</span>
                       </div>
                     </div>
                   </div>

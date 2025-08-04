@@ -36,7 +36,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
-import { AccountTx, StoreType } from '@/types/types';
+import { AccountTxType, StoreType } from '@/types/types';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -44,7 +44,7 @@ import { Label } from '@/components/ui/label';
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
 interface AdminDeck {
-  recentTransactions: AccountTx[];
+  recentTransactions: AccountTxType[];
 }
 
 const formatTradeTimestamp = (timestamp: Date | Timestamp): string => {
@@ -94,28 +94,29 @@ const Accounts = () => {
       // Fetch transactions
       const txQuery = query(
         collection(db, 'AccountTx'),
-        orderBy('date', 'desc')
+        orderBy('createdAt', 'desc')
       );
       const txSnapshot = await getDocs(txQuery);
 
       // Process transactions
-      const transactions: AccountTx[] = [];
+      const transactions: AccountTxType[] = [];
       txSnapshot.forEach(doc => {
         const txData = doc.data();
-        const txDate = txData.date instanceof Timestamp ? txData.date.toDate() : new Date(txData.date);
+        const txDate = txData.createdAt instanceof Timestamp ? txData.createdAt.toDate() : new Date(txData.createdAt);
 
-        const tx: AccountTx = {
+        const tx: AccountTxType = {
           id: doc.id,
-          ...txData,
-          date: Timestamp.fromDate(txDate),
-          amount: txData.amount || 0,
-          credit: txData.credit || 0,
-          debit: txData.debit || 0,
-          balance: txData.balance || 0,
-          settled: txData.settled || false,
-          description: txData.description || '',
+          createdAt: txData.createdAt as Timestamp,
           storeName: txData.storeName || '',
-          type: txData.type || 'other'
+          customerName: txData.customerName || '',
+          customerMobile: txData.customerMobile || '',
+          type: txData.type || 'settlement',
+          amount: txData.amount || 0,
+          debit: txData.debit || 0,
+          adminCut: txData.adminCut || 0,
+          credit: txData.credit || 0,
+          balance: txData.balance || 0,
+          remarks: txData.remarks || ''
         };
 
         transactions.push(tx);
@@ -152,30 +153,32 @@ const Accounts = () => {
       setIsSubmittingSettlement(true);
 
       const amount = Number(settlementAmount);
-      const newStoreBalance = (selectedStoreForSettlement.currentBalance || 0) + amount;
+      const newStoreBalance = (selectedStoreForSettlement.storeCurrentBalance || 0) + amount;
 
       // Create the transaction
       const newTx = {
-        date: Timestamp.now(),
+        createdAt: Timestamp.now(),
+        storeName: selectedStoreForSettlement.storeName,
+        customerName: 'Admin',
+        customerMobile: '',
+        type: 'settlement',
         amount: Math.abs(amount),
         credit: amount > 0 ? Math.abs(amount) : 0,
         debit: amount < 0 ? Math.abs(amount) : 0,
+        adminCut: 0,
         balance: newStoreBalance,
-        settled: true,
-        description: settlementDescription || `Settlement adjustment for ${selectedStoreForSettlement.name}`,
-        storeName: selectedStoreForSettlement.name,
-        type: 'settlement'
+        remarks: settlementDescription || `Settlement adjustment for ${selectedStoreForSettlement.storeName}`
       };
 
       // Query for the store by name
       const storeQuery = query(
         collection(db, 'stores'),
-        where('name', '==', selectedStoreForSettlement.name)
+        where('name', '==', selectedStoreForSettlement.storeName)
       );
       const storeSnapshot = await getDocs(storeQuery);
       
       if (storeSnapshot.empty) {
-        throw new Error(`Store with name '${selectedStoreForSettlement.name}' not found`);
+        throw new Error(`Store with name '${selectedStoreForSettlement.storeName}' not found`);
       }
       
       const storeDoc = storeSnapshot.docs[0];
@@ -220,8 +223,10 @@ const Accounts = () => {
   };
 
   const filteredTransactions = accountData?.recentTransactions.filter(tx => {
-    const matchesSearch = tx.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tx.storeName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = tx.remarks.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tx.storeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tx.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tx.customerMobile.includes(searchTerm);
     const matchesStore = selectedStore === 'all' || tx.storeName === selectedStore;
     return matchesSearch && matchesStore;
   }) || [];
@@ -284,13 +289,13 @@ const Accounts = () => {
             {stores.map(store => (
               <Card key={store.id} className="relative">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">{store.name}</CardTitle>
+                  <CardTitle className="text-lg">{store.storeName}</CardTitle>
                   <CardDescription>{store.storeLocation}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-2xl font-bold ${(store.currentBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {(store.currentBalance || 0) >= 0 ? '+' : ''}
-                    ₹{(store.currentBalance || 0).toFixed(2)}
+                  <div className={`text-2xl font-bold ${(store.storeCurrentBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {(store.storeCurrentBalance || 0) >= 0 ? '+' : ''}
+                    ₹{(store.storeCurrentBalance || 0).toFixed(2)}
                   </div>
                   <Button
                     variant="ghost"
@@ -313,7 +318,7 @@ const Accounts = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Adjust Balance for {selectedStoreForSettlement?.name}
+              Adjust Balance for {selectedStoreForSettlement?.storeName}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
@@ -419,7 +424,7 @@ const Accounts = () => {
               >
                 <option value="all">All Stores</option>
                 {stores.map(store => (
-                  <option key={store.id} value={store.name}>{store.name}</option>
+                  <option key={store.id} value={store.storeName}>{store.storeName}</option>
                 ))}
               </select>
 
@@ -460,22 +465,31 @@ const Accounts = () => {
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Store</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Mobile</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-right">Admin Cut</TableHead>
                     <TableHead className="text-right">Credit</TableHead>
                     <TableHead className="text-right">Debit</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
-                    <TableHead>Description</TableHead>
+                    <TableHead>Remarks</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedTransactions.map((tx) => (
                     <TableRow key={tx.id}>
                       <TableCell>
-                        {formatTradeTimestamp(tx.date)}
+                        {formatTradeTimestamp(tx.createdAt)}
                       </TableCell>
                       <TableCell>
                         {tx.storeName}
+                      </TableCell>
+                      <TableCell>
+                        {tx.customerName}
+                      </TableCell>
+                      <TableCell>
+                        {tx.customerMobile}
                       </TableCell>
                       <TableCell>
                         <Badge variant={
@@ -489,6 +503,9 @@ const Accounts = () => {
                         {tx.amount >= 0 ? '+' : ''}
                         ₹{tx.amount.toFixed(2)}
                       </TableCell>
+                      <TableCell className="text-right">
+                        {tx.adminCut > 0 ? `₹${tx.adminCut.toFixed(2)}` : '-'}
+                      </TableCell>
                       <TableCell className="text-right text-green-600">
                         {tx.credit > 0 ? `+₹${tx.credit.toFixed(2)}` : '-'}
                       </TableCell>
@@ -499,7 +516,7 @@ const Accounts = () => {
                         ₹{tx.balance.toFixed(2)}
                       </TableCell>
                       <TableCell className="max-w-xs truncate">
-                        {tx.description}
+                        {tx.remarks}
                       </TableCell>
                     </TableRow>
                   ))}

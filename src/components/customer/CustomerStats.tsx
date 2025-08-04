@@ -13,7 +13,7 @@ import {
 import { useEffect, useState } from 'react';
 import { doc, getDoc, Timestamp, collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Customer, ActivityType } from '@/types/types';
+import { CustomerType, ActivityType } from '@/types/types';
 import { useAuth } from '@/hooks/auth-context';
 
 interface CustomerStatsProps {
@@ -22,56 +22,55 @@ interface CustomerStatsProps {
 
 export const CustomerStats = ({ userId }: CustomerStatsProps) => {
   const { user, logout, isLoading: authLoading } = useAuth();
-  const [customerData, setCustomerData] = useState<Customer | null>(null);
+  const [customerData, setCustomerData] = useState<CustomerType | null>(null);
   const [activities, setActivities] = useState<ActivityType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-useEffect(() => {
-  const fetchCustomerData = async () => {
-    if (!userId) return;
+  useEffect(() => {
+    const fetchCustomerData = async () => {
+      if (!userId) return;
 
-    setLoading(true);
-    try {
-      // Fetch the customer document with the given userId
-      const docRef = doc(db, 'customers', userId);
-      const docSnap = await getDoc(docRef);
+      setLoading(true);
+      try {
+        // Fetch the customer document with the given userId
+        const docRef = doc(db, 'customers', userId);
+        const docSnap = await getDoc(docRef);
 
-      if (docSnap.exists()) {
-        const customer = docSnap.data() as Customer;
-        setCustomerData(customer);
+        if (docSnap.exists()) {
+          const customer = { id: docSnap.id, ...docSnap.data() } as CustomerType;
+          setCustomerData(customer);
 
-        // Only fetch activities if customer has a mobile number
-        if (customer.mobile) {
-          const activitiesQuery = query(
-            collection(db, 'Activity'),
-            where('user', '==', user.mobile),
-            orderBy('date', 'desc'),
-            limit(3)
-          );
+          // Only fetch activities if customer has a mobile number
+          if (customer.customerMobile) {
+            const activitiesQuery = query(
+              collection(db, 'Activity'),
+              where('customerMobile', '==', customer.customerMobile),
+              orderBy('createdAt', 'desc'),
+              limit(3)
+            );
 
-          const querySnapshot = await getDocs(activitiesQuery);
-          const activitiesData = querySnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          })) as ActivityType[];
+            const querySnapshot = await getDocs(activitiesQuery);
+            const activitiesData = querySnapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            })) as ActivityType[];
 
-          setActivities(activitiesData);
+            setActivities(activitiesData);
+          }
+        } else {
+          setError('No customer data found');
         }
-      } else {
-        setError('No customer data found');
+      } catch (err) {
+        console.error('Error fetching customer data:', err);
+        setError('Failed to fetch customer data');
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error('Error fetching customer data:', err);
-      setError('Failed to fetch customer data');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  fetchCustomerData();
-}, [userId]);
-
+    fetchCustomerData();
+  }, [userId]);
 
   if (loading) {
     return <div>Loading customer data...</div>;
@@ -134,14 +133,17 @@ useEffect(() => {
     switch (type) {
       case 'recharge':
         return <Wallet className="h-4 w-4 text-green-600" />;
-      case 'transaction':
+      case 'sale':
         return <Coins className="h-4 w-4 text-blue-600" />;
       case 'referral':
         return <Gift className="h-4 w-4 text-purple-600" />;
-      case 'contribution':
+      case 'seva_contribution':
         return <Heart className="h-4 w-4 text-red-600" />;
-      case 'allocation':
+      case 'seva_allocation':
         return <Target className="h-4 w-4 text-amber-600" />;
+      case 'surabhi_earn':
+        return <Coins className="h-4 w-4 text-amber-600" />;
+      case 'signup':
       default:
         return <User className="h-4 w-4 text-gray-600" />;
     }
@@ -159,7 +161,7 @@ useEffect(() => {
     },
     {
       title: 'Surabhi Coins',
-      value: customerData.surabhiCoins.toLocaleString(),
+      value: customerData.surabhiBalance.toLocaleString(),
       description: 'Lifetime coins earned',
       icon: Coins,
       color: 'text-amber-600',
@@ -168,7 +170,7 @@ useEffect(() => {
     },
     {
       title: 'Go Seva Contribution',
-      value: `₹${customerData.sevaCoinsTotal}`,
+      value: `₹${customerData.sevaTotal}`,
       description: 'Community welfare fund',
       icon: Heart,
       color: 'text-red-600',
@@ -197,7 +199,7 @@ useEffect(() => {
                 <User className="h-6 w-6 text-purple-600" />
               </div>
               <div>
-                <h2 className="text-xl font-bold">{customerData.name}</h2>
+                <h2 className="text-xl font-bold">{customerData.customerName}</h2>
                 <p className="text-gray-600">Member since {memberSince}</p>
               </div>
             </div>
@@ -208,7 +210,7 @@ useEffect(() => {
               </div>
               <div className="text-right">
                 <p className="text-sm text-gray-600">Your referral number</p>
-                <p className="text-lg font-bold">{customerData.mobile}</p>
+                <p className="text-lg font-bold">{customerData.customerMobile}</p>
               </div>
             </div>
           </div>
@@ -258,20 +260,30 @@ useEffect(() => {
                         {getActivityIcon(activity.type)}
                       </div>
                       <div>
-                        <p className="font-medium text-sm">{activity.description}</p>
+                        <p className="font-medium text-sm">
+                          {activity.type === 'recharge' ? 'Wallet Recharge' : 
+                           activity.type === 'sale' ? 'Purchase Made' :
+                           activity.type === 'referral' ? 'Referral Bonus' :
+                           activity.type === 'seva_contribution' ? 'Seva Contribution' :
+                           activity.type === 'seva_allocation' ? 'Seva Allocation' :
+                           activity.type === 'surabhi_earn' ? 'Surabhi Coins Earned' :
+                           'Account Activity'}
+                        </p>
                         <p className="text-xs text-gray-600">
-                          {formatActivityDate(activity.date)} • {activity.location}
+                          {activity.createdAt && formatActivityDate(activity.createdAt)} • {activity.storeLocation}
                         </p>
                       </div>
                     </div>
                     {activity.amount && (
                       <span className={`font-bold ${
-                        activity.type === 'recharge' || activity.type === 'referral' 
+                        activity.type === 'recharge' || activity.type === 'referral' || activity.type === 'surabhi_earn'
                           ? 'text-green-600' 
                           : 'text-blue-600'
                       }`}>
-                        {activity.type === 'recharge' || activity.type === 'referral' ? '+' : ''}
-                        {activity.type === 'recharge' ? `₹${activity.amount}` : `${activity.amount} coins`}
+                        {activity.type === 'recharge' ? `₹${activity.amount}` : 
+                         activity.type === 'sale' ? `-₹${activity.amount}` :
+                         activity.type === 'seva_contribution' ? `-₹${activity.amount}` :
+                         `${activity.amount} coins`}
                       </span>
                     )}
                   </div>

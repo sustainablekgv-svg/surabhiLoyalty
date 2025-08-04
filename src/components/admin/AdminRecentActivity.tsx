@@ -43,9 +43,18 @@ export const AdminRecentActivity = () => {
         const storesSnapshot = await getDocs(storesQuery);
         const storesData = storesSnapshot.docs.map(doc => ({
           id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate(),
-          updatedAt: doc.data().updatedAt?.toDate()
+          storeName: doc.data().storeName || '',
+          storeLocation: doc.data().storeLocation || '',
+          storeAddress: doc.data().storeAddress || '',
+          storeContactNumber: doc.data().storeContactNumber || '',
+          storeCurrentBalance: Number(doc.data().storeCurrentBalance) || 0,
+          referralCommission: Number(doc.data().referralCommission) || 0,
+          surabhiCommission: Number(doc.data().surabhiCommission) || 0,
+          sevaCommission: Number(doc.data().sevaCommission) || 0,
+          cashOnlyCommission: Number(doc.data().cashOnlyCommission) || 0,
+          storeStatus: doc.data().storeStatus || 'active',
+          storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
+          storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date()
         })) as StoreType[];
         setStores(storesData);
 
@@ -53,8 +62,8 @@ export const AdminRecentActivity = () => {
         const performanceMap: Record<string, StorePerformance> = {};
 
         storesData.forEach(store => {
-          performanceMap[store.name] = {
-            name: store.name,
+          performanceMap[store.storeName] = {
+            storeName: store.storeName,
             transactions: 0,
             sales: 0,
             surabhiCoinsUsed: 0,
@@ -80,7 +89,7 @@ export const AdminRecentActivity = () => {
         // Fetch recent activities
         const activitiesQuery = query(
           collection(db, 'Activity'),
-          orderBy('date', 'desc'),
+          orderBy('createdAt', 'desc'),
           limit(20)
         );
         const activitiesSnapshot = await getDocs(activitiesQuery);
@@ -91,11 +100,12 @@ export const AdminRecentActivity = () => {
           return {
             id: doc.id,
             type: data.type,
-            description: data.description,
+            remarks: data.remarks,
             amount: data.amount,
-            user: data.user,
-            location: data.location,
-            date: data.date
+            customerName: data.customerName,
+            customerMobile: data.customerMobile,
+            storeLocation: data.storeLocation,
+            createdAt: data.createdAt
           } as ActivityType;
         });
 
@@ -106,8 +116,8 @@ export const AdminRecentActivity = () => {
 
         // Initialize performance map with all stores
         stores.forEach(store => {
-          newPerformanceMap[store.name] = {
-            name: store.name,
+          newPerformanceMap[store.storeName] = {
+            storeName: store.storeName,
             transactions: 0,
             sales: 0,
             surabhiCoinsUsed: 0,
@@ -119,10 +129,10 @@ export const AdminRecentActivity = () => {
 
         // Update performance based on activities
         activitiesData.forEach(activity => {
-          if (activity.type === 'transaction' && activity.location && activity.amount) {
-            if (!newPerformanceMap[activity.location]) {
-              newPerformanceMap[activity.location] = {
-                name: activity.location,
+          if ((activity.type === 'sale' || activity.type === 'recharge') && activity.storeLocation && activity.amount) {
+            if (!newPerformanceMap[activity.storeLocation]) {
+              newPerformanceMap[activity.storeLocation] = {
+                storeName: activity.storeLocation,
                 transactions: 0,
                 sales: 0,
                 surabhiCoinsUsed: 0,
@@ -131,12 +141,8 @@ export const AdminRecentActivity = () => {
                 lastUpdated: Timestamp.fromDate(new Date())
               };
             }
-            newPerformanceMap[activity.location].transactions += 1;
-            newPerformanceMap[activity.location].sales += activity.amount;
-            // Note: You might need additional fields in ActivityType for these values
-            // newPerformanceMap[activity.location].surabhiCoinsUsed += activity.coinsUsed || 0;
-            // newPerformanceMap[activity.location].walletDeduction += activity.walletDeduction || 0;
-            // newPerformanceMap[activity.location].cashPayment += activity.cashPayment || 0;
+            newPerformanceMap[activity.storeLocation].transactions += 1;
+            newPerformanceMap[activity.storeLocation].sales += activity.amount;
           }
         });
 
@@ -151,7 +157,7 @@ export const AdminRecentActivity = () => {
       // Activities listener
       const activitiesQuery = query(
         collection(db, 'Activity'),
-        orderBy('date', 'desc'),
+        orderBy('createdAt', 'desc'),
         limit(1)
       );
       const activitiesUnsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
@@ -161,26 +167,26 @@ export const AdminRecentActivity = () => {
             const newActivity: ActivityType = {
               id: change.doc.id,
               type: data.type,
-              description: data.description,
+              remarks: data.remarks,
               amount: data.amount,
-              user: data.user,
-              location: data.location,
-              date: data.date
+              customerName: data.customerName,
+              customerMobile: data.customerMobile,
+              storeLocation: data.storeLocation,
+              createdAt: data.createdAt
             };
 
             // Update activities
             setActivities(prev => [newActivity, ...prev.slice(0, 14)]);
 
             // Update store performance if it's a transaction
-            if (newActivity.type === 'transaction' && newActivity.location) {
+            if ((newActivity.type === 'sale' || newActivity.type === 'recharge') && newActivity.storeLocation) {
               setStorePerformance(prev => {
                 return prev.map(store => {
-                  if (store.name === newActivity.location) {
+                  if (store.storeName === newActivity.storeLocation) {
                     return {
                       ...store,
                       transactions: store.transactions + 1,
                       sales: store.sales + (newActivity.amount || 0),
-                      // Add other fields as needed
                       lastUpdated: Timestamp.fromDate(new Date())
                     };
                   }
@@ -223,7 +229,7 @@ export const AdminRecentActivity = () => {
     if (filter !== 'all' && activity.type !== filter) return false;
     
     // Apply store filter
-    if (storeFilter !== 'all' && activity.location !== storeFilter) return false;
+    if (storeFilter !== 'all' && activity.storeLocation !== storeFilter) return false;
     
     return true;
   });
@@ -231,11 +237,12 @@ export const AdminRecentActivity = () => {
   const getActivityIcon = (type: string) => {
     switch (type) {
       case 'signup': return <UserPlus className="h-4 w-4 text-purple-600" />;
-      case 'transaction': return <ShoppingCart className="h-4 w-4 text-green-600" />;
+      case 'sale': return <ShoppingCart className="h-4 w-4 text-green-600" />;
       case 'recharge': return <Wallet className="h-4 w-4 text-amber-600" />;
       case 'referral': return <Gift className="h-4 w-4 text-blue-600" />;
-      case 'contribution': return <DollarSign className="h-4 w-4 text-teal-600" />;
-      case 'allocation': return <Gift className="h-4 w-4 text-indigo-600" />;
+      case 'seva_contribution': return <DollarSign className="h-4 w-4 text-teal-600" />;
+      case 'seva_allocation': return <Gift className="h-4 w-4 text-indigo-600" />;
+      case 'surabhi_earn': return <Gift className="h-4 w-4 text-indigo-600" />;
       default: return <TrendingUp className="h-4 w-4 text-gray-600" />;
     }
   };
@@ -243,11 +250,12 @@ export const AdminRecentActivity = () => {
   const getActivityColor = (type: string) => {
     switch (type) {
       case 'signup': return 'bg-purple-50';
-      case 'transaction': return 'bg-green-50';
+      case 'sale': return 'bg-green-50';
       case 'recharge': return 'bg-amber-50';
       case 'referral': return 'bg-blue-50';
-      case 'contribution': return 'bg-teal-50';
-      case 'allocation': return 'bg-indigo-50';
+      case 'seva_contribution': return 'bg-teal-50';
+      case 'seva_allocation': return 'bg-indigo-50';
+      case 'surabhi_earn': return 'bg-indigo-50';
       default: return 'bg-gray-50';
     }
   };
@@ -276,12 +284,13 @@ export const AdminRecentActivity = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Activities</SelectItem>
-                  <SelectItem value="transaction">Sales</SelectItem>
-                  <SelectItem value="contribution">Seva Contributions</SelectItem>
-                  <SelectItem value="allocation">Seva Allocations</SelectItem>
+                  <SelectItem value="sale">Sales</SelectItem>
+                  <SelectItem value="seva_contribution">Seva Contributions</SelectItem>
+                  <SelectItem value="seva_allocation">Seva Allocations</SelectItem>
                   <SelectItem value="signup">Signups</SelectItem>
                   <SelectItem value="recharge">Recharges</SelectItem>
                   <SelectItem value="referral">Referrals</SelectItem>
+                  <SelectItem value="surabhi_earn">Surabhi Earnings</SelectItem>
                 </SelectContent>
               </Select>
               
@@ -292,8 +301,8 @@ export const AdminRecentActivity = () => {
                 <SelectContent>
                   <SelectItem value="all">All Stores</SelectItem>
                   {stores.map(store => (
-                    <SelectItem key={store.id} value={store.name}>
-                      {store.name}
+                    <SelectItem key={store.id} value={store.storeName}>
+                      {store.storeName}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -320,13 +329,13 @@ export const AdminRecentActivity = () => {
                       {getActivityIcon(activity.type)}
                     </div>
                     <div>
-                      <p className="font-medium text-sm">{activity.description}</p>
+                      <p className="font-medium text-sm">{activity.remarks}</p>
                       <div className="flex items-center gap-2 text-xs text-gray-600">
-                        <span>{activity.user}</span>
+                        <span>{activity.customerName}</span>
                         <span>•</span>
-                        <span>{activity.location}</span>
+                        <span>{activity.storeLocation}</span>
                         <span>•</span>
-                        <span>{formatTimestamp(activity.date)}</span>
+                        <span>{formatTimestamp(activity.createdAt)}</span>
                       </div>
                     </div>
                   </div>
@@ -374,7 +383,7 @@ export const AdminRecentActivity = () => {
                   } rounded-lg`}
                 >
                   <div>
-                    <p className="font-medium text-sm">{store.name}</p>
+                    <p className="font-medium text-sm">{store.storeName}</p>
                     <p className="text-xs text-gray-600">
                       {store.transactions} transaction{store.transactions !== 1 ? 's' : ''}
                     </p>

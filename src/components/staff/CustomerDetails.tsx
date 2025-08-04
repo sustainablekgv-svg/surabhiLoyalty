@@ -6,12 +6,12 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Edit, Wallet, Coins, Gift, User, Mail, Phone, MapPin, Calendar, Shield, Users, CreditCard, BarChart2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-import {Customer} from "@/types/types"
+import {CustomerType} from "@/types/types"
 
 export const CustomerDetails = () => {
   const { mobile } = useParams<{ mobile: string }>();
   const navigate = useNavigate();
-  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [customer, setCustomer] = useState<CustomerType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,14 +20,14 @@ export const CustomerDetails = () => {
     try {
       const q = query(
         collection(db, 'customers'),
-        where('mobile', '==', mobile)
+        where('customerMobile', '==', mobile)
       );
       
       const querySnapshot = await getDocs(q);
       
       if (!querySnapshot.empty) {
         // Assuming mobile is unique, we take the first document
-        const customerData = querySnapshot.docs[0].data() as Customer;
+        const customerData = querySnapshot.docs[0].data() as CustomerType;
         setCustomer(customerData);
       } else {
         setError('Customer not found');
@@ -106,7 +106,7 @@ export const CustomerDetails = () => {
           <Button variant="outline" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-2xl font-bold">{customer.name}</h1>
+          <h1 className="text-2xl font-bold">{customer.customerName}</h1>
         </div>
         {/* <Button variant="outline" onClick={() => navigate(`/customer/${mobile}/edit`)}>
           <Edit className="h-4 w-4 mr-2" />
@@ -126,14 +126,14 @@ export const CustomerDetails = () => {
               <p className="text-xs text-muted-foreground">Mobile</p>
               <div className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
-                <p>{customer.mobile}</p>
+                <p>{customer.customerMobile}</p>
               </div>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Email</p>
               <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
-                <p>{customer.email || 'Not provided'}</p>
+                <p>{customer.customerEmail || 'Not provided'}</p>
               </div>
             </div>
             <div>
@@ -150,13 +150,13 @@ export const CustomerDetails = () => {
                 <p>{createdAtDate}</p>
               </div>
             </div>
-            <div>
+            {/* <div>
               <p className="text-xs text-muted-foreground">Status</p>
               <div className="flex items-center gap-2">
                 <Shield className="h-4 w-4" />
                 <p>{customer.registered ? 'Active' : 'Inactive'}</p>
               </div>
-            </div>
+            </div> */}
           </CardContent>
         </Card>
 
@@ -202,15 +202,15 @@ export const CustomerDetails = () => {
           <CardContent className="space-y-4">
             <div>
               <p className="text-xs text-muted-foreground">Surabhi Coins</p>
-              <p className="text-lg font-medium">{customer.surabhiCoins?.toLocaleString() || '0'}</p>
+              <p className="text-lg font-medium">{customer.surabhiBalance?.toLocaleString() || '0'}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Total Seva Coins</p>
-              <p className="text-lg font-medium">{customer.sevaCoinsTotal?.toLocaleString() || '0'}</p>
+              <p className="text-lg font-medium">{customer.sevaBalance?.toLocaleString() || '0'}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Current Month Seva Coins</p>
-              <p className="text-lg font-medium">{customer.sevaCoinsCurrentMonth?.toLocaleString() || '0'}</p>
+              <p className="text-lg font-medium">{customer.sevaBalanceCurrentMonth?.toLocaleString() || '0'}</p>
             </div>
           </CardContent>
         </Card>
@@ -235,10 +235,10 @@ export const CustomerDetails = () => {
                   </Button>
                 </div>
               )}
-              {customer.referralSurabhi !== null && (
+              {customer.surabhiReferral !== null && (
                 <div>
                   <p className="text-xs text-muted-foreground">Referral Income</p>
-                  <p>₹{customer.referralSurabhi?.toLocaleString('en-IN') || '0'}</p>
+                  <p>₹{customer.surabhiReferral?.toLocaleString('en-IN') || '0'}</p>
                 </div>
               )}
               {customer.referredUsers && customer.referredUsers.length > 0 && (
@@ -250,13 +250,13 @@ export const CustomerDetails = () => {
                         <Button 
                           variant="link" 
                           className="h-auto p-0" 
-                          onClick={() => navigate(`/customer/${user.mobile}`)}
+                          onClick={() => navigate(`/customer/${user.customerMobile}`)}
                         >
-                          {user.mobile}
+                          {user.customerMobile}
                         </Button>
-                      <span className="text-xs text-muted-foreground">
-                      {user.referralDate.toDate().toLocaleString()}
-                      </span>
+                      {/* <span className="text-xs text-muted-foreground">
+                      {user..toDate().toLocaleString()}
+                      </span> */}
                       </div>
                     ))}
                   </div>
