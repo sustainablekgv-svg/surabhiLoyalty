@@ -19,35 +19,40 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { CalendarIcon, Search, Filter, ShoppingCart, Loader2, Zap, UserPlus } from 'lucide-react';
 import { format } from 'date-fns';
-import { collection, query, where, getDocs, DocumentData, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, DocumentData, Timestamp, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from 'sonner';
-import { TransactionsPageProps, ActivityType } from '@/types/types';
+import { TransactionsPageProps } from '@/types/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+import { CustomerTxType } from '@/types/types';
 const formatTimestamp = (timestamp: Timestamp): string => {
-  return format(timestamp.toDate(), 'MMM dd, yyyy HH:mm');
+  return format(timestamp.toDate(), 'dd MMM yyyy, hh:mm a');
+};
+
+const formatDate = (timestamp: Timestamp): string => {
+  return format(timestamp.toDate(), 'dd MMM yyyy');
 };
 
 export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
-  const [activities, setActivities] = useState<ActivityType[]>([]);
-  const [filteredActivities, setFilteredActivities] = useState<ActivityType[]>([]);
+  const [transactions, setTransactions] = useState<CustomerTxType[]>([]);
+  const [filteredTransactions, setFilteredTransactions] = useState<CustomerTxType[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isFiltering, setIsFiltering] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'transactions' | 'recharges'>('transactions');
+  const [activeTab, setActiveTab] = useState<'sales' | 'recharges'>('sales');
 
   // Calculate pagination
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
-  const currentRecords = filteredActivities.slice(indexOfFirstRecord, indexOfLastRecord);
-  const totalPages = Math.ceil(filteredActivities.length / recordsPerPage);
+  const currentRecords = filteredTransactions.slice(indexOfFirstRecord, indexOfLastRecord);
+  const totalPages = Math.ceil(filteredTransactions.length / recordsPerPage);
 
   // Change page
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
@@ -58,9 +63,9 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
     setCurrentPage(1);
   };
 
-  // Fetch all activities for current store
+  // Fetch all transactions for current store
   useEffect(() => {
-    const fetchActivities = async () => {
+    const fetchTransactions = async () => {
       if (!storeLocation) return;
 
       setIsLoading(true);
@@ -68,67 +73,59 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
 
       try {
         const q = query(
-          collection(db, 'Activity'),
-          where('location', '==', storeLocation)
+          collection(db, 'CustomerTx'),
+          where('storeLocation', '==', storeLocation),
+          orderBy('createdAt', 'desc')
         );
         const querySnapshot = await getDocs(q);
-        const fetchedActivities: ActivityType[] = [];
+        const fetchedTransactions: CustomerTxType[] = [];
 
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-          fetchedActivities.push({
+          fetchedTransactions.push({
             id: doc.id,
-            type: data.type,
-            description: data.description,
-            amount: data.amount || 0,
-            user: data.user,
-            location: data.location,
-            date: data.date as Timestamp
-          });
+            ...data,
+            createdAt: data.createdAt as Timestamp
+          } as CustomerTxType);
         });
 
-        // Sort by date (newest first)
-        fetchedActivities.sort((a, b) => {
-          const dateA = a.date instanceof Timestamp ? a.date.toMillis() : new Date(a.date).getTime();
-          const dateB = b.date instanceof Timestamp ? b.date.toMillis() : new Date(b.date).getTime();
-          return dateB - dateA;
-        });
-
-        setActivities(fetchedActivities);
-        setFilteredActivities(fetchedActivities);
+        setTransactions(fetchedTransactions);
+        setFilteredTransactions(fetchedTransactions);
       } catch (err) {
-        console.error('Error fetching activities:', err);
-        setError('Failed to load activities. Please try again.');
-        toast.error('Failed to load activities');
+        console.error('Error fetching transactions:', err);
+        setError('Failed to load transactions. Please try again.');
+        toast.error('Failed to load transactions');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchActivities();
+    fetchTransactions();
   }, [storeLocation]);
 
   // Apply filters
   useEffect(() => {
-    if (!activities.length) return;
+    if (!transactions.length) return;
 
     setIsFiltering(true);
-    let result = [...activities];
+    let result = [...transactions];
+    console.log("The data in line 112 is", result);
 
     // Filter by tab
-    if (activeTab === 'transactions') {
-      result = result.filter(activity => activity.type === 'transaction');
+    if (activeTab === 'sales') {
+      result = result.filter(tx => tx.type === 'sale');
     } else if (activeTab === 'recharges') {
-      result = result.filter(activity => activity.type === 'recharge');
+      result = result.filter(tx => tx.type === 'recharge');
+      console.log("the resulrs in line 118 is", result)
     }
 
-    // Search filter (user or description)
+    // Search filter (customer name or mobile)
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(
-        (activity) =>
-        (activity.user?.toLowerCase().includes(term) ||
-          activity.description?.toLowerCase().includes(term))
+        (tx) =>
+          tx.customerName?.toLowerCase().includes(term) ||
+          tx.customerMobile?.toLowerCase().includes(term)
       );
     }
 
@@ -140,21 +137,18 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
       if (start) start.setHours(0, 0, 0, 0);
       if (end) end.setHours(23, 59, 59, 999);
 
-      result = result.filter((activity) => {
-        const activityDate = activity.date instanceof Timestamp
-          ? activity.date.toDate()
-          : new Date(activity.date);
-
-        if (start && activityDate < start) return false;
-        if (end && activityDate > end) return false;
+      result = result.filter((tx) => {
+        const txDate = tx.createdAt.toDate();
+        if (start && txDate < start) return false;
+        if (end && txDate > end) return false;
         return true;
       });
     }
 
-    setFilteredActivities(result);
+    setFilteredTransactions(result);
     setCurrentPage(1);
     setIsFiltering(false);
-  }, [searchTerm, startDate, endDate, activities, activeTab]);
+  }, [searchTerm, startDate, endDate, transactions, activeTab]);
 
   const handleClearFilters = () => {
     setSearchTerm('');
@@ -162,21 +156,20 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
     setEndDate('');
   };
 
-  const calculateTotal = () => {
-    return filteredActivities.reduce((sum, activity) => sum + (Number(activity.amount) || 0), 0);
+  const calculateTotalAmount = () => {
+    return filteredTransactions.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
   };
 
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'transaction':
-        return <ShoppingCart className="h-4 w-4 mr-2" />;
-      case 'recharge':
-        return <Zap className="h-4 w-4 mr-2" />;
-      case 'signup':
-        return <UserPlus className="h-4 w-4 mr-2" />;
-      default:
-        return <Zap className="h-4 w-4 mr-2" />;
-    }
+  const calculateTotalRecharges = () => {
+    return filteredTransactions
+      .filter(tx => tx.type === 'recharge')
+      .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+  };
+
+  const calculateTotalSales = () => {
+    return filteredTransactions
+      .filter(tx => tx.type === 'sale')
+      .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
   };
 
   return (
@@ -196,20 +189,22 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Filter className="h-5 w-5 text-gray-600" />
-            Filter Activities
+            Filter Transactions
           </CardTitle>
-          <CardDescription>
-            Showing {indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredActivities.length)} of {filteredActivities.length} activity(s) for {storeLocation}
-          </CardDescription>
+          <CardHeader>
+            <CardDescription>
+              Showing {indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredTransactions.length)} of {filteredTransactions.length} transaction(s) for {storeLocation}
+            </CardDescription>
+          </CardHeader>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="search">Search User/Description</Label>
+            <Label htmlFor="search">Search Customer</Label>
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
                 id="search"
-                placeholder="Search..."
+                placeholder="Search by name or mobile..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -261,14 +256,14 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
       </Card>
 
       {/* Stats Summary */}
-      {!isLoading && filteredActivities.length > 0 && (
+      {!isLoading && filteredTransactions.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="bg-blue-50">
             <CardHeader className="p-4">
-              <CardTitle className="text-sm font-medium text-blue-600">Total Activities</CardTitle>
+              <CardTitle className="text-sm font-medium text-blue-600">Total Transactions</CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0">
-              <p className="text-2xl font-bold">{filteredActivities.length}</p>
+              <p className="text-2xl font-bold">{filteredTransactions.length}</p>
             </CardContent>
           </Card>
           <Card className="bg-green-50">
@@ -276,52 +271,42 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
               <CardTitle className="text-sm font-medium text-green-600">Total Amount</CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0">
-              <p className="text-2xl font-bold">₹{calculateTotal().toFixed(2)}</p>
+              <p className="text-2xl font-bold">₹{calculateTotalAmount().toFixed(2)}</p>
             </CardContent>
           </Card>
-
-          {activeTab === 'transactions' && (
-            <Card className="bg-purple-50">
-              <CardHeader className="p-4">
-                <CardTitle className="text-sm font-medium text-purple-600">Transactions</CardTitle>
-              </CardHeader>
-
-              <CardContent className="p-4 pt-0">
-                <p className="text-2xl font-bold">
-                  {filteredActivities.filter(a => a.type === 'transaction').length}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-          {activeTab === 'recharges' && (
-            <Card className="bg-amber-50">
-              <CardHeader className="p-4">
-                <CardTitle className="text-sm font-medium text-amber-600">Recharges</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 pt-0">
-                <p className="text-2xl font-bold">
-                  {filteredActivities.filter(a => a.type === 'recharge').length}
-                </p>
-              </CardContent>
-            </Card>
-          )}
+          <Card className="bg-purple-50">
+            <CardHeader className="p-4">
+              <CardTitle className="text-sm font-medium text-purple-600">Total Sales</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <p className="text-2xl font-bold">₹{calculateTotalSales().toFixed(2)}</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-amber-50">
+            <CardHeader className="p-4">
+              <CardTitle className="text-sm font-medium text-amber-600">Total Recharges</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <p className="text-2xl font-bold">₹{calculateTotalRecharges().toFixed(2)}</p>
+            </CardContent>
+          </Card>
         </div>
       )}
 
-      {/* Activity List with Tabs */}
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'transactions' | 'recharges')}>
+      {/* Transaction List with Tabs */}
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'sales' | 'recharges')}>
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="transactions">
+          <TabsTrigger value="sales">
             <ShoppingCart className="h-4 w-4 mr-2" />
-            Transactions
+            Sales Transactions
           </TabsTrigger>
           <TabsTrigger value="recharges">
             <Zap className="h-4 w-4 mr-2" />
-            Recharges
+            Wallet Recharges
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="transactions">
+        <TabsContent value="sales">
           <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm mt-4">
             <CardContent>
               {error ? (
@@ -338,23 +323,23 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
               ) : isLoading ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-4">
                   <Loader2 className="h-8 w-8 animate-spin text-green-500" />
-                  <p>Loading activities...</p>
+                  <p>Loading transactions...</p>
                 </div>
               ) : isFiltering ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-4">
                   <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
                   <p>Applying filters...</p>
                 </div>
-              ) : filteredActivities.length === 0 ? (
+              ) : filteredTransactions.filter(tx => tx.type === 'sale').length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                  <p className="text-lg font-medium mb-2">No activities found</p>
+                  <p className="text-lg font-medium mb-2">No sales transactions found</p>
                   <p className="mb-4">
-                    {activities.length === 0
-                      ? 'No activities recorded for this store yet.'
-                      : 'No activities match your current filters.'}
+                    {transactions.length === 0
+                      ? 'No sales recorded for this store yet.'
+                      : 'No sales match your current filters.'}
                   </p>
-                  {activities.length > 0 && (
+                  {transactions.length > 0 && (
                     <Button variant="outline" onClick={handleClearFilters}>
                       Clear Filters
                     </Button>
@@ -365,32 +350,41 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Mobile</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Payment</TableHead>
+                        <TableHead>Wallet</TableHead>
+                        <TableHead>Surabhi</TableHead>
+                        <TableHead>Seva</TableHead>
+                        <TableHead>Cash</TableHead>
+                        <TableHead>Store</TableHead>
                         <TableHead>Date</TableHead>
-                        {/* <TableHead>Type</TableHead> */}
-                        <TableHead>User</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>Staff</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {currentRecords.map((activity) => (
-                        <TableRow key={activity.id} className="hover:bg-gray-50">
-                          <TableCell>
-                            {formatTimestamp(activity.date)}
-                          </TableCell>
-                          {/* <TableCell>
-                            <div className="flex items-center">
-                              {getActivityIcon(activity.type)}
-                              {activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}
-                            </div>
-                          </TableCell> */}
-                          <TableCell className="font-medium">{activity.user || '-'}</TableCell>
-                          <TableCell>{activity.description || '-'}</TableCell>
-                          <TableCell className="text-right">
-                            {activity.amount ? `₹${Number(activity.amount).toFixed(2)}` : '-'}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {currentRecords
+                        .filter(tx => tx.type === 'sale')
+                        .map((tx) => (
+                          <TableRow key={tx.id} className="hover:bg-gray-50">
+                            <TableCell className="font-medium">
+                              <span className="font-bold">{tx.customerName}</span>
+                            </TableCell>
+                            <TableCell>{tx.customerMobile}</TableCell>
+                            <TableCell className="font-bold">₹{tx.amount.toFixed(2)}</TableCell>
+                            <TableCell>
+                              {tx.paymentMethod === 'mixed' ? 'mixed' : tx.paymentMethod || 'cash'}
+                            </TableCell>
+                            <TableCell>{tx.walletDeduction || 0}</TableCell>
+                            <TableCell>{tx.surabhiUsed || 0}</TableCell>
+                            <TableCell>{tx.sevaEarned || 0}</TableCell>
+                            <TableCell>₹{tx.cashPayment?.toFixed(2) || 0}</TableCell>
+                            <TableCell>{tx.storeLocation}</TableCell>
+                            <TableCell>{formatTimestamp(tx.createdAt)}</TableCell>
+                            <TableCell>{tx.processedBy || 'system'}</TableCell>
+                          </TableRow>
+                        ))}
                     </TableBody>
                   </Table>
                 </div>
@@ -416,23 +410,23 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
               ) : isLoading ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-4">
                   <Loader2 className="h-8 w-8 animate-spin text-green-500" />
-                  <p>Loading activities...</p>
+                  <p>Loading recharges...</p>
                 </div>
               ) : isFiltering ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-4">
                   <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
                   <p>Applying filters...</p>
                 </div>
-              ) : filteredActivities.length === 0 ? (
+              ) : filteredTransactions.filter(tx => tx.type === 'recharge').length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <Zap className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                  <p className="text-lg font-medium mb-2">No activities found</p>
+                  <p className="text-lg font-medium mb-2">No recharge records found</p>
                   <p className="mb-4">
-                    {activities.length === 0
-                      ? 'No activities recorded for this store yet.'
-                      : 'No activities match your current filters.'}
+                    {transactions.length === 0
+                      ? 'No recharges recorded for this store yet.'
+                      : 'No recharges match your current filters.'}
                   </p>
-                  {activities.length > 0 && (
+                  {transactions.length > 0 && (
                     <Button variant="outline" onClick={handleClearFilters}>
                       Clear Filters
                     </Button>
@@ -443,32 +437,35 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Mobile</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Store</TableHead>
+                        <TableHead>Coins Earned</TableHead>
+                        <TableHead>Seva Amount</TableHead>
                         <TableHead>Date</TableHead>
-                        {/* <TableHead>Type</TableHead> */}
-                        <TableHead>User</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>Staff</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {currentRecords.map((activity) => (
-                        <TableRow key={activity.id} className="hover:bg-gray-50">
-                          <TableCell>
-                            {formatTimestamp(activity.date)}
-                          </TableCell>
-                          {/* <TableCell>
-                            <div className="flex items-center">
-                              {getActivityIcon(activity.type)}
-                              {activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}
-                            </div>
-                          </TableCell> */}
-                          <TableCell className="font-medium">{activity.user || '-'}</TableCell>
-                          <TableCell>{activity.description || '-'}</TableCell>
-                          <TableCell className="text-right">
-                            {activity.amount ? `₹${Number(activity.amount).toFixed(2)}` : '-'}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {currentRecords
+                        .filter(tx => tx.type === 'recharge')
+                        .map((tx) => (
+                          <TableRow key={tx.id} className="hover:bg-gray-50">
+                            <TableCell className="font-medium">
+                              <span className="font-bold">{tx.customerName}</span>
+                            </TableCell>
+                            <TableCell>{tx.customerMobile}</TableCell>
+                            <TableCell className="font-bold">₹{tx.amount.toFixed(2)}</TableCell>
+                            <TableCell>
+                              {tx.storeName ? `${tx.storeName}` : tx.storeLocation}
+                            </TableCell>
+                            <TableCell>{tx.surabhiEarned || 0}</TableCell>
+                            <TableCell>₹{tx.sevaEarned?.toFixed(2) || 0}</TableCell>
+                            <TableCell>{formatTimestamp(tx.createdAt)}</TableCell>
+                            <TableCell>{tx.processedBy || 'system'}</TableCell>
+                          </TableRow>
+                        ))}
                     </TableBody>
                   </Table>
                 </div>
@@ -479,7 +476,7 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
       </Tabs>
 
       {/* Pagination */}
-      {filteredActivities.length > 0 && (
+      {filteredTransactions.length > 0 && (
         <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-4">
           <div className="flex items-center gap-2">
             <Label htmlFor="recordsPerPage">Records per page:</Label>
@@ -557,7 +554,7 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
           </div>
 
           <div className="text-sm text-gray-600">
-            Showing {indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredActivities.length)} of {filteredActivities.length} records
+            Showing {indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredTransactions.length)} of {filteredTransactions.length} records
           </div>
         </div>
       )}

@@ -12,7 +12,6 @@ import {
   Calculator,
   CheckCircle,
   Phone,
-  Wallet,
   HandCoins,
   Loader2
 } from 'lucide-react';
@@ -29,21 +28,18 @@ import {
   setDoc,
   getDoc,
   increment,
-  Timestamp,
-  arrayUnion
+  Timestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import {
-  Customer,
+  CustomerType,
   SalesManagementProps,
-  SalesTransaction,
-  SevaTransaction,
   ActivityType,
   StoreType,
-  AccountTx,
+  AccountTxType,
   StaffType,
-  SevaPool,
-  CustomerTx
+  SevaPoolType,
+  CustomerTxType
 } from '@/types/types';
 import { serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/hooks/auth-context';
@@ -62,20 +58,20 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
   const { user, logout, isLoading: authLoading } = useAuth();
   console.log("The user in line 61 is", user);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerType | null>(null);
   const [isRegisteredAtSameStore, setIsRegisteredAtSameStore] = useState<boolean>(false);
   const [saleAmount, setSaleAmount] = useState<number | undefined>(undefined);
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'cash' | 'mixed'>('wallet');
   const [surabhiCoinsToUse, setSurabhiCoinsToUse] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<CustomerType[]>([]);
   const [isFetchingCustomers, setIsFetchingCustomers] = useState(false);
   const [storeDetails, setStoreDetails] = useState<StoreType | null>(null);
 
   const [showTPINModal, setShowTPINModal] = useState(false);
   const [enteredTPIN, setEnteredTPIN] = useState("");
 
-  const [sevaPool, setSevaPool] = useState<SevaPool>({
+  const [sevaPool, setSevaPool] = useState<SevaPoolType>({
     currentBalance: 0,
     totalContributions: 0,
     totalAllocations: 0,
@@ -111,7 +107,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         // Fetch store details first
         const q = query(
           collection(db, 'stores'),
-          where('name', '==', storeLocation) // exact match
+          where('storeName', '==', storeLocation) // exact match
         );
 
         const querySnapshotStores = await getDocs(q);
@@ -127,7 +123,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         const customersCollection = collection(db, 'customers');
         const querySnapshot = await getDocs(customersCollection);
         const customersData = querySnapshot.docs.map(doc => ({
-          ...doc.data() as Customer,
+          ...doc.data() as CustomerType,
           mobile: doc.data().mobile // Using mobile as identifier
         }));
         setCustomers(customersData);
@@ -144,9 +140,9 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       try {
         const q = query(collection(db, 'customers'));
         const querySnapshot = await getDocs(q);
-        const customersData: Customer[] = [];
+        const customersData: CustomerType[] = [];
         querySnapshot.forEach((doc) => {
-          customersData.push({ id: doc.id, ...doc.data() } as unknown as Customer);
+          customersData.push({ id: doc.id, ...doc.data() } as unknown as CustomerType);
         });
         setCustomers(customersData);
       } catch (error) {
@@ -161,14 +157,14 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
   }, [storeLocation]);
 
   const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.mobile.includes(searchTerm)
+    customer.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    customer.customerMobile.includes(searchTerm)
   );
 
   // Automatically use all available Surabhi coins if customer is selected
   useEffect(() => {
     if (selectedCustomer && saleAmount && saleAmount > 0) {
-      const maxCoinsToUse = Math.min(selectedCustomer.surabhiCoins, saleAmount);
+      const maxCoinsToUse = Math.min(selectedCustomer.surabhiBalance, saleAmount);
       setSurabhiCoinsToUse(maxCoinsToUse);
     } else {
       setSurabhiCoinsToUse(0);
@@ -180,7 +176,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     if (!saleAmount || saleAmount <= 0 || !storeDetails) return null;
 
     const coinsToUse = selectedCustomer
-      ? Math.min(surabhiCoinsToUse || 0, selectedCustomer.surabhiCoins || 0)
+      ? Math.min(surabhiCoinsToUse || 0, selectedCustomer.surabhiBalance || 0)
       : 0;
 
     let walletDeduction = 0;
@@ -251,7 +247,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
   };
 
   const handleRegisteredCustomerSale = async () => {
-    console.log('Searching for customer with mobile:', selectedCustomer.mobile);
+    console.log('Searching for customer with mobile:', selectedCustomer.customerMobile);
     console.log('Selected customer object:', selectedCustomer);
     if (!selectedCustomer || !saleAmount || !saleCalculation || !saleCalculation.isValid) {
       toast.error('Invalid sale calculation');
@@ -263,7 +259,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     try {
       // First check if customer exists in database
       const customersRef = collection(db, "customers");
-      const q = query(customersRef, where("mobile", "==", selectedCustomer.mobile));
+      const q = query(customersRef, where("customerMobile", "==", selectedCustomer.customerMobile));
       const querySnapshot = await getDocs(q);
       console.log('Query snapshot empty:', querySnapshot.empty);
       console.log('Query snapshot size:', querySnapshot.size);
@@ -271,8 +267,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         throw new Error('Customer not found in database');
       }
       console.log("Is it comig here in line 259")
-      const newWalletBalance = (selectedCustomer.walletBalance || 0) - saleCalculation.walletDeduction;
-      const newSurabhiCoins = (selectedCustomer.surabhiCoins || 0) - saleCalculation.surabhiCoinsUsed + saleCalculation.surabhiCoinsEarned;
+      const newWalletBalance = (selectedCustomer.walletBalance) - saleCalculation.walletDeduction;
+      const newSurabhiCoins = (selectedCustomer.surabhiBalance) - saleCalculation.surabhiCoinsUsed + saleCalculation.surabhiCoinsEarned;
       console.log("Is it comig here in line 261", newWalletBalance, newSurabhiCoins)
       // Update customer balances
       const customerDoc = querySnapshot.docs[0];
@@ -287,29 +283,50 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       });
 
       // Record transaction
-      const saleData: SalesTransaction = {
-        customerName: selectedCustomer.name,
-        customerMobile: selectedCustomer.mobile,
+      const customerTxData: Partial<CustomerTxType>= {
+        type: 'sale',
+        customerName: selectedCustomer.customerName,
+        customerMobile: selectedCustomer.customerMobile,
+        storeLocation: storeLocation,
+        storeName: user.storeLocation, 
+        createdAt: Timestamp.fromDate(new Date()),
+        paymentMethod: paymentMethod,
+        processedBy: user.name, 
+      
+        // Recharge-Specific Fields (with defaults)
         amount: saleCalculation.totalAmount,
-        paymentMethod,
-        surabhiCoinsUsed: saleCalculation.surabhiCoinsUsed,
+        surabhiEarned: saleCalculation.surabhiCoinsEarned,
+        sevaEarned: saleCalculation.goSevaContribution,
+        referralEarned: saleCalculation.referrerSurabhiCoinsEarned,
+      
+        // Sale-Specific Fields
+        surabhiUsed: saleCalculation.surabhiCoinsUsed,
         walletDeduction: saleCalculation.walletDeduction,
         cashPayment: saleCalculation.cashPayment,
-        storeLocation,
-        processedBy: user?.name,
-        isCustomerRegistered: true,
+      
+        // Balance information
         previousBalance: {
-          wallet: selectedCustomer.walletBalance || 0,
-          surabhiCoins: selectedCustomer.surabhiCoins || 0,
+          walletBalance: selectedCustomer.walletBalance || 0,
+          surabhiBalance: selectedCustomer.surabhiBalance || 0,
         },
         newBalance: {
-          wallet: newWalletBalance,
-          surabhiCoins: newSurabhiCoins,
+          walletBalance: newWalletBalance,
+          surabhiBalance: newSurabhiCoins,
         },
-        createdAt: Timestamp.fromDate(new Date())
+      
+        // Transaction amounts
+        walletCredit: 0,
+        walletDebit: saleCalculation.walletDeduction,
+        walletBalance: newWalletBalance,
+        surabhiDebit: saleCalculation.surabhiCoinsUsed,
+        surabhiCredit: saleCalculation.surabhiCoinsEarned, 
+        surabhiBalance: newSurabhiCoins,
+        sevaCredit: saleCalculation.goSevaContribution, 
+        sevaDebit: 0,
+        sevaBalance: selectedCustomer.sevaBalance || 0,
+        sevaTotal: selectedCustomer.sevaTotal || 0
       };
-
-      await addDoc(collection(db, 'transactions'), saleData);
+      await addDoc(collection(db, 'CustomerTx'), customerTxData);
 
       // Handle Referrer Income 
       if (selectedCustomer.referredBy && saleCalculation.referrerSurabhiCoinsEarned > 0) {
@@ -318,17 +335,17 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           const customersCollection = collection(db, 'customers');
           const referrerQuery = query(
             customersCollection,
-            where('mobile', '==', selectedCustomer.referredBy)
+            where('customerMobile', '==', selectedCustomer.referredBy)
           );
           const referrerSnapshot = await getDocs(referrerQuery);
 
           if (!referrerSnapshot.empty) {
             const referrerDoc = referrerSnapshot.docs[0];
-            const referrerData = referrerDoc.data() as Customer;
+            const referrerData = referrerDoc.data() as CustomerType;
             const referralAmount = saleCalculation.referrerSurabhiCoinsEarned;
 
             console.log('Referrer Data:', referrerData);
-            console.log('New Referred User:', selectedCustomer.name);
+            console.log('New Referred User:', selectedCustomer.customerName);
             console.log('Referral Amount:', referralAmount);
 
             // Safely increment referral amount (handle null/NaN)
@@ -343,10 +360,13 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             // Add activity record for referrer
             await addActivityRecord({
               type: 'referral',
-              description: `${selectedCustomer.referredBy} Earned ₹${incrementAmount} referral income from ${selectedCustomer.name}'s recharge`,
+              remarks: `${selectedCustomer.referredBy} got ₹${incrementAmount} referral from ${selectedCustomer.customerName}'s recharge`,
               amount: incrementAmount,
-              user: selectedCustomer.referredBy,
-              location: selectedCustomer.storeLocation
+              customerMobile: selectedCustomer.referredBy,
+              storeLocation: selectedCustomer.storeLocation,
+              customerName: selectedCustomer.customerName,
+              createdAt : Timestamp.fromDate(new Date())
+
             });
           } else {
             console.warn(`Referrer with mobile ${selectedCustomer.referredBy} not found`);
@@ -360,54 +380,132 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       // Add seva contribution activity record for cash and mixed payments
       if ((paymentMethod === 'cash' || paymentMethod === 'mixed') && saleCalculation.goSevaContribution > 0) {
         await addActivityRecord({
-          type: 'contribution',
-          description: `Seva contribution of ₹${saleCalculation.goSevaContribution} from ${selectedCustomer.name}'s purchase`,
+          type: 'seva_contribution',
+          remarks: `Seva contribution of ₹${saleCalculation.goSevaContribution} from ${selectedCustomer.customerName}'s purchase`,
           amount: saleCalculation.goSevaContribution,
-          user: selectedCustomer.mobile,
-          location: storeLocation
+          customerMobile: selectedCustomer.customerMobile,
+          customerName: selectedCustomer.customerName,
+          storeLocation: storeLocation,
+          createdAt: Timestamp.fromDate(new Date())
         });
       }
 
       // Add AccountTx record(s) based on payment method
       if (paymentMethod === "wallet") {
         const adminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
-        const accountTxData: Omit<AccountTx, 'id'> = {
-          date: Timestamp.fromDate(new Date()),
-          storeName: storeDetails.name,
+        const accountTxData: Omit<AccountTxType, 'id'> = {
+          createdAt: Timestamp.fromDate(new Date()),
+          storeName: storeDetails.storeName,
+          customerName: selectedCustomer.customerName,
+          customerMobile:selectedCustomer.customerMobile,
           type: 'sale',
           amount: saleCalculation.totalAmount,
           credit: 0,
           debit: saleCalculation.totalAmount - adminCut,
           adminCut: adminCut,
-          balance: storeDetails.currentBalance - saleCalculation.totalAmount + adminCut,
-          description: `Wallet sale for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
-          settled: false
+          balance: (storeDetails.storeCurrentBalance || 0 ) - saleCalculation.totalAmount + adminCut,
+          remarks: `Wallet sale for ${selectedCustomer.customerName} (${selectedCustomer.customerMobile})`,
         };
         await addDoc(collection(db, 'AccountTx'), accountTxData);
 
+        interface CustomerTxType {
+  id?: string;
+  type: 'recharge' | 'sale';
+
+  // Common Fields
+  customerMobile: string;
+  customerName: string;
+  storeLocation: string;
+  storeName: string; // Only for recharge
+  createdAt: Timestamp;
+  paymentMethod?: 'cash' | 'wallet' | 'mixed';
+  staffName: string; // Used in recharge
+  processedBy: string; // Used in sale
+
+  // Recharge-Specific Fields
+  amount: number; // Recharge amount
+  surabhiEarned: number;
+  sevaEarned?: number;
+  referralEarned?: number;
+  referredBy?: string | null;
+
+  // Sale-Specific Fields
+  surabhiUsed?: number;
+  walletDeduction?: number;
+  cashPayment?: number;
+
+  previousBalance?: {
+    walletBalance: number;
+    surabhiBalance: number;
+  };
+
+  newBalance?: {
+    walletBalance: number;
+    surabhiBalance: number;
+  };
+
+  walletCredit: number;
+  walletDebit: number;
+  walletBalance: number;
+  surabhiDebit: number;
+  surabhiCredit: number;
+  surabhiBalance: number;
+  sevaCredit: number;
+  sevaDebit: number;
+  sevaBalance: number;
+  sevaTotal: number;
+}
 
         // Create CustomerTx record
-        const customerTxData: Omit<CustomerTx, 'id'> = {
+        const customerTxData: Omit<Partial<CustomerTxType>, 'id'> = {
+          type: 'sale', // Added the required type field
+          customerMobile: selectedCustomer.customerMobile,
+          customerName: selectedCustomer.customerName, // Added customerName
+          // storeLocation: storeLocation,
+          storeName: user.storeLocation, 
           createdAt: Timestamp.fromDate(new Date()),
-          mobile: selectedCustomer.mobile,
-          storeLocation: storeLocation,
+          paymentMethod: paymentMethod, 
+          processedBy: user.name, 
+          
+          // Sale-Specific Fields
+          surabhiUsed: saleCalculation.surabhiCoinsUsed,
+          walletDeduction: saleCalculation.walletDeduction,
+          cashPayment: saleCalculation.cashPayment,
+          
+          // Balance fields
+          previousBalance: {
+            walletBalance: selectedCustomer.walletBalance,
+            surabhiBalance: selectedCustomer.surabhiBalance
+          },
+          newBalance: {
+            walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
+            surabhiBalance: selectedCustomer.surabhiBalance + saleCalculation.surabhiCoinsEarned
+          },
+          
+          // Transaction amounts
           walletCredit: 0,
           walletDebit: saleCalculation.walletDeduction,
           walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
           surabhiDebit: saleCalculation.surabhiCoinsUsed,
           surabhiCredit: saleCalculation.surabhiCoinsEarned,
-          surabhiBalance: selectedCustomer.surabhiCoins + saleCalculation.surabhiCoinsEarned,
+          surabhiBalance: selectedCustomer.surabhiBalance + saleCalculation.surabhiCoinsEarned,
           sevaCredit: saleCalculation.goSevaContribution,
           sevaDebit: 0,
-          sevaBalance: (selectedCustomer.sevaCoinsCurrentMonth || 0) + saleCalculation.goSevaContribution,
-          sevaTotal: (selectedCustomer.sevaCoinsTotal || 0) + saleCalculation.goSevaContribution
+          sevaBalance: (selectedCustomer.sevaBalanceCurrentMonth || 0) + saleCalculation.goSevaContribution,
+          sevaTotal: (selectedCustomer.sevaBalance || 0) + saleCalculation.goSevaContribution,
+          
+          // Recharge-specific fields (empty/default for sale)
+          // amount: 0,
+          // surabhiEarned: 0,
+          // staffName: '', 
+          // referredBy: selectedCustomer.referredBy
         };
 
         await addDoc(collection(db, 'CustomerTx'), customerTxData);
         // Update store balance
         const storeQuery = query(
           collection(db, 'stores'),
-          where('name', '==', user.storeLocation)
+          where('storeName', '==', user.storeLocation)
         );
         const storeSnapshot = await getDocs(storeQuery);
         if (!storeSnapshot.empty) {
@@ -420,17 +518,18 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       } else
         if (paymentMethod === 'cash') {
           const adminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
-          const accountTxData: Omit<AccountTx, 'id'> = {
-            date: Timestamp.fromDate(new Date()),
-            storeName: storeDetails.name,
+          const accountTxData: Omit<AccountTxType, 'id'> = {
+            createdAt: Timestamp.fromDate(new Date()),
+            storeName: storeDetails.storeName,
             type: 'sale',
             amount: saleCalculation.totalAmount,
+            customerName: selectedCustomer.customerName,
+            customerMobile: selectedCustomer.customerMobile,
             credit: saleCalculation.cashPayment,
             adminCut: adminCut,
             debit: saleCalculation.totalAmount - adminCut,
-            balance: storeDetails.currentBalance + saleCalculation.cashPayment - saleCalculation.totalAmount + adminCut, // balance + credit + debot
-            description: `Cash sale for ${selectedCustomer.name} (${selectedCustomer.mobile})`,
-            settled: false
+            balance: storeDetails.storeCurrentBalance + saleCalculation.cashPayment - saleCalculation.totalAmount + adminCut, // balance + credit + debot
+            remarks: `Cash sale for ${selectedCustomer.customerName} (${selectedCustomer.customerMobile})`,
           }
           await addDoc(collection(db, 'AccountTx'), accountTxData);
 
@@ -447,20 +546,24 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           });
 
           // Create CustomerTx record
-          const customerTxData: Omit<CustomerTx, 'id'> = {
+          const customerTxData: Omit<Partial<CustomerTxType>, 'id'> = {
             createdAt: Timestamp.fromDate(new Date()),
-            mobile: selectedCustomer.mobile,
+            type: 'sale',
+            customerName: selectedCustomer.customerName,
+            customerMobile: selectedCustomer.customerMobile,
+            storeName: storeDetails.storeName,
             storeLocation: storeLocation,
+            processedBy: user.name,
             walletCredit: 0,
             walletDebit: saleCalculation.walletDeduction,
             walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
             surabhiDebit: saleCalculation.surabhiCoinsUsed,
             surabhiCredit: saleCalculation.surabhiCoinsEarned,
-            surabhiBalance: selectedCustomer.surabhiCoins + saleCalculation.surabhiCoinsEarned,
+            surabhiBalance: selectedCustomer.surabhiBalance + saleCalculation.surabhiCoinsEarned,
             sevaCredit: saleCalculation.goSevaContribution,
             sevaDebit: 0,
-            sevaBalance: (selectedCustomer.sevaCoinsCurrentMonth || 0) + saleCalculation.goSevaContribution,
-            sevaTotal: (selectedCustomer.sevaCoinsTotal || 0) + saleCalculation.goSevaContribution
+            sevaBalance: (selectedCustomer.sevaBalanceCurrentMonth || 0) + saleCalculation.goSevaContribution,
+            sevaTotal: (selectedCustomer.sevaBalance || 0) + saleCalculation.goSevaContribution
           };
 
           await addDoc(collection(db, 'CustomerTx'), customerTxData);
@@ -469,7 +572,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           // Update store balance
           const storeQuery = query(
             collection(db, 'stores'),
-            where('name', '==', user.storeLocation)
+            where('storeName', '==', user.storeLocation)
           );
           const storeSnapshot = await getDocs(storeQuery);
           if (!storeSnapshot.empty) {
@@ -526,16 +629,18 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
           if (saleCalculation.cashPayment > 0) {
             const adminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
-            const cashTxData: Omit<AccountTx, 'id'> = {
-              date: Timestamp.fromDate(new Date()),
-              storeName: storeDetails.name,
+            const cashTxData: Omit<AccountTxType, 'id'> = {
+              createdAt: Timestamp.fromDate(new Date()),
+              storeName: storeDetails.storeName,
               type: 'sale',
               amount: saleCalculation.totalAmount,
+              customerName: selectedCustomer.customerName,
+              customerMobile: selectedCustomer.customerMobile,
+              adminCut: adminCut,
               credit: saleCalculation.cashPayment,
               debit: saleCalculation.totalAmount - adminCut,
-              balance: storeDetails.currentBalance + saleCalculation.cashPayment - saleCalculation.totalAmount + adminCut,
-              description: `Mixed sale of ₹${saleCalculation.totalAmount} with cash payment of ₹${saleCalculation.cashPayment} and wallet payment of ₹${saleCalculation.walletDeduction} by ${selectedCustomer.name}`,
-              settled: false
+              balance: storeDetails.storeCurrentBalance + saleCalculation.cashPayment - saleCalculation.totalAmount + adminCut,
+              remarks: `Mixed sale ₹${saleCalculation.totalAmount} with cash of ₹${saleCalculation.cashPayment} and wallet of ₹${saleCalculation.walletDeduction} by ${selectedCustomer.customerName}`,
             };
 
 
@@ -553,20 +658,20 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
 
             // Create CustomerTx record
-            const customerTxData: Omit<CustomerTx, 'id'> = {
+            const customerTxData: Omit<Partial<CustomerTxType>, 'id'> = {
               createdAt: Timestamp.fromDate(new Date()),
-              mobile: selectedCustomer.mobile,
+              customerMobile: selectedCustomer.customerMobile,
               storeLocation: storeLocation,
               walletCredit: 0,
               walletDebit: saleCalculation.walletDeduction,
               walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
               surabhiDebit: saleCalculation.surabhiCoinsUsed,
               surabhiCredit: saleCalculation.surabhiCoinsEarned,
-              surabhiBalance: selectedCustomer.surabhiCoins + saleCalculation.surabhiCoinsEarned,
+              surabhiBalance: selectedCustomer.surabhiBalance + saleCalculation.surabhiCoinsEarned,
               sevaCredit: saleCalculation.goSevaContribution,
               sevaDebit: 0,
-              sevaBalance: (selectedCustomer.sevaCoinsCurrentMonth || 0) + saleCalculation.goSevaContribution,
-              sevaTotal: (selectedCustomer.sevaCoinsTotal || 0) + saleCalculation.goSevaContribution
+              sevaBalance: (selectedCustomer.sevaBalance || 0) + saleCalculation.goSevaContribution,
+              sevaTotal: (selectedCustomer.sevaTotal || 0) + saleCalculation.goSevaContribution
             };
 
             await addDoc(collection(db, 'CustomerTx'), customerTxData);
@@ -574,7 +679,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             // Update store balance
             const storeQuery = query(
               collection(db, 'stores'),
-              where('name', '==', user.storeLocation)
+              where('storeName', '==', user.storeLocation)
             );
             const storeSnapshot = await getDocs(storeQuery);
             if (!storeSnapshot.empty) {
@@ -589,7 +694,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         }
 
       const staffCollection = collection(db, 'staff');
-      const staffQuery = query(staffCollection, where('mobile', '==', user.mobile));
+      const staffQuery = query(staffCollection, where('staffMobile', '==', user.mobile));
       const staffSnapshot = await getDocs(staffQuery);
 
       if (staffSnapshot.empty) {
@@ -601,7 +706,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
       // Validate updateData against StaffType interface
       const staffUpdates: Partial<StaffType> = {
-        salesCount: increment(1) as unknown as number,
+        staffSalesCount: increment(1) as unknown as number,
         lastActive: Timestamp.fromDate(new Date())
       };
 
@@ -610,20 +715,20 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
       // Record activity
       const activity: ActivityType = {
-        id: `act-${Date.now()}`,
-        type: 'transaction',
-        description: `${paymentMethod} Purchase of ₹${saleCalculation.totalAmount} by ${selectedCustomer.name}`,
+        type: 'sale',
+        remarks: `${paymentMethod} Purchase of ₹${saleCalculation.totalAmount} by ${selectedCustomer.customerName}`,
         amount: saleCalculation.totalAmount,
-        user: selectedCustomer.mobile,
-        location: storeLocation,
-        date: Timestamp.fromDate(new Date())
+        customerName: selectedCustomer.customerName,
+        customerMobile: selectedCustomer.customerMobile,
+        storeLocation: storeLocation,
+        createdAt: Timestamp.fromDate(new Date())
       };
 
       await addDoc(collection(db, 'Activity'), activity);
 
       // Update local state
       setCustomers(customers.map(c =>
-        c.mobile === selectedCustomer.mobile ?
+        c.customerMobile === selectedCustomer.customerMobile ?
           {
             ...c,
             walletBalance: newWalletBalance,
@@ -724,7 +829,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               ) : filteredCustomers.length > 0 ? (
                 filteredCustomers.map((customer) => (
                   <div
-                    key={customer.mobile}
+                    key={customer.id}
                     onClick={() => {
                       setSelectedCustomer(customer);
                       // Check if customer is registered at the same store as the current user
@@ -735,17 +840,17 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                         setPaymentMethod('cash');
                       }
                     }}
-                    className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedCustomer?.mobile === customer.mobile
+                    className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedCustomer?.customerMobile === customer.customerMobile
                       ? 'border-green-500 bg-green-50'
                       : 'border-gray-200 hover:border-green-300 hover:bg-gray-50'
                       }`}
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="font-medium text-gray-900">{customer.name}</h3>
+                        <h3 className="font-medium text-gray-900">{customer.customerName}</h3>
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <Phone className="h-3 w-3" />
-                          <span>{customer.mobile}</span>
+                          <span>{customer.customerMobile}</span>
                         </div>
                         {customer.referredBy && <div className="flex items-center gap-2 text-sm text-gray-600">
                           <HandCoins className="h-3 w-3" />
@@ -767,7 +872,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                           )}
                         </div>
                         <p className="font-medium text-green-600">₹{customer.walletBalance}</p>
-                        <p className="text-amber-600">{customer.surabhiCoins} Surabhi coins</p>
+                        <p className="text-amber-600">{customer.surabhiBalance} Surabhi coins</p>
                       </div>
                     </div>
                   </div>
@@ -803,7 +908,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                     </div>
                     <div>
                       <p className="text-amber-700">Surabhi Coins</p>
-                      <p className="font-bold">{selectedCustomer.surabhiCoins}</p>
+                      <p className="font-bold">{selectedCustomer.surabhiBalance}</p>
                     </div>
                     <div>
                       <p className="text-purple-700">Last Purchase</p>
@@ -840,7 +945,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                     </div>
                   </div>
 
-                  {selectedCustomer && selectedCustomer.surabhiCoins > 0 && (
+                  {selectedCustomer && selectedCustomer.surabhiBalance > 0 && (
                     <div className="space-y-2">
                       <Label htmlFor="coins">Use Surabhi Coins</Label>
                       <div className="relative">
@@ -853,18 +958,18 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                           onChange={(e) => {
                             const value = Number(e.target.value);
                             const maxCoins = Math.min(
-                              selectedCustomer.surabhiCoins,
+                              selectedCustomer.surabhiBalance,
                               saleAmount || 0
                             );
                             setSurabhiCoinsToUse(Math.max(0, Math.min(value, maxCoins)));
                           }}
                           className="pl-10 h-12"
                           min="0"
-                          max={selectedCustomer.surabhiCoins}
+                          max={selectedCustomer.surabhiBalance}
                         />
                       </div>
                       <p className="text-xs text-gray-600">
-                        Available: {selectedCustomer.surabhiCoins} coins (Using {surabhiCoinsToUse || 0})
+                        Available: {selectedCustomer.surabhiBalance} coins (Using {surabhiCoinsToUse || 0})
                       </p>
                     </div>
                   )}

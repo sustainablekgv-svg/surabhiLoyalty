@@ -5,16 +5,7 @@ import {
   LogOut,
 } from 'lucide-react';
 
-interface StaffHeaderProps {
-  user: {
-    name?: string;
-    mobile: string;
-    role: string;
-    storeLocation?: string;
-  };
-  onLogout: () => void;
-}
-
+import { StaffHeaderProps } from '@/types/types';
 export const StaffHeader = ({ user, onLogout }: StaffHeaderProps) => {
   return (
     <div className="bg-white shadow-sm border-b">

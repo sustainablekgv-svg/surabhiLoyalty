@@ -45,10 +45,10 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
   const [formData, setFormData] = useState<Partial<StaffType>>({
     // name: user.name,
     // mobile: user.mobile,
-    email: user.email,
+    staffEmail: user.staffEmail,
     storeLocation: user.storeLocation,
     role: user.role,
-    status: user.status,
+    staffStatus: user.staffStatus,
     staffPin: user.staffPin,
     staffPassword: user.staffPassword,
   });
@@ -96,11 +96,11 @@ try {
   const updateData: Partial<StaffType> = {};
   
   // Required fields that should always be included if they exist in formData
-  if (formData.name) updateData.name = formData.name;
-  if (formData.email) updateData.email = formData.email;
+  if (formData.staffName) updateData.staffName = formData.staffName;
+  if (formData.staffEmail) updateData.staffEmail = formData.staffEmail;
   if (formData.storeLocation) updateData.storeLocation = formData.storeLocation;
   if (formData.role) updateData.role = formData.role;
-  if (formData.status) updateData.status = formData.status;
+  if (formData.staffStatus) updateData.staffStatus = formData.staffStatus;
 
   // Conditional updates for sensitive fields
   if (formData.staffPin && formData.staffPin !== user.staffPin) {
@@ -122,14 +122,14 @@ try {
 
   const staffQuery = query(
     collection(db, 'staff'),
-    where('mobile', '==', user.mobile),
+    where('staffMobile', '==', user.staffMobile),
     limit(1)
   );
   
   const querySnapshot = await getDocs(staffQuery);
 
   if (querySnapshot.empty) {
-    console.error('No staff found with mobile:', user.mobile);
+    console.error('No staff found with mobile:', user.staffMobile);
     toast({
       title: "Update failed",
       description: "No staff record found for your account.",
@@ -141,7 +141,7 @@ try {
   const staffRef = doc(db, 'staff', querySnapshot.docs[0].id);
   await updateDoc(staffRef, updateData);
 
-  console.log('Staff record updated for:', user.mobile);
+  console.log('Staff record updated for:', user.staffMobile);
   toast({
     title: "Profile updated",
     description: "Your changes have been saved successfully.",
@@ -180,13 +180,13 @@ try {
             <div className="flex items-center gap-3">
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-900">
-                  {user.name || 'Admin'}
+                  {user.staffName || 'Admin'}
                 </p>
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary" className="text-xs">
                     {user.role.toUpperCase()}
                   </Badge>
-                  <span className="text-xs text-gray-600">{user.mobile}</span>
+                  <span className="text-xs text-gray-600">{user.staffMobile}</span>
                 </div>
               </div>
               
@@ -227,7 +227,7 @@ try {
               <div>
                 <Label htmlFor="name">Full Name</Label>
                 <Input
-                  value={user.name}
+                  value={user.staffName}
                   disabled
                   className="bg-gray-100"
                 />
@@ -235,7 +235,7 @@ try {
               <div>
                 <Label htmlFor="mobile">Mobile Number</Label>
                 <Input
-                  value={user.mobile}
+                  value={user.staffMobile}
                   disabled
                   className="bg-gray-100"
                 />
@@ -246,7 +246,7 @@ try {
               <div>
                 <Label htmlFor="email">Email</Label>
                 <Input
-                  value={user.email}
+                  value={user.staffEmail}
                   disabled
                   className="bg-gray-100"
                 />
@@ -262,8 +262,8 @@ try {
                 >
                 <option value="">Select a store</option>
                 {stores.map(store => (
-                <option key={store.id} value={store.name}>
-                {store.name} - {store.storeLocation}
+                <option key={store.id} value={store.storeName}>
+                {store.storeName} - {store.storeLocation}
                 </option>
                 ))}
                 </select>
@@ -289,8 +289,8 @@ try {
               <div>
                 <Label htmlFor="status">Status</Label>
                 <Select
-                  value={formData.status}
-                  onValueChange={(value) => handleSelectChange('status', value)}
+                  value={formData.staffStatus}
+                  onValueChange={(value) => handleSelectChange('staffStatus', value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
@@ -340,7 +340,7 @@ try {
               <div>
                 <Label>Sales Count</Label>
                 <Input
-                  value={user.salesCount.toString()}
+                  value={user.staffSalesCount}
                   disabled
                   className="bg-gray-100"
                 />

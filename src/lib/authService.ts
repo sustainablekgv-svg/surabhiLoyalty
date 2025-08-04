@@ -16,7 +16,7 @@ export interface User {
 export const getCustomerByMobile = async (mobile: string, password: string): Promise<User | null> => {
   try {
     const customersRef = collection(db, 'customers');
-    const q = query(customersRef, where('mobile', '==', mobile));
+    const q = query(customersRef, where('customerMobile', '==', mobile));
     const querySnapshot = await getDocs(q);
     
     if (!querySnapshot.empty) {
@@ -47,11 +47,11 @@ export const getStaffByMobile = async (
   mobile: string,
   password: string,
   role: 'admin' | 'staff'
-): Promise<StaffType | null> => {
+): Promise<User | null> => {
   try {
     // Query staff collection for the mobile number
     const staffRef = collection(db, 'staff');
-    const q = query(staffRef, where('mobile', '==', mobile));
+    const q = query(staffRef, where('staffMobile', '==', mobile));
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
@@ -72,23 +72,18 @@ export const getStaffByMobile = async (
       return null;
     }
 
-    // Map to StaffType interface
-    const staff: StaffType = {
+    // Map to User interface
+    const user: User = {
       id: doc.id,
-      name: staffData.name,
-      mobile: staffData.mobile,
-      email: staffData.email || '',
-      storeLocation: staffData.storeLocation || '',
+      mobile: staffData.staffMobile,
       role: staffData.role,
-      createdAt: staffData.createdAt?.toDate().toISOString() || new Date().toISOString(),
-      status: staffData.status || 'active',
-      salesCount: staffData.salesCount || 0,
-      staffPin: staffData.staffPin || '',
-      lastActive: staffData.lastActive?.toDate().toISOString(),
-      staffPassword: staffData.staffPassword
+      name: staffData.staffName,
+      email: staffData.staffEmail,
+      storeLocation: staffData.storeLocation,
+      createdAt: staffData.staffCreatedAt?.toDate().toISOString() || new Date().toISOString()
     };
 
-    return staff;
+    return user;
   } catch (error) {
     console.error('Error fetching staff:', error);
     return null;

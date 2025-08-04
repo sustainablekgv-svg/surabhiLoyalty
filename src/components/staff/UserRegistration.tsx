@@ -32,8 +32,7 @@ import {
   arrayUnion,
   Timestamp
 } from 'firebase/firestore';
-
-import { Customer, UserRegistrationProps } from '@/types/types';
+import { CustomerType, UserRegistrationProps } from '@/types/types2';
 
 export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -42,12 +41,11 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
   const [referralName, setReferralName] = useState<string | null>(null);
   const [isFetchingReferral, setIsFetchingReferral] = useState(false);
   const [isElgibleForReferral, setIsElgibleForReferral] = useState(false);
-  const [isReferralEntered, setIsReferralEntered] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    mobile: '',
-    email: '',
-    password: '',
+    customerName: '',
+    customerMobile: '',
+    customerEmail: '',
+    customerPassword: '',
     referredBy: '',
     gender: '',
     isStudent: false,
@@ -82,20 +80,20 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
           const customersCollection = collection(db, 'customers');
           const referralQuery = query(
             customersCollection,
-            where('mobile', '==', formData.referredBy)
+            where('customerMobile', '==', formData.referredBy)
           );
           const querySnapshot = await getDocs(referralQuery);
 
           if (!querySnapshot.empty) {
-            const referralData = querySnapshot.docs[0].data() as Customer;
-            console.log("THe referral Data is", referralData);
+            const referralData = querySnapshot.docs[0].data() as CustomerType;
             // Check if wallet recharge is done OR sale eligibility is true
             if (referralData.walletRechargeDone === true || referralData.saleElgibility === true) {
-              setReferralName(referralData.name);
+              setReferralName(referralData.customerName);
               setIsElgibleForReferral(true);
-              toast.success(`Referral found: ${referralData.name}`);
+              toast.success(`Referral found: ${referralData.customerName}`);
             } else {
               setReferralName(null);
+              setIsElgibleForReferral(false);
               if (referralData.walletRechargeDone === false && referralData.saleElgibility === false) {
                 toast.error('This customer is not eligible for referral (wallet recharge not done and no sale is done)');
               } else if (referralData.walletRechargeDone === false) {
@@ -106,18 +104,20 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
             }
           } else {
             setReferralName(null);
+            setIsElgibleForReferral(false);
             toast.error('No customer found with this mobile number');
           }
-        }
-        catch (error) {
+        } catch (error) {
           console.error('Error fetching referral:', error);
           toast.error('Failed to check referral');
           setReferralName(null);
+          setIsElgibleForReferral(false);
         } finally {
           setIsFetchingReferral(false);
         }
       } else {
         setReferralName(null);
+        setIsElgibleForReferral(false);
       }
     };
 
@@ -126,6 +126,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
         fetchReferralName();
       } else {
         setReferralName(null);
+        setIsElgibleForReferral(false);
       }
     }, 1000);
 
@@ -140,22 +141,22 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
       return;
     }
 
-    if (!formData.name || !formData.mobile || !formData.email || !formData.password || !formData.tpin) {
+    if (!formData.customerName || !formData.customerMobile || !formData.customerEmail || !formData.customerPassword || !formData.tpin) {
       toast.error('Please fill all required fields');
       return;
     }
 
-    if (!/^\d{10}$/.test(formData.mobile)) {
+    if (!/^\d{10}$/.test(formData.customerMobile)) {
       toast.error('Please enter a valid 10-digit mobile number');
       return;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.customerEmail)) {
       toast.error('Please enter a valid email address');
       return;
     }
 
-    if (formData.password.length < 6) {
+    if (formData.customerPassword.length < 6) {
       toast.error('Password must be at least 6 characters');
       return;
     }
@@ -177,7 +178,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
       const customersCollection = collection(db, 'customers');
 
       // Check if email already exists
-      const emailQuery = query(customersCollection, where('email', '==', formData.email));
+      const emailQuery = query(customersCollection, where('customerEmail', '==', formData.customerEmail));
       const emailSnap = await getDocs(emailQuery);
       if (!emailSnap.empty) {
         toast.error('This email is already registered.', { id: toastId });
@@ -186,7 +187,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
       }
 
       // Check if mobile number already exists
-      const mobileQuery = query(customersCollection, where('mobile', '==', formData.mobile));
+      const mobileQuery = query(customersCollection, where('customerMobile', '==', formData.customerMobile));
       const mobileSnap = await getDocs(mobileQuery);
       if (!mobileSnap.empty) {
         toast.error('This mobile number is already registered.', { id: toastId });
@@ -197,50 +198,52 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
       // Proceed with registration
       const userCredential = await createUserWithEmailAndPassword(
         auth,
-        formData.email,
-        formData.password
+        formData.customerEmail,
+        formData.customerPassword
       );
       const newUserUid = userCredential.user.uid;
 
       const walletId = `WALLET-${newUserUid.substring(0, 8).toUpperCase()}`;
-      const newUserData: Customer = {
-        name: formData.name,
-        mobile: formData.mobile,
-        email: formData.email,
-        walletRechargeDone: false,
-        storeLocation,
-        walletBalance: 0,
-        walletBalanceCurrentMonth: 0,
-        surabhiCoins: 0,
-        surabhiCoinsCurrentMonth: 0,
-        sevaCoinsTotal: 0,
-        sevaCoinsCurrentMonth: 0,
+      const newUserData: CustomerType = {
+        role: 'customer',
+        customerName: formData.customerName,
         gender: formData.gender,
         isStudent: formData.isStudent,
-        createdAt: Timestamp.fromDate(new Date()),
-        role: 'customer',
-        walletId,
-        customerPassword: formData.password,
-        tpin: formData.tpin,
-        saleElgibility: false,
-        registered: true,
-        lastTransactionDate: null,
+        customerMobile: formData.customerMobile,
+        customerEmail: formData.customerEmail,
+        storeLocation,
         referredBy: formData.referredBy || null,
-        referralSurabhi: null,
         referredUsers: null,
+        customerPassword: formData.customerPassword,
+        tpin: formData.tpin,
+        createdAt: Timestamp.now(),
+        walletRechargeDone: false,
+        saleElgibility: false,
+        walletId,
+        walletBalance: 0,
+        walletCredit: 0,
+        walletDebit: 0,
+        walletBalanceCurrentMonth: 0,
+        surabhiBalance: 0,
+        surabhiReferral: 0,
+        surabhiBalanceCurrentMonth: 0,
+        sevaBalance: 0,
+        sevaTotal:0,
+        sevaBalanceCurrentMonth: 0,
+        lastTransactionDate: null,
         quarterlyPurchaseTotal: 0,
+        lastQuarterCheck: null,
         coinsFrozen: true,
-        currentQuarterStart: null,
-        lastQuarterCheck: null
+        currentQuarterStart: null
       };
 
       await setDoc(doc(customersCollection, newUserUid), newUserData);
 
       // Handle referral if exists
-      if (formData.referredBy && referralName) {
+      if (formData.referredBy && referralName && isElgibleForReferral) {
         const referrerQuery = query(
           customersCollection,
-          where('mobile', '==', formData.referredBy)
+          where('customerMobile', '==', formData.referredBy)
         );
         const referrerSnapshot = await getDocs(referrerQuery);
 
@@ -248,8 +251,9 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
           const referrerDoc = referrerSnapshot.docs[0];
           await updateDoc(doc(customersCollection, referrerDoc.id), {
             referredUsers: arrayUnion({
-              mobile: formData.mobile,
-              referralDate: Timestamp.fromDate(new Date())
+              customerMobile: formData.customerMobile,
+              customerName: formData.customerName,
+              createdAt: Timestamp.now()
             })
           });
           toast.success(`User registered! Referral recorded.`, { id: toastId });
@@ -260,16 +264,17 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
 
       // Reset form
       setFormData({
-        name: '',
-        mobile: '',
-        email: '',
-        password: '',
+        customerName: '',
+        customerMobile: '',
+        customerEmail: '',
+        customerPassword: '',
         referredBy: '',
         gender: '',
         isStudent: false,
         tpin: ''
       });
       setReferralName(null);
+      setIsElgibleForReferral(false);
 
     } catch (error: any) {
       console.error('Registration error:', error);
@@ -297,7 +302,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
   };
 
   const generatePassword = () => {
-    if (!formData.name || !formData.mobile || !formData.email) {
+    if (!formData.customerName || !formData.customerMobile || !formData.customerEmail) {
       toast.error('Please fill name, mobile and email first');
       return;
     }
@@ -307,12 +312,12 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
     for (let i = 0; i < 12; i++) {
       password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    setFormData({ ...formData, password });
+    setFormData({ ...formData, customerPassword: password });
     toast.success('Secure password generated!');
   };
 
   const generateTPIN = () => {
-    if (!formData.name || !formData.mobile || !formData.email || !formData.password) {
+    if (!formData.customerName || !formData.customerMobile || !formData.customerEmail || !formData.customerPassword) {
       toast.error('Please fill name, mobile and email first');
       return;
     }
@@ -324,6 +329,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
   const clearReferral = () => {
     setFormData({ ...formData, referredBy: '' });
     setReferralName(null);
+    setIsElgibleForReferral(false);
   };
 
   return (
@@ -354,17 +360,17 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Name Field */}
                 <div className="space-y-2">
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="customerName" className="block text-sm font-medium text-gray-700">
                     Full Name <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
-                      id="name"
+                      id="customerName"
                       type="text"
                       placeholder="Enter customer name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      value={formData.customerName}
+                      onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
                       className="w-full pl-10 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       required
                     />
@@ -373,17 +379,17 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
 
                 {/* Mobile Field */}
                 <div className="space-y-2">
-                  <label htmlFor="mobile" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="customerMobile" className="block text-sm font-medium text-gray-700">
                     Mobile Number <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
-                      id="mobile"
+                      id="customerMobile"
                       type="tel"
                       placeholder="Enter 10-digit number"
-                      value={formData.mobile}
-                      onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
+                      value={formData.customerMobile}
+                      onChange={(e) => setFormData({ ...formData, customerMobile: e.target.value })}
                       className="w-full pl-10 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       maxLength={10}
                       required
@@ -393,17 +399,17 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
 
                 {/* Email Field */}
                 <div className="space-y-2">
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="customerEmail" className="block text-sm font-medium text-gray-700">
                     Email <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
-                      id="email"
+                      id="customerEmail"
                       type="email"
                       placeholder="Enter email address"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      value={formData.customerEmail}
+                      onChange={(e) => setFormData({ ...formData, customerEmail: e.target.value })}
                       className="w-full pl-10 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       required
                     />
@@ -487,14 +493,14 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                 {/* Password Field */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="customerPassword" className="block text-sm font-medium text-gray-700">
                       Password <span className="text-red-500">*</span>
                     </label>
                     <button
                       type="button"
                       onClick={generatePassword}
-                      disabled={!formData.name || !formData.mobile || !formData.email}
-                      className={`text-xs px-2 py-1 rounded ${!formData.name || !formData.mobile || !formData.email
+                      disabled={!formData.customerName || !formData.customerMobile || !formData.customerEmail}
+                      className={`text-xs px-2 py-1 rounded ${!formData.customerName || !formData.customerMobile || !formData.customerEmail
                         ? 'text-gray-400 cursor-not-allowed'
                         : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
                         }`}
@@ -505,11 +511,11 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
-                      id="password"
+                      id="customerPassword"
                       type={showPassword ? 'text' : 'password'}
                       placeholder="Enter password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      value={formData.customerPassword}
+                      onChange={(e) => setFormData({ ...formData, customerPassword: e.target.value })}
                       className="w-full pl-10 pr-10 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       required
                     />
@@ -532,8 +538,8 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                     <button
                       type="button"
                       onClick={generateTPIN}
-                      disabled={!formData.name || !formData.mobile || !formData.email || !formData.password}
-                      className={`text-xs px-2 py-1 rounded ${!formData.name || !formData.mobile || !formData.email || !formData.password
+                      disabled={!formData.customerName || !formData.customerMobile || !formData.customerEmail || !formData.customerPassword}
+                      className={`text-xs px-2 py-1 rounded ${!formData.customerName || !formData.customerMobile || !formData.customerEmail || !formData.customerPassword
                         ? 'text-gray-400 cursor-not-allowed'
                         : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
                         }`}
@@ -568,12 +574,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                       type="tel"
                       placeholder="Enter referrer's mobile number"
                       value={formData.referredBy}
-                      onChange={(e) => {
-                        if (formData.referredBy.length == 10) {
-                          setIsReferralEntered(true);
-                        }
-                        setFormData({ ...formData, referredBy: e.target.value })
-                      }}
+                      onChange={(e) => setFormData({ ...formData, referredBy: e.target.value })}
                       className="w-full pl-10 pr-10 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       maxLength={10}
                     />
@@ -605,7 +606,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                 <div className="pt-2">
                   <button
                     type="submit"
-                    disabled={isLoading || !isAuthReady || (!isElgibleForReferral && formData.referredBy.length > 0)}
+                    disabled={isLoading || !isAuthReady || (formData.referredBy && !isElgibleForReferral)}
                     className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white font-medium rounded-lg transition-all duration-200 shadow-md disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isLoading ? (

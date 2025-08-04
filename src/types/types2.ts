@@ -21,14 +21,15 @@ export interface CustomerType {
   walletDebit: number;
   walletBalanceCurrentMonth: number;
   surabhiBalance: number;
-  surabhiCredit: number;
-  surabhiDebit: number;
+//   surabhiCredit: number;
+//   surabhiDebit: number;
   surabhiReferral: number;
   surabhiBalanceCurrentMonth: number;
   sevaBalance: number;
-  sevaCredit: number;
-  sevaDebit: number;
+//   sevaCredit: number;
+//   sevaDebit: number;
   sevaBalanceCurrentMonth: number;
+  sevaTotal: number;
   lastTransactionDate: Timestamp | null;
   quarterlyPurchaseTotal: number;
   lastQuarterCheck: Timestamp | null;
@@ -100,8 +101,8 @@ export interface StaffType {
   staffCreatedAt: Timestamp;
   staffStatus: 'active' | 'inactive';
   staffSalesCount: number;
-  staffPin: string;
   staffRechargesCount: number;
+  staffPin: string;
   staffLastActive?: Timestamp;
 }
 
@@ -120,6 +121,7 @@ export interface StoreType {
   storeName: string;
   storeLocation: string;
   storeAddress: string;
+  currentBalance: number;
   referralCommission: number;
   surabhiCommission: number;
   sevaCommission: number;

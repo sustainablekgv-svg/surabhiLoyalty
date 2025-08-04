@@ -9,64 +9,71 @@ import {
   Activity,
   Coins
 } from 'lucide-react';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
-import { Customer, ActivityType } from '@/types/types';
-
-interface StaffStatsProps {
-  storeLocation: string;
-}
+import { CustomerType, ActivityType, StaffStatsProps } from '@/types/types2';
+import { Timestamp } from 'firebase/firestore';
 
 export const StaffStats = ({ storeLocation }: StaffStatsProps) => {
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<CustomerType[]>([]);
   const [activities, setActivities] = useState<ActivityType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-
-        // Fetch customers
-        const customersSnapshot = await getDocs(
-          query(
-            collection(db, 'customers'),
-            where('storeLocation', '==', storeLocation),
-            orderBy('createdAt', 'desc')
-          )
-        );
-        const customersData = customersSnapshot.docs.map(doc => ({
+    setLoading(true);
+    
+    // Set up real-time listener for customers
+    const customersQuery = query(
+      collection(db, 'customers'),
+      where('storeLocation', '==', storeLocation),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const unsubscribeCustomers = onSnapshot(customersQuery, 
+      (snapshot) => {
+        const customersData = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        })) as unknown as Customer[];
+        })) as CustomerType[];
         setCustomers(customersData);
+        setLoading(false);
+      },
+      (err) => {
+        console.error('Error fetching customers:', err);
+        setError('Failed to load customer data');
+        setLoading(false);
+      }
+    );
 
-        // Fetch recent activities
-        const activitySnapshot = await getDocs(
-          query(
-            collection(db, 'Activity'),
-            where('location', '==', storeLocation),
-            orderBy('date', 'desc'),
-            limit(5)
-          )
-        );
-        const activityData = activitySnapshot.docs.map(doc => ({
+    // Set up real-time listener for activities
+    const activitiesQuery = query(
+      collection(db, 'Activity'),
+      where('storeLocation', '==', storeLocation),
+      orderBy('createdAt', 'desc'),
+      limit(5)
+    );
+    
+    const unsubscribeActivities = onSnapshot(activitiesQuery, 
+      (snapshot) => {
+        const activitiesData = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         })) as ActivityType[];
-        setActivities(activityData);
-
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Failed to load dashboard data');
-      } finally {
-        setLoading(false);
+        setActivities(activitiesData);
+      },
+      (err) => {
+        console.error('Error fetching activities:', err);
+        setError('Failed to load activity data');
       }
-    };
+    );
 
-    fetchData();
+    // Cleanup function to unsubscribe listeners
+    return () => {
+      unsubscribeCustomers();
+      unsubscribeActivities();
+    };
   }, [storeLocation]);
 
   if (loading) {
@@ -85,28 +92,21 @@ export const StaffStats = ({ storeLocation }: StaffStatsProps) => {
     );
   }
 
-  // ✅ Stats Calculations
+  // Stats Calculations
   const totalCustomers = customers.length;
-  const registeredCustomers = customers.filter(c => c.registered).length;
+  const registeredCustomers = customers.filter(c => c.walletRechargeDone).length;
   const totalWalletBalance = customers.reduce((sum, c) => sum + (c.walletBalance || 0), 0);
   
   const newCustomersThisWeek = customers.filter(c => {
-    let createdAt: Date | undefined;
-    if (c.createdAt && typeof c.createdAt === 'object' && typeof (c.createdAt as any).toDate === 'function') {
-      createdAt = (c.createdAt as any).toDate();
-    } else if (c.createdAt instanceof Date) {
-      createdAt = c.createdAt;
-    } else {
-      createdAt = undefined;
-    }
+    const createdAt = c.createdAt?.toDate();
     if (!createdAt) return false;
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     return createdAt > oneWeekAgo;
   }).length;
 
-  const totalSurabhiCoins = customers.reduce((sum, c) => sum + (c.surabhiCoins || 0), 0);
-  const sevaCoinsThisMonth = customers.reduce((sum, c) => sum + (c.sevaCoinsCurrentMonth || 0), 0);
+  const totalSurabhiCoins = customers.reduce((sum, c) => sum + (c.surabhiBalance || 0), 0);
+  const sevaCoinsThisMonth = customers.reduce((sum, c) => sum + (c.sevaBalanceCurrentMonth || 0), 0);
 
   const topCustomers = [...customers]
     .sort((a, b) => (b.walletBalance || 0) - (a.walletBalance || 0))
@@ -194,14 +194,10 @@ export const StaffStats = ({ storeLocation }: StaffStatsProps) => {
                         <DollarSign className="h-4 w-4 text-green-600" />
                       </div>
                       <div>
-                        <p className="font-medium text-sm">{activity.description}</p>
+                        <p className="font-medium text-sm">{activity.remarks}</p>
                         <p className="text-xs text-gray-600">
-                          {activity.user} • {format(
-                            activity.date && typeof (activity.date as any).toDate === 'function'
-                              ? (activity.date as any).toDate()
-                              : activity.date instanceof Date
-                                ? activity.date
-                                : new Date(),
+                          {activity.customerName} • {format(
+                            activity.createdAt?.toDate() || new Date(),
                             'MMM dd, hh:mm a'
                           )}
                         </p>
@@ -236,15 +232,15 @@ export const StaffStats = ({ storeLocation }: StaffStatsProps) => {
             <div className="space-y-4">
               {topCustomers.length > 0 ? (
                 topCustomers.map((customer) => (
-                  <div key={customer.mobile} className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
+                  <div key={customer.customerMobile} className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
                     <div>
-                      <p className="font-medium text-sm">{customer.name}</p>
-                      <p className="text-xs text-gray-600">{customer.mobile}</p>
+                      <p className="font-medium text-sm">{customer.customerName}</p>
+                      <p className="text-xs text-gray-600">{customer.customerMobile}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-amber-600">₹{(customer.walletBalance || 0).toLocaleString()}</p>
                       <p className="text-xs text-gray-600">
-                        {customer.surabhiCoins || 0} coins
+                        {customer.surabhiBalance || 0} coins
                       </p>
                     </div>
                   </div>

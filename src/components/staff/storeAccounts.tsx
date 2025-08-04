@@ -28,11 +28,6 @@ import {
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 
-interface Store {
-  id: string;
-  name: string;
-  location: string;
-}
 
 import { AccountTx, StoreAccountsProps } from '@/types/types';
 

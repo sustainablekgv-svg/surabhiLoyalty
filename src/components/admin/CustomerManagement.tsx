@@ -72,6 +72,8 @@ export const CustomerManagement = () => {
             sevaCoinsTotal: data.sevaCoinsTotal || 0,
             sevaCoinsCurrentMonth: data.sevaCoinsCurrentMonth || 0,
             referredBy: data.referredBy || null,
+            gender: data.gender || '',
+            isStudent: data.isStudent || false,
             saleElgibility: data.saleElgibility || false,
             referralSurabhi: data.referralSurabhi || 0,
             referredUsers: (data.referredUsers || []).map((ref: any) => ({
@@ -113,6 +115,7 @@ export const CustomerManagement = () => {
             sevaCommission: data.sevaCommission ?? 0,
             cashOnlyCommission: data.cashOnlyCommission ?? 0,
             contactNumber: data.contactNumber || '',
+            currentBalance: data.currentBalance || 0,
             status: data.status === 'active' || data.status === 'inactive'
               ? data.status
               : 'inactive', // Default to inactive if invalid status
