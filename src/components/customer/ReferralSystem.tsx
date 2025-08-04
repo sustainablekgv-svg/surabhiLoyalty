@@ -54,7 +54,7 @@ export const ReferralSystem = ({ userMobile, userName }: ReferralSystemProps) =>
       try {
         // Fetch current user data to get referralIncome
         const usersRef = collection(db, 'customers');
-        const q = query(usersRef, where('mobile', '==', user.mobile));
+        const q = query(usersRef, where('customerMobile', '==', user.mobile));
         const querySnapshot = await getDocs(q);
         
         if (!querySnapshot.empty) {
