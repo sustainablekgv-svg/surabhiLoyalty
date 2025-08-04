@@ -61,7 +61,7 @@ export const ReferralSystem = ({ userMobile, userName }: ReferralSystemProps) =>
           const userDoc = querySnapshot.docs[0];
           const userData = userDoc.data();
           setUserData(userData);
-          setReferralIncome(userData.referralSurabhi || 0);
+          setReferralIncome(userData.surbahiReferral || 0);
         }
 
         // Fetch referred customers

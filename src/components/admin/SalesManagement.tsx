@@ -26,10 +26,10 @@ import { collection, getDocs, Timestamp, where, query } from 'firebase/firestore
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 
-import { StoreType, SalesTransaction, RechargeRecord } from '@/types/types';
+import { StoreType, CustomerTxType } from '@/types/types';
 
 export const SalesManagement = () => {
-  const [transactions, setTransactions] = useState<SalesTransaction[]>([]);
+  const [transactions, setTransactions] = useState<CustomerTxType[]>([]);
   const [stores, setStores] = useState<StoreType[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -42,7 +42,6 @@ export const SalesManagement = () => {
   const [filterStore, setFilterStore] = useState('all');
   const [filterPayment, setFilterPayment] = useState('all');
 
-  const [recharges, setRecharges] = useState<RechargeRecord[]>([]);
   const [activeTab, setActiveTab] = useState('transactions');
 
   // Pagination state
@@ -54,13 +53,13 @@ export const SalesManagement = () => {
   // Fetch transactions from Firestore
   const fetchTransactions = async () => {
     try {
-      const transactionsRef = collection(db, 'transactions');
+      const transactionsRef = collection(db, 'CustomerTx');
       const snapshot = await getDocs(transactionsRef);
       const transactionsData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         createdAt: doc.data().createdAt || Timestamp.now()
-      })) as SalesTransaction[];
+      })) as CustomerTxType[];
       setTransactions(transactionsData);
     } catch (err) {
       console.error('Error fetching transactions:', err);
@@ -79,39 +78,20 @@ export const SalesManagement = () => {
       const storesData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        updatedAt: doc.data().updatedAt?.toDate() || new Date()
+        storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
+        storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date()
       })) as StoreType[];
-      setStores(storesData.filter(store => store.status === 'active'));
+      setStores(storesData.filter(store => store.storeStatus === 'active'));
     } catch (err) {
       console.error('Error fetching stores:', err);
       setError('Failed to load store locations');
     }
   };
 
-  // Fetch recharges from Firestore
-  const fetchRecharges = async () => {
-    try {
-      const rechargesRef = collection(db, 'recharges');
-      const querySnapshot = await getDocs(rechargesRef);
-      
-      const rechargesData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        timestamp: doc.data().timestamp || Timestamp.now()
-      })) as RechargeRecord[];
-      
-      setRecharges(rechargesData);
-    } catch (err) {
-      console.error('Error fetching recharges:', err);
-      setError('Failed to load recharge data');
-    }
-  };
-
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchTransactions(), fetchStores(), fetchRecharges()]);
+      await Promise.all([fetchTransactions(), fetchStores()]);
     };
     loadData();
   }, []);
@@ -121,21 +101,26 @@ export const SalesManagement = () => {
     setTransactionsPage(1);
     setRechargesPage(1);
     fetchTransactions();
-    fetchRecharges();
   };
 
-  const filteredTransactions = transactions.filter(transaction => {
-    const matchesSearch = transaction.customerName.toLowerCase().includes(transactionsSearchTerm.toLowerCase());
-                        //  transaction.customerMobile.includes(transactionsSearchTerm);
-    const matchesStore = filterStore === 'all' || transaction.storeLocation === filterStore;
-    const matchesPayment = filterPayment === 'all' || transaction.paymentMethod === filterPayment;
+  // Filter transactions (sales)
+  const filteredTransactions = transactions.filter(tx => {
+    if (tx.type !== 'sale') return false;
+    
+    const matchesSearch = tx.customerName.toLowerCase().includes(transactionsSearchTerm.toLowerCase()) ||
+                         tx.customerMobile.includes(transactionsSearchTerm);
+    const matchesStore = filterStore === 'all' || tx.storeLocation === filterStore;
+    const matchesPayment = filterPayment === 'all' || tx.paymentMethod === filterPayment;
     
     return matchesSearch && matchesStore && matchesPayment;
   });
 
-  const filteredRecharges = recharges.filter(recharge => {
-    return recharge.customerName.toLowerCase().includes(rechargesSearchTerm.toLowerCase()) ||
-           recharge.customerMobile.includes(rechargesSearchTerm);
+  // Filter recharges
+  const filteredRecharges = transactions.filter(tx => {
+    if (tx.type !== 'recharge') return false;
+    
+    return tx.customerName.toLowerCase().includes(rechargesSearchTerm.toLowerCase()) ||
+           tx.customerMobile.includes(rechargesSearchTerm);
   });
 
   // Pagination logic for transactions
@@ -151,12 +136,12 @@ export const SalesManagement = () => {
   const paginatedRecharges = filteredRecharges.slice(rechargesStartIndex, rechargesEndIndex);
 
   const totalStats = {
-    totalSales: transactions.reduce((sum, t) => sum + t.amount, 0),
-    totalTransactions: transactions.length,
-    totalSurabhiCoinsUsed: transactions.reduce((sum, t) => sum + (t.surabhiCoinsUsed || 0), 0),
-    totalWalletDeductions: transactions.reduce((sum, t) => sum + (t.walletDeduction || 0), 0),
-    totalCashPayments: transactions.reduce((sum, t) => sum + (t.cashPayment || 0), 0),
-    totalRecharges: recharges.reduce((sum, r) => sum + r.amount, 0)
+    totalSales: filteredTransactions.reduce((sum, t) => sum + t.amount, 0),
+    totalTransactions: filteredTransactions.length,
+    totalSurabhiCoinsUsed: filteredTransactions.reduce((sum, t) => sum + (t.surabhiUsed || 0), 0),
+    totalWalletDeductions: filteredTransactions.reduce((sum, t) => sum + (t.walletDeduction || 0), 0),
+    totalCashPayments: filteredTransactions.reduce((sum, t) => sum + (t.cashPayment || 0), 0),
+    totalRecharges: filteredRecharges.reduce((sum, r) => sum + r.amount, 0)
   };
 
   if (loading) {
@@ -291,8 +276,8 @@ export const SalesManagement = () => {
                     <SelectContent>
                       <SelectItem value="all">All Stores</SelectItem>
                       {stores.map((store) => (
-                        <SelectItem key={store.id} value={store.name}>
-                          {store.name} ({store.storeLocation})
+                        <SelectItem key={store.id} value={store.storeName}>
+                          {store.storeName}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -353,14 +338,14 @@ export const SalesManagement = () => {
                         <TableRow key={transaction.id}>
                           <TableCell className="font-medium">
                             {transaction.customerName}
-                            {!transaction.isCustomerRegistered && (
+                            {transaction.type === 'sale' && !transaction.customerMobile && (
                               <Badge variant="outline" className="ml-2 text-xs">
                                 Guest
                               </Badge>
                             )}
                           </TableCell>
                           <TableCell>
-                            {transaction.customerMobile}
+                            {transaction.customerMobile || 'N/A'}
                           </TableCell>
                           <TableCell className="font-bold">
                             ₹{transaction.amount}
@@ -374,13 +359,13 @@ export const SalesManagement = () => {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-purple-600">
-                            ₹{transaction.walletDeduction}
+                            ₹{transaction.walletDeduction || 0}
                           </TableCell>
                           <TableCell className="text-amber-600">
-                            {transaction.surabhiCoinsUsed}
+                            {transaction.surabhiUsed || 0}
                           </TableCell>
                           <TableCell className="text-gray-600">
-                            ₹{transaction.cashPayment}
+                            ₹{transaction.cashPayment || 0}
                           </TableCell>
                           <TableCell>
                             {transaction.storeLocation}
@@ -389,7 +374,7 @@ export const SalesManagement = () => {
                             {format(transaction.createdAt.toDate(), 'dd MMM yyyy, hh:mm a')}
                           </TableCell>
                           <TableCell>
-                            {transaction.processedBy}
+                            {transaction.processedBy || 'N/A'}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -538,16 +523,16 @@ export const SalesManagement = () => {
                             {recharge.storeName} ({recharge.storeLocation})
                           </TableCell>
                           <TableCell>
-                            {recharge.surabhiCoinsEarned}
+                            {recharge.surabhiEarned}
                           </TableCell>
                           <TableCell>
-                            ₹{recharge.sevaAmountEarned}
+                            ₹{recharge.sevaEarned || 0}
                           </TableCell>
                           <TableCell>
-                            {format(recharge.timestamp.toDate(), 'dd MMM yyyy, hh:mm a')}
+                            {format(recharge.createdAt.toDate(), 'dd MMM yyyy, hh:mm a')}
                           </TableCell>
                           <TableCell>
-                            {recharge.staffName}
+                            {recharge.processedBy || 'N/A'}
                           </TableCell>
                         </TableRow>
                       ))}

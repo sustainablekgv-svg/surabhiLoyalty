@@ -1,4 +1,5 @@
 import { Timestamp } from 'firebase/firestore';
+import {User} from "@/lib/authService"
 export interface CustomerType {
   id?: string;
   role: string;
@@ -28,6 +29,7 @@ export interface CustomerType {
   sevaBalance: number;
   sevaCredit: number;
   sevaDebit: number;
+  sevaTotal: number;
   sevaBalanceCurrentMonth: number;
   lastTransactionDate: Timestamp | null;
   quarterlyPurchaseTotal: number;
@@ -81,6 +83,15 @@ export interface WalletRechargeProps {
 //   sevaTotal: number;
 // }
 
+export interface AuthContextType {
+  user: User | null;
+  login: (mobile: string, password: string, role: string) => Promise<User>;
+  logout: () => Promise<void>;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  isInitialized: boolean;
+}
+
 export interface SalesManagementProps {
   storeLocation: string;
 }
@@ -97,23 +108,23 @@ export interface StaffType {
   storeLocation: string;
   staffPassword: string;
   role: 'admin' | 'staff';
-  staffCreatedAt: Timestamp;
+  createdAt: Timestamp;
   staffStatus: 'active' | 'inactive';
   staffSalesCount: number;
   staffPin: string;
   staffRechargesCount: number;
-  staffLastActive?: Timestamp;
+  lastActive?: Timestamp;
 }
 
-// export interface StorePerformance {
-//   storeName: string;
-//   transactions: number;
-//   sales: number;
-//   surabhiCoinsUsed: number;
-//   walletDeduction: number;
-//   cashPayment: number;
-//   lastUpdated?: Timestamp;
-// }
+export interface StorePerformance {
+  storeName: string;
+  transactions: number;
+  sales: number;
+  surabhiCoinsUsed: number;
+  walletDeduction: number;
+  cashPayment: number;
+  lastUpdated?: Timestamp;
+}
 
 export interface StoreType {
   id: string;
@@ -147,11 +158,10 @@ export interface CustomerTxType {
   storeName: string; // Only for recharge
   createdAt: Timestamp;
   paymentMethod?: 'cash' | 'wallet' | 'mixed';
-  staffName: string; // Used in recharge
   processedBy: string; // Used in sale
 
   // Recharge-Specific Fields
-  amount: number; // Recharge amount
+  amount: number; 
   surabhiEarned: number;
   sevaEarned?: number;
   referralEarned?: number;
@@ -161,7 +171,6 @@ export interface CustomerTxType {
   surabhiUsed?: number;
   walletDeduction?: number;
   cashPayment?: number;
-  isCustomerRegistered?: boolean;
 
   previousBalance?: {
     walletBalance: number;
@@ -210,7 +219,7 @@ export interface SevaPoolType {
 }
 
 export interface ActivityType {
-  id: string;
+  id?: string;
   type: 'signup' | 'sale' | 'recharge' | 'referral' | 'seva_contribution' | 'seva_allocation' | 'surabhi_earn'  ;
   remarks: string;
   amount: number;

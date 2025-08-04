@@ -453,7 +453,7 @@ export const GoSevaPool = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <Badge variant="outline">
-                          {tx.paymentMethod || 'unknown'}
+                          {tx.paymentMethod || 'recharge'}
                         </Badge>
                       </td>
                     </tr>
@@ -503,13 +503,13 @@ export const GoSevaPool = () => {
 
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div className="space-y-1">
-                      <p className="text-gray-500">Seva Contribution</p>
+                      <p className="text-gray-500">Current Month Seva Contribution</p>
                       <p className="font-bold text-green-600">
                         ₹{customer.sevaCoinsCurrentMonth.toFixed(2)}
                       </p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-gray-500">Total Seva</p>
+                      <p className="text-gray-500">Total Seva Contribution</p>
                       <p className="font-medium">
                         ₹{customer.sevaCoinsTotal.toFixed(2)}
                       </p>

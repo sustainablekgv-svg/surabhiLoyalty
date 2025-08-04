@@ -21,13 +21,9 @@ export interface CustomerType {
   walletDebit: number;
   walletBalanceCurrentMonth: number;
   surabhiBalance: number;
-//   surabhiCredit: number;
-//   surabhiDebit: number;
   surabhiReferral: number;
   surabhiBalanceCurrentMonth: number;
   sevaBalance: number;
-//   sevaCredit: number;
-//   sevaDebit: number;
   sevaBalanceCurrentMonth: number;
   sevaTotal: number;
   lastTransactionDate: Timestamp | null;

@@ -29,10 +29,12 @@ import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 
 
-import { AccountTx, StoreAccountsProps } from '@/types/types';
+import { AccountTxType, StoreAccountsProps } from '@/types/types';
+import { useAuth } from '@/hooks/auth-context';
 
 const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userRole: string }) => {
-  const [transactions, setTransactions] = useState<AccountTx[]>([]);
+  const { user, logout, isLoading: authLoading } = useAuth();
+  const [transactions, setTransactions] = useState<AccountTxType[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [updatingTx, setUpdatingTx] = useState<string | null>(null);
@@ -45,65 +47,59 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
   const isAdmin = userRole === 'admin';
 
   const fetchTransactions = async () => {
-    try {
-      setLoading(true);
+  try {
+    setLoading(true);
+    console.log('Fetching transactions for store:', user.storeLocation); // Debug log
 
-      if (!storeLocation) return;
-
-      const txQuery = query(
-        collection(db, 'AccountTx'),
-        where('storeName', '==', storeLocation),
-        orderBy('date', 'desc')
-      );
-
-      const txSnapshot = await getDocs(txQuery);
-      const txData: AccountTx[] = [];
-
-      txSnapshot.forEach(doc => {
-        const data = doc.data();
-        txData.push({
-          id: doc.id,
-          date: data.date,
-          storeName: data.storeName,
-          type: data.type,
-          amount: data.amount || 0,
-          debit: data.debit || 0,
-          credit: data.credit || 0,
-          balance: data.balance || 0,
-          description: data.description || '',
-          settled: data.settled || false,
-          adminCut: data.adminCut || 0
-        });
-      });
-
-      setTransactions(txData);
-      setTotalPages(Math.ceil(txData.length / rowsPerPage));
-
-    } catch (err) {
-      console.error('Error fetching transactions:', err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+    if (!user.storeLocation) {
+      console.log('No store location provided'); // Debug log
+      return;
     }
-  };
 
-  const handleSettledToggle = async (txId: string, settled: boolean) => {
-    if (!isAdmin) return;
+    const txQuery = query(
+      collection(db, 'AccountTx'),
+      where('storeName', '==', user.storeLocation),
+      orderBy('createdAt', 'desc')
+    );
 
-    try {
-      setUpdatingTx(txId);
-      await updateDoc(doc(db, 'AccountTx', txId), {
-        settled
+    console.log('Query:', txQuery); // Debug log
+
+    const txSnapshot = await getDocs(txQuery);
+    console.log('Snapshot size:', txSnapshot.size); // Debug log
+
+    const txData: AccountTxType[] = [];
+
+    txSnapshot.forEach(doc => {
+      console.log('Document:', doc.id, doc.data()); // Debug log
+      const data = doc.data();
+      txData.push({
+        id: doc.id,
+        createdAt: data.createdAt,
+        storeName: data.storeName,
+        customerName: data.customerName,
+        customerMobile: data.customerMobile,
+        type: data.type,
+        amount: data.amount || 0,
+        debit: data.debit || 0,
+        credit: data.credit || 0,
+        balance: data.balance || 0,
+        remarks: data.description || '',
+        adminCut: data.adminCut || 0
       });
-      setTransactions(prev => prev.map(tx =>
-        tx.id === txId ? { ...tx, settled } : tx
-      ));
-    } catch (err) {
-      console.error('Error updating transaction:', err);
-    } finally {
-      setUpdatingTx(null);
-    }
-  };
+    });
+
+    console.log('Fetched transactions:', txData); // Debug log
+    setTransactions(txData);
+    setTotalPages(Math.ceil(txData.length / rowsPerPage));
+
+  } catch (err) {
+    console.error('Error fetching transactions:', err);
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+};
+
 
   const formatTimestamp = (timestamp: Timestamp): string => {
     return format(timestamp.toDate(), 'MMM dd, yyyy HH:mm');
@@ -140,7 +136,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">{storeLocation} Transactions</h2>
+        <h2 className="text-2xl font-bold">{user.storeLocation} Transactions</h2>
         <Button variant="outline" onClick={() => {
           setRefreshing(true);
           fetchTransactions();
@@ -156,7 +152,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle>Transaction History</CardTitle>
+            <CardTitle>Accounts History</CardTitle>
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-600">Rows per page:</span>
               <select
@@ -190,7 +186,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
               {getPaginatedTransactions().map((tx) => (
                 <TableRow key={tx.id}>
                   <TableCell>
-                    {formatTimestamp(tx.date)}
+                    {formatTimestamp(tx.createdAt)}
                   </TableCell>
                   <TableCell>
                     <Badge variant={
@@ -214,7 +210,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
                     ₹{tx.balance.toFixed(2)}
                   </TableCell>
                   <TableCell className="max-w-xs truncate">
-                    {tx.description}
+                    {tx.remarks}
                   </TableCell>
                 </TableRow>
               ))}

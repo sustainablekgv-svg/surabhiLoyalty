@@ -82,7 +82,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
   });
 
   const handleSaleWithTPIN = async () => {
-    if (selectedCustomer?.tpin) {
+    if (selectedCustomer.tpin) {
       setShowTPINModal(true);
     } else {
       handleSale();
@@ -90,7 +90,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
   };
 
   const verifyTPINAndProcess = () => {
-    if (enteredTPIN === selectedCustomer?.tpin) {
+    if (enteredTPIN === selectedCustomer.tpin) {
       setShowTPINModal(false);
       setEnteredTPIN("");
       handleSale();
@@ -120,7 +120,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         }
 
         // Then fetch customers
-        const customersCollection = collection(db, 'customers');
+        const customersCollection = collection(db, 'Customers');
         const querySnapshot = await getDocs(customersCollection);
         const customersData = querySnapshot.docs.map(doc => ({
           ...doc.data() as CustomerType,
@@ -138,7 +138,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     const fetchCustomers = async () => {
       setIsFetchingCustomers(true);
       try {
-        const q = query(collection(db, 'customers'));
+        const q = query(collection(db, 'Customers'));
         const querySnapshot = await getDocs(q);
         const customersData: CustomerType[] = [];
         querySnapshot.forEach((doc) => {
@@ -176,7 +176,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     if (!saleAmount || saleAmount <= 0 || !storeDetails) return null;
 
     const coinsToUse = selectedCustomer
-      ? Math.min(surabhiCoinsToUse || 0, selectedCustomer.surabhiBalance || 0)
+      ? Math.min(surabhiCoinsToUse, selectedCustomer.surabhiBalance)
       : 0;
 
     let walletDeduction = 0;
@@ -190,7 +190,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     // For registered customers
     if (!selectedCustomer) return null;
 
-    const walletBalance = selectedCustomer.walletBalance || 0;
+    const walletBalance = selectedCustomer.walletBalance;
 
     // Payment method logic
     if (paymentMethod === 'wallet') {
@@ -258,7 +258,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
     try {
       // First check if customer exists in database
-      const customersRef = collection(db, "customers");
+      const customersRef = collection(db, "Customers");
       const q = query(customersRef, where("customerMobile", "==", selectedCustomer.customerMobile));
       const querySnapshot = await getDocs(q);
       console.log('Query snapshot empty:', querySnapshot.empty);
@@ -306,8 +306,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       
         // Balance information
         previousBalance: {
-          walletBalance: selectedCustomer.walletBalance || 0,
-          surabhiBalance: selectedCustomer.surabhiBalance || 0,
+          walletBalance: selectedCustomer.walletBalance,
+          surabhiBalance: selectedCustomer.surabhiBalance,
         },
         newBalance: {
           walletBalance: newWalletBalance,
@@ -323,8 +323,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         surabhiBalance: newSurabhiCoins,
         sevaCredit: saleCalculation.goSevaContribution, 
         sevaDebit: 0,
-        sevaBalance: selectedCustomer.sevaBalance || 0,
-        sevaTotal: selectedCustomer.sevaTotal || 0
+        sevaBalance: selectedCustomer.sevaBalance,
+        sevaTotal: selectedCustomer.sevaTotal
       };
       await addDoc(collection(db, 'CustomerTx'), customerTxData);
 
@@ -332,7 +332,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       if (selectedCustomer.referredBy && saleCalculation.referrerSurabhiCoinsEarned > 0) {
         try {
           // Find referrer's document
-          const customersCollection = collection(db, 'customers');
+          const customersCollection = collection(db, 'Customers');
           const referrerQuery = query(
             customersCollection,
             where('customerMobile', '==', selectedCustomer.referredBy)
@@ -403,7 +403,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           credit: 0,
           debit: saleCalculation.totalAmount - adminCut,
           adminCut: adminCut,
-          balance: (storeDetails.storeCurrentBalance || 0 ) - saleCalculation.totalAmount + adminCut,
+          balance: (storeDetails.storeCurrentBalance) - saleCalculation.totalAmount + adminCut,
           remarks: `Wallet sale for ${selectedCustomer.customerName} (${selectedCustomer.customerMobile})`,
         };
         await addDoc(collection(db, 'AccountTx'), accountTxData);
@@ -491,8 +491,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           surabhiBalance: selectedCustomer.surabhiBalance + saleCalculation.surabhiCoinsEarned,
           sevaCredit: saleCalculation.goSevaContribution,
           sevaDebit: 0,
-          sevaBalance: (selectedCustomer.sevaBalanceCurrentMonth || 0) + saleCalculation.goSevaContribution,
-          sevaTotal: (selectedCustomer.sevaBalance || 0) + saleCalculation.goSevaContribution,
+          sevaBalance: (selectedCustomer.sevaBalanceCurrentMonth) + saleCalculation.goSevaContribution,
+          sevaTotal: (selectedCustomer.sevaTotal) + saleCalculation.goSevaContribution,
           
           // Recharge-specific fields (empty/default for sale)
           // amount: 0,
@@ -539,7 +539,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           const sevaPool = poolDoc.data();
 
           await updateDoc(poolRef, {
-            currentBalance: (sevaPool?.currentBalance || 0) + saleCalculation.goSevaContribution,
+            currentBalance: (sevaPool.currentBalance) + saleCalculation.goSevaContribution,
             totalAllocations: sevaPool.totalAllocations,
             allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
             lastAllocatedDate: serverTimestamp()
@@ -562,8 +562,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             surabhiBalance: selectedCustomer.surabhiBalance + saleCalculation.surabhiCoinsEarned,
             sevaCredit: saleCalculation.goSevaContribution,
             sevaDebit: 0,
-            sevaBalance: (selectedCustomer.sevaBalanceCurrentMonth || 0) + saleCalculation.goSevaContribution,
-            sevaTotal: (selectedCustomer.sevaBalance || 0) + saleCalculation.goSevaContribution
+            sevaBalance: (selectedCustomer.sevaBalanceCurrentMonth) + saleCalculation.goSevaContribution,
+            sevaTotal: (selectedCustomer.sevaBalance) + saleCalculation.goSevaContribution
           };
 
           await addDoc(collection(db, 'CustomerTx'), customerTxData);
@@ -650,7 +650,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             const sevaPool = poolDoc.data();
 
             await updateDoc(poolRef, {
-              currentBalance: (sevaPool?.currentBalance || 0) + saleCalculation.goSevaContribution,
+              currentBalance: (sevaPool.currentBalance) + saleCalculation.goSevaContribution,
               totalAllocations: sevaPool.totalAllocations,
               allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
               lastAllocatedDate: serverTimestamp()
@@ -670,8 +670,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               surabhiBalance: selectedCustomer.surabhiBalance + saleCalculation.surabhiCoinsEarned,
               sevaCredit: saleCalculation.goSevaContribution,
               sevaDebit: 0,
-              sevaBalance: (selectedCustomer.sevaBalance || 0) + saleCalculation.goSevaContribution,
-              sevaTotal: (selectedCustomer.sevaTotal || 0) + saleCalculation.goSevaContribution
+              sevaBalance: selectedCustomer.sevaBalance + saleCalculation.goSevaContribution,
+              sevaTotal: selectedCustomer.sevaTotal + saleCalculation.goSevaContribution
             };
 
             await addDoc(collection(db, 'CustomerTx'), customerTxData);
@@ -761,13 +761,13 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     }
 
     if (paymentMethod === 'wallet') {
-      const remainingAfterCoins = saleAmount - (saleCalculation?.surabhiCoinsUsed || 0);
-      if ((selectedCustomer.walletBalance || 0) < remainingAfterCoins) {
+      const remainingAfterCoins = saleAmount - (saleCalculation.surabhiCoinsUsed);
+      if ((selectedCustomer.walletBalance) < remainingAfterCoins) {
         toast.error('Insufficient wallet balance for this payment method');
         return;
       }
     }
-
+    console.log("Is it comign here in line 770");
     await handleRegisteredCustomerSale();
   };
 
@@ -833,7 +833,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                     onClick={() => {
                       setSelectedCustomer(customer);
                       // Check if customer is registered at the same store as the current user
-                      const isSameStore = customer.storeLocation === user?.storeLocation;
+                      const isSameStore = customer.storeLocation === user.storeLocation;
                       setIsRegisteredAtSameStore(isSameStore);
                       // Reset payment method to cash if not from same store
                       if (!isSameStore) {
@@ -859,7 +859,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                       </div>
                       <div className="text-right text-sm">
                         <div className="flex items-center justify-end gap-2 mb-1">
-                          {customer.storeLocation === user?.storeLocation ? (
+                          {customer.storeLocation === user.storeLocation ? (
                             <div className="flex items-center gap-1 text-green-600">
                               <CheckCircle className="h-3 w-3" />
                               <span className="text-xs font-medium">Same Store</span>
@@ -959,7 +959,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                             const value = Number(e.target.value);
                             const maxCoins = Math.min(
                               selectedCustomer.surabhiBalance,
-                              saleAmount || 0
+                              saleAmount
                             );
                             setSurabhiCoinsToUse(Math.max(0, Math.min(value, maxCoins)));
                           }}
@@ -969,7 +969,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                         />
                       </div>
                       <p className="text-xs text-gray-600">
-                        Available: {selectedCustomer.surabhiBalance} coins (Using {surabhiCoinsToUse || 0})
+                        Available: {selectedCustomer.surabhiBalance} coins (Using {surabhiCoinsToUse})
                       </p>
                     </div>
                   )}

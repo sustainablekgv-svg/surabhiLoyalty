@@ -18,12 +18,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 interface TransactionHistoryProps {
   userId: string;
 }
-import { CustomerTx } from '@/types/types';
+import { CustomerTxType } from '@/types/types';
 
 export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
-  const [transactions, setTransactions] = useState<CustomerTx[]>([]);
+  const [transactions, setTransactions] = useState<CustomerTxType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -32,7 +32,7 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
-        const customerDoc = await getDoc(doc(db, 'customers', userId));
+        const customerDoc = await getDoc(doc(db, 'Customers', userId));
         if (!customerDoc.exists()) {
           throw new Error('Customer not found');
         }
@@ -48,7 +48,7 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
         const txData = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        })) as CustomerTx[];
+        })) as CustomerTxType[];
 
         setTransactions(txData);
       } catch (err) {

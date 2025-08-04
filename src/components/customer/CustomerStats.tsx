@@ -281,8 +281,8 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                           : 'text-blue-600'
                       }`}>
                         {activity.type === 'recharge' ? `₹${activity.amount}` : 
-                         activity.type === 'sale' ? `-₹${activity.amount}` :
-                         activity.type === 'seva_contribution' ? `-₹${activity.amount}` :
+                         activity.type === 'sale' ? `₹${activity.amount}` :
+                         activity.type === 'seva_contribution' ? `₹${activity.amount}` :
                          `${activity.amount} coins`}
                       </span>
                     )}

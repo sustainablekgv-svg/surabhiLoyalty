@@ -18,7 +18,6 @@ import { auth, db } from '@/lib/firebase';
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
-  signInAnonymously,
   User as FirebaseUser
 } from 'firebase/auth';
 import {
@@ -37,7 +36,7 @@ import { CustomerType, UserRegistrationProps } from '@/types/types2';
 export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isAuthReady, setIsAuthReady] = useState(false);
+  // const [isAuthReady, setIsAuthReady] = useState(false);
   const [referralName, setReferralName] = useState<string | null>(null);
   const [isFetchingReferral, setIsFetchingReferral] = useState(false);
   const [isElgibleForReferral, setIsElgibleForReferral] = useState(false);
@@ -55,18 +54,11 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
   // Initialize auth state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user: FirebaseUser | null) => {
+      // setIsAuthReady(true);
       if (user) {
         toast.success('Authentication ready');
-      } else {
-        signInAnonymously(auth)
-          .then(() => toast.success('Anonymous session started'))
-          .catch(error => {
-            toast.error('Failed to start anonymous session');
-            console.error('Anonymous auth error:', error);
-          });
-      }
-      setIsAuthReady(true);
-    });
+    }
+  });
 
     return () => unsubscribe();
   }, []);
@@ -77,7 +69,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
       if (formData.referredBy?.length === 10 && /^\d+$/.test(formData.referredBy)) {
         setIsFetchingReferral(true);
         try {
-          const customersCollection = collection(db, 'customers');
+          const customersCollection = collection(db, 'Customers');
           const referralQuery = query(
             customersCollection,
             where('customerMobile', '==', formData.referredBy)
@@ -136,10 +128,10 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!isAuthReady) {
-      toast.error('System is not ready yet. Please try again.');
-      return;
-    }
+    // if (!isAuthReady) {
+    //   toast.error('System is not ready yet. Please try again.');
+    //   return;
+    // }
 
     if (!formData.customerName || !formData.customerMobile || !formData.customerEmail || !formData.customerPassword || !formData.tpin) {
       toast.error('Please fill all required fields');
@@ -175,7 +167,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
     const toastId = toast.loading('Checking details...');
 
     try {
-      const customersCollection = collection(db, 'customers');
+      const customersCollection = collection(db, 'Customers');
 
       // Check if email already exists
       const emailQuery = query(customersCollection, where('customerEmail', '==', formData.customerEmail));
@@ -606,7 +598,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                 <div className="pt-2">
                   <button
                     type="submit"
-                    disabled={isLoading || !isAuthReady || (formData.referredBy && !isElgibleForReferral)}
+                    disabled={isLoading || (formData.referredBy && !isElgibleForReferral)}
                     className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white font-medium rounded-lg transition-all duration-200 shadow-md disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isLoading ? (

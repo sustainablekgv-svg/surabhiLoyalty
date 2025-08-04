@@ -51,7 +51,7 @@ export const CustomerManagement = () => {
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, 'customers'));
+        const querySnapshot = await getDocs(collection(db, 'Customers'));
         const customersData: CustomerType[] = [];
 
         querySnapshot.forEach((doc) => {
@@ -232,7 +232,7 @@ export const CustomerManagement = () => {
       setIsSaving(true);
 
       // Query customers by mobile number
-      const customersRef = collection(db, 'customers');
+      const customersRef = collection(db, 'Customers');
       const q = query(customersRef, where('customerMobile', '==', editCustomer.customerMobile));
       const querySnapshot = await getDocs(q);
 
@@ -524,24 +524,6 @@ export const CustomerManagement = () => {
                 className="col-span-3"
                 placeholder="Set new PIN"
               />
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">
-                Account Status
-              </Label>
-              <div className="col-span-3 flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="walletRechargeDone"
-                  checked={Boolean(editedData.walletRechargeDone) || false}
-                  onChange={() => handleToggleChange('walletRechargeDone')}
-                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <Label htmlFor="walletRechargeDone">
-                  Registered User
-                </Label>
-              </div>
             </div>
           </div>
 

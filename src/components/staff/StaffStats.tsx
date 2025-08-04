@@ -26,7 +26,7 @@ export const StaffStats = ({ storeLocation }: StaffStatsProps) => {
     
     // Set up real-time listener for customers
     const customersQuery = query(
-      collection(db, 'customers'),
+      collection(db, 'Customers'),
       where('storeLocation', '==', storeLocation),
       orderBy('createdAt', 'desc')
     );
@@ -203,7 +203,7 @@ export const StaffStats = ({ storeLocation }: StaffStatsProps) => {
                         </p>
                       </div>
                     </div>
-                    {activity.amount && (
+                    {activity.amount > 0 && (
                       <span className="font-bold text-green-600">₹{activity.amount}</span>
                     )}
                   </div>

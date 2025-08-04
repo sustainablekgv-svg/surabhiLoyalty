@@ -159,7 +159,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         }
 
         // Then fetch customers
-        const customersCollection = collection(db, 'customers');
+        const customersCollection = collection(db, 'Customers');
         console.log("THe sote Lcoation in line 163 is", user.storeLocation);
         const customersq = query(customersCollection, where('storeLocation', '==', user.storeLocation));
         const querySnapshot = await getDocs(customersq);
@@ -242,7 +242,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
 
     try {
       // Find customer document by mobile number
-      const customersCollection = collection(db, 'customers');
+      const customersCollection = collection(db, 'Customers');
       const q = query(customersCollection, where('customerMobile', '==', selectedCustomer.customerMobile));
       const querySnapshot = await getDocs(q);
 
@@ -687,14 +687,6 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                           <p className="text-sm font-medium text-amber-600 mt-1">
                             {customer.surabhiBalance || 0} Surabhi
                           </p>
-                          <p className="text-sm font-medium text-amber-600 mt-1">
-                            {customer.surabhiReferral > 0 ? customer.surabhiReferral : 0} Referral
-                          </p>
-                          {customer.sevaTotal && customer.sevaTotal > 0 && (
-                            <p className="text-sm font-medium text-blue-600 mt-1">
-                              ₹{customer.sevaTotal || 0} Seva
-                            </p>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -903,22 +895,18 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
             <div className="space-y-2">
               <h4 className="font-medium">Customer Details</h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="text-gray-500">Name:</div>
+                <div className="text-gray-500">Customer Name:</div>
                 <div>{selectedCustomer?.customerName}</div>
-                <div className="text-gray-500">Mobile:</div>
+                <div className="text-gray-500">Customer Mobile:</div>
                 <div>{selectedCustomer?.customerMobile}</div>
-                <div className="text-gray-500">Email:</div>
-                <div>{selectedCustomer?.customerEmail || 'N/A'}</div>
-                <div className="text-gray-500">Current Balance:</div>
+                <div className="text-gray-500">Customer Email:</div>
+                <div>{selectedCustomer?.customerEmail}</div>
+                <div className="text-gray-500">Wallet Balance:</div>
                 <div>₹{selectedCustomer?.walletBalance.toLocaleString()}</div>
-                <div className="text-gray-500">Current Coins:</div>
+                <div className="text-gray-500">Surbahi Balance:</div>
                 <div>{selectedCustomer?.surabhiBalance}</div>
-                {selectedCustomer?.sevaTotal && (
-                  <>
-                    <div className="text-gray-500">Seva Wallet:</div>
-                    <div>₹{selectedCustomer.sevaTotal}</div>
-                  </>
-                )}
+                {/* <div className="text-gray-500">Seva Wallet:</div>
+                <div>₹{selectedCustomer.sevaTotal}</div> */}
               </div>
             </div>
 

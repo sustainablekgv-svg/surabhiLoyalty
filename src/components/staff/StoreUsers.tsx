@@ -22,7 +22,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
-import { Customer, StoreUsersProps } from "@/types/types";
+import { CustomerType, StoreUsersProps } from "@/types/types";
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
@@ -32,10 +32,10 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
   const [registrationFilter, setRegistrationFilter] = useState<'all' | 'registered' | 'unregistered'>('all');
   const [sortField, setSortField] = useState<'name' | 'walletBalance' | 'surabhiCoins' | 'lastTransactionDate'>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<CustomerType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [topCustomers, setTopCustomers] = useState<Customer[]>([]);
+  const [topCustomers, setTopCustomers] = useState<CustomerType[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -44,7 +44,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
         setLoading(true);
         setError(null);
 
-        const customersRef = collection(db, 'customers');
+        const customersRef = collection(db, 'Customers');
 
         // First query to get customers by store location
         const q = query(
@@ -56,7 +56,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
         const customersData = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        })) as unknown as Customer[];
+        })) as unknown as CustomerType[];
 
         // Sort locally by lastTransactionDate if needed
         customersData.sort((a, b) => {
@@ -87,26 +87,20 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
   const filteredCustomers = customers
     .filter(customer => {
       const matchesSearch =
-        customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.mobile.includes(searchTerm) ||
-        (customer.email && customer.email.toLowerCase().includes(searchTerm.toLowerCase()));
-
-      const matchesRegistration =
-        registrationFilter === 'all' ||
-        (registrationFilter === 'registered' && customer.registered) ||
-        (registrationFilter === 'unregistered' && !customer.registered);
-
-      return matchesSearch && matchesRegistration;
+        customer.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.customerMobile.includes(searchTerm) ||
+        (customer.customerEmail && customer.customerEmail.toLowerCase().includes(searchTerm.toLowerCase()));
+      return matchesSearch;
     })
     .sort((a, b) => {
       let comparison = 0;
 
       if (sortField === 'name') {
-        comparison = a.name.localeCompare(b.name);
+        comparison = a.customerName.localeCompare(b.customerName);
       } else if (sortField === 'walletBalance') {
         comparison = (a.walletBalance || 0) - (b.walletBalance || 0);
       } else if (sortField === 'surabhiCoins') {
-        comparison = (a.surabhiCoins || 0) - (b.surabhiCoins || 0);
+        comparison = (a.surabhiBalance || 0) - (b.surabhiBalance || 0);
       } else if (sortField === 'lastTransactionDate') {
         const dateA = a.lastTransactionDate ? a.lastTransactionDate.toDate().getTime() : 0;
         const dateB = b.lastTransactionDate ? b.lastTransactionDate.toDate().getTime() : 0;
@@ -118,10 +112,9 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
 
   const stats = {
     totalUsers: customers.length,
-    registeredUsers: customers.filter(c => c.registered).length,
     totalWallet: customers.reduce((sum, c) => sum + (c.walletBalance || 0), 0),
-    totalCoins: customers.reduce((sum, c) => sum + (c.surabhiCoins || 0), 0),
-    currentMonthCoins: customers.reduce((sum, c) => sum + (c.sevaCoinsCurrentMonth || 0), 0)
+    totalCoins: customers.reduce((sum, c) => sum + (c.surabhiBalance || 0), 0),
+    currentMonthCoins: customers.reduce((sum, c) => sum + (c.sevaBalanceCurrentMonth || 0), 0)
   };
 
   const handleSort = (field: typeof sortField) => {
@@ -201,16 +194,6 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
           </CardContent>
         </Card>
 
-        <Card className="bg-green-50 border-green-200">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <UserCheck className="h-4 w-4 text-green-600" />
-              <span className="text-xs font-medium text-green-600">Registered</span>
-            </div>
-            <p className="text-2xl font-bold text-green-900">{stats.registeredUsers}</p>
-          </CardContent>
-        </Card>
-
         <Card className="bg-purple-50 border-purple-200">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -248,12 +231,12 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               {topCustomers.map((customer, index) => (
                 <div
-                  key={customer.mobile}
+                  key={customer.customerMobile}
                   className="bg-white p-4 rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => viewCustomerDetails(customer.mobile)}
+                  onClick={() => viewCustomerDetails(customer.customerMobile)}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-medium text-gray-900 truncate">{customer.name}</h3>
+                    <h3 className="font-medium text-gray-900 truncate">{customer.customerName}</h3>
                     <Badge variant="secondary" className="ml-2">#{index + 1}</Badge>
                   </div>
                   <div className="flex items-center gap-2 text-purple-600 text-sm">
@@ -262,7 +245,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                   </div>
                   <div className="flex items-center gap-2 text-amber-600 text-sm mt-1">
                     <Coins className="h-3 w-3" />
-                    <span>{(customer.surabhiCoins || 0).toLocaleString()} coins</span>
+                    <span>{(customer.surabhiBalance || 0).toLocaleString()} coins</span>
                   </div>
                   <div className="text-xs text-gray-500 mt-2">
                     Last active: {formatDate(customer.lastTransactionDate)}
@@ -375,17 +358,17 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
               </thead>
               <tbody className="divide-y">
                 {filteredCustomers.map((customer) => (
-                  <tr key={customer.mobile} className="hover:bg-gray-50">
+                  <tr key={customer.customerMobile} className="hover:bg-gray-50">
                     <td className="py-4 px-4">
-                      <div className="font-medium text-gray-900">{customer.name}</div>
+                      <div className="font-medium text-gray-900">{customer.customerName}</div>
                     </td>
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-2 text-sm">
                         <Phone className="h-4 w-4 text-gray-400" />
-                        <span>{customer.mobile}</span>
+                        <span>{customer.customerMobile}</span>
                       </div>
-                      {customer.email && (
-                        <div className="text-xs text-gray-500 mt-1">{customer.email}</div>
+                      {customer.customerEmail && (
+                        <div className="text-xs text-gray-500 mt-1">{customer.customerEmail}</div>
                       )}
                     </td>
                     <td className="py-4 px-4">
@@ -397,10 +380,10 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-2 text-amber-600">
                         <Coins className="h-4 w-4" />
-                        <span>{(customer.surabhiCoins || 0).toLocaleString()}</span>
+                        <span>{(customer.surabhiBalance || 0).toLocaleString()}</span>
                       </div>
                       <div className="text-xs text-green-600 mt-1">
-                        +{(customer.sevaCoinsCurrentMonth || 0).toLocaleString()} this month
+                        +{(customer.sevaBalanceCurrentMonth || 0).toLocaleString()} this month
                       </div>
                     </td>
                     <td className="py-4 px-4">
@@ -409,25 +392,10 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                       </div>
                     </td>
                     <td className="py-4 px-4">
-                      <Badge variant={customer.registered ? 'default' : 'outline'}>
-                        {customer.registered ? (
-                          <>
-                            <UserCheck className="h-3 w-3 mr-1" />
-                            Registered
-                          </>
-                        ) : (
-                          <>
-                            <UserX className="h-3 w-3 mr-1" />
-                            Unregistered
-                          </>
-                        )}
-                      </Badge>
-                    </td>
-                    <td className="py-4 px-4">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => viewCustomerDetails(customer.mobile)}
+                        onClick={() => viewCustomerDetails(customer.customerMobile)}
                       >
                         <Eye className="h-3 w-3 mr-1" />
                         View
