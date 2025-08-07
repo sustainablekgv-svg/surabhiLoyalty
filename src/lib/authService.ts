@@ -15,7 +15,7 @@ export interface User {
 
 export const getCustomerByMobile = async (mobile: string, password: string): Promise<User | null> => {
   try {
-    const customersRef = collection(db, 'customers');
+    const customersRef = collection(db, 'Customers');
     const q = query(customersRef, where('customerMobile', '==', mobile));
     const querySnapshot = await getDocs(q);
     
@@ -94,7 +94,7 @@ export const verifyUserExists = async (user: User): Promise<boolean> => {
   try {
     let userDoc;
     if (user.role === 'customer') {
-      userDoc = await getDoc(doc(db, 'customers', user.id));
+      userDoc = await getDoc(doc(db, 'Customers', user.id));
     } else {
       userDoc = await getDoc(doc(db, 'staff', user.id));
     }

@@ -17,8 +17,8 @@ export interface CustomerType {
   saleElgibility: boolean;
   walletId: string;
   walletBalance: number;
-  walletCredit: number;
-  walletDebit: number;
+  // walletCredit: number;
+  // walletDebit: number;
   walletBalanceCurrentMonth: number;
   surabhiBalance: number;
   surabhiReferral: number;
@@ -117,7 +117,6 @@ export interface StoreType {
   storeName: string;
   storeLocation: string;
   storeAddress: string;
-  currentBalance: number;
   referralCommission: number;
   surabhiCommission: number;
   sevaCommission: number;
@@ -196,7 +195,7 @@ export interface CustomerTxType {
 // }
 
 export interface SevaPoolType {
-  currentBalance: number;
+  currentSevaBalance: number;
   totalContributions: number;
   totalAllocations: number;
   contributionsCurrentMonth: number;

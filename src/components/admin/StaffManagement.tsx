@@ -54,7 +54,7 @@ import { StoreType, StaffType } from '@/types/types';
 async function checkContactNumberExists(contactNumber: string, currentStoreId?: string): Promise<boolean> {
   if (!contactNumber) return false;
 
-  const storesRef = collection(db, 'stores');
+  const storesRef = collection(db, 'tores');
   const q = query(storesRef, where('storeContactNumber', '==', contactNumber));
 
   const querySnapshot = await getDocs(q);

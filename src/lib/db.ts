@@ -1,8 +1,8 @@
-import {Customer, StaffType} from "@/types/types"
+import {CustomerType, StaffType} from "@/types/types"
 import { collection, where, getDocs,query } from "firebase/firestore";
 import { db } from "./firebase";
-export const getCustomerByMobile = async (mobile: string): Promise<Customer | null> => {
-  const customersRef = collection(db, 'customers');
+export const getCustomerByMobile = async (mobile: string): Promise<CustomerType | null> => {
+  const customersRef = collection(db, 'Customers');
   const q = query(customersRef, where('mobile', '==', mobile));
   const querySnapshot = await getDocs(q);
   
@@ -11,7 +11,7 @@ export const getCustomerByMobile = async (mobile: string): Promise<Customer | nu
   return {
       id: querySnapshot.docs[0].id,
       ...querySnapshot.docs[0].data()
-  } as unknown as Customer;
+  } as unknown as CustomerType;
 };
 
 export const getStaffByMobile = async (mobile: string): Promise<StaffType | null> => {

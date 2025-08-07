@@ -53,7 +53,7 @@ export const ReferralSystem = ({ userMobile, userName }: ReferralSystemProps) =>
     const fetchReferralData = async () => {
       try {
         // Fetch current user data to get referralIncome
-        const usersRef = collection(db, 'customers');
+        const usersRef = collection(db, 'Customers');
         const q = query(usersRef, where('customerMobile', '==', user.mobile));
         const querySnapshot = await getDocs(q);
         
@@ -66,7 +66,7 @@ export const ReferralSystem = ({ userMobile, userName }: ReferralSystemProps) =>
 
         // Fetch referred customers
         const referredCustomersQuery = query(
-          collection(db, 'customers'),
+          collection(db, 'Customers'),
           where('referredBy', '==', user.mobile)
         );
         const referredCustomersSnapshot = await getDocs(referredCustomersQuery);

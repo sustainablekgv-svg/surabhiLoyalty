@@ -34,7 +34,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       setLoading(true);
       try {
         // Fetch the customer document with the given userId
-        const docRef = doc(db, 'customers', userId);
+        const docRef = doc(db, 'Customers', userId);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {

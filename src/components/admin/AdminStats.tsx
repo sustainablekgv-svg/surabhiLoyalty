@@ -91,7 +91,7 @@ export const AdminStats = () => {
     const fetchData = async () => {
       try {
         // Fetch customer data
-        const customersQuery = await getDocs(collection(db, 'customers'));
+        const customersQuery = await getDocs(collection(db, 'Customers'));
         const customers: CustomerType[] = [];
         customersQuery.forEach((doc) => {
           customers.push(doc.data() as CustomerType);

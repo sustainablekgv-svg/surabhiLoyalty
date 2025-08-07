@@ -566,9 +566,9 @@ export const CustomerManagement = () => {
               </div>
             </div>
             <div className="flex items-center gap-1 mt-2">
-              <span className="text-sm text-muted-foreground">
+              {/* <span className="text-sm text-muted-foreground">
                 {totalStats.registeredCustomers} registered
-              </span>
+              </span> */}
             </div>
           </CardContent>
         </Card>

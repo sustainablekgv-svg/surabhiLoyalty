@@ -18,8 +18,8 @@ export interface CustomerType {
   saleElgibility: boolean;
   walletId: string;
   walletBalance: number;
-  walletCredit: number;
-  walletDebit: number;
+  // walletCredit: number;
+  // walletDebit: number;
   walletBalanceCurrentMonth: number;
   surabhiBalance: number;
   surabhiCredit: number;
@@ -207,7 +207,7 @@ export interface CustomerTxType {
 // }
 
 export interface SevaPoolType {
-  currentBalance: number;
+  currentSevaBalance: number;
   totalContributions: number;
   totalAllocations: number;
   contributionsCurrentMonth: number;

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, query, where, doc, updateDoc, serverTimestamp, Timestamp, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { onSnapshot } from 'firebase/firestore';
 import { format, startOfMonth } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ import {
 import { toast } from 'sonner';
 
 import { CustomerTxType, SevaPoolType } from '@/types/types';
+import { increment } from 'firebase/database';
 
 interface Customer {
   id?: string;
@@ -99,94 +101,101 @@ export const GoSevaPool = () => {
     try {
       setLoading(true);
       
-      // Fetch Seva Pool data
+      // Set up real-time listener for Seva Pool
       const poolRef = doc(db, 'SevaPool', 'main');
-      const poolSnapshot = await getDoc(poolRef);
-      if (poolSnapshot.exists()) {
-        const data = poolSnapshot.data();
-        const poolData: SevaPoolType = {
-          currentBalance: data.currentBalance ?? 0,
-          totalContributions: data.totalContributions ?? 0,
-          totalAllocations: data.totalAllocations ?? 0,
-          contributionsCurrentMonth: data.contributionsCurrentMonth ?? 0,
-          allocationsCurrentMonth: data.allocationsCurrentMonth ?? 0,
-          lastResetDate: safeConvertToTimestamp(data.lastResetDate),
-          lastAllocatedDate: safeConvertToTimestamp(data.lastAllocatedDate)
-        };
-        setSevaPool(poolData);
-      } else {
-        toast.error('Seva Pool document not found');
-      }
-
-      // Fetch transactions with seva_contribution type and sevaEarned > 0
+      const unsubscribePool = onSnapshot(poolRef, (poolSnapshot) => {
+        if (poolSnapshot.exists()) {
+          const data = poolSnapshot.data();
+          const poolData: SevaPoolType = {
+            currentBalance: data.currentBalance ?? 0,
+            totalContributions: data.totalContributions ?? 0,
+            totalAllocations: data.totalAllocations ?? 0,
+            contributionsCurrentMonth: data.contributionsCurrentMonth ?? 0,
+            allocationsCurrentMonth: data.allocationsCurrentMonth ?? 0,
+            lastResetDate: safeConvertToTimestamp(data.lastResetDate),
+            lastAllocatedDate: safeConvertToTimestamp(data.lastAllocatedDate)
+          };
+          setSevaPool(poolData);
+        } else {
+          toast.error('Seva Pool document not found');
+        }
+      });
+  
+      // Set up real-time listener for transactions
       const transactionsQuery = query(
         collection(db, 'CustomerTx'),
-        // where('createdAt', '>=', startOfMonth(new Date())),
-        // where('type', '==', 'seva_contribution'),
         where('sevaEarned', '>', 0)
       );
-      const transactionsSnapshot = await getDocs(transactionsQuery);
-      const transactionsData = transactionsSnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          type: data.type,
-          customerMobile: data.customerMobile,
-          customerName: data.customerName,
-          storeLocation: data.storeLocation,
-          storeName: data.storeName,
-          createdAt: safeConvertToTimestamp(data.createdAt),
-          paymentMethod: data.paymentMethod,
-          processedBy: data.processedBy,
-          amount: data.amount,
-          surabhiEarned: data.surabhiEarned,
-          sevaEarned: data.sevaEarned,
-          referralEarned: data.referralEarned,
-          referredBy: data.referredBy,
-          surabhiUsed: data.surabhiUsed,
-          walletDeduction: data.walletDeduction,
-          cashPayment: data.cashPayment,
-          previousBalance: data.previousBalance,
-          newBalance: data.newBalance,
-          walletCredit: data.walletCredit,
-          walletDebit: data.walletDebit,
-          walletBalance: data.walletBalance,
-          surabhiDebit: data.surabhiDebit,
-          surabhiCredit: data.surabhiCredit,
-          surabhiBalance: data.surabhiBalance,
-          sevaCredit: data.sevaCredit,
-          sevaDebit: data.sevaDebit,
-          sevaBalance: data.sevaBalance,
-          sevaTotal: data.sevaTotal
-        } as CustomerTxType;
+      const unsubscribeTransactions = onSnapshot(transactionsQuery, (transactionsSnapshot) => {
+        const transactionsData = transactionsSnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            type: data.type,
+            customerMobile: data.customerMobile,
+            customerName: data.customerName,
+            storeLocation: data.storeLocation,
+            storeName: data.storeName,
+            createdAt: safeConvertToTimestamp(data.createdAt),
+            paymentMethod: data.paymentMethod,
+            processedBy: data.processedBy,
+            amount: data.amount,
+            surabhiEarned: data.surabhiEarned,
+            sevaEarned: data.sevaEarned,
+            referralEarned: data.referralEarned,
+            referredBy: data.referredBy,
+            surabhiUsed: data.surabhiUsed,
+            walletDeduction: data.walletDeduction,
+            cashPayment: data.cashPayment,
+            previousBalance: data.previousBalance,
+            newBalance: data.newBalance,
+            walletCredit: data.walletCredit,
+            walletDebit: data.walletDebit,
+            walletBalance: data.walletBalance,
+            surabhiDebit: data.surabhiDebit,
+            surabhiCredit: data.surabhiCredit,
+            surabhiBalance: data.surabhiBalance,
+            sevaCredit: data.sevaCredit,
+            sevaDebit: data.sevaDebit,
+            sevaBalance: data.sevaBalance,
+            sevaTotal: data.sevaTotal
+          } as CustomerTxType;
+        });
+        
+        setTransactions(transactionsData.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
+  
+        // Calculate top customers based on sevaEarned
+        const customerContributions = transactionsData.reduce((acc: Record<string, Customer>, tx) => {
+          const mobile = tx.customerMobile;
+          if (!acc[mobile]) {
+            acc[mobile] = {
+              name: tx.customerName,
+              mobile,
+              storeLocation: tx.storeLocation,
+              sevaCoinsCurrentMonth: 0,
+              sevaCoinsTotal: tx.sevaTotal || 0
+            };
+          }
+          acc[mobile].sevaCoinsCurrentMonth += tx.sevaEarned || 0;
+          return acc;
+        }, {});
+  
+        const topCustomers = Object.values(customerContributions)
+          .sort((a, b) => b.sevaCoinsCurrentMonth - a.sevaCoinsCurrentMonth)
+          .slice(0, 10);
+  
+        setCustomers(topCustomers);
       });
-      setTransactions(transactionsData.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
-
-      // Calculate top customers based on sevaEarned
-      const customerContributions = transactionsData.reduce((acc: Record<string, Customer>, tx) => {
-        const mobile = tx.customerMobile;
-        if (!acc[mobile]) {
-          acc[mobile] = {
-            name: tx.customerName,
-            mobile,
-            storeLocation: tx.storeLocation,
-            sevaCoinsCurrentMonth: 0,
-            sevaCoinsTotal: tx.sevaTotal || 0
-          };
-        }
-        acc[mobile].sevaCoinsCurrentMonth += tx.sevaEarned || 0;
-        return acc;
-      }, {});
-
-      const topCustomers = Object.values(customerContributions)
-        .sort((a, b) => b.sevaCoinsCurrentMonth - a.sevaCoinsCurrentMonth)
-        .slice(0, 10); // Get top 10 customers
-
-      setCustomers(topCustomers);
-
+  
+      // Return cleanup function to unsubscribe when component unmounts
+      return () => {
+        unsubscribePool();
+        unsubscribeTransactions();
+      };
+  
     } catch (error) {
-      console.error('Error fetching data:', error);
-      toast.error('Failed to load data');
+      console.error('Error setting up listeners:', error);
+      toast.error('Failed to set up real-time updates');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -207,9 +216,9 @@ export const GoSevaPool = () => {
       const currentSevaPool = poolDoc.data();
 
       await updateDoc(poolRef, {
-        currentBalance: (currentSevaPool?.currentBalance || 0) - amount,
-        totalAllocations: (currentSevaPool?.totalAllocations || 0) + amount,
-        allocationsCurrentMonth: (currentSevaPool?.allocationsCurrentMonth || 0) + amount,
+        currentBalance: (currentSevaPool?.currentBalance) - amount,
+        totalAllocations: increment(1),
+        allocationsCurrentMonth: increment(1),
         lastAllocatedDate: serverTimestamp()
       });
 

@@ -507,10 +507,10 @@ const Accounts = () => {
                         {tx.adminCut > 0 ? `₹${tx.adminCut.toFixed(2)}` : '-'}
                       </TableCell>
                       <TableCell className="text-right text-green-600">
-                        {tx.credit > 0 ? `+₹${tx.credit.toFixed(2)}` : '-'}
+                        {tx.credit > 0 ? `+₹${tx.debit.toFixed(2)}` : '-'}
                       </TableCell>
                       <TableCell className="text-right text-red-600">
-                        {tx.debit > 0 ? `-₹${tx.debit.toFixed(2)}` : '-'}
+                        {tx.debit > 0 ? `-₹${tx.credit.toFixed(2)}` : '-'}
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         ₹{tx.balance.toFixed(2)}

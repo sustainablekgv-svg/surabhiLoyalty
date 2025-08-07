@@ -13,7 +13,7 @@ import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/f
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { CustomerType, ActivityType, StaffStatsProps } from '@/types/types2';
-import { Timestamp } from 'firebase/firestore';
+// import { Timestamp } from 'firebase/firestore';
 
 export const StaffStats = ({ storeLocation }: StaffStatsProps) => {
   const [customers, setCustomers] = useState<CustomerType[]>([]);
@@ -94,8 +94,8 @@ export const StaffStats = ({ storeLocation }: StaffStatsProps) => {
 
   // Stats Calculations
   const totalCustomers = customers.length;
-  const registeredCustomers = customers.filter(c => c.walletRechargeDone).length;
-  const totalWalletBalance = customers.reduce((sum, c) => sum + (c.walletBalance || 0), 0);
+  // const registeredCustomers = customers.filter(c => c.walletRechargeDone).length;
+  // const totalWalletBalance = customers.reduce((sum, c) => sum + (c.walletBalance || 0), 0);
   
   const newCustomersThisWeek = customers.filter(c => {
     const createdAt = c.createdAt?.toDate();
@@ -121,14 +121,14 @@ export const StaffStats = ({ storeLocation }: StaffStatsProps) => {
       color: 'text-blue-600',
       bgColor: 'bg-blue-50'
     },
-    {
-      title: "Total Wallet Balance",
-      value: `₹${totalWalletBalance.toLocaleString()}`,
-      change: `${registeredCustomers} registered wallets`,
-      icon: DollarSign,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50'
-    },
+    // {
+    //   title: "Total Wallet Balance",
+    //   value: `₹${totalWalletBalance.toLocaleString()}`,
+    //   change: `${registeredCustomers} registered wallets`,
+    //   icon: DollarSign,
+    //   color: 'text-green-600',
+    //   bgColor: 'bg-green-50'
+    // },
     {
       title: 'New Registrations',
       value: newCustomersThisWeek,

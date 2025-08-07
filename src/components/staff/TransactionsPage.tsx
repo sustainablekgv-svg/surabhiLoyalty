@@ -372,7 +372,7 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                               <span className="font-bold">{tx.customerName}</span>
                             </TableCell>
                             <TableCell>{tx.customerMobile}</TableCell>
-                            <TableCell className="font-bold">₹{tx.amount.toFixed(2)}</TableCell>
+                            <TableCell className="font-bold">₹{tx.amount?.toFixed(2)}</TableCell>
                             <TableCell>
                               {tx.paymentMethod === 'mixed' ? 'mixed' : tx.paymentMethod || 'cash'}
                             </TableCell>

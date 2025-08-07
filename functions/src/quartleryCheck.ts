@@ -22,7 +22,7 @@ export const checkQuarterlyCriteria = onSchedule({
   schedule: '0 0 1 1,4,7,10 *', // Runs at 00:00 on Jan 1, Apr 1, Jul 1, Oct 1
   timeZone: 'Asia/Kolkata', // Adjust to your timezone
 }, async () => {  // Removed the unused event parameter
-  const customersRef = db.collection('customers');
+  const customersRef = db.collection('Customers');
   let batch = db.batch();
   const batchSize = 500; // Firestore batch limit
   

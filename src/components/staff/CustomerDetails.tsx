@@ -19,7 +19,7 @@ export const CustomerDetails = () => {
   const fetchCustomer = async () => {
     try {
       const q = query(
-        collection(db, 'customers'),
+        collection(db, 'Customers'),
         where('customerMobile', '==', mobile)
       );
       
