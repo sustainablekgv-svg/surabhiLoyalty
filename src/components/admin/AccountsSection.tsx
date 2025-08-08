@@ -173,7 +173,7 @@ const Accounts = () => {
       // Query for the store by name
       const storeQuery = query(
         collection(db, 'stores'),
-        where('name', '==', selectedStoreForSettlement.storeName)
+        where('storeName', '==', selectedStoreForSettlement.storeName)
       );
       const storeSnapshot = await getDocs(storeQuery);
       
@@ -193,7 +193,7 @@ const Accounts = () => {
 
       // Update store balance
       batch.update(storeRef, {
-        currentBalance: newStoreBalance,
+        storeCurrentBalance: newStoreBalance,
         updatedAt: Timestamp.now()
       });
 

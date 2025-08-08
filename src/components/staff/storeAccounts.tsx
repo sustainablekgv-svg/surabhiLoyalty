@@ -23,7 +23,9 @@ import {
   orderBy,
   Timestamp,
   updateDoc,
-  doc
+  doc,
+  limit,
+  startAfter
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
@@ -46,61 +48,119 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
 
   const isAdmin = userRole === 'admin';
 
-  const fetchTransactions = async () => {
-  try {
-    setLoading(true);
-    console.log('Fetching transactions for store:', user.storeLocation); // Debug log
-
-    if (!user.storeLocation) {
-      console.log('No store location provided'); // Debug log
-      return;
-    }
-
-    const txQuery = query(
-      collection(db, 'AccountTx'),
-      where('storeName', '==', user.storeLocation),
-      orderBy('createdAt', 'desc')
-    );
-
-    console.log('Query:', txQuery); // Debug log
-
-    const txSnapshot = await getDocs(txQuery);
-    console.log('Snapshot size:', txSnapshot.size); // Debug log
-
-    const txData: AccountTxType[] = [];
-
-    txSnapshot.forEach(doc => {
-      console.log('Document:', doc.id, doc.data()); // Debug log
-      const data = doc.data();
-      txData.push({
-        id: doc.id,
-        createdAt: data.createdAt,
-        storeName: data.storeName,
-        customerName: data.customerName,
-        customerMobile: data.customerMobile,
-        type: data.type,
-        amount: data.amount || 0,
-        debit: data.debit || 0,
-        credit: data.credit || 0,
-        balance: data.balance || 0,
-        remarks: data.description || '',
-        adminCut: data.adminCut || 0
+  // Add these state variables at the top with other states
+  const [lastVisible, setLastVisible] = useState<any>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  
+  // Replace the existing fetchTransactions function with this one
+  const fetchTransactions = async (loadMore = false) => {
+    try {
+      if (!loadMore) {
+        setLoading(true);
+      } else {
+        setIsLoadingMore(true);
+      }
+  
+      if (!user.storeLocation) {
+        console.log('No store location provided');
+        return;
+      }
+  
+      let txQuery = query(
+        collection(db, 'AccountTx'),
+        where('storeName', '==', user.storeLocation),
+        orderBy('createdAt', 'desc'),
+        limit(rowsPerPage)
+      );
+  
+      // If loading more and we have a last visible document, start after it
+      if (loadMore && lastVisible) {
+        txQuery = query(
+          collection(db, 'AccountTx'),
+          where('storeName', '==', user.storeLocation),
+          orderBy('createdAt', 'desc'),
+          startAfter(lastVisible),
+          limit(rowsPerPage)
+        );
+      }
+  
+      const txSnapshot = await getDocs(txQuery);
+      const txData: AccountTxType[] = [];
+  
+      txSnapshot.forEach(doc => {
+        const data = doc.data();
+        txData.push({
+          id: doc.id,
+          createdAt: data.createdAt,
+          storeName: data.storeName,
+          customerName: data.customerName,
+          customerMobile: data.customerMobile,
+          type: data.type,
+          amount: data.amount || 0,
+          debit: data.debit || 0,
+          credit: data.credit || 0,
+          balance: data.balance || 0,
+          remarks: data.remarks || '',
+          adminCut: data.adminCut || 0
+        });
       });
-    });
-
-    console.log('Fetched transactions:', txData); // Debug log
-    setTransactions(txData);
-    setTotalPages(Math.ceil(txData.length / rowsPerPage));
-
-  } catch (err) {
-    console.error('Error fetching transactions:', err);
-  } finally {
-    setLoading(false);
-    setRefreshing(false);
-  }
-};
-
-
+  
+      // Update last visible document for next pagination
+      const lastVisibleDoc = txSnapshot.docs[txSnapshot.docs.length - 1];
+      setLastVisible(lastVisibleDoc);
+  
+      // Check if there are more documents to load
+      setHasMore(txSnapshot.docs.length === rowsPerPage);
+  
+      if (loadMore) {
+        setTransactions(prev => [...prev, ...txData]);
+      } else {
+        setTransactions(txData);
+      }
+  
+    } catch (err) {
+      console.error('Error fetching transactions:', err);
+    } finally {
+      setLoading(false);
+      setIsLoadingMore(false);
+      setRefreshing(false);
+    }
+  };
+  
+  // Replace the pagination controls with this updated version
+  <div className="flex items-center justify-between mt-4">
+    <div className="text-sm text-gray-600">
+      Showing {transactions.length} transactions
+    </div>
+    <div className="flex space-x-2">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          setTransactions([]);
+          setLastVisible(null);
+          setHasMore(true);
+          fetchTransactions();
+        }}
+        disabled={loading || isLoadingMore}
+      >
+        Reset
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => fetchTransactions(true)}
+        disabled={!hasMore || loading || isLoadingMore}
+      >
+        {isLoadingMore ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          'Load More'
+        )}
+      </Button>
+    </div>
+  </div>
   const formatTimestamp = (timestamp: Timestamp): string => {
     return format(timestamp.toDate(), 'MMM dd, yyyy HH:mm');
   };
@@ -209,7 +269,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
                   <TableCell className="text-right font-medium">
                     ₹{tx.balance.toFixed(2)}
                   </TableCell>
-                  <TableCell className="max-w-xs truncate">
+                  <TableCell className="whitespace-normal break-words max-w-md">
                     {tx.remarks}
                   </TableCell>
                 </TableRow>

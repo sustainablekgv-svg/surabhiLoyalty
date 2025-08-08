@@ -275,29 +275,27 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
   }, [user?.storeLocation]);
 
 
-    // Real-time listener for Seva Pool
-    useEffect(() => {
-      const poolRef = doc(db, 'SevaPool', 'main');
-      const unsubscribe = onSnapshot(poolRef, (doc) => {
-        if (doc.exists()) {
-          const data = doc.data();
-          const poolData: SevaPoolType = {
-            currentSevaBalance: data.currentSevaBalance ?? 0,
-            totalContributions: data.totalContributions ?? 0,
-            totalAllocations: data.totalAllocations ?? 0,
-            contributionsCurrentMonth: data.contributionsCurrentMonth ?? 0,
-            allocationsCurrentMonth: data.allocationsCurrentMonth ?? 0,
-            lastResetDate: safeConvertToTimestamp(data.lastResetDate),
-            lastAllocatedDate: safeConvertToTimestamp(data.lastAllocatedDate)
-          };
-          setSevaPool(poolData);
-        }
-      }, (error) => {
-        console.error('Error listening to Seva Pool updates:', error);
-      });
-  
-      return () => unsubscribe();
-    }, []);
+  // Real-time listener for Seva Pool
+  useEffect(() => {
+    const poolRef = doc(db, 'SevaPool', 'main');
+    const unsubscribe = onSnapshot(poolRef, (doc) => {
+      if (doc.exists()) {
+        const data = doc.data();
+        const poolData: SevaPoolType = {
+          currentSevaBalance: data.currentSevaBalance ?? 0,
+          totalContributions: data.totalContributions ?? 0,
+          totalAllocations: data.totalAllocations ?? 0,
+          contributionsCurrentMonth: data.contributionsCurrentMonth ?? 0,
+          allocationsCurrentMonth: data.allocationsCurrentMonth ?? 0,
+          lastResetDate: safeConvertToTimestamp(data.lastResetDate),
+          lastAllocatedDate: safeConvertToTimestamp(data.lastAllocatedDate)
+        };
+        setSevaPool(poolData);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
   
   const addActivityRecord = async (activityData: Omit<ActivityType, 'id' | 'date'>) => {
     try {
@@ -830,11 +828,11 @@ if (currentData.referredBy && referralAmount > 0) {
                       <Badge variant="secondary" className="mb-1">
                         ₹{selectedCustomer.walletBalance.toLocaleString()}
                       </Badge>
-                      {selectedCustomer.sevaTotal && selectedCustomer.sevaTotal > 0 && (
+                      {/* {selectedCustomer.sevaTotal && selectedCustomer.sevaTotal > 0 && (
                         <Badge variant="outline" className="text-blue-600 border-blue-200">
                           ₹{selectedCustomer.sevaTotal} Seva
                         </Badge>
-                      )}
+                      )} */}
                     </div>
                   </div>
                 </div>

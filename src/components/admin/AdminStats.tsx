@@ -76,8 +76,8 @@ export const AdminStats = () => {
         const poolSnapshot = await getDoc(poolRef);
         if (poolSnapshot.exists()) {
           const data = poolSnapshot.data();
-          setSevaPoolAmount(data.currentBalance);
-          console.log("THe seva Pool baalnce is", sevaPoolAmount, data.currentBalance)
+          setSevaPoolAmount(data.storeCurrentBalance);
+          console.log("THe seva Pool baalnce is", sevaPoolAmount, data.storeCurrentBalance)
         }
       } catch (error) {
         console.error('Error fetching SevaPool data:', error);
