@@ -185,6 +185,21 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     }
   }, [selectedCustomer, saleAmount]);
 
+  const calculateAdminProfit = () => {
+    if (!saleCalculation) return 0;
+    
+    const cashPaymentPart = saleCalculation.cashPayment * 
+      (storeDetails.surabhiCommission - storeDetails.cashOnlyCommission) / 100;
+      
+    const surabhiCoinsPart = saleCalculation.surabhiCoinsUsed * 
+      (storeDetails.referralCommission + storeDetails.cashOnlyCommission + storeDetails.sevaCommission) / 100;
+    
+    const totalProfit = cashPaymentPart + surabhiCoinsPart;
+    
+    // Round to 2 decimal places (for currency)
+    return Math.round(totalProfit * 100) / 100;
+  };
+
   // Calculate sale details with accurate payment logic
   const calculateSale = () => {
     if (!saleAmount || saleAmount <= 0 || !storeDetails) return null;
@@ -249,6 +264,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
   };
 
   const saleCalculation = saleAmount ? calculateSale() : null;
+    const adminProfitTaken = calculateAdminProfit();
 
   // console.log("The line 253 is", saleCalculation?.totalAmount)
 
@@ -321,6 +337,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         surabhiUsed: saleCalculation.surabhiCoinsUsed,
         walletDeduction: saleCalculation.walletDeduction,
         cashPayment: saleCalculation.cashPayment,
+        adminProft : saleCalculation.cashPayment * (storeDetails.surabhiCommission - storeDetails.cashOnlyCommission)/100 + saleCalculation.surabhiCoinsUsed*(storeDetails.referralCommission + storeDetails.cashOnlyCommission + storeDetails.sevaCommission)/100,
       
         // Balance information
         previousBalance: {
@@ -416,6 +433,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           storeName: storeDetails.storeName,
           customerName: selectedCustomer.customerName,
           customerMobile:selectedCustomer.customerMobile,
+          adminProfit:adminProfitTaken,
           type: 'sale',
           amount: saleAmount,
           credit: 0,
@@ -539,6 +557,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             customerMobile: selectedCustomer.customerMobile,
             credit: saleCalculation.cashPayment,
             adminCut: adminCutTx,
+            adminProfit: adminProfitTaken,
             debit: saleCalculation.totalAmount - adminCutTx,
             balance: (Number(storeDetails?.storeCurrentBalance) || 0) + 
             (Number(saleCalculation?.cashPayment) || 0) - 
@@ -692,6 +711,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               customerName: selectedCustomer.customerName,
               customerMobile: selectedCustomer.customerMobile,
               adminCut: adminCutTx,
+              adminProfit: adminProfitTaken,
               credit: saleCalculation.cashPayment,
               debit: saleCalculation.totalAmount - adminCutTx,
               balance: 

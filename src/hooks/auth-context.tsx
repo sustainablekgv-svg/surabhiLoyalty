@@ -25,9 +25,79 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  console.log("The user data in line 28 is", user);
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+
+  // Update initializeAuth to be more robust
+  const initializeAuth = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      
+      const storedUser = storageUtils.getUser();
+      
+      if (!storedUser) {
+        setIsInitialized(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if session is expired
+      if (sessionManager.isSessionExpired()) {
+        console.log('Session expired, clearing storage');
+        storageUtils.clearAll();
+        setIsInitialized(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // Verify user still exists in database
+      const userExists = await verifyUserExists(storedUser);
+      
+      if (userExists) {
+        setUser(storedUser);
+        sessionManager.updateActivity();
+      } else {
+        storageUtils.clearAll();
+      }
+    } catch (error) {
+      console.error('Auth initialization error:', error);
+      storageUtils.clearAll();
+    } finally {
+      setIsInitialized(true);
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Update the main useEffect
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+
+    const initAuth = async () => {
+      try {
+        unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+          if (!isInitialized) {
+            await initializeAuth();
+          }
+        });
+
+        if (!isInitialized) {
+          await initializeAuth();
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        setIsInitialized(true);
+        setIsLoading(false);
+      }
+    };
+
+    initAuth();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [initializeAuth, isInitialized]);
 
   const updateActivity = useCallback(() => {
     if (user) {
@@ -91,70 +161,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsLoading(false);
     }
   };
-
-  const initializeAuth = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      
-      const storedUser = storageUtils.getUser();
-      
-      if (!storedUser) {
-        return; // No stored user, initialization complete
-      }
-
-      // Check if session is expired
-      if (sessionManager.isSessionExpired()) {
-        console.log('Session expired, clearing storage');
-        storageUtils.clearAll();
-        return;
-      }
-
-      // Verify user still exists in database
-      const userExists = await verifyUserExists(storedUser);
-      
-      if (userExists) {
-        setUser(storedUser);
-        sessionManager.updateActivity();
-        console.log('User restored from storage');
-      } else {
-        console.log('User no longer exists in database, clearing storage');
-        storageUtils.clearAll();
-      }
-    } catch (error) {
-      console.error('Auth initialization error:', error);
-      storageUtils.clearAll();
-    } finally {
-      setIsLoading(false);
-      setIsInitialized(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
-
-    // Initialize auth state
-    const initAuth = async () => {
-      // Listen to Firebase auth state changes
-      unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-        if (!isInitialized) {
-          initializeAuth();
-        }
-      });
-
-      // If Firebase user is not immediately available, initialize anyway
-      if (!isInitialized) {
-        await initializeAuth();
-      }
-    };
-
-    initAuth();
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [initializeAuth, isInitialized]);
 
   useEffect(() => {
     // Set up activity listeners

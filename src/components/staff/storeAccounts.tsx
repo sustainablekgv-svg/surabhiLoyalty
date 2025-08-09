@@ -100,6 +100,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
           amount: data.amount || 0,
           debit: data.debit || 0,
           credit: data.credit || 0,
+          adminProfit: data.adminProfit || 0,
           balance: data.balance || 0,
           remarks: data.remarks || '',
           adminCut: data.adminCut || 0

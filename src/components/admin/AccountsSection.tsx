@@ -114,6 +114,7 @@ const Accounts = () => {
           amount: txData.amount || 0,
           debit: txData.debit || 0,
           adminCut: txData.adminCut || 0,
+          adminProfit: txData.adminProfit || 0,
           credit: txData.credit || 0,
           balance: txData.balance || 0,
           remarks: txData.remarks || ''
@@ -460,35 +461,39 @@ const Accounts = () => {
             </div>
           ) : (
             <>
-              <Table>
+              <Table className="min-w-full border-separate border-spacing-0 overflow-hidden">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
+                    <TableHead className="hidden md:table-cell">Date</TableHead>
                     <TableHead>Store</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Mobile</TableHead>
+                    <TableHead className="hidden md:table-cell">Customer</TableHead>
+                    <TableHead className="hidden md:table-cell">Mobile</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
-                    <TableHead className="text-right">Admin Cut</TableHead>
-                    <TableHead className="text-right">Credit</TableHead>
-                    <TableHead className="text-right">Debit</TableHead>
+                    <TableHead className="hidden lg:table-cell text-right">Admin Cut</TableHead>
+                    <TableHead className="hidden lg:table-cell text-right">Credit</TableHead>
+                    <TableHead className="hidden lg:table-cell text-right">Debit</TableHead>
+                    <TableHead className="hidden xl:table-cell text-right">Admin Profit</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
-                    <TableHead>Remarks</TableHead>
+                    <TableHead className="hidden md:table-cell">Remarks</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedTransactions.map((tx) => (
-                    <TableRow key={tx.id}>
-                      <TableCell>
+                    <TableRow key={tx.id} className="group hover:bg-gray-50">
+                      <TableCell className="hidden md:table-cell whitespace-nowrap">
                         {formatTradeTimestamp(tx.createdAt)}
                       </TableCell>
-                      <TableCell>
-                        {tx.storeName}
+                      <TableCell className="font-medium">
+                        <div>{tx.storeName}</div>
+                        <div className="md:hidden text-xs text-gray-500">
+                          {formatTradeTimestamp(tx.createdAt)}
+                        </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         {tx.customerName}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         {tx.customerMobile}
                       </TableCell>
                       <TableCell>
@@ -503,19 +508,22 @@ const Accounts = () => {
                         {tx.amount >= 0 ? '+' : ''}
                         ₹{tx.amount.toFixed(2)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="hidden lg:table-cell text-right">
                         {tx.adminCut > 0 ? `₹${tx.adminCut.toFixed(2)}` : '-'}
                       </TableCell>
-                      <TableCell className="text-right text-green-600">
-                        {tx.credit > 0 ? `+₹${tx.debit.toFixed(2)}` : '-'}
+                      <TableCell className="hidden lg:table-cell text-right text-green-600">
+                        {tx.credit > 0 ? `+₹${tx.credit.toFixed(2)}` : '-'}
                       </TableCell>
-                      <TableCell className="text-right text-red-600">
-                        {tx.debit > 0 ? `-₹${tx.credit.toFixed(2)}` : '-'}
+                      <TableCell className="hidden lg:table-cell text-right text-red-600">
+                        {tx.debit > 0 ? `-₹${tx.debit.toFixed(2)}` : '-'}
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell text-right">
+                        {Number(tx.adminProfit) && tx.adminProfit > 0 ? `₹${tx.adminProfit.toFixed(2)}` : '-'}
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         ₹{tx.balance.toFixed(2)}
                       </TableCell>
-                      <TableCell className="max-w-xs truncate">
+                      <TableCell className="hidden md:table-cell max-w-xs truncate">
                         {tx.remarks}
                       </TableCell>
                     </TableRow>

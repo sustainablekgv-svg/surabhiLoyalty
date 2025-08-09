@@ -14,7 +14,13 @@ import { getCustomerByMobile } from '@/lib/db';
 
 const Index = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
+  interface FormData {
+    mobile: string;
+    password: string;
+    role: 'customer' | 'staff' | 'admin';
+  }
+  
+  const [formData, setFormData] = useState<FormData>({
     mobile: '',
     password: '',
     role: 'customer'
@@ -28,14 +34,19 @@ const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Redirect if already authenticated
+  // Combined redirection useEffect - this fixes the hooks error
   useEffect(() => {
     if (isInitialized && isAuthenticated) {
-      const from = location.state?.from?.pathname || '/customer/dashboard';
-      navigate(from, { replace: true });
+      // Get the intended path from location state or use role-based default
+      const redirectPath = location.state?.from?.pathname ||
+        (formData.role === 'admin' ? '/admin/dashboard' :
+          formData.role === 'staff' ? '/staff/dashboard' :
+            '/customer/dashboard');
+      
+      navigate(redirectPath, { replace: true });
     }
-  }, [isAuthenticated, isInitialized, navigate, location]);
-
+  }, [isAuthenticated, isInitialized, formData.role, navigate, location]);
+  
   // Show loading while initializing
   if (!isInitialized) {
     return (
@@ -44,33 +55,26 @@ const Index = () => {
       </div>
     );
   }
-
+  
+  // Update the handleSubmit function
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+  
     if (!formData.role) {
       toast.error('Please select your role');
       return;
     }
-
+  
     try {
       const user = await login(formData.mobile, formData.password, formData.role);
-      console.log('Logged in user in Index.ts:', user);
-
+  
       if (user.role !== formData.role) {
         toast.error(`Access denied. You are not registered as ${formData.role}`);
         return;
       }
-
+  
+      // Don't navigate here - let the useEffect handle it
       toast.success('Login successful!');
-
-      // Navigate based on role
-      const redirectPath = location.state?.from?.pathname ||
-        (user.role === 'admin' ? '/admin/dashboard' :
-          user.role === 'staff' ? '/staff/dashboard' :
-            '/customer/dashboard');
-
-      navigate(redirectPath, { replace: true });
     } catch (error) {
       toast.error('Invalid credentials. Please try again.');
     }
@@ -106,16 +110,14 @@ const Index = () => {
         return;
       }
 
-      if (!customer.email) {
-        toast.error('No email registered for this account');
-        return;
-      }
-
-      setCustomerEmail(customer.email);
       setForgotPasswordMode(true);
 
-    } catch (error) {
-      toast.error('Error processing your request. Please try again.');
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error(error.message || 'Error processing your request. Please try again.');
+      } else {
+        toast.error('Error processing your request. Please try again.');
+      }
     } finally {
       setIsLoadingEmail(false);
     }
@@ -132,8 +134,12 @@ const Index = () => {
       toast.success(`Password reset email sent to ${customerEmail}`);
       setForgotPasswordMode(false);
       setCustomerEmail('');
-    } catch (error) {
-      toast.error('Failed to send reset email. Please try again.');
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error(error.message || 'Failed to send reset email. Please try again.');
+      } else {
+        toast.error('Failed to send reset email. Please try again.');
+      }
     }
   };
 
@@ -210,7 +216,7 @@ const Index = () => {
                     <Label htmlFor="role" className="text-sm font-medium text-gray-700">
                       Select Your Role
                     </Label>
-                    <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
+                    <Select value={formData.role} onValueChange={(value: 'customer' | 'staff' | 'admin') => setFormData({ ...formData, role: value })}>
                       <SelectTrigger className="h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500">
                         <div className="flex items-center gap-2">
                           <UserCircle className="h-4 w-4 text-gray-400" />

@@ -23,8 +23,9 @@ import {
   Table
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/auth-context'; // Import useAuth hook
 
-import { CustomerTxType, SevaPoolType } from '@/types/types';
+import { CustomerTxType, SevaPoolType, StaffType } from '@/types/types';
 
 interface Customer {
   id?: string;
@@ -76,6 +77,8 @@ function safeFormatDate(date: any, dateFormat: string = 'dd MMM yyyy'): string {
 }
 
 export const GoSevaPool = () => {
+  const { user } = useAuth(); // Get current user from auth context
+  const [adminDetails, setAdminDetails] = useState<StaffType | null>(null);
   const [sevaPool, setSevaPool] = useState<SevaPoolType>({
     currentSevaBalance: 0,
     totalContributions: 0,
@@ -95,9 +98,38 @@ export const GoSevaPool = () => {
   const [allocationDescription, setAllocationDescription] = useState('');
   const [isAllocationDialogOpen, setIsAllocationDialogOpen] = useState(false);
 
+  // Fetch admin details
+  const fetchAdminDetails = async () => {
+    if (!user || user.role !== 'admin') return;
+    
+    try {
+      const staffRef = collection(db, 'staff');
+      const q = query(staffRef, 
+        where('staffMobile', '==', user.mobile),
+        where('role', '==', 'admin')
+      );
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        const staffDoc = querySnapshot.docs[0];
+        setAdminDetails({
+          id: staffDoc.id,
+          ...staffDoc.data()
+        } as StaffType);
+      }
+    } catch (error) {
+      console.error('Error fetching admin details:', error);
+    }
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
+      
+      // Fetch admin details if not already fetched
+      if (!adminDetails && user) {
+        await fetchAdminDetails();
+      }
       
       // Fetch Seva Pool data
       const poolRef = doc(db, 'SevaPool', 'main');
@@ -200,6 +232,16 @@ export const GoSevaPool = () => {
       return;
     }
 
+    if (!allocationDescription.trim()) {
+      toast.error('Please enter a description for the allocation');
+      return;
+    }
+
+    if (!user || !adminDetails) {
+      toast.error('Admin details not available');
+      return;
+    }
+
     try {
       // Update Seva Pool
       const poolRef = doc(db, 'SevaPool', 'main');
@@ -213,19 +255,73 @@ export const GoSevaPool = () => {
         lastAllocatedDate: serverTimestamp()
       });
 
+      // Create a record in CustomerTx for the allocation
+      const timestamp = Timestamp.now();
+      await addDoc(collection(db, 'CustomerTx'), {
+        type: 'seva_allocation', // Use the correct type from the interface
+        customerMobile: adminDetails.staffMobile, // Use admin's mobile
+        customerName: adminDetails.staffName, // Use admin's name
+        storeLocation: adminDetails.storeLocation,
+        storeName: 'Go Seva Pool',
+        createdAt: timestamp,
+        paymentMethod: 'admin',
+        processedBy: adminDetails.staffName,
+        amount: amount,
+        surabhiEarned: 0,
+        sevaEarned: 0,
+        referralEarned: 0,
+        referredBy: null,
+        surabhiUsed: 0,
+        walletDeduction: 0,
+        cashPayment: 0,
+        previousBalance: {
+          walletBalance: currentSevaPool?.currentBalance || 0,
+          surabhiBalance: 0
+        },
+        newBalance: {
+          walletBalance: (currentSevaPool?.currentBalance || 0) - amount,
+          surabhiBalance: 0
+        },
+        walletCredit: 0,
+        walletDebit: amount, // Debit from the pool
+        walletBalance: (currentSevaPool?.currentBalance || 0) - amount,
+        surabhiDebit: 0,
+        surabhiCredit: 0,
+        surabhiBalance: 0,
+        sevaCredit: 0,
+        sevaDebit: amount, // Debit from the pool
+        sevaBalance: (currentSevaPool?.currentBalance || 0) - amount,
+        sevaTotal: currentSevaPool?.totalContributions || 0,
+        remarks: allocationDescription // Add description as remarks
+      });
+
+      // Also add to Activity log
+      await addDoc(collection(db, 'Activity'), {
+        type: 'seva_allocation',
+        remarks: allocationDescription,
+        amount: amount,
+        customerName: adminDetails.staffName,
+        customerMobile: adminDetails.staffMobile,
+        storeLocation: adminDetails.storeLocation || 'All Stores',
+        createdAt: timestamp
+      });
+
       // Update state
       setSevaPool({
         ...sevaPool,
         currentSevaBalance: sevaPool.currentSevaBalance - amount,
         totalAllocations: sevaPool.totalAllocations + amount,
         allocationsCurrentMonth: sevaPool.allocationsCurrentMonth + amount,
-        lastAllocatedDate: Timestamp.fromDate(new Date())
+        lastAllocatedDate: timestamp
       });
 
       setAllocationAmount('');
       setAllocationDescription('');
       setIsAllocationDialogOpen(false);
       toast.success(`₹${amount} allocated successfully`);
+      
+      // Refresh data to show the new transaction
+      fetchData();
     } catch (error) {
       console.error('Error allocating funds:', error);
       toast.error('Failed to allocate funds');
@@ -239,12 +335,12 @@ export const GoSevaPool = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [user]); // Re-fetch when user changes
 
   const monthlyStats = {
     totalContributions: transactions.reduce((sum, tx) => sum + (tx.sevaEarned || 0), 0),
-    totalAllocations: sevaPool.allocationsCurrentMonth,
-    contributorCount: customers.length,
+    totalAllocations: Number(sevaPool.allocationsCurrentMonth || 0),
+    totalContributors: customers.length,
     avgContribution: customers.length > 0
       ? transactions.reduce((sum, tx) => sum + (tx.sevaEarned || 0), 0) / customers.length
       : 0
@@ -259,15 +355,15 @@ export const GoSevaPool = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-2 sm:px-4 md:px-6">
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Go Seva Pool Management</h2>
-          <p className="text-gray-600">Manage community contribution pool and allocations</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Go Seva Pool Management</h2>
+          <p className="text-sm sm:text-base text-gray-600">Manage community contribution pool and allocations</p>
         </div>
 
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <Button variant="outline" onClick={handleRefresh} disabled={refreshing} className="flex-1 sm:flex-none">
             {refreshing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
@@ -278,12 +374,12 @@ export const GoSevaPool = () => {
 
           <Dialog open={isAllocationDialogOpen} onOpenChange={setIsAllocationDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600">
+              <Button className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 flex-1 sm:flex-none">
                 <Gift className="h-4 w-4 mr-2" />
                 Allocate Funds
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md mx-2 w-[calc(100%-1rem)] sm:w-full">
               <DialogHeader>
                 <DialogTitle>Allocate Go Seva Funds</DialogTitle>
                 <DialogDescription>
@@ -339,8 +435,8 @@ export const GoSevaPool = () => {
       </div>
 
       {/* Pool Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card className="bg-red-50 border-red-200 md:col-span-2 lg:col-span-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <Card className="bg-red-50 border-red-200 sm:col-span-2 lg:col-span-1">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Heart className="h-5 w-5 text-red-600" />
@@ -367,7 +463,7 @@ export const GoSevaPool = () => {
               <Users className="h-4 w-4 text-blue-600" />
               <span className="text-xs font-medium text-blue-600">Contributors</span>
             </div>
-            <p className="text-xl font-bold text-blue-900">{monthlyStats.contributorCount}</p>
+            <p className="text-xl font-bold text-blue-900">{monthlyStats.totalContributors}</p>
           </CardContent>
         </Card>
 
@@ -387,7 +483,7 @@ export const GoSevaPool = () => {
               <Gift className="h-4 w-4 text-amber-600" />
               <span className="text-xs font-medium text-amber-600">Total Allocated</span>
             </div>
-            <p className="text-xl font-bold text-amber-900">₹{monthlyStats.totalAllocations.toLocaleString()}</p>
+            <p className="text-xl font-bold text-amber-900">₹{typeof monthlyStats.totalAllocations === 'number' ? monthlyStats.totalAllocations.toLocaleString() : '0'}</p>
           </CardContent>
         </Card>
       </div>
@@ -395,7 +491,7 @@ export const GoSevaPool = () => {
       {/* Recent Transactions */}
       <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <History className="h-5 w-5 text-gray-600" />
@@ -420,39 +516,39 @@ export const GoSevaPool = () => {
               <p>No Seva contributions found for this month</p>
             </div>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border rounded-lg overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Store</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seva Earned</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Store</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seva Earned</th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {transactions.map((tx) => (
                     <tr key={tx.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                         {safeFormatDate(tx.createdAt)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{tx.customerName}</div>
-                        <div className="text-sm text-gray-500">{tx.customerMobile}</div>
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                        <div className="text-xs sm:text-sm font-medium text-gray-900">{tx.customerName}</div>
+                        <div className="text-xs sm:text-sm text-gray-500">{tx.customerMobile}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                         {tx.storeName || tx.storeLocation}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                         ₹{tx.amount.toLocaleString()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-green-600">
                         ₹{tx.sevaEarned?.toLocaleString() || 0}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge variant="outline">
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                        <Badge variant="outline" className="text-xs">
                           {tx.paymentMethod || 'recharge'}
                         </Badge>
                       </td>
@@ -483,7 +579,7 @@ export const GoSevaPool = () => {
               <p>No contributors found for this month</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {customers.map(customer => (
                 <div key={customer.mobile} className="flex flex-col p-4 border rounded-lg gap-3">
                   <div className="flex items-center gap-4">
@@ -494,14 +590,14 @@ export const GoSevaPool = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-900 truncate">{customer.name}</p>
-                      <p className="text-sm text-gray-600">{customer.mobile}</p>
+                      <p className="text-xs sm:text-sm text-gray-600">{customer.mobile}</p>
                       {customer.storeLocation && (
                         <p className="text-xs text-gray-500">{customer.storeLocation}</p>
                       )}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm">
                     <div className="space-y-1">
                       <p className="text-gray-500">Current Month Seva Contribution</p>
                       <p className="font-bold text-green-600">

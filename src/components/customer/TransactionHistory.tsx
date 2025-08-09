@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
-import { collection, query, where, orderBy, getDocs, Timestamp, getDoc, doc } from 'firebase/firestore';
+import { Search, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { collection, query, where, orderBy, getDocs, Timestamp, getDoc, doc, limit, startAfter } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/auth-context';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -25,42 +26,92 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [transactions, setTransactions] = useState<CustomerTxType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
+  const [lastVisible, setLastVisible] = useState<any>(null);
+  const [hasMore, setHasMore] = useState(true);
+
+  const fetchTransactions = async (isInitial = false) => {
+    try {
+      if (isInitial) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+
+      const customerDoc = await getDoc(doc(db, 'Customers', userId));
+      if (!customerDoc.exists()) {
+        throw new Error('Customer not found');
+      }
+
+      const mobileNumber = customerDoc.data().customerMobile;
+      
+      let txQuery;
+      
+      if (isInitial) {
+        // Initial query
+        txQuery = query(
+          collection(db, 'CustomerTx'),
+          where('customerMobile', '==', mobileNumber),
+          orderBy('createdAt', 'desc'),
+          limit(recordsPerPage)
+        );
+      } else {
+        // Load more query - start after the last document
+        if (!lastVisible) {
+          setHasMore(false);
+          setLoadingMore(false);
+          return;
+        }
+        
+        txQuery = query(
+          collection(db, 'CustomerTx'),
+          where('customerMobile', '==', mobileNumber),
+          orderBy('createdAt', 'desc'),
+          startAfter(lastVisible),
+          limit(recordsPerPage)
+        );
+      }
+
+      const querySnapshot = await getDocs(txQuery);
+      
+      // Check if we have more data to load
+      if (querySnapshot.empty || querySnapshot.docs.length < recordsPerPage) {
+        setHasMore(false);
+      } else {
+        // Set the last visible document for pagination
+        setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
+      }
+
+      const txData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...(doc.data() as CustomerTxType)
+      })) as CustomerTxType[];
+
+      if (isInitial) {
+        setTransactions(txData);
+      } else {
+        setTransactions(prev => [...prev, ...txData]);
+      }
+    } catch (err) {
+      setError('Failed to fetch transactions');
+      console.error('Error fetching transactions:', err);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchTransactions = async () => {
-      try {
-        const customerDoc = await getDoc(doc(db, 'Customers', userId));
-        if (!customerDoc.exists()) {
-          throw new Error('Customer not found');
-        }
+    fetchTransactions(true);
+  }, [userId, recordsPerPage]);
 
-        const mobileNumber = customerDoc.data().mobile;
-        const txQuery = query(
-          collection(db, 'CustomerTx'),
-          where('mobile', '==', mobileNumber),
-          orderBy('createdAt', 'desc')
-        );
-
-        const querySnapshot = await getDocs(txQuery);
-        const txData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as CustomerTxType[];
-
-        setTransactions(txData);
-      } catch (err) {
-        setError('Failed to fetch transactions');
-        console.error('Error fetching transactions:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTransactions();
-  }, [userId]);
+  const handleLoadMore = () => {
+    if (!loadingMore && hasMore) {
+      fetchTransactions(false);
+    }
+  };
 
   const formatDate = (timestamp: Timestamp) => {
     const date = timestamp.toDate();
@@ -82,16 +133,8 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
   };
 
   const filteredTransactions = transactions.filter(tx =>
-    tx.storeLocation.toLowerCase().includes(searchTerm.toLowerCase())
+    tx.storeLocation?.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  // Pagination logic
-  const indexOfLastRecord = currentPage * recordsPerPage;
-  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
-  const currentRecords = filteredTransactions.slice(indexOfFirstRecord, indexOfLastRecord);
-  const totalPages = Math.ceil(filteredTransactions.length / recordsPerPage);
-
-  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   if (loading) {
     return (
@@ -107,7 +150,10 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
         <p className="text-lg font-medium">{error}</p>
         <button
           className="mt-4 px-4 py-2 bg-gray-100 rounded-md hover:bg-gray-200"
-          onClick={() => window.location.reload()}
+          onClick={() => {
+            setError(null);
+            fetchTransactions(true);
+          }}
         >
           Retry
         </button>
@@ -131,6 +177,25 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
                   className="pl-10"
                 />
               </div>
+              <Select
+                value={recordsPerPage.toString()}
+                onValueChange={(value) => {
+                  setRecordsPerPage(Number(value));
+                  setLastVisible(null);
+                  setHasMore(true);
+                }}
+              >
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="Records" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[10, 20, 50].map((size) => (
+                    <SelectItem key={size} value={size.toString()}>
+                      {size} per page
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardHeader>
@@ -155,8 +220,8 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {currentRecords.length > 0 ? (
-                  currentRecords.map((tx) => (
+                {filteredTransactions.length > 0 ? (
+                  filteredTransactions.map((tx) => (
                     <TableRow key={tx.id}>
                       <TableCell>{formatDate(tx.createdAt)}</TableCell>
                       <TableCell>{tx.storeLocation}</TableCell>
@@ -183,51 +248,34 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
             </Table>
           </div>
 
-          {/* Pagination Controls */}
-          <div className="flex items-center justify-between mt-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Rows per page:</span>
-              <Select
-                value={recordsPerPage.toString()}
-                onValueChange={(value) => {
-                  setRecordsPerPage(Number(value));
-                  setCurrentPage(1);
-                }}
-              >
-                <SelectTrigger className="h-8 w-[70px]">
-                  <SelectValue placeholder={recordsPerPage} />
-                </SelectTrigger>
-                <SelectContent>
-                  {[5, 10, 20, 50, 100].map((size) => (
-                    <SelectItem key={size} value={size.toString()}>
-                      {size}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* Load More Button */}
+          {filteredTransactions.length > 0 && (
+            <div className="flex justify-center mt-6">
+              {hasMore ? (
+                <Button 
+                  onClick={handleLoadMore} 
+                  disabled={loadingMore}
+                  variant="outline"
+                  className="w-full max-w-xs"
+                >
+                  {loadingMore ? (
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-gray-500 border-t-transparent"></div>
+                      Loading...
+                    </>
+                  ) : (
+                    'Load More Transactions'
+                  )}
+                </Button>
+              ) : (
+                <p className="text-sm text-gray-500">All transactions loaded</p>
+              )}
             </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="p-1 rounded-md border disabled:opacity-50"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-
-              <span className="text-sm font-medium">
-                Page {currentPage} of {totalPages}
-              </span>
-
-              <button
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="p-1 rounded-md border disabled:opacity-50"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
+          )}
+          
+          {/* Transaction Count */}
+          <div className="mt-4 text-sm text-gray-500 text-center">
+            Showing {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''}
           </div>
         </CardContent>
       </Card>

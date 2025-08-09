@@ -70,6 +70,8 @@ useEffect(() => {
     // Cleanup function if needed
   };
 }, [storeLocation]);
+    // Add these imports at the top
+    
     // Add these state variables at the top of the component
     const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot | null>(null);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -87,6 +89,7 @@ useEffect(() => {
         const q = query(
           collection(db, 'CustomerTx'),
           where('storeLocation', '==', storeLocation),
+          where('type', '==', activeTab === 'sales' ? 'sale' : 'recharge'),
           orderBy('createdAt', 'desc'),
           limit(ITEMS_PER_PAGE)
         );
@@ -115,7 +118,7 @@ useEffect(() => {
       }
     };
     
-    // Add this new function to load more transactions
+    // Add loadMoreTransactions function
     const loadMoreTransactions = async () => {
       if (!lastVisible || !hasMore || isLoadingMore) return;
     
@@ -125,6 +128,7 @@ useEffect(() => {
         const q = query(
           collection(db, 'CustomerTx'),
           where('storeLocation', '==', storeLocation),
+          where('type', '==', activeTab === 'sales' ? 'sale' : 'recharge'),
           orderBy('createdAt', 'desc'),
           startAfter(lastVisible),
           limit(ITEMS_PER_PAGE)
@@ -153,6 +157,15 @@ useEffect(() => {
         setIsLoadingMore(false);
       }
     };
+    
+    // Update the useEffect hook for tab changes
+    useEffect(() => {
+      setTransactions([]);
+      setFilteredTransactions([]);
+      setLastVisible(null);
+      setHasMore(true);
+      fetchTransactions();
+    }, [storeLocation, activeTab]);
     
     // Replace the existing pagination section with this new one
     {filteredTransactions.length > 0 && (

@@ -78,8 +78,6 @@ export const CustomerManagement = () => {
             saleElgibility: data.saleElgibility || false,
             walletId: data.walletId || '',
             walletBalance: data.walletBalance || 0,
-            walletCredit: data.walletCredit || 0,
-            walletDebit: data.walletDebit || 0,
             walletBalanceCurrentMonth: data.walletBalanceCurrentMonth || 0,
             surabhiBalance: data.surabhiBalance || data.surabhiCoins || 0,
             surabhiCredit: data.surabhiCredit || 0,
@@ -624,7 +622,7 @@ export const CustomerManagement = () => {
             </div>
             <div className="flex items-center gap-1 mt-2">
               <span className="text-sm text-muted-foreground">
-                Top referrers
+                Total referrals
               </span>
             </div>
           </CardContent>
