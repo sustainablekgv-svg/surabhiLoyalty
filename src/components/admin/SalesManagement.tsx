@@ -137,6 +137,7 @@ export const SalesManagement = () => {
 
   const totalStats = {
     totalSales: filteredTransactions.reduce((sum, t) => sum + Number(t.amount || 0), 0),
+    // totalAdminProfit: filteredTransactions.reduce((sum, t) => sum + Number(t.adminProfit || 0), 0),
 
     totalTransactions: filteredTransactions.length,
     totalSurabhiCoinsUsed: filteredTransactions.reduce((sum, t) => sum + (t.surabhiUsed || 0), 0),
