@@ -415,8 +415,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             // Add CustomerTx record for the referral Surabhi Coins earned by referrer
             const referrerTxData: CustomerTxType = {
               type: 'surabhi_earn',
-              customerMobile: selectedCustomer.referredBy,
-              customerName: referrerData.referredBy,
+              customerMobile: referrerData.customerMobile,
+              customerName: referrerData.customerName,
               storeLocation: selectedCustomer.storeLocation,
               storeName: selectedCustomer.storeLocation,
               createdAt: Timestamp.fromDate(new Date()),
@@ -943,9 +943,9 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           // Add CustomerTx record for the referral Surabhi Coins earned by referrer
           const referrerTxData = {
             type: 'surabhi_earn',
-            customerMobile: selectedCustomer.referredBy,
-            customerName: referrer.referredBy,
-            storeLocation: selectedCustomer.storeLocation,
+            customerMobile: referrer.customerMobile,
+            customerName: referrer.customerName,
+            storeLocation: referrer.storeLocation,
             storeName: selectedCustomer.storeLocation,
             createdAt: Timestamp.fromDate(new Date()),
             processedBy: user.name,
