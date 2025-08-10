@@ -90,9 +90,12 @@ export const GoSevaPool = () => {
   });
 
   const [transactions, setTransactions] = useState<CustomerTxType[]>([]);
+  const [filteredTransactions, setFilteredTransactions] = useState<CustomerTxType[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [storeLocations, setStoreLocations] = useState<string[]>([]);
+  const [selectedStoreLocation, setSelectedStoreLocation] = useState<string>('All Locations');
 
   const [allocationAmount, setAllocationAmount] = useState('');
   const [allocationDescription, setAllocationDescription] = useState('');
@@ -249,9 +252,31 @@ export const GoSevaPool = () => {
         } as CustomerTxType);
       });
       
-      // Convert map to array
-      const transactionsData = Array.from(transactionsMap.values());
-      setTransactions(transactionsData.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
+      // Convert map to array and sort by most recent date first
+      const transactionsData = Array.from(transactionsMap.values())
+        .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+      
+      // Extract unique store locations
+      const uniqueStoreLocations = Array.from(
+        new Set(
+          transactionsData
+            .map(tx => tx.storeLocation)
+            .filter(location => location) // Filter out undefined/null values
+        )
+      ).sort();
+      
+      setStoreLocations(['All Locations', ...uniqueStoreLocations]);
+      setTransactions(transactionsData);
+      setFilteredTransactions(transactionsData);
+      
+      // Filter transactions based on selected store location
+      if (selectedStoreLocation !== 'All Locations') {
+        setFilteredTransactions(
+          transactionsData.filter(tx => 
+            (tx.storeLocation === selectedStoreLocation)
+          )
+        );
+      }
 
       // Calculate top customers based on sevaEarned and sevaDebit
       const customerContributions = transactionsData.reduce((acc: Record<string, Customer>, tx) => {
@@ -402,6 +427,20 @@ export const GoSevaPool = () => {
   useEffect(() => {
     fetchData();
   }, [user]); // Re-fetch when user changes
+
+  // Filter transactions when selected store location changes
+  useEffect(() => {
+    if (selectedStoreLocation === 'All Locations') {
+      setFilteredTransactions(transactions);
+    } else {
+      setFilteredTransactions(
+        transactions.filter(tx => 
+          (tx.storeLocation === selectedStoreLocation) || 
+          (tx.storeName === selectedStoreLocation)
+        )
+      );
+    }
+  }, [selectedStoreLocation, transactions]);
 
   const monthlyStats = {
     totalContributions: transactions.reduce((sum, tx) => sum + (tx.sevaEarned || 0), 0),
@@ -568,18 +607,34 @@ export const GoSevaPool = () => {
               </CardDescription>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-gray-500" />
-              <span className="text-sm text-gray-600">{safeFormatDate(new Date(), 'MMMM yyyy')}</span>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-gray-500" />
+                <span className="text-sm text-gray-600">{safeFormatDate(new Date(), 'MMMM yyyy')}</span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <select 
+                  className="text-sm border rounded-md px-2 py-1 bg-white"
+                  value={selectedStoreLocation}
+                  onChange={(e) => setSelectedStoreLocation(e.target.value)}
+                >
+                  {storeLocations.map(location => (
+                    <option key={location} value={location}>
+                      {location}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         </CardHeader>
 
         <CardContent>
-          {transactions.length === 0 ? (
+          {filteredTransactions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-500">
               <History className="h-8 w-8" />
-              <p>No Seva contributions found for this month</p>
+              <p>No Seva contributions found for {selectedStoreLocation === 'All Locations' ? 'this month' : selectedStoreLocation}</p>
             </div>
           ) : (
             <div className="border rounded-lg overflow-x-auto">
@@ -597,7 +652,7 @@ export const GoSevaPool = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {transactions.map((tx) => (
+                  {filteredTransactions.map((tx) => (
                     <tr key={tx.id} className="hover:bg-gray-50">
                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                         {safeFormatDate(tx.createdAt)}
