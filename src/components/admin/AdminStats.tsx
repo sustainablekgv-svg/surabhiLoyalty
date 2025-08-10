@@ -131,49 +131,49 @@ export const AdminStats = () => {
       });
       
       // Real-time listener for sales data
-      // const today = new Date().toISOString().split('T')[0];
-      // const salesQuery = query(collection(db, 'SalesTransaction'));
-      // const unsubscribeSales = onSnapshot(salesQuery, (snapshot) => {
-        // const storeStats = {
-        //   'Downtown Branch': { transactions: 0, sales: 0 },
-        //   'Mall Branch': { transactions: 0, sales: 0 }
-        // };
+      const today = new Date().toISOString().split('T')[0];
+      const salesQuery = query(collection(db, 'SalesTransaction'));
+      const unsubscribeSales = onSnapshot(salesQuery, (snapshot) => {
+        const storeStats = {
+          'Downtown Branch': { transactions: 0, sales: 0 },
+          'Mall Branch': { transactions: 0, sales: 0 }
+        };
 
-        // snapshot.forEach(doc => {
-        //   const sale = doc.data();
-        //   const saleDate = sale.date?.toDate?.().toISOString().split('T')[0];
+        snapshot.forEach(doc => {
+          const sale = doc.data();
+          const saleDate = sale.date?.toDate?.().toISOString().split('T')[0];
           
-        //   if (saleDate === today) {
-        //     if (sale.storeLocation === 'Downtown Branch') {
-        //       storeStats['Downtown Branch'].transactions++;
-        //       storeStats['Downtown Branch'].sales += sale.amount;
-        //     } else if (sale.storeLocation === 'Mall Branch') {
-        //       storeStats['Mall Branch'].transactions++;
-        //       storeStats['Mall Branch'].sales += sale.amount;
-        //     }
-        //   }
-        // });
+          if (saleDate === today) {
+            if (sale.storeLocation === 'Downtown Branch') {
+              storeStats['Downtown Branch'].transactions++;
+              storeStats['Downtown Branch'].sales += sale.amount;
+            } else if (sale.storeLocation === 'Mall Branch') {
+              storeStats['Mall Branch'].transactions++;
+              storeStats['Mall Branch'].sales += sale.amount;
+            }
+          }
+        });
 
-        // setStorePerformance([
-        //   {
-        //     name: 'Downtown Branch',
-        //     transactions: storeStats['Downtown Branch'].transactions,
-        //     sales: storeStats['Downtown Branch'].sales
-        //   },
-        //   {
-        //     name: 'Mall Branch',
-        //     transactions: storeStats['Mall Branch'].transactions,
-        //     sales: storeStats['Mall Branch'].sales
-        //   }
-        // ]);
+        setStorePerformance([
+          {
+            name: 'Downtown Branch',
+            transactions: storeStats['Downtown Branch'].transactions,
+            sales: storeStats['Downtown Branch'].sales
+          },
+          {
+            name: 'Mall Branch',
+            transactions: storeStats['Mall Branch'].transactions,
+            sales: storeStats['Mall Branch'].sales
+          }
+        ]);
         
-      //   setLoading(false);
-      //   setStoreLoading(false);
-      // }, (error) => {
-      //   console.error('Error listening to sales updates:', error);
-      //   setLoading(false);
-      //   setStoreLoading(false);
-      // });
+        setLoading(false);
+        setStoreLoading(false);
+      }, (error) => {
+        console.error('Error listening to sales updates:', error);
+        setLoading(false);
+        setStoreLoading(false);
+      });
       
       // Cleanup function to unsubscribe from all listeners when component unmounts
       return () => {
