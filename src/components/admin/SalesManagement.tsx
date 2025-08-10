@@ -54,7 +54,7 @@ export const SalesManagement = () => {
   const fetchTransactions = async () => {
     try {
       const transactionsRef = collection(db, 'CustomerTx');
-      const q = query(transactionsRef, orderBy('createdAt', 'desc'));
+      const q = query(transactionsRef, where('amount', '>', 0), orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(q);
       const transactionsData = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -326,6 +326,7 @@ export const SalesManagement = () => {
                       <TableRow>
                         <TableHead>Customer</TableHead>
                         <TableHead>Mobile</TableHead>
+                        <TableHead>Invoice ID</TableHead>
                         <TableHead>Amount</TableHead>
                         <TableHead>Payment</TableHead>
                         <TableHead>Wallet</TableHead>
@@ -349,6 +350,9 @@ export const SalesManagement = () => {
                           </TableCell>
                           <TableCell>
                             {transaction.customerMobile || 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            {transaction.invoiceId || 'N/A'}
                           </TableCell>
                           <TableCell className="font-bold">
                             ₹{transaction.amount}
@@ -502,6 +506,7 @@ export const SalesManagement = () => {
                       <TableRow>
                         <TableHead>Customer</TableHead>
                         <TableHead>Mobile</TableHead>
+                        <TableHead>Invoice ID</TableHead>
                         <TableHead>Amount</TableHead>
                         <TableHead>Store</TableHead>
                         <TableHead>Coins Earned</TableHead>
@@ -518,6 +523,9 @@ export const SalesManagement = () => {
                           </TableCell>
                           <TableCell>
                             {recharge.customerMobile}
+                          </TableCell>
+                          <TableCell>
+                            {recharge.invoiceId || 'N/A'}
                           </TableCell>
                           <TableCell className="text-green-600">
                             ₹{recharge.amount}

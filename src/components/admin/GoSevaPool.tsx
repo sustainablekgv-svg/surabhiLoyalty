@@ -395,6 +395,14 @@ export const GoSevaPool = () => {
 
       // Create a record in CustomerTx for the allocation
       const timestamp = Timestamp.now();
+      
+      // Generate a unique invoice ID (timestamp + random string)
+      const generateInvoiceId = () => {
+        const timestamp = new Date().getTime();
+        const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
+        return `INV-${timestamp}-${randomStr}`;
+      };
+      
       await addDoc(collection(db, 'CustomerTx'), {
         type: 'seva_allocation', // Use the correct type from the interface
         customerMobile: adminDetails.staffMobile, // Use admin's mobile
@@ -404,6 +412,7 @@ export const GoSevaPool = () => {
         createdAt: timestamp,
         paymentMethod: 'admin',
         processedBy: adminDetails.staffName,
+        invoiceId: generateInvoiceId(), // Add unique invoice ID
         amount: amount,
         surabhiEarned: 0,
         sevaEarned: 0,

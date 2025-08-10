@@ -70,6 +70,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerType | null>(null);
   const [rechargeAmount, setRechargeAmount] = useState('');
+  const [invoiceId, setInvoiceId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [customers, setCustomers] = useState<CustomerType[]>([]);
   const [isFetchingCustomers, setIsFetchingCustomers] = useState(true);
@@ -384,6 +385,16 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       // Update customer document in Firestore
       await updateDoc(customerDoc.ref, updateData);
 
+      // Generate a unique invoice ID (timestamp + random string) or use provided one
+      const generateInvoiceId = () => {
+        if (invoiceId.trim()) {
+          return invoiceId.trim();
+        }
+        const timestamp = new Date().getTime();
+        const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
+        return `INV-${timestamp}-${randomStr}`;
+      };
+
       // Create CustomerTx record
       const customerTxData: Omit<CustomerTxType, 'id'> = {
         type: 'recharge',
@@ -393,6 +404,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         storeName: storeDetails.storeName,
         createdAt: Timestamp.fromDate(new Date()),
         staffName: user.name,
+        invoiceId: generateInvoiceId(), // Add unique invoice ID
         amount: rechargeAmountNum,
         surabhiEarned: surabhiCoinsEarned,
         processedBy: user.name,
@@ -412,15 +424,20 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
 
       await addDoc(collection(db, 'CustomerTx'), customerTxData);
 
+      // Use the same invoice ID for both CustomerTx and AccountTx for consistency
+      const txInvoiceId = invoiceId.trim() ? invoiceId.trim() : generateInvoiceId();
+      
       const accountTxData: Omit<AccountTxType, 'id'> = {
         createdAt: Timestamp.fromDate(new Date()),
         storeName: storeDetails.storeName,
         type: 'recharge',
         amount: rechargeAmountNum,
+        invoiceId: txInvoiceId, // Add invoice ID for consistency
         credit: rechargeAmountNum,
         adminCut: 0,
         debit: 0,
         currentBalance: storeDetails.storeCurrentBalance + rechargeAmountNum,
+        adminCurrentBalance: storeDetails.adminCurrentBalance - rechargeAmountNum,
         sevaBalance: storeDetails.storeSevaBalance + sevaAmountEarned, // Total seva balance after increment
         remarks: `Recharge for ${selectedCustomer.customerName} (${selectedCustomer.customerMobile})`,
         customerName: selectedCustomer.customerName,
@@ -529,6 +546,7 @@ if (currentData.referredBy && referralAmount > 0) {
       storeName: storeLocation,
       createdAt: Timestamp.fromDate(new Date()),
       processedBy: user.name,
+      invoiceId: generateInvoiceId(), // Add unique invoice ID
       amount: referralAmount,
       walletCredit: 0,
       walletDebit: 0,
@@ -658,6 +676,7 @@ if (currentData.referredBy && referralAmount > 0) {
       setRechargeAmount('');
       setSelectedCustomer(null);
       setSearchTerm('');
+      setInvoiceId('');
       setShowConfirmation(false);
     } catch (error) {
       toast.error('Recharge failed. Please try again.');
@@ -941,6 +960,17 @@ if (currentData.referredBy && referralAmount > 0) {
                   {rechargeAmountNum > 0 && rechargeAmountNum < 2000 && (
                     <p className="text-sm text-red-500">Minimum recharge amount is ₹2,000</p>
                   )}
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="invoiceId">Invoice ID (Optional)</Label>
+                  <Input
+                    id="invoiceId"
+                    placeholder="Enter invoice ID or leave blank for auto-generation"
+                    value={invoiceId}
+                    onChange={(e) => setInvoiceId(e.target.value)}
+                    className="h-12"
+                  />
                 </div>
 
                 {rechargeAmountNum >= 2000 && storeDetails && (

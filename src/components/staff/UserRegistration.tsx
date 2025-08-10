@@ -48,7 +48,9 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
     referredBy: '',
     gender: '',
     isStudent: false,
-    tpin: ''
+    tpin: '',
+    district: '',
+    city: ''
   });
 
   // Initialize auth state
@@ -204,6 +206,8 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
         customerMobile: formData.customerMobile,
         customerEmail: formData.customerEmail,
         storeLocation,
+        district: formData.district || null,
+        city: formData.city || null,
         referredBy: formData.referredBy || null,
         referredUsers: null,
         customerPassword: formData.customerPassword,
@@ -263,7 +267,9 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
         referredBy: '',
         gender: '',
         isStudent: false,
-        tpin: ''
+        tpin: '',
+        district: '',
+        city: ''
       });
       setReferralName(null);
       setIsElgibleForReferral(false);
@@ -404,6 +410,40 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                       onChange={(e) => setFormData({ ...formData, customerEmail: e.target.value })}
                       className="w-full pl-10 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       required
+                    />
+                  </div>
+                </div>
+
+                {/* City Field */}
+                <div className="space-y-2">
+                  <label htmlFor="city" className="block text-sm font-medium text-gray-700">
+                    City (Optional)
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="city"
+                      type="text"
+                      placeholder="Enter city"
+                      value={formData.city}
+                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      className="w-full pl-3 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* District Field */}
+                <div className="space-y-2">
+                  <label htmlFor="district" className="block text-sm font-medium text-gray-700">
+                    District (Optional)
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="district"
+                      type="text"
+                      placeholder="Enter district"
+                      value={formData.district}
+                      onChange={(e) => setFormData({ ...formData, district: e.target.value })}
+                      className="w-full pl-3 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                 </div>

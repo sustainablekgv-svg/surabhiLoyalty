@@ -53,6 +53,8 @@ export const AdminRecentActivity = () => {
           sevaCommission: Number(doc.data().sevaCommission) || 0,
           cashOnlyCommission: Number(doc.data().cashOnlyCommission) || 0,
           storeStatus: doc.data().storeStatus || 'active',
+          adminCurrentBalance: Number(doc.data().adminCurrentBalance) || 0,
+          adminStoreProfit: Number(doc.data().adminStoreProfit) || 0,
           storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
           storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date()
         })) as StoreType[];

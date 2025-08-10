@@ -90,6 +90,7 @@ useEffect(() => {
           collection(db, 'CustomerTx'),
           where('storeLocation', '==', storeLocation),
           where('type', '==', activeTab === 'sales' ? 'sale' : 'recharge'),
+          where('amount', '>', 0),
           orderBy('createdAt', 'desc'),
           limit(ITEMS_PER_PAGE)
         );
@@ -129,6 +130,7 @@ useEffect(() => {
           collection(db, 'CustomerTx'),
           where('storeLocation', '==', storeLocation),
           where('type', '==', activeTab === 'sales' ? 'sale' : 'recharge'),
+          where('amount', '>', 0),
           orderBy('createdAt', 'desc'),
           startAfter(lastVisible),
           limit(ITEMS_PER_PAGE)

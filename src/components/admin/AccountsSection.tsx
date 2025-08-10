@@ -120,6 +120,7 @@ const Accounts = () => {
           currentBalance: txData.currentBalance || 0,
           sevaBalance: txData.sevaBalance || 0,
           adminCurrentBalance: txData.adminCurrentBalance || 0,
+          // invoiceId: txData.invoiceId || '',
           remarks: txData.remarks || ''
         };
 
@@ -159,6 +160,9 @@ const Accounts = () => {
       const amount = Number(settlementAmount);
       const newStoreBalance = (selectedStoreForSettlement.storeCurrentBalance || 0) + amount;
 
+      // Generate invoice ID for the settlement transaction
+      const invoiceId = `STLMNT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
       // Create the transaction
       const newTx = {
         createdAt: Timestamp.now(),
@@ -171,6 +175,7 @@ const Accounts = () => {
         debit: amount < 0 ? Math.abs(amount) : 0,
         adminCut: 0,
         balance: newStoreBalance,
+        invoiceId: invoiceId,
         remarks: settlementDescription || `Settlement adjustment for ${selectedStoreForSettlement.storeName}`
       };
 

@@ -85,6 +85,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
   const [showTPINModal, setShowTPINModal] = useState(false);
   const [enteredTPIN, setEnteredTPIN] = useState("");
+  const [invoiceId, setInvoiceId] = useState("");
 
   const [sevaPool, setSevaPool] = useState<SevaPoolType>({
     currentSevaBalance: 0,
@@ -421,6 +422,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               storeName: selectedCustomer.storeLocation,
               createdAt: Timestamp.fromDate(new Date()),
               processedBy: user.name,
+              invoiceId: `INV-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`, // Add unique invoice ID
               amount: 0,
               surabhiEarned: incrementAmount,
               sevaEarned: 0,
@@ -477,6 +479,9 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       // Add AccountTx record(s) based on payment method
       if (paymentMethod === "wallet") {
         const adminCutTx = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
+        // Generate invoice ID or use the provided one
+        // const txInvoiceId = invoiceId.trim() ? invoiceId.trim() : generateInvoiceId();
+        
         const accountTxData: Omit<AccountTxType, 'id'> = {
           createdAt: Timestamp.fromDate(new Date()),
           storeName: storeDetails.storeName,
@@ -485,6 +490,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           adminProfit:adminProfitTaken,
           type: 'sale',
           amount: saleAmount,
+          // invoiceId: txInvoiceId, // Add invoice ID for consistency
           credit: 0,
           debit: saleCalculation.totalAmount - adminCutTx,
           adminCut: adminCutTx,
@@ -543,6 +549,16 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 //   sevaTotal: number;
 // }
 
+        // Generate a unique invoice ID or use the provided one
+        const generateInvoiceId = () => {
+          if (invoiceId.trim()) {
+            return invoiceId.trim();
+          }
+          const timestamp = new Date().getTime();
+          const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
+          return `INV-${timestamp}-${randomStr}`;
+        };
+        
         // Create CustomerTx record
         const customerTxData: Omit<Partial<CustomerTxType>, 'id'> = {
           type: 'sale', // Added the required type field
@@ -553,6 +569,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           createdAt: Timestamp.fromDate(new Date()),
           paymentMethod: paymentMethod, 
           processedBy: user.name, 
+          invoiceId: generateInvoiceId(), // Add unique invoice ID
           
           // Sale-Specific Fields
           surabhiUsed: saleCalculation.surabhiCoinsUsed,
@@ -609,11 +626,15 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       } else
         if (paymentMethod === 'cash') {
           const adminCutTx = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
+          // Generate invoice ID or use the provided one
+          // const txInvoiceId = invoiceId.trim() ? invoiceId.trim() : generateInvoiceId();
+          
           const accountTxData: Omit<AccountTxType, 'id'> = {
             createdAt: Timestamp.fromDate(new Date()),
             storeName: storeDetails.storeName,
             type: 'sale',
             amount: saleAmount,
+            // invoiceId: txInvoiceId, // Add invoice ID for consistency
             customerName: selectedCustomer.customerName,
             customerMobile: selectedCustomer.customerMobile,
             credit: saleCalculation.cashPayment,
@@ -667,6 +688,16 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           //   sevaTotal: (selectedCustomer.sevaBalance) + saleCalculation.goSevaContribution
           // };
 
+          // Generate a unique invoice ID or use the provided one
+          const generateInvoiceId = () => {
+            if (invoiceId.trim()) {
+              return invoiceId.trim();
+            }
+            const timestamp = new Date().getTime();
+            const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
+            return `INV-${timestamp}-${randomStr}`;
+          };
+
           const customerTxData: Omit<Partial<CustomerTxType>, 'id'> = {
             type: 'sale', // Added the required type field
             customerMobile: selectedCustomer.customerMobile,
@@ -676,6 +707,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             createdAt: Timestamp.fromDate(new Date()),
             paymentMethod: paymentMethod, 
             processedBy: user.name, 
+            invoiceId: generateInvoiceId(), // Add unique invoice ID
             
             // Sale-Specific Fields
             surabhiUsed: saleCalculation.surabhiCoinsUsed,
@@ -777,11 +809,15 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
           if (saleCalculation.cashPayment > 0) {
             const adminCutTx = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
+            // Generate invoice ID or use the provided one
+// const txInvoiceId = invoiceId.trim() ? invoiceId.trim() : `INV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            
             const cashTxData: Omit<AccountTxType, 'id'> = {
               createdAt: Timestamp.fromDate(new Date()),
               storeName: storeDetails.storeName,
               type: 'sale',
               amount: saleAmount,
+              // Remove invoiceId since it's not part of AccountTxType
               customerName: selectedCustomer.customerName,
               customerMobile: selectedCustomer.customerMobile,
               adminCut: adminCutTx,
@@ -843,6 +879,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               createdAt: Timestamp.fromDate(new Date()),
               paymentMethod: paymentMethod, 
               processedBy: user.name, 
+              // invoiceId: generateInvoiceId(), // Add unique invoice ID
               
               // Sale-Specific Fields
               surabhiUsed: saleCalculation.surabhiCoinsUsed,
@@ -891,7 +928,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                 storeCurrentBalance: increment(currentBalanceIncrement),
                 storeSevaBalance: increment(sevaBalanceIncrement),
                 adminCurrentBalance: increment(-currentBalanceIncrement),
-                 adminStoreProfit: increment(adminProfitTaken),
+                adminStoreProfit: increment(adminProfitTaken),
                 updatedAt: serverTimestamp()
               });
               
@@ -961,6 +998,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             storeName: selectedCustomer.storeLocation,
             createdAt: Timestamp.fromDate(new Date()),
             processedBy: user.name,
+            // invoiceId: generateInvoiceId(), // Add unique invoice ID
             amount: 0,
             walletCredit: 0,
             walletDebit: 0,
@@ -1031,6 +1069,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       setSurabhiCoinsToUse(0);
       setSelectedCustomer(null);
       setSearchTerm('');
+      setInvoiceId(''); // Reset invoice ID for next transaction
 
     } catch (error) {
       console.error('Error processing sale:', error);
@@ -1227,6 +1266,21 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                         className="pl-10 h-12"
                         min="1"
                         required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="invoiceId">Invoice ID (Optional)</Label>
+                    <div className="relative">
+                      <ShoppingCart className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="invoiceId"
+                        type="text"
+                        placeholder="Enter invoice ID or leave blank to auto-generate"
+                        value={invoiceId}
+                        onChange={(e) => setInvoiceId(e.target.value)}
+                        className="pl-10 h-12"
                       />
                     </div>
                   </div>

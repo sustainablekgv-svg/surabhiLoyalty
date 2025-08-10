@@ -105,6 +105,8 @@ export const StaffManagement = () => {
           sevaCommission: Number(doc.data().sevaCommission) || 0,
           cashOnlyCommission: Number(doc.data().cashOnlyCommission) || 0,
           storeStatus: doc.data().storeStatus || 'active',
+          adminCurrentBalance: Number(doc.data().adminCurrentBalance) || 0,
+          adminStoreProfit: Number(doc.data().adminStoreProfit) || 0,
           storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
           storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date()
         })) as StoreType[];
@@ -294,6 +296,8 @@ export const StaffManagement = () => {
         storeCurrentBalance: Number(currentStore.storeCurrentBalance) || 0,
         cashOnlyCommission: Number(currentStore.cashOnlyCommission) || 0,
         storeStatus: currentStore.storeStatus || 'active',
+        adminCurrentBalance: Number(currentStore.adminCurrentBalance) || 0,
+        adminStoreProfit: Number(currentStore.adminStoreProfit) || 0,
         storeUpdatedAt: serverTimestamp()
       };
 
@@ -306,7 +310,9 @@ export const StaffManagement = () => {
         const newStoreRef = doc(collection(db, 'stores'));
         await setDoc(newStoreRef, {
           ...storeData,
-          storeCreatedAt: serverTimestamp()
+          storeCreatedAt: serverTimestamp(),
+          adminCurrentBalance: 0,
+          adminStoreProfit: 0
         });
         toast.success('Store created successfully');
       }
@@ -315,7 +321,18 @@ export const StaffManagement = () => {
       const storesSnapshot = await getDocs(collection(db, 'stores'));
       const updatedStores = storesSnapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data(),
+        storeName: doc.data().storeName || '',
+        storeLocation: doc.data().storeLocation || '',
+        storeAddress: doc.data().storeAddress || '',
+        storeContactNumber: doc.data().storeContactNumber || '',
+        storeCurrentBalance: Number(doc.data().storeCurrentBalance) || 0,
+        referralCommission: Number(doc.data().referralCommission) || 0,
+        surabhiCommission: Number(doc.data().surabhiCommission) || 0,
+        sevaCommission: Number(doc.data().sevaCommission) || 0,
+        cashOnlyCommission: Number(doc.data().cashOnlyCommission) || 0,
+        storeStatus: doc.data().storeStatus || 'active',
+        adminCurrentBalance: Number(doc.data().adminCurrentBalance) || 0,
+        adminStoreProfit: Number(doc.data().adminStoreProfit) || 0,
         storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
         storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date()
       })) as StoreType[];
@@ -962,16 +979,44 @@ export const StaffManagement = () => {
               {contactNumberError && <p className="text-sm text-red-500">{contactNumberError}</p>}
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Store Current Balance</Label>
+                <Input
+                  type="number"
+                  value={currentStore?.storeCurrentBalance || 0}
+                  onChange={(e) => setCurrentStore({
+                    ...currentStore,
+                    storeCurrentBalance: Number(e.target.value)
+                  })}
+                  placeholder="Enter store current balance"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Admin Current Balance</Label>
+                <Input
+                  type="number"
+                  value={currentStore?.adminCurrentBalance || 0}
+                  onChange={(e) => setCurrentStore({
+                    ...currentStore,
+                    adminCurrentBalance: Number(e.target.value)
+                  })}
+                  placeholder="Enter admin current balance"
+                />
+              </div>
+            </div>
+            
             <div className="space-y-2">
-              <Label>Current Balance</Label>
+              <Label>Admin Store Profit</Label>
               <Input
                 type="number"
-                value={currentStore?.storeCurrentBalance || 0}
+                value={currentStore?.adminStoreProfit || 0}
                 onChange={(e) => setCurrentStore({
                   ...currentStore,
-                  storeCurrentBalance: Number(e.target.value)
+                  adminStoreProfit: Number(e.target.value)
                 })}
-                placeholder="Enter current balance"
+                placeholder="Enter admin store profit"
               />
             </div>
 
@@ -1082,7 +1127,18 @@ export const StaffManagement = () => {
                   const storesSnapshot = await getDocs(collection(db, 'stores'));
                   const updatedStores = storesSnapshot.docs.map(doc => ({
                     id: doc.id,
-                    ...doc.data(),
+                    storeName: doc.data().storeName || '',
+                    storeLocation: doc.data().storeLocation || '',
+                    storeAddress: doc.data().storeAddress || '',
+                    storeContactNumber: doc.data().storeContactNumber || '',
+                    storeCurrentBalance: Number(doc.data().storeCurrentBalance) || 0,
+                    referralCommission: Number(doc.data().referralCommission) || 0,
+                    surabhiCommission: Number(doc.data().surabhiCommission) || 0,
+                    sevaCommission: Number(doc.data().sevaCommission) || 0,
+                    cashOnlyCommission: Number(doc.data().cashOnlyCommission) || 0,
+                    storeStatus: doc.data().storeStatus || 'active',
+                    adminCurrentBalance: Number(doc.data().adminCurrentBalance) || 0,
+                    adminStoreProfit: Number(doc.data().adminStoreProfit) || 0,
                     storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
                     storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date()
                   })) as StoreType[];

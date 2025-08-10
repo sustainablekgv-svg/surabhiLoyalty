@@ -9,6 +9,8 @@ export interface CustomerType {
   customerMobile: string;
   customerEmail: string;
   storeLocation: string;
+  district?: string;
+  city?: string;
   referredBy: string | null;
   referredUsers: { customerMobile: number; customerName: string; createdAt: Timestamp; }[] | null;
   customerPassword: string;
@@ -141,6 +143,8 @@ export interface StoreType {
   storeSevaBalance: number;
   storeCreatedAt: Timestamp;
   storeUpdatedAt: Timestamp;
+  adminCurrentBalance: number;
+  adminStoreProfit:number;
 }
 
 export interface AdminHeaderProps {
@@ -151,6 +155,7 @@ export interface AdminHeaderProps {
 export interface CustomerTxType {
   id?: string;
   type: 'recharge' | 'sale' | 'seva_contribution' | 'seva_allocation' | 'surabhi_earn';
+  invoiceId?: string; // Optional invoice ID field
 
   // Common Fields
   customerMobile: string;
@@ -243,7 +248,9 @@ export interface AccountTxType {
   adminCut: number;
   adminProfit: number;
   credit: number;
-  balance: number;
+  currentBalance: number;
+  sevaBalance:number;
+  adminCurrentBalance:number;
   remarks: string;
 }
 
