@@ -28,6 +28,7 @@ import {
   setDoc,
   getDoc,
   increment,
+  arrayUnion,
   Timestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -387,9 +388,16 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             const incrementAmount = Number.isNaN(referralAmount) || referralAmount === null ? 0 : referralAmount;
 
             // Update referrer's data
+            const newReferredUser = {
+              customerMobile: selectedCustomer.customerMobile,
+              customerName: selectedCustomer.customerName,
+              createdAt: Timestamp.fromDate(new Date()),
+            };
+            
             await updateDoc(referrerDoc.ref, {
               referralSurabhi: increment(incrementAmount),
-              surabhiBalance: increment(incrementAmount)
+              surabhiBalance: increment(incrementAmount),
+              referredUsers: arrayUnion(newReferredUser) // This ensures no duplicates
             });
 
             // Add activity record for referrer
@@ -401,8 +409,32 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               storeLocation: selectedCustomer.storeLocation,
               customerName: selectedCustomer.customerName,
               createdAt : Timestamp.fromDate(new Date())
-
             });
+            
+            // Add CustomerTx record for the referral Surabhi Coins earned by referrer
+            const referrerTxData = {
+              type: 'surabhi_earn',
+              customerMobile: selectedCustomer.referredBy,
+              customerName: referrerData.customerName,
+              storeLocation: selectedCustomer.storeLocation,
+              storeName: selectedCustomer.storeLocation,
+              createdAt: Timestamp.fromDate(new Date()),
+              processedBy: user.name,
+              amount: incrementAmount,
+              walletCredit: 0,
+              walletDebit: 0,
+              walletBalance: referrerData.walletBalance,
+              surabhiDebit: 0,
+              surabhiCredit: incrementAmount,
+              surabhiBalance: referrerData.surabhiBalance + incrementAmount,
+              sevaCredit: 0,
+              sevaDebit: 0,
+              sevaBalance: referrerData.sevaBalanceCurrentMonth,
+              sevaTotal: referrerData.sevaTotal,
+              remarks: `Referral bonus from ${selectedCustomer.customerName}'s wallet payment`
+            };
+            
+            await addDoc(collection(db, 'CustomerTx'), referrerTxData);
           } else {
             console.warn(`Referrer with mobile ${selectedCustomer.referredBy} not found`);
           }
@@ -861,10 +893,13 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       await updateDoc(staffRef, staffUpdates);
 
       // Handle Referrer Income - Only for cash or mixed payments
+    // For mixed payments, only process if not already processed for wallet payment
     if (
       (paymentMethod === 'cash' || paymentMethod === 'mixed') &&
       selectedCustomer.referredBy && 
-      saleCalculation.referrerSurabhiCoinsEarned > 0
+      saleCalculation.referrerSurabhiCoinsEarned > 0 &&
+      // Only process if not already processed for wallet payment
+!(paymentMethod === 'mixed' && saleCalculation?.walletDeduction > 0)
     ) {
       try {
         // Find referrer's document
@@ -875,11 +910,43 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           const referrerRef = doc(db, 'Customers', referrer.id); // Assuming you have id field
           console.log("The referrer id is", referrerRef);
           // Update referrer's balances
+          const newReferredUser = {
+            customerMobile: selectedCustomer.customerMobile,
+            customerName: selectedCustomer.customerName,
+            createdAt: Timestamp.fromDate(new Date()),
+          };
+          
           await updateDoc(referrerRef, {
             surabhiBalance: increment(referralAmount),
             referralSurabhi: increment(referralAmount),
+            referredUsers: arrayUnion(newReferredUser), // This ensures no duplicates
             updatedAt: serverTimestamp()
           });
+          
+          // Add CustomerTx record for the referral Surabhi Coins earned by referrer
+          const referrerTxData = {
+            type: 'surabhi_earn',
+            customerMobile: selectedCustomer.referredBy,
+            customerName: referrer.customerName,
+            storeLocation: selectedCustomer.storeLocation,
+            storeName: selectedCustomer.storeLocation,
+            createdAt: Timestamp.fromDate(new Date()),
+            processedBy: user.name,
+            amount: referralAmount,
+            walletCredit: 0,
+            walletDebit: 0,
+            walletBalance: referrer.walletBalance,
+            surabhiDebit: 0,
+            surabhiCredit: referralAmount,
+            surabhiBalance: referrer.surabhiBalance + referralAmount,
+            sevaCredit: 0,
+            sevaDebit: 0,
+            sevaBalance: referrer.sevaBalanceCurrentMonth,
+            sevaTotal: referrer.sevaTotal,
+            remarks: `Referral bonus from ${selectedCustomer.customerName}'s ${paymentMethod} payment`
+          };
+          
+          await addDoc(collection(db, 'CustomerTx'), referrerTxData);
 
           // Add activity record for referrer
           await addActivityRecord({

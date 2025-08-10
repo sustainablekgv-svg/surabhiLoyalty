@@ -509,7 +509,43 @@ if (currentData.referredBy && referralAmount > 0) {
       referredUsers: arrayUnion(newReferredUser) // This ensures no duplicates
     });
 
-    // Rest of your activity logging...
+    // Add activity record for referrer here to avoid duplicate records
+    await addActivityRecord({
+      type: 'referral',
+      remarks: `${currentData.referredBy} - Earned Surabhi Referral of ₹${referralAmount}`,
+      amount: rechargeAmountNum,
+      customerName: referrerData.customerName,
+      customerMobile: currentData.referredBy,
+      storeLocation: storeLocation,
+      createdAt: Timestamp.fromDate(new Date())
+    });
+    
+    // Add CustomerTx record for the referral Surabhi Coins earned by referrer
+    const referrerTxData = {
+      type: 'surabhi_earn',
+      customerMobile: currentData.referredBy,
+      customerName: referrerData.customerName,
+      storeLocation: storeLocation,
+      storeName: storeLocation,
+      createdAt: Timestamp.fromDate(new Date()),
+      processedBy: staffName,
+      amount: referralAmount,
+      walletCredit: 0,
+      walletDebit: 0,
+      walletBalance: referrerData.walletBalance,
+      surabhiDebit: 0,
+      surabhiCredit: referralAmount,
+      surabhiBalance: referrerData.surabhiBalance + referralAmount,
+      sevaCredit: 0,
+      sevaDebit: 0,
+      sevaBalance: referrerData.sevaBalanceCurrentMonth,
+      sevaTotal: referrerData.sevaTotal,
+      remarks: `Referral bonus from ${currentData.customerName}'s wallet recharge`
+    };
+    
+    await addDoc(collection(db, 'CustomerTx'), referrerTxData);
+    
+    console.log(`Referral bonus of ${referralAmount} credited to ${referrerData.customerName}`);
   }
 }
 
@@ -558,7 +594,8 @@ if (currentData.referredBy && referralAmount > 0) {
       });
 
       // Add activity records for the recharge and commissions
-      if (selectedCustomer.referredBy) {
+      // Only add referral activity if it wasn't already processed above
+      if (selectedCustomer.referredBy && (!currentData.referredBy || referralAmount <= 0)) {
         await addActivityRecord({
           type: 'referral',
           remarks: `${selectedCustomer.referredBy} - Earned Surabhi Referral of ₹${referralAmount}`,

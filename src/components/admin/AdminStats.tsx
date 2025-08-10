@@ -42,7 +42,7 @@ export const AdminStats = () => {
       bgColor: 'bg-purple-50'
     },
     {
-      title: 'Go Seva Pool',
+      title: 'Seva Pool',
       value: '₹0',
       icon: Heart,
       color: 'text-red-600',
@@ -76,8 +76,8 @@ export const AdminStats = () => {
         const poolSnapshot = await getDoc(poolRef);
         if (poolSnapshot.exists()) {
           const data = poolSnapshot.data();
-          setSevaPoolAmount(data.storeCurrentBalance);
-          console.log("THe seva Pool baalnce is", sevaPoolAmount, data.storeCurrentBalance)
+          setSevaPoolAmount(data.currentSevaBalance);
+          // console.log("THe seva Pool baalnce is", sevaPoolAmount, data.currentSevaBalance)
         }
       } catch (error) {
         console.error('Error fetching SevaPool data:', error);
@@ -150,7 +150,7 @@ export const AdminStats = () => {
             bgColor: 'bg-purple-50'
           },
           {
-            title: 'Go Seva Pool',
+            title: 'Seva Pool',
             value: `₹${totalSevaPool.toLocaleString('en-IN')}`,
             icon: Heart,
             color: 'text-red-600',

@@ -169,7 +169,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       borderColor: 'border-amber-200'
     },
     {
-      title: 'Go Seva Contribution',
+      title: 'Seva Contribution',
       value: `₹${customerData.sevaTotal}`,
       description: 'Community welfare fund',
       icon: Heart,
@@ -280,10 +280,11 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                           ? 'text-green-600' 
                           : 'text-blue-600'
                       }`}>
-                        {activity.type === 'recharge' ? `₹${activity.amount}` : 
+                        {/* {activity.type === 'recharge' ? `₹${activity.am}` : 
                          activity.type === 'sale' ? `₹${activity.amount}` :
                          activity.type === 'seva_contribution' ? `₹${activity.amount}` :
-                         `${activity.amount} coins`}
+                         `${activity.amount} coins`} */}
+                         {activity.remarks}
                       </span>
                     )}
                   </div>
