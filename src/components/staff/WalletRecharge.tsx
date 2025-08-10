@@ -528,7 +528,7 @@ if (currentData.referredBy && referralAmount > 0) {
       storeLocation: storeLocation,
       storeName: storeLocation,
       createdAt: Timestamp.fromDate(new Date()),
-      processedBy: staffName,
+      processedBy: user.name,
       amount: referralAmount,
       walletCredit: 0,
       walletDebit: 0,

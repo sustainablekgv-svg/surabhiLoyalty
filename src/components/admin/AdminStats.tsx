@@ -10,7 +10,7 @@ import {
   Gift,
   Loader2
 } from 'lucide-react';
-import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useEffect, useState } from 'react';
 import { CustomerType, SevaPoolType } from '@/types/types';
@@ -66,67 +66,35 @@ export const AdminStats = () => {
 
 
   useEffect(() => {
-    const fetchSevaPoolData = async () => {
-      try {
-        setLoading(true);
-        // await checkAndResetMonthlySevaCoins();
+    setLoading(true);
     
-        // Fetch Seva Pool data
-        const poolRef = doc(db, 'SevaPool', 'main');
-        const poolSnapshot = await getDoc(poolRef);
-        if (poolSnapshot.exists()) {
-          const data = poolSnapshot.data();
-          setSevaPoolAmount(data.currentSevaBalance);
-          // console.log("THe seva Pool baalnce is", sevaPoolAmount, data.currentSevaBalance)
-        }
-      } catch (error) {
-        console.error('Error fetching SevaPool data:', error);
-        toast.error('Failed to load Seva Pool data');
-      } finally {
-        setLoading(false);
+    // Real-time listener for Seva Pool data
+    const poolRef = doc(db, 'SevaPool', 'main');
+    const unsubscribeSevaPool = onSnapshot(poolRef, (doc) => {
+      if (doc.exists()) {
+        const data = doc.data();
+        setSevaPoolAmount(data.currentSevaBalance);
       }
-    };
-    fetchSevaPoolData();
+    }, (error) => {
+      console.error('Error listening to SevaPool updates:', error);
+      toast.error('Failed to load Seva Pool data');
+    });
+    
+    // Real-time listener for customers data
+    const customersQuery = query(collection(db, 'Customers'));
+    const unsubscribeCustomers = onSnapshot(customersQuery, (snapshot) => {
+      const customers: CustomerType[] = [];
+      snapshot.forEach((doc) => {
+        customers.push(doc.data() as CustomerType);
+      });
+      
+      // Calculate statistics
+      const totalUsers = customers.length;
+      const totalRecharge = customers.reduce((sum, customer) => sum + (customer.walletBalance || 0), 0);
+      const totalSurabhiCoins = customers.reduce((sum, customer) => sum + (customer.surabhiBalance || 0), 0);
+      const totalSevaPool = sevaPoolAmount;
 
-    const fetchData = async () => {
-      try {
-        // Fetch customer data
-        const customersQuery = await getDocs(collection(db, 'Customers'));
-        const customers: CustomerType[] = [];
-        customersQuery.forEach((doc) => {
-          customers.push(doc.data() as CustomerType);
-        });
-
-        // Fetch sales data for store performance
-        const salesQuery = await getDocs(collection(db, 'SalesTransaction'));
-        const today = new Date().toISOString().split('T')[0];
-        
-        const storeStats = {
-          'Downtown Branch': { transactions: 0, sales: 0 },
-          'Mall Branch': { transactions: 0, sales: 0 }
-        };
-
-        salesQuery.forEach(doc => {
-          const sale = doc.data();
-          const saleDate = sale.date?.toDate?.().toISOString().split('T')[0];
-          
-          if (saleDate === today) {
-            if (sale.storeLocation === 'Downtown Branch') {
-              storeStats['Downtown Branch'].transactions++;
-              storeStats['Downtown Branch'].sales += sale.amount;
-            } else if (sale.storeLocation === 'Mall Branch') {
-              storeStats['Mall Branch'].transactions++;
-              storeStats['Mall Branch'].sales += sale.amount;
-            }
-          }
-        });
-
-        // Calculate statistics
-        const totalUsers = customers.length;
-        const totalRecharge = customers.reduce((sum, customer) => sum + (customer.walletBalance || 0), 0);
-        const totalSurabhiCoins = customers.reduce((sum, customer) => sum + (customer.surabhiBalance || 0), 0);
-        const totalSevaPool = sevaPoolAmount;
-
+        // Update stats cards
         setStats([
           {
             title: 'Total Users',
@@ -157,31 +125,63 @@ export const AdminStats = () => {
             bgColor: 'bg-red-50'
           }
         ]);
-
-        setStorePerformance([
-          {
-            name: 'Downtown Branch',
-            transactions: storeStats['Downtown Branch'].transactions,
-            sales: storeStats['Downtown Branch'].sales
-          },
-          {
-            name: 'Mall Branch',
-            transactions: storeStats['Mall Branch'].transactions,
-            sales: storeStats['Mall Branch'].sales
-          }
-        ]);
-
+      }, (error) => {
+        console.error('Error listening to customer updates:', error);
         setLoading(false);
-        setStoreLoading(false);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        setLoading(false);
-        setStoreLoading(false);
-      }
-    };
+      });
+      
+      // Real-time listener for sales data
+      // const today = new Date().toISOString().split('T')[0];
+      // const salesQuery = query(collection(db, 'SalesTransaction'));
+      // const unsubscribeSales = onSnapshot(salesQuery, (snapshot) => {
+        // const storeStats = {
+        //   'Downtown Branch': { transactions: 0, sales: 0 },
+        //   'Mall Branch': { transactions: 0, sales: 0 }
+        // };
 
-    fetchData();
-  }, []);
+        // snapshot.forEach(doc => {
+        //   const sale = doc.data();
+        //   const saleDate = sale.date?.toDate?.().toISOString().split('T')[0];
+          
+        //   if (saleDate === today) {
+        //     if (sale.storeLocation === 'Downtown Branch') {
+        //       storeStats['Downtown Branch'].transactions++;
+        //       storeStats['Downtown Branch'].sales += sale.amount;
+        //     } else if (sale.storeLocation === 'Mall Branch') {
+        //       storeStats['Mall Branch'].transactions++;
+        //       storeStats['Mall Branch'].sales += sale.amount;
+        //     }
+        //   }
+        // });
+
+        // setStorePerformance([
+        //   {
+        //     name: 'Downtown Branch',
+        //     transactions: storeStats['Downtown Branch'].transactions,
+        //     sales: storeStats['Downtown Branch'].sales
+        //   },
+        //   {
+        //     name: 'Mall Branch',
+        //     transactions: storeStats['Mall Branch'].transactions,
+        //     sales: storeStats['Mall Branch'].sales
+        //   }
+        // ]);
+        
+      //   setLoading(false);
+      //   setStoreLoading(false);
+      // }, (error) => {
+      //   console.error('Error listening to sales updates:', error);
+      //   setLoading(false);
+      //   setStoreLoading(false);
+      // });
+      
+      // Cleanup function to unsubscribe from all listeners when component unmounts
+      return () => {
+        unsubscribeSevaPool();
+        unsubscribeCustomers();
+        // unsubscribeSales();
+      };
+  }, [sevaPoolAmount]); // Add sevaPoolAmount as dependency to update stats when it changes
 
   if (loading) {
     return (
