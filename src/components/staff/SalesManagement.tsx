@@ -318,7 +318,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       });
 
       // Record transaction
-      const customerTxData: Partial<CustomerTxType>= {
+      const customerTxData: CustomerTxType = {
         type: 'sale',
         customerName: selectedCustomer.customerName,
         customerMobile: selectedCustomer.customerMobile,
@@ -333,12 +333,13 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         surabhiEarned: saleCalculation.surabhiCoinsEarned,
         sevaEarned: saleCalculation.goSevaContribution,
         referralEarned: saleCalculation.referrerSurabhiCoinsEarned,
+        referredBy: selectedCustomer.referredBy,
       
         // Sale-Specific Fields
         surabhiUsed: saleCalculation.surabhiCoinsUsed,
         walletDeduction: saleCalculation.walletDeduction,
         cashPayment: saleCalculation.cashPayment,
-        adminProft : saleCalculation.cashPayment * (storeDetails.surabhiCommission - storeDetails.cashOnlyCommission)/100 + saleCalculation.surabhiCoinsUsed*(storeDetails.referralCommission + storeDetails.cashOnlyCommission + storeDetails.sevaCommission)/100,
+        adminProft: saleCalculation.cashPayment * (storeDetails.surabhiCommission - storeDetails.cashOnlyCommission)/100 + saleCalculation.surabhiCoinsUsed*(storeDetails.referralCommission + storeDetails.cashOnlyCommission + storeDetails.sevaCommission)/100,
       
         // Balance information
         previousBalance: {
@@ -412,15 +413,32 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             });
             
             // Add CustomerTx record for the referral Surabhi Coins earned by referrer
-            const referrerTxData = {
+            const referrerTxData: CustomerTxType = {
               type: 'surabhi_earn',
               customerMobile: selectedCustomer.referredBy,
-              customerName: referrerData.customerName,
+              customerName: referrerData.referredBy,
               storeLocation: selectedCustomer.storeLocation,
               storeName: selectedCustomer.storeLocation,
               createdAt: Timestamp.fromDate(new Date()),
               processedBy: user.name,
-              amount: incrementAmount,
+              amount: 0,
+              surabhiEarned: incrementAmount,
+              sevaEarned: 0,
+              referralEarned: 0,
+              referredBy: '',
+              surabhiUsed: 0,
+              walletDeduction: 0,
+              cashPayment: 0,
+              adminProft: 0,
+              previousBalance: {
+                walletBalance: referrerData.walletBalance,
+                surabhiBalance: referrerData.surabhiBalance
+              },
+              newBalance: {
+                walletBalance: referrerData.walletBalance,
+                surabhiBalance: referrerData.surabhiBalance + incrementAmount
+              },
+              paymentMethod: paymentMethod,
               walletCredit: 0,
               walletDebit: 0,
               walletBalance: referrerData.walletBalance,
@@ -429,9 +447,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               surabhiBalance: referrerData.surabhiBalance + incrementAmount,
               sevaCredit: 0,
               sevaDebit: 0,
-              sevaBalance: referrerData.sevaBalanceCurrentMonth,
-              sevaTotal: referrerData.sevaTotal,
-              remarks: `Referral bonus from ${selectedCustomer.customerName}'s wallet payment`
+              sevaBalance: referrerData.sevaBalanceCurrentMonth || 0,
+              sevaTotal: referrerData.sevaTotal || 0,
             };
             
             await addDoc(collection(db, 'CustomerTx'), referrerTxData);
@@ -927,12 +944,12 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           const referrerTxData = {
             type: 'surabhi_earn',
             customerMobile: selectedCustomer.referredBy,
-            customerName: referrer.customerName,
-            storeLocation: user.storeLocation,
-            storeName: user.storeLocation,
+            customerName: referrer.referredBy,
+            storeLocation: selectedCustomer.storeLocation,
+            storeName: selectedCustomer.storeLocation,
             createdAt: Timestamp.fromDate(new Date()),
             processedBy: user.name,
-            amount: referralAmount,
+            amount: 0,
             walletCredit: 0,
             walletDebit: 0,
             walletBalance: referrer.walletBalance,

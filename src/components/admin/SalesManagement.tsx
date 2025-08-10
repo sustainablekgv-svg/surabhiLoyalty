@@ -22,7 +22,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
-import { collection, getDocs, Timestamp, where, query } from 'firebase/firestore';
+import { collection, getDocs, Timestamp, where, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 
@@ -54,7 +54,8 @@ export const SalesManagement = () => {
   const fetchTransactions = async () => {
     try {
       const transactionsRef = collection(db, 'CustomerTx');
-      const snapshot = await getDocs(transactionsRef);
+      const q = query(transactionsRef, orderBy('createdAt', 'desc'));
+      const snapshot = await getDocs(q);
       const transactionsData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
