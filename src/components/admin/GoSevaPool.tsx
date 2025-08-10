@@ -358,7 +358,7 @@ export const GoSevaPool = () => {
     <div className="space-y-6 px-2 sm:px-4 md:px-6">
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Go Seva Pool Management</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Seva Pool Management</h2>
           <p className="text-sm sm:text-base text-gray-600">Manage community contribution pool and allocations</p>
         </div>
 
@@ -604,12 +604,12 @@ export const GoSevaPool = () => {
                         ₹{customer.sevaCoinsCurrentMonth.toFixed(2)}
                       </p>
                     </div>
-                    <div className="space-y-1">
+                    {/* <div className="space-y-1">
                       <p className="text-gray-500">Total Seva Contribution</p>
                       <p className="font-medium">
                         ₹{customer.sevaCoinsTotal.toFixed(2)}
                       </p>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               ))}

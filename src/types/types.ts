@@ -149,7 +149,7 @@ export interface AdminHeaderProps {
 
 export interface CustomerTxType {
   id?: string;
-  type: 'recharge' | 'sale';
+  type: 'recharge' | 'sale' | 'seva_contribution' | 'seva_allocation' | 'surabhi_earn';
 
   // Common Fields
   customerMobile: string;
@@ -166,6 +166,7 @@ export interface CustomerTxType {
   sevaEarned?: number;
   referralEarned?: number;
   referredBy?: string | null;
+  adminProft?:number;
 
   // Sale-Specific Fields
   surabhiUsed?: number;
@@ -239,6 +240,7 @@ export interface AccountTxType {
   amount: number;
   debit: number;
   adminCut: number;
+  adminProfit: number;
   credit: number;
   balance: number;
   remarks: string;
