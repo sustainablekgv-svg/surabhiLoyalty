@@ -138,6 +138,7 @@ export interface StoreType {
   storeContactNumber: string;
   storeStatus: 'active' | 'inactive';
   storeCurrentBalance: number;
+  storeSevaBalance: number;
   storeCreatedAt: Timestamp;
   storeUpdatedAt: Timestamp;
 }

@@ -137,7 +137,7 @@ export const GoSevaPool = () => {
       if (poolSnapshot.exists()) {
         const data = poolSnapshot.data();
         const poolData: SevaPoolType = {
-          currentSevaBalance: data.currentBalance ?? 0,
+          currentSevaBalance: data.currentSevaBalance ?? 0,
           totalContributions: data.totalContributions ?? 0,
           totalAllocations: data.totalAllocations ?? 0,
           contributionsCurrentMonth: data.contributionsCurrentMonth ?? 0,
@@ -156,11 +156,28 @@ export const GoSevaPool = () => {
         // where('createdAt', '>=', startOfMonth(new Date())),
         // where('type', '==', 'seva_contribution'),
         where('sevaEarned', '>', 0)
+        // Note: Firestore doesn't support OR queries directly
+        // We'll need to perform a second query for sevaDebit > 0 and merge results
       );
+      
+      // Additional query for transactions with sevaDebit > 0
+      const sevaDebitQuery = query(
+        collection(db, 'CustomerTx'),
+        where('sevaDebit', '>', 0)
+      );
+      // Fetch transactions with sevaEarned > 0
       const transactionsSnapshot = await getDocs(transactionsQuery);
-      const transactionsData = transactionsSnapshot.docs.map(doc => {
+      
+      // Fetch transactions with sevaDebit > 0
+      const sevaDebitSnapshot = await getDocs(sevaDebitQuery);
+      
+      // Create a map to deduplicate transactions by ID
+      const transactionsMap = new Map();
+      
+      // Process transactions with sevaEarned > 0
+      transactionsSnapshot.docs.forEach(doc => {
         const data = doc.data();
-        return {
+        transactionsMap.set(doc.id, {
           id: doc.id,
           type: data.type,
           customerMobile: data.customerMobile,
@@ -190,11 +207,53 @@ export const GoSevaPool = () => {
           sevaDebit: data.sevaDebit,
           sevaBalance: data.sevaBalance,
           sevaTotal: data.sevaTotal
-        } as CustomerTxType;
+        } as CustomerTxType);
       });
+      
+      // Process transactions with sevaDebit > 0
+      sevaDebitSnapshot.docs.forEach(doc => {
+        // Skip if we already have this transaction
+        if (transactionsMap.has(doc.id)) return;
+        
+        const data = doc.data();
+        transactionsMap.set(doc.id, {
+          id: doc.id,
+          type: data.type,
+          customerMobile: data.customerMobile,
+          customerName: data.customerName,
+          storeLocation: data.storeLocation,
+          storeName: data.storeName,
+          createdAt: safeConvertToTimestamp(data.createdAt),
+          paymentMethod: data.paymentMethod,
+          processedBy: data.processedBy,
+          amount: data.amount,
+          surabhiEarned: data.surabhiEarned,
+          sevaEarned: data.sevaEarned,
+          referralEarned: data.referralEarned,
+          referredBy: data.referredBy,
+          surabhiUsed: data.surabhiUsed,
+          walletDeduction: data.walletDeduction,
+          cashPayment: data.cashPayment,
+          previousBalance: data.previousBalance,
+          newBalance: data.newBalance,
+          walletCredit: data.walletCredit,
+          walletDebit: data.walletDebit,
+          walletBalance: data.walletBalance,
+          surabhiDebit: data.surabhiDebit,
+          surabhiCredit: data.surabhiCredit,
+          surabhiBalance: data.surabhiBalance,
+          sevaCredit: data.sevaCredit,
+          sevaDebit: data.sevaDebit,
+          sevaBalance: data.sevaBalance,
+          sevaTotal: data.sevaTotal
+        } as CustomerTxType);
+      });
+      
+      // Convert map to array
+      const transactionsData = Array.from(transactionsMap.values());
       setTransactions(transactionsData.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
 
-      // Calculate top customers based on sevaEarned
+      // Calculate top customers based on sevaEarned and sevaDebit
       const customerContributions = transactionsData.reduce((acc: Record<string, Customer>, tx) => {
         const mobile = tx.customerMobile;
         if (!acc[mobile]) {
@@ -206,15 +265,22 @@ export const GoSevaPool = () => {
             sevaCoinsTotal: tx.sevaTotal || 0
           };
         }
-        acc[mobile].sevaCoinsCurrentMonth += tx.sevaEarned || 0;
+        // Add sevaEarned if it exists
+        if (tx.sevaEarned && tx.sevaEarned > 0) {
+          acc[mobile].sevaCoinsCurrentMonth += tx.sevaEarned;
+        }
+        // Add sevaDebit if it exists (for transactions where seva coins were used)
+        if (tx.sevaDebit && tx.sevaDebit > 0) {
+          acc[mobile].sevaCoinsCurrentMonth += tx.sevaDebit;
+        }
         return acc;
       }, {});
 
       const topCustomers = Object.values(customerContributions)
-        .sort((a, b) => b.sevaCoinsCurrentMonth - a.sevaCoinsCurrentMonth)
+        .sort((a: Customer, b: Customer) => b.sevaCoinsCurrentMonth - a.sevaCoinsCurrentMonth)
         .slice(0, 10); // Get top 10 customers
 
-      setCustomers(topCustomers);
+      setCustomers(topCustomers as Customer[]);
 
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -262,7 +328,7 @@ export const GoSevaPool = () => {
         customerMobile: adminDetails.staffMobile, // Use admin's mobile
         customerName: adminDetails.staffName, // Use admin's name
         storeLocation: adminDetails.storeLocation,
-        storeName: 'Go Seva Pool',
+        storeName: 'Seva Pool',
         createdAt: timestamp,
         paymentMethod: 'admin',
         processedBy: adminDetails.staffName,
@@ -381,9 +447,9 @@ export const GoSevaPool = () => {
             </DialogTrigger>
             <DialogContent className="sm:max-w-md mx-2 w-[calc(100%-1rem)] sm:w-full">
               <DialogHeader>
-                <DialogTitle>Allocate Go Seva Funds</DialogTitle>
+                <DialogTitle>Allocate Seva Funds</DialogTitle>
                 <DialogDescription>
-                  Allocate funds from the Go Seva pool for community welfare
+                  Allocate funds from the Seva pool for community welfare
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -525,6 +591,8 @@ export const GoSevaPool = () => {
                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Store</th>
                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seva Earned</th>
+                    <td className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seva Debit</td>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seva Balance</th>
                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
                   </tr>
                 </thead>
@@ -546,6 +614,12 @@ export const GoSevaPool = () => {
                       </td>
                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-green-600">
                         ₹{tx.sevaEarned?.toLocaleString() || 0}
+                      </td>
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-red-600">
+                        ₹{tx.sevaDebit?.toLocaleString() || 0}
+                      </td>
+                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-500">
+                        ₹{tx.sevaBalance?.toLocaleString() || 0}
                       </td>
                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                         <Badge variant="outline" className="text-xs">

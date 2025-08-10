@@ -101,7 +101,8 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
           debit: data.debit || 0,
           credit: data.credit || 0,
           adminProfit: data.adminProfit || 0,
-          balance: data.balance || 0,
+          currentBalance: data.currentBalance || 0,
+          sevaBalance: data.sevaBalance || 0,
           remarks: data.remarks || '',
           adminCut: data.adminCut || 0
         });
@@ -268,7 +269,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
                     {tx.debit > 0 ? `-₹${tx.debit.toFixed(2)}` : '-'}
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    ₹{tx.balance.toFixed(2)}
+                    ₹{tx.currentBalance.toFixed(2)}
                   </TableCell>
                   <TableCell className="whitespace-normal break-words max-w-md">
                     {tx.remarks}

@@ -79,7 +79,20 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50">
-      <AdminHeader user={user} onLogout={handleLogout} />
+      <AdminHeader user={{
+        id: user.id,
+        staffName: user.name || '',
+        staffEmail: user.email || '',
+        staffMobile: user.mobile || '',
+        role: user.role as 'admin',
+        storeLocation: user.storeLocation || '',
+        staffPassword: '',
+        staffPin: '',
+        staffStatus: 'active',
+        staffSalesCount: 0,
+        staffRechargesCount: 0,
+        createdAt: new Date() as any
+      }} onLogout={handleLogout} />
       
       <div className="container mx-auto px-4 py-6">
         <div className="mb-8">
@@ -111,7 +124,7 @@ const AdminDashboard = () => {
             </TabsTrigger>
             <TabsTrigger value="goseva" className="flex items-center gap-2">
               <Heart className="h-4 w-4" />
-              <span className="hidden sm:inline">Go Seva</span>
+              <span className="hidden sm:inline">Seva</span>
             </TabsTrigger>
           </TabsList>
 

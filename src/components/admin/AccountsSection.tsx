@@ -116,7 +116,8 @@ const Accounts = () => {
           adminCut: txData.adminCut || 0,
           adminProfit: txData.adminProfit || 0,
           credit: txData.credit || 0,
-          balance: txData.balance || 0,
+          currentBalance: txData.currentBalance || 0,
+          sevaBalance: txData.sevaBalance || 0,
           remarks: txData.remarks || ''
         };
 
@@ -521,7 +522,7 @@ const Accounts = () => {
                         {Number(tx.adminProfit) && tx.adminProfit > 0 ? `₹${tx.adminProfit.toFixed(2)}` : '-'}
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        ₹{tx.balance.toFixed(2)}
+                        ₹{tx.currentBalance.toFixed(2)}
                       </TableCell>
                       <TableCell className="hidden md:table-cell max-w-xs truncate">
                         {tx.remarks}

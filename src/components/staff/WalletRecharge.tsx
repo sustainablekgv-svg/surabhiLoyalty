@@ -420,7 +420,8 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         credit: rechargeAmountNum,
         adminCut: 0,
         debit: 0,
-        balance: storeDetails.storeCurrentBalance + rechargeAmountNum,
+        currentBalance: storeDetails.storeCurrentBalance + rechargeAmountNum,
+        sevaBalance: storeDetails.storeSevaBalance + sevaAmountEarned,
         remarks: `Recharge for ${selectedCustomer.customerName} (${selectedCustomer.customerMobile})`,
         customerName: selectedCustomer.customerName,
         customerMobile: selectedCustomer.customerMobile
@@ -437,9 +438,10 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       console.log("storeSnapshot in line 330 is", storeSnapshot);
       if (!storeSnapshot.empty) {
         const storeDoc = storeSnapshot.docs[0];
-        const incrementAmount = accountTxData.balance - storeDoc.data().storeCurrentBalance;
+        const incrementAmount = accountTxData.currentBalance - storeDoc.data().storeCurrentBalance;
         await updateDoc(storeDoc.ref, {
           storeCurrentBalance: increment(incrementAmount),
+          storeSevaBalance: increment(accountTxData.sevaBalance),
           updatedAt: serverTimestamp()
         });
       }
