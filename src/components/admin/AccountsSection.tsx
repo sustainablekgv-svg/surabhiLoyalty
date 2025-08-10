@@ -513,10 +513,10 @@ const Accounts = () => {
                         {tx.adminCut > 0 ? `₹${tx.adminCut.toFixed(2)}` : '-'}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-right text-green-600">
-                        {tx.credit > 0 ? `+₹${tx.credit.toFixed(2)}` : '-'}
+                        {tx.debit > 0 ? `+₹${tx.debit.toFixed(2)}` : '-'}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-right text-red-600">
-                        {tx.debit > 0 ? `-₹${tx.debit.toFixed(2)}` : '-'}
+                        {tx.credit > 0 ? `-₹${tx.credit.toFixed(2)}` : '-'}
                       </TableCell>
                       <TableCell className="hidden xl:table-cell text-right">
                         {Number(tx.adminProfit) && tx.adminProfit > 0 ? `₹${tx.adminProfit.toFixed(2)}` : '-'}

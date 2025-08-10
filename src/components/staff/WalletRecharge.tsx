@@ -421,14 +421,14 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         adminCut: 0,
         debit: 0,
         currentBalance: storeDetails.storeCurrentBalance + rechargeAmountNum,
-        sevaBalance: storeDetails.storeSevaBalance + sevaAmountEarned,
+        sevaBalance: storeDetails.storeSevaBalance + sevaAmountEarned, // Total seva balance after increment
         remarks: `Recharge for ${selectedCustomer.customerName} (${selectedCustomer.customerMobile})`,
         customerName: selectedCustomer.customerName,
         customerMobile: selectedCustomer.customerMobile
       };
 
       await addDoc(collection(db, 'AccountTx'), accountTxData);
-      console.log("THe store Name in line 333 is", user.storeLocation);
+      console.log("The store Name in line 333 is", user.storeLocation);
       // Update store balance
       const storeQuery = query(
         collection(db, 'stores'),
@@ -438,12 +438,18 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       console.log("storeSnapshot in line 330 is", storeSnapshot);
       if (!storeSnapshot.empty) {
         const storeDoc = storeSnapshot.docs[0];
-        const incrementAmount = accountTxData.currentBalance - storeDoc.data().storeCurrentBalance;
+        const storeData = storeDoc.data();
+        const incrementAmount = rechargeAmountNum;
+        const sevaIncrementAmount = sevaAmountEarned;
+        
         await updateDoc(storeDoc.ref, {
           storeCurrentBalance: increment(incrementAmount),
-          storeSevaBalance: increment(accountTxData.sevaBalance),
+          storeSevaBalance: increment(sevaIncrementAmount),
           updatedAt: serverTimestamp()
         });
+        
+        console.log(`Updated store balances: Current +${incrementAmount}, Seva +${sevaIncrementAmount}`);
+        console.log(`New store balances: Current ${storeData.storeCurrentBalance + incrementAmount}, Seva ${storeData.storeSevaBalance + sevaIncrementAmount}`);
       }
 
       const staffCollection = collection(db, 'staff');

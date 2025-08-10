@@ -100,6 +100,8 @@ export const GoSevaPool = () => {
   const [allocationAmount, setAllocationAmount] = useState('');
   const [allocationDescription, setAllocationDescription] = useState('');
   const [isAllocationDialogOpen, setIsAllocationDialogOpen] = useState(false);
+  const [storeSevaBalances, setStoreSevaBalances] = useState<{[key: string]: number}>({});
+  const [selectedStoreForAllocation, setSelectedStoreForAllocation] = useState<string>('');
 
   // Fetch admin details
   const fetchAdminDetails = async () => {
@@ -152,6 +154,19 @@ export const GoSevaPool = () => {
       } else {
         toast.error('Seva Pool document not found');
       }
+      
+      // Fetch store-specific Seva balances
+      const storesSnapshot = await getDocs(collection(db, 'stores'));
+      const storeBalances: {[key: string]: number} = {};
+      
+      storesSnapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.storeName && data.storeSevaBalance !== undefined) {
+          storeBalances[data.storeName] = data.storeSevaBalance;
+        }
+      });
+      
+      setStoreSevaBalances(storeBalances);
 
       // Fetch transactions with seva_contribution type and sevaEarned > 0
       const transactionsQuery = query(
@@ -265,7 +280,7 @@ export const GoSevaPool = () => {
         )
       ).sort();
       
-      setStoreLocations(['All Locations', ...uniqueStoreLocations]);
+      setStoreLocations([...uniqueStoreLocations]);
       setTransactions(transactionsData);
       setFilteredTransactions(transactionsData);
       
@@ -318,8 +333,16 @@ export const GoSevaPool = () => {
 
   const handleAllocation = async () => {
     const amount = parseFloat(allocationAmount);
-    if (!amount || amount <= 0 || amount > sevaPool.currentSevaBalance) {
-      toast.error('Please enter a valid allocation amount');
+    
+    if (!selectedStoreForAllocation) {
+      toast.error('Please select a store for allocation');
+      return;
+    }
+    
+    const storeSevaBalance = storeSevaBalances[selectedStoreForAllocation] || 0;
+    
+    if (!amount || amount <= 0 || amount > storeSevaBalance) {
+      toast.error(`Please enter a valid allocation amount (max: ₹${storeSevaBalance.toLocaleString()})`);
       return;
     }
 
@@ -345,6 +368,30 @@ export const GoSevaPool = () => {
         allocationsCurrentMonth: (currentSevaPool?.allocationsCurrentMonth || 0) + amount,
         lastAllocatedDate: serverTimestamp()
       });
+      
+      // Update store's Seva balance
+      const storeQuery = query(
+        collection(db, 'stores'),
+        where('storeName', '==', selectedStoreForAllocation)
+      );
+      const storeSnapshot = await getDocs(storeQuery);
+      
+      if (!storeSnapshot.empty) {
+        const storeDoc = storeSnapshot.docs[0];
+        await updateDoc(storeDoc.ref, {
+          storeSevaBalance: storeSevaBalance - amount,
+          updatedAt: serverTimestamp()
+        });
+        
+        // Update local state
+        setStoreSevaBalances({
+          ...storeSevaBalances,
+          [selectedStoreForAllocation]: storeSevaBalance - amount
+        });
+      } else {
+        toast.error(`Store ${selectedStoreForAllocation} not found`);
+        return;
+      }
 
       // Create a record in CustomerTx for the allocation
       const timestamp = Timestamp.now();
@@ -352,8 +399,8 @@ export const GoSevaPool = () => {
         type: 'seva_allocation', // Use the correct type from the interface
         customerMobile: adminDetails.staffMobile, // Use admin's mobile
         customerName: adminDetails.staffName, // Use admin's name
-        storeLocation: adminDetails.storeLocation,
-        storeName: 'Seva Pool',
+        storeLocation: selectedStoreForAllocation,
+        storeName: selectedStoreForAllocation,
         createdAt: timestamp,
         paymentMethod: 'admin',
         processedBy: adminDetails.staffName,
@@ -381,9 +428,9 @@ export const GoSevaPool = () => {
         surabhiBalance: 0,
         sevaCredit: 0,
         sevaDebit: amount, // Debit from the pool
-        sevaBalance: (currentSevaPool?.currentBalance || 0) - amount,
+        sevaBalance: storeSevaBalances[selectedStoreForAllocation] - amount,
         sevaTotal: currentSevaPool?.totalContributions || 0,
-        remarks: allocationDescription // Add description as remarks
+        remarks: `${allocationDescription} (from ${selectedStoreForAllocation})`
       });
 
       // Also add to Activity log
@@ -492,10 +539,55 @@ export const GoSevaPool = () => {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="store">Select Store</Label>
+                  <select
+                    id="store"
+                    className="w-full p-2 border rounded-md"
+                    value={selectedStoreForAllocation || ''}
+                    onChange={(e) => setSelectedStoreForAllocation(e.target.value)}
+                  >
+                    <option value="">Select a store</option>
+                    {storeLocations.map((store) => (
+                      <option key={store} value={store}>
+                        {store} - ₹{(storeSevaBalances[store] || 0).toLocaleString()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
                 <div className="p-3 bg-red-50 rounded-lg">
                   <p className="text-sm text-red-800">
-                    <strong>Available Pool: ₹{sevaPool.currentSevaBalance.toLocaleString()}</strong>
+                    <strong>
+                      {selectedStoreForAllocation 
+                        ? `${selectedStoreForAllocation} Seva Balance: ₹${(storeSevaBalances[selectedStoreForAllocation] || 0).toLocaleString()}`
+                        : 'Select a store to see available balance'}
+                    </strong>
                   </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="store">Select Store</Label>
+                  <select
+                    id="store"
+                    className="w-full p-2 border rounded-md"
+                    value={selectedStoreForAllocation}
+                    onChange={(e) => setSelectedStoreForAllocation(e.target.value)}
+                  >
+                    <option value="">Select a store</option>
+                    {Object.keys(storeSevaBalances).map(storeName => (
+                      <option key={storeName} value={storeName}>
+                        {storeName} - ₹{storeSevaBalances[storeName].toLocaleString()}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedStoreForAllocation && (
+                    <div className="mt-2 p-2 bg-blue-50 rounded-md">
+                      <p className="text-sm text-blue-800">
+                        <strong>Store Seva Balance: ₹{storeSevaBalances[selectedStoreForAllocation]?.toLocaleString() || 0}</strong>
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -506,7 +598,7 @@ export const GoSevaPool = () => {
                     placeholder="Enter amount"
                     value={allocationAmount}
                     onChange={(e) => setAllocationAmount(e.target.value)}
-                    max={sevaPool.currentSevaBalance}
+                    max={selectedStoreForAllocation ? storeSevaBalances[selectedStoreForAllocation] : 0}
                   />
                 </div>
 
@@ -522,7 +614,11 @@ export const GoSevaPool = () => {
                 </div>
 
                 <div className="flex gap-2 pt-4">
-                  <Button onClick={handleAllocation} className="flex-1">
+                  <Button 
+                    onClick={handleAllocation} 
+                    className="flex-1"
+                    disabled={!selectedStoreForAllocation || !allocationAmount || parseFloat(allocationAmount) <= 0 || parseFloat(allocationAmount) > (storeSevaBalances[selectedStoreForAllocation] || 0)}
+                  >
                     Allocate Funds
                   </Button>
                   <Button

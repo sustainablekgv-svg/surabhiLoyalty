@@ -439,7 +439,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           credit: 0,
           debit: saleCalculation.totalAmount - adminCutTx,
           adminCut: adminCutTx,
-          balance: (storeDetails.storeCurrentBalance) - saleAmount + adminCutTx,
+          currentBalance: (storeDetails.storeCurrentBalance) - saleAmount + adminCutTx,
+          sevaBalance: (storeDetails.storeSevaBalance) + saleCalculation.goSevaContribution,
           remarks: `Wallet sale for ${selectedCustomer.customerName} (${selectedCustomer.customerMobile})`,
         };
         await addDoc(collection(db, 'AccountTx'), accountTxData);
@@ -540,10 +541,18 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         const storeSnapshotWallet = await getDocs(storeQueryWallet);
         if (!storeSnapshotWallet.empty) {
           const storeDoc = storeSnapshotWallet.docs[0];
+          const storeData = storeDoc.data();
+          const currentBalanceIncrement = accountTxData.currentBalance - storeData.storeCurrentBalance;
+          const sevaBalanceIncrement = accountTxData.sevaBalance - storeData.storeSevaBalance;
+          
           await updateDoc(storeDoc.ref, {
-            storeCurrentBalance: accountTxData.balance,
+            storeCurrentBalance: increment(currentBalanceIncrement),
+            storeSevaBalance: increment(sevaBalanceIncrement),
             updatedAt: serverTimestamp()
           });
+          
+          console.log(`Updated store balances: Current ${currentBalanceIncrement > 0 ? '+' : ''}${currentBalanceIncrement}, Seva ${sevaBalanceIncrement > 0 ? '+' : ''}${sevaBalanceIncrement}`);
+          console.log(`New store balances: Current ${storeData.storeCurrentBalance + currentBalanceIncrement}, Seva ${storeData.storeSevaBalance + sevaBalanceIncrement}`);
         }
       } else
         if (paymentMethod === 'cash') {
@@ -559,7 +568,9 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             adminCut: adminCutTx,
             adminProfit: adminProfitTaken,
             debit: saleCalculation.totalAmount - adminCutTx,
-            balance: (Number(storeDetails?.storeCurrentBalance) || 0) + 
+            sevaBalance: (Number(storeDetails?.storeSevaBalance) || 0) + 
+            (Number(saleCalculation?.goSevaContribution) || 0),
+            currentBalance: (Number(storeDetails?.storeCurrentBalance) || 0) + 
             (Number(saleCalculation?.cashPayment) || 0) - 
             (Number(saleCalculation?.totalAmount) || 0) + 
             (Number(adminCutTx) || 0), // balance + credit + debot
@@ -651,10 +662,18 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           const storeSnapshot = await getDocs(storeQuery);
           if (!storeSnapshot.empty) {
             const storeDoc = storeSnapshot.docs[0];
+            const storeData = storeDoc.data();
+            const currentBalanceIncrement = accountTxData.currentBalance - storeData.storeCurrentBalance;
+            const sevaBalanceIncrement = accountTxData.sevaBalance - storeData.storeSevaBalance;
+            
             await updateDoc(storeDoc.ref, {
-              storeCurrentBalance: accountTxData.balance,
+              storeCurrentBalance: increment(currentBalanceIncrement),
+              storeSevaBalance: increment(sevaBalanceIncrement),
               updatedAt: serverTimestamp()
             });
+            
+            console.log(`Updated store balances (cash sale): Current ${currentBalanceIncrement > 0 ? '+' : ''}${currentBalanceIncrement}, Seva ${sevaBalanceIncrement > 0 ? '+' : ''}${sevaBalanceIncrement}`);
+            console.log(`New store balances: Current ${storeData.storeCurrentBalance + currentBalanceIncrement}, Seva ${storeData.storeSevaBalance + sevaBalanceIncrement}`);
           }
         } else {
           // Mixed payment - create two separate records
@@ -714,12 +733,13 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               adminProfit: adminProfitTaken,
               credit: saleCalculation.cashPayment,
               debit: saleCalculation.totalAmount - adminCutTx,
-              balance: 
-              (Number(storeDetails?.storeCurrentBalance) || 0) + 
+              currentBalance: (Number(storeDetails?.storeCurrentBalance) || 0) + 
     (Number(saleCalculation?.cashPayment) || 0) - 
     (Number(saleCalculation?.totalAmount) || 0) + 
     (Number(adminCutTx) || 0),         
-              remarks: `Mixed sale ₹${saleCalculation.totalAmount} with cash of ₹${saleCalculation.cashPayment} and wallet of ₹${saleCalculation.walletDeduction} by ${selectedCustomer.customerName}`,
+              sevaBalance: (Number(storeDetails?.storeSevaBalance) || 0) + 
+    (Number(saleCalculation?.goSevaContribution) || 0),
+              remarks: `Mixed sale ₹${saleCalculation.totalAmount} with cash of ₹${saleCalculation.cashPayment} and wallet of ₹${saleCalculation.walletDeduction} by ${selectedCustomer.customerName}`, 
             };
 
 
@@ -804,10 +824,18 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             const storeSnapshot = await getDocs(storeQuery);
             if (!storeSnapshot.empty) {
               const storeDoc = storeSnapshot.docs[0];
+              const storeData = storeDoc.data();
+              const currentBalanceIncrement = cashTxData.currentBalance - storeData.storeCurrentBalance;
+              const sevaBalanceIncrement = cashTxData.sevaBalance - storeData.storeSevaBalance;
+              
               await updateDoc(storeDoc.ref, {
-                storeCurrentBalance: cashTxData.balance,
+                storeCurrentBalance: increment(currentBalanceIncrement),
+                storeSevaBalance: increment(sevaBalanceIncrement),
                 updatedAt: serverTimestamp()
               });
+              
+              console.log(`Updated store balances (cash payment): Current ${currentBalanceIncrement > 0 ? '+' : ''}${currentBalanceIncrement}, Seva ${sevaBalanceIncrement > 0 ? '+' : ''}${sevaBalanceIncrement}`);
+              console.log(`New store balances: Current ${storeData.storeCurrentBalance + currentBalanceIncrement}, Seva ${storeData.storeSevaBalance + sevaBalanceIncrement}`);
             }
           }
 
@@ -1212,7 +1240,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
                       {(paymentMethod === 'cash' || paymentMethod === 'mixed') && saleCalculation.goSevaContribution > 0 && (
                         <div className="flex items-center justify-between p-3 bg-pink-50 rounded-lg">
-                          <span className="text-sm font-medium text-pink-900">Go Seva Contribution  {storeDetails.sevaCommission}%</span>
+                          <span className="text-sm font-medium text-pink-900">Seva Contribution  {storeDetails.sevaCommission}%</span>
                           <span className="font-bold text-pink-600">+{saleCalculation.goSevaContribution} </span>
                         </div>
                       )}
