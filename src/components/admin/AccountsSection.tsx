@@ -32,7 +32,8 @@ import {
   updateDoc,
   doc,
   writeBatch,
-  where
+  where,
+  increment
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
@@ -118,6 +119,7 @@ const Accounts = () => {
           credit: txData.credit || 0,
           currentBalance: txData.currentBalance || 0,
           sevaBalance: txData.sevaBalance || 0,
+          adminCurrentBalance: txData.adminCurrentBalance || 0,
           remarks: txData.remarks || ''
         };
 
@@ -196,6 +198,7 @@ const Accounts = () => {
       // Update store balance
       batch.update(storeRef, {
         storeCurrentBalance: newStoreBalance,
+        adminStoreBalance: increment(amount),
         updatedAt: Timestamp.now()
       });
 
@@ -293,11 +296,18 @@ const Accounts = () => {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg">{store.storeName}</CardTitle>
                   <CardDescription>{store.storeLocation}</CardDescription>
+                  <CardDescription>Admin Profit:</CardDescription>
+                  <div className={`text-2xl font-bold ${(store.adminStoreProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {(store.adminStoreProfit || 0) >= 0 ? '+' : ''}
+                    ₹{(store.adminStoreProfit || 0).toFixed(2)}
+                  </div>
+
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-2xl font-bold ${(store.storeCurrentBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {(store.storeCurrentBalance || 0) >= 0 ? '+' : ''}
-                    ₹{(store.storeCurrentBalance || 0).toFixed(2)}
+                  <CardDescription>Admin Current Balance:</CardDescription>
+                  <div className={`text-2xl font-bold ${(store.adminCurrentBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {(store.adminCurrentBalance || 0) >= 0 ? '+' : ''}
+                    ₹{(store.adminCurrentBalance || 0).toFixed(2)}
                   </div>
                   <Button
                     variant="ghost"
@@ -522,7 +532,8 @@ const Accounts = () => {
                         {Number(tx.adminProfit) && tx.adminProfit > 0 ? `₹${tx.adminProfit.toFixed(2)}` : '-'}
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        ₹{tx.currentBalance.toFixed(2)}
+                        {tx?.adminCurrentBalance >= 0 ? '+' : ''}
+                        ₹{tx?.adminCurrentBalance.toFixed(2)}
                       </TableCell>
                       <TableCell className="hidden md:table-cell max-w-xs truncate">
                         {tx.remarks}

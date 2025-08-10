@@ -94,37 +94,37 @@ const AdminDashboard = () => {
         createdAt: new Date() as any
       }} onLogout={handleLogout} />
       
-      <div className="container mx-auto px-4 py-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
-          <p className="text-gray-600">Manage your loyalty program and monitor performance</p>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        <div className="mb-4 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">Admin Dashboard</h1>
+          <p className="text-sm sm:text-base text-gray-600">Manage your loyalty program and monitor performance</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6 lg:grid-cols-6 mb-8">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 lg:grid-cols-6 mb-4 sm:mb-8">
+            <TabsTrigger value="overview" className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3">
               <TrendingUp className="h-4 w-4" />
-              <span className="hidden sm:inline">Overview</span>
+              <span className="text-[10px] sm:text-xs">Overview</span>
             </TabsTrigger>
-            <TabsTrigger value="staff" className="flex items-center gap-2">
+            <TabsTrigger value="staff" className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3">
               <UserPlus className="h-4 w-4" />
-              <span className="hidden sm:inline">Staff</span>
+              <span className="text-[10px] sm:text-xs">Staff</span>
             </TabsTrigger>
-            <TabsTrigger value="users" className="flex items-center gap-2">
+            <TabsTrigger value="users" className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3">
               <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Users</span>
+              <span className="text-[10px] sm:text-xs">Users</span>
             </TabsTrigger>
-            <TabsTrigger value="sales" className="flex items-center gap-2">
+            <TabsTrigger value="sales" className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3">
               <ShoppingCart className="h-4 w-4" />
-              <span className="hidden sm:inline">Sales</span>
+              <span className="text-[10px] sm:text-xs">Sales</span>
             </TabsTrigger>
-            <TabsTrigger value="accounts" className="flex items-center gap-2">
-              <ShoppingCart className="h-4 w-4" />
-              <span className="hidden sm:inline">Accounts</span>
+            <TabsTrigger value="accounts" className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3">
+              <DollarSign className="h-4 w-4" />
+              <span className="text-[10px] sm:text-xs">Accounts</span>
             </TabsTrigger>
-            <TabsTrigger value="goseva" className="flex items-center gap-2">
+            <TabsTrigger value="goseva" className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3">
               <Heart className="h-4 w-4" />
-              <span className="hidden sm:inline">Seva</span>
+              <span className="text-[10px] sm:text-xs">Seva</span>
             </TabsTrigger>
           </TabsList>
 

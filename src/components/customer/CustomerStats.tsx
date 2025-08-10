@@ -189,28 +189,28 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Customer Info Card */}
       <Card className="shadow-lg border-0 bg-white">
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="bg-purple-100 p-3 rounded-full">
-                <User className="h-6 w-6 text-purple-600" />
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="bg-purple-100 p-2 sm:p-3 rounded-full">
+                <User className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
               </div>
               <div>
-                <h2 className="text-xl font-bold">{customerData.customerName}</h2>
-                <p className="text-gray-600">Member since {memberSince}</p>
+                <h2 className="text-lg sm:text-xl font-bold truncate max-w-[200px] sm:max-w-full">{customerData.customerName}</h2>
+                <p className="text-xs sm:text-sm text-gray-600">Member since {memberSince}</p>
               </div>
             </div>
             
-            <div className="flex items-center gap-4">
-              <div className="bg-blue-100 p-3 rounded-full">
-                <Phone className="h-6 w-6 text-blue-600" />
+            <div className="flex items-center gap-3 sm:gap-4 mt-3 sm:mt-0">
+              <div className="bg-blue-100 p-2 sm:p-3 rounded-full">
+                <Phone className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
               </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-600">Your referral number</p>
-                <p className="text-lg font-bold">{customerData.customerMobile}</p>
+              <div className="text-left sm:text-right">
+                <p className="text-xs sm:text-sm text-gray-600">Your referral number</p>
+                <p className="text-base sm:text-lg font-bold">{customerData.customerMobile}</p>
               </div>
             </div>
           </div>
@@ -218,22 +218,22 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       </Card>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         {stats.map((stat, index) => (
           <Card key={index} className={`shadow-lg border-0 ${stat.bgColor} ${stat.borderColor} hover:shadow-xl transition-shadow duration-200`}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-700">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+              <CardTitle className="text-xs sm:text-sm font-medium text-gray-700">
                 {stat.title}
               </CardTitle>
-              <div className="bg-white p-2 rounded-full">
-                <stat.icon className={`h-4 w-4 ${stat.color}`} />
+              <div className="bg-white p-1.5 sm:p-2 rounded-full">
+                <stat.icon className={`h-3 w-3 sm:h-4 sm:w-4 ${stat.color}`} />
               </div>
             </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${stat.color} mb-1`}>
+            <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6 pt-0">
+              <div className={`text-lg sm:text-2xl font-bold ${stat.color} mb-0.5 sm:mb-1`}>
                 {stat.value}
               </div>
-              <p className="text-xs text-gray-600">
+              <p className="text-[10px] sm:text-xs text-gray-600">
                 {stat.description}
               </p>
             </CardContent>
@@ -242,25 +242,25 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       </div>
 
       {/* Recent Activity & Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <Card className="shadow-lg border-0 bg-white">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-blue-600" />
+          <CardHeader className="px-4 sm:px-6 py-3 sm:py-4">
+            <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-base sm:text-lg">
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
               Recent Activity
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+          <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6 pt-0">
+            <div className="space-y-3 sm:space-y-4">
               {activities.length > 0 ? (
                 activities.map((activity) => (
-                  <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-white p-2 rounded-full border">
+                  <div key={activity.id} className="flex items-center justify-between p-2 sm:p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="bg-white p-1.5 sm:p-2 rounded-full border">
                         {getActivityIcon(activity.type)}
                       </div>
                       <div>
-                        <p className="font-medium text-sm">
+                        <p className="font-medium text-xs sm:text-sm truncate max-w-[120px] sm:max-w-full">
                           {activity.type === 'recharge' ? 'Wallet Recharge' : 
                            activity.type === 'sale' ? 'Purchase Made' :
                            activity.type === 'referral' ? 'Referral Bonus' :
@@ -269,28 +269,24 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                            activity.type === 'surabhi_earn' ? 'Surabhi Coins Earned' :
                            'Account Activity'}
                         </p>
-                        <p className="text-xs text-gray-600">
+                        <p className="text-[10px] sm:text-xs text-gray-600 truncate max-w-[150px] sm:max-w-full">
                           {activity.createdAt && formatActivityDate(activity.createdAt)} • {activity.storeLocation}
                         </p>
                       </div>
                     </div>
                     {activity.amount && (
-                      <span className={`font-bold ${
+                      <span className={`text-xs sm:text-sm font-bold ${
                         activity.type === 'recharge' || activity.type === 'referral' || activity.type === 'surabhi_earn'
                           ? 'text-green-600' 
                           : 'text-blue-600'
                       }`}>
-                        {/* {activity.type === 'recharge' ? `₹${activity.am}` : 
-                         activity.type === 'sale' ? `₹${activity.amount}` :
-                         activity.type === 'seva_contribution' ? `₹${activity.amount}` :
-                         `${activity.amount} coins`} */}
-                         {activity.remarks}
+                        {activity.remarks}
                       </span>
                     )}
                   </div>
                 ))
               ) : (
-                <div className="text-center py-4 text-gray-500">
+                <div className="text-center py-3 sm:py-4 text-gray-500 text-sm">
                   No recent activities found
                 </div>
               )}
@@ -299,37 +295,37 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
         </Card>
 
         <Card className="shadow-lg border-0 bg-white">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-purple-600" />
+          <CardHeader className="px-4 sm:px-6 py-3 sm:py-4">
+            <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-base sm:text-lg">
+              <Target className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
               Earning Opportunities
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs sm:text-sm">
               Ways to earn more rewards
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="p-4 bg-gradient-to-r from-purple-50 to-amber-50 rounded-lg border border-purple-200">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="bg-purple-100 p-2 rounded-full">
-                    <Wallet className="h-4 w-4 text-purple-600" />
+          <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6 pt-0">
+            <div className="space-y-3 sm:space-y-4">
+              <div className="p-3 sm:p-4 bg-gradient-to-r from-purple-50 to-amber-50 rounded-lg border border-purple-200">
+                <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
+                  <div className="bg-purple-100 p-1.5 sm:p-2 rounded-full">
+                    <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-600" />
                   </div>
-                  <h3 className="font-medium text-purple-900">Recharge Wallet</h3>
+                  <h3 className="font-medium text-sm sm:text-base text-purple-900">Recharge Wallet</h3>
                 </div>
-                <p className="text-sm text-purple-700 mb-2">Earn Surabhi Coins on every recharge</p>
-                <div className="text-xs text-purple-600">Visit store to recharge</div>
+                <p className="text-xs sm:text-sm text-purple-700 mb-1.5 sm:mb-2">Earn Surabhi Coins on every recharge</p>
+                <div className="text-[10px] sm:text-xs text-purple-600">Visit store to recharge</div>
               </div>
               
-              <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="bg-green-100 p-2 rounded-full">
-                    <Phone className="h-4 w-4 text-green-600" />
+              <div className="p-3 sm:p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
+                <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
+                  <div className="bg-green-100 p-1.5 sm:p-2 rounded-full">
+                    <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-600" />
                   </div>
-                  <h3 className="font-medium text-green-900">Refer Friends</h3>
+                  <h3 className="font-medium text-sm sm:text-base text-green-900">Refer Friends</h3>
                 </div>
-                <p className="text-sm text-green-700 mb-2">Earn Referral coins on friend's purchases</p>
-                <div className="text-xs text-green-600">Ask friends to use your number when signing up</div>
+                <p className="text-xs sm:text-sm text-green-700 mb-1.5 sm:mb-2">Earn Referral coins on friend's purchases</p>
+                <div className="text-[10px] sm:text-xs text-green-600">Ask friends to use your number when signing up</div>
               </div>
             </div>
           </CardContent>

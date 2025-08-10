@@ -164,38 +164,24 @@ try {
 
   return (
     <div className="bg-white shadow-sm border-b">
-      {/* Header remains exactly the same as your original */}
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="bg-gradient-to-br from-purple-600 to-amber-500 p-2 rounded-lg">
-              <Coins className="h-6 w-6 text-white" />
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0">
+          <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto justify-between sm:justify-start">
+            <div className="bg-gradient-to-br from-purple-600 to-amber-500 p-1.5 sm:p-2 rounded-lg">
+              <Coins className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Loyalty Rewards</h1>
-              <p className="text-sm text-gray-600">Admin Portal</p>
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900">Loyalty Rewards</h1>
+              <p className="text-xs sm:text-sm text-gray-600">Admin Portal</p>
             </div>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">
-                  {user.staffName || 'Admin'}
-                </p>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-xs">
-                    {user.role.toUpperCase()}
-                  </Badge>
-                  <span className="text-xs text-gray-600">{user.staffMobile}</span>
-                </div>
-              </div>
-              
+            
+            {/* Mobile buttons */}
+            <div className="flex items-center gap-1 sm:hidden">
               <Button 
                 variant="ghost" 
                 size="sm" 
                 onClick={() => setIsSettingsOpen(true)}
-                className="text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                className="text-gray-600 hover:text-gray-900 hover:bg-gray-50 p-1"
               >
                 <Settings className="h-4 w-4" />
               </Button>
@@ -204,10 +190,47 @@ try {
                 variant="ghost" 
                 size="sm" 
                 onClick={onLogout}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 p-1"
               >
                 <LogOut className="h-4 w-4" />
               </Button>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto justify-between sm:justify-end">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="text-center sm:text-right">
+                <p className="text-xs sm:text-sm font-medium text-gray-900">
+                  {user.staffName || 'Admin'}
+                </p>
+                <div className="flex items-center gap-1 sm:gap-2 justify-center sm:justify-end">
+                  <Badge variant="secondary" className="text-[10px] sm:text-xs px-1 sm:px-2">
+                    {user.role.toUpperCase()}
+                  </Badge>
+                  <span className="text-[10px] sm:text-xs text-gray-600">{user.staffMobile}</span>
+                </div>
+              </div>
+              
+              {/* Desktop buttons */}
+              <div className="hidden sm:flex items-center gap-1">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+                
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={onLogout}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -215,51 +238,51 @@ try {
 
       {/* Enhanced Settings Dialog with all StaffType fields */}
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Admin Settings</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-4 sm:p-6">
+          <DialogHeader className="pb-2 sm:pb-4">
+            <DialogTitle className="text-lg sm:text-xl">Admin Settings</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
               Update your profile information
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-3 sm:space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="name">Full Name</Label>
+                <Label htmlFor="name" className="text-xs sm:text-sm">Full Name</Label>
                 <Input
                   value={user.staffName}
                   disabled
-                  className="bg-gray-100"
+                  className="bg-gray-100 h-8 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
               <div>
-                <Label htmlFor="mobile">Mobile Number</Label>
+                <Label htmlFor="mobile" className="text-xs sm:text-sm">Mobile Number</Label>
                 <Input
                   value={user.staffMobile}
                   disabled
-                  className="bg-gray-100"
+                  className="bg-gray-100 h-8 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-xs sm:text-sm">Email</Label>
                 <Input
                   value={user.staffEmail}
                   disabled
-                  className="bg-gray-100"
+                  className="bg-gray-100 h-8 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
                 <div>
-                <Label htmlFor="storeLocation">Store Location</Label>
+                <Label htmlFor="storeLocation" className="text-xs sm:text-sm">Store Location</Label>
                 <select
                 id="storeLocation"
                 name="storeLocation"
                 value={formData.storeLocation || ''}
                 onChange={handleInputChange}
-                className="w-full p-2 border rounded" // Add your styling classes here
+                className="w-full p-1.5 sm:p-2 border rounded h-8 sm:h-10 text-xs sm:text-sm"
                 >
                 <option value="">Select a store</option>
                 {stores.map(store => (
@@ -271,94 +294,96 @@ try {
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="role">Role</Label>
+                <Label htmlFor="role" className="text-xs sm:text-sm">Role</Label>
                 <Select
                   value={formData.role}
                   onValueChange={(value) => handleSelectChange('role', value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="staff">Staff</SelectItem>
+                    <SelectItem value="admin" className="text-xs sm:text-sm">Admin</SelectItem>
+                    <SelectItem value="staff" className="text-xs sm:text-sm">Staff</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="status">Status</Label>
+                <Label htmlFor="status" className="text-xs sm:text-sm">Status</Label>
                 <Select
                   value={formData.staffStatus}
                   onValueChange={(value) => handleSelectChange('staffStatus', value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="active" className="text-xs sm:text-sm">Active</SelectItem>
+                    <SelectItem value="inactive" className="text-xs sm:text-sm">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="staffPin">Staff PIN</Label>
+                <Label htmlFor="staffPin" className="text-xs sm:text-sm">Staff PIN</Label>
                 <Input
                   id="staffPin"
                   name="staffPin"
                   type="text"
                   value={formData.staffPin || ''}
                   onChange={handleInputChange}
-                  // placeholder="4-6 digit PIN"
+                  className="h-8 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
               <div>
-                <Label htmlFor="staffPassword">New Password</Label>
+                <Label htmlFor="staffPassword" className="text-xs sm:text-sm">New Password</Label>
                 <Input
                   id="staffPassword"
                   name="staffPassword"
                   type="text"
                   value={formData.staffPassword || ''}
                   onChange={handleInputChange}
-                  // placeholder="Leave blank to keep current"
+                  className="h-8 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label>Created At</Label>
+                <Label className="text-xs sm:text-sm">Created At</Label>
                     <Input
                     value={safeFormatDate(user.createdAt)} // Using our safeFormatDate utility
                     disabled
-                    className="bg-gray-100"
+                    className="bg-gray-100 h-8 sm:h-10 text-xs sm:text-sm"
                     />
               </div>
               <div>
-                <Label>Sales Count</Label>
+                <Label className="text-xs sm:text-sm">Sales Count</Label>
                 <Input
                   value={user.staffSalesCount}
                   disabled
-                  className="bg-gray-100"
+                  className="bg-gray-100 h-8 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-4">
+            <div className="flex justify-end gap-2 pt-3 sm:pt-4">
               <Button 
                 variant="outline" 
                 onClick={() => setIsSettingsOpen(false)}
                 disabled={isUpdating}
+                className="h-8 sm:h-10 text-xs sm:text-sm px-2 sm:px-4"
               >
                 Cancel
               </Button>
               <Button 
                 onClick={handleSaveChanges}
                 disabled={isUpdating}
+                className="h-8 sm:h-10 text-xs sm:text-sm px-2 sm:px-4"
               >
                 {isUpdating ? 'Saving...' : 'Save Changes'}
               </Button>

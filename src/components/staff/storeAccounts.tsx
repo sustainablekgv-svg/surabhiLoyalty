@@ -104,6 +104,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
           currentBalance: data.currentBalance || 0,
           sevaBalance: data.sevaBalance || 0,
           remarks: data.remarks || '',
+          adminCurrentBalance: data.adminCurrentBalance ||  0,
           adminCut: data.adminCut || 0
         });
       });

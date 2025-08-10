@@ -76,28 +76,28 @@ const CustomerDashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50">
       <CustomerHeader user={user} onLogout={handleLogout} />
-      <div className="container mx-auto px-4 py-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Rewards Dashboard</h1>
-          <p className="text-gray-600">Track your coins, referrals, and transaction history</p>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        <div className="mb-4 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">My Rewards Dashboard</h1>
+          <p className="text-sm sm:text-base text-gray-600">Track your coins, referrals, and transaction history</p>
         </div>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full-xl">
-          <TabsList className="grid w-full grid-cols-3 mb-8">
-            <TabsTrigger value="overview" className="flex flex-col items-center gap-1 py-3">
-              <TrendingUp className="h-5 w-5" />
-              <span className="text-xs">Overview</span>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-4 sm:mb-8">
+            <TabsTrigger value="overview" className="flex flex-col items-center gap-1 py-2 sm:py-3">
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="text-[10px] sm:text-xs">Overview</span>
             </TabsTrigger>
-            <TabsTrigger value="referrals" className="flex flex-col items-center gap-1 py-3">
-              <Share2 className="h-5 w-5" />
-              <span className="text-xs">Referrals</span>
+            <TabsTrigger value="referrals" className="flex flex-col items-center gap-1 py-2 sm:py-3">
+              <Share2 className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="text-[10px] sm:text-xs">Referrals</span>
             </TabsTrigger>
-            <TabsTrigger value="history" className="flex flex-col items-center gap-1 py-3">
-              <History className="h-5 w-5" />
-              <span className="text-xs">History</span>
+            <TabsTrigger value="history" className="flex flex-col items-center gap-1 py-2 sm:py-3">
+              <History className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="text-[10px] sm:text-xs">History</span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
+          <TabsContent value="overview" className="space-y-4 sm:space-y-6">
             <CustomerStats userId={user.id} />
           </TabsContent>
 

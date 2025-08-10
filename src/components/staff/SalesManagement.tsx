@@ -193,7 +193,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       (storeDetails.surabhiCommission - storeDetails.cashOnlyCommission) / 100;
       
     const surabhiCoinsPart = saleCalculation.surabhiCoinsUsed * 
-      (storeDetails.referralCommission + storeDetails.cashOnlyCommission + storeDetails.sevaCommission) / 100;
+      (storeDetails.referralCommission + storeDetails.surabhiCommission + storeDetails.sevaCommission) / 100;
     
     const totalProfit = cashPaymentPart + surabhiCoinsPart;
     
@@ -488,8 +488,9 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           credit: 0,
           debit: saleCalculation.totalAmount - adminCutTx,
           adminCut: adminCutTx,
-          currentBalance: (storeDetails.storeCurrentBalance) - saleAmount + adminCutTx,
-          sevaBalance: (storeDetails.storeSevaBalance) + saleCalculation.goSevaContribution,
+          adminCurrentBalance: -(storeDetails.storeCurrentBalance || 0) + saleAmount - adminCutTx,
+          currentBalance: (storeDetails.storeCurrentBalance || 0) - saleAmount + adminCutTx,
+          sevaBalance: (storeDetails.storeSevaBalance || 0) + saleCalculation.goSevaContribution,
           remarks: `Wallet sale for ${selectedCustomer.customerName} (${selectedCustomer.customerMobile})`,
         };
         await addDoc(collection(db, 'AccountTx'), accountTxData);
@@ -596,7 +597,9 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           
           await updateDoc(storeDoc.ref, {
             storeCurrentBalance: increment(currentBalanceIncrement),
+            adminCurrentBalance: increment(-currentBalanceIncrement),
             storeSevaBalance: increment(sevaBalanceIncrement),
+            adminStoreProfit: increment(adminProfitTaken),
             updatedAt: serverTimestamp()
           });
           
@@ -623,6 +626,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             (Number(saleCalculation?.cashPayment) || 0) - 
             (Number(saleCalculation?.totalAmount) || 0) + 
             (Number(adminCutTx) || 0), // balance + credit + debot
+            adminCurrentBalance : -storeDetails.storeCurrentBalance - saleCalculation.cashPayment + saleCalculation.totalAmount - adminCutTx,
             remarks: `Cash sale for ${selectedCustomer.customerName} (${selectedCustomer.customerMobile})`,
           }
           await addDoc(collection(db, 'AccountTx'), accountTxData);
@@ -717,7 +721,9 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             
             await updateDoc(storeDoc.ref, {
               storeCurrentBalance: increment(currentBalanceIncrement),
+              adminCurrentBalance: increment(-currentBalanceIncrement),
               storeSevaBalance: increment(sevaBalanceIncrement),
+               adminStoreProfit: increment(adminProfitTaken),
               updatedAt: serverTimestamp()
             });
             
@@ -782,6 +788,10 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               adminProfit: adminProfitTaken,
               credit: saleCalculation.cashPayment,
               debit: saleCalculation.totalAmount - adminCutTx,
+              adminCurrentBalance : -(Number(storeDetails?.storeCurrentBalance) || 0) -
+    (Number(saleCalculation?.cashPayment) || 0) +
+    (Number(saleCalculation?.totalAmount) || 0) -
+    (Number(adminCutTx) || 0),         
               currentBalance: (Number(storeDetails?.storeCurrentBalance) || 0) + 
     (Number(saleCalculation?.cashPayment) || 0) - 
     (Number(saleCalculation?.totalAmount) || 0) + 
@@ -880,6 +890,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               await updateDoc(storeDoc.ref, {
                 storeCurrentBalance: increment(currentBalanceIncrement),
                 storeSevaBalance: increment(sevaBalanceIncrement),
+                adminCurrentBalance: increment(-currentBalanceIncrement),
+                 adminStoreProfit: increment(adminProfitTaken),
                 updatedAt: serverTimestamp()
               });
               
