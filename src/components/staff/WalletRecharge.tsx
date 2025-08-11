@@ -532,16 +532,33 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
           });
     
             // Add CustomerTx record for the referral Surabhi Coins earned by referrer
-            const referrerTxData = {
-              type: 'surabhi_earn',
+            const referrerTxData: CustomerTxType = {
+              type: 'referral',
               customerMobile: currentData.referredBy,
               customerName: referrerData.customerName,
+              staffName:user.name,
               storeLocation: storeLocation,
               storeName: storeLocation,
               createdAt: Timestamp.fromDate(new Date()),
               processedBy: user.name,
-              // invoiceId: generateInvoiceId(), // Add unique invoice ID
+              // invoiceId: `INV-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
               amount: referralAmount,
+              surabhiEarned: referralAmount,
+              sevaEarned: 0,
+              referralEarned: referralAmount,
+              referredBy: null,
+              surabhiUsed: 0,
+              walletDeduction: 0,
+              cashPayment: 0,
+              previousBalance: {
+                walletBalance: referrerData.walletBalance,
+                surabhiBalance: referrerData.surabhiBalance
+              },
+              newBalance: {
+                walletBalance: referrerData.walletBalance,
+                surabhiBalance: referrerData.surabhiBalance + referralAmount
+              },
+              paymentMethod: 'cash',
               walletCredit: 0,
               walletDebit: 0,
               walletBalance: referrerData.walletBalance,
@@ -550,9 +567,8 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
               surabhiBalance: referrerData.surabhiBalance + referralAmount,
               sevaCredit: 0,
               sevaDebit: 0,
-              sevaBalance: referrerData.sevaBalanceCurrentMonth,
-              sevaTotal: referrerData.sevaTotal,
-              remarks: `Referral bonus from ${currentData.customerName}'s wallet recharge`
+              sevaBalance: referrerData.sevaBalanceCurrentMonth || 0,
+              sevaTotal: referrerData.sevaTotal || 0
             };
             
             await addDoc(collection(db, 'CustomerTx'), referrerTxData);

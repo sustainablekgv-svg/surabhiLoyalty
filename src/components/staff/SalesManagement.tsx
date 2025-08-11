@@ -413,7 +413,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             
             // Add CustomerTx record for the referral Surabhi Coins earned by referrer
             const referrerTxData: CustomerTxType = {
-              type: 'surabhi_earn',
+              type: 'referral',
               customerMobile: referrerData.customerMobile,
               customerName: referrerData.customerName,
               storeLocation: selectedCustomer.storeLocation,
@@ -1021,8 +1021,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           });
           
           // Add CustomerTx record for the referral Surabhi Coins earned by referrer
-          const referrerTxData = {
-            type: 'surabhi_earn',
+          const referrerTxData : CustomerTxType= {
+            type: 'referral',
             customerMobile: referrer.customerMobile,
             customerName: referrer.customerName,
             storeLocation: referrer.storeLocation,
@@ -1036,13 +1036,13 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             walletBalance: referrer.walletBalance,
             surabhiDebit: 0,
             surabhiCredit: referralAmount,
+            surabhiEarned: referralAmount,
             surabhiBalance: referrer.surabhiBalance + referralAmount,
             sevaCredit: 0,
             sevaDebit: 0,
             sevaBalance: referrer.sevaBalanceCurrentMonth,
             sevaTotal: referrer.sevaTotal,
-            remarks: `Referral bonus from ${selectedCustomer.customerName}'s ${paymentMethod} payment`
-          };
+           };
           
           await addDoc(collection(db, 'CustomerTx'), referrerTxData);
 

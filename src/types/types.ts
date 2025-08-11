@@ -154,7 +154,7 @@ export interface AdminHeaderProps {
 
 export interface CustomerTxType {
   id?: string;
-  type: 'recharge' | 'sale' | 'seva_contribution' | 'seva_allocation' | 'surabhi_earn';
+  type: 'recharge' | 'sale' | 'referral';
   invoiceId?: string; // Optional invoice ID field
 
   // Common Fields

@@ -412,7 +412,7 @@ export const GoSevaPool = () => {
         createdAt: timestamp,
         paymentMethod: 'admin',
         processedBy: adminDetails.staffName,
-        invoiceId: generateInvoiceId(), // Add unique invoice ID
+        invoiceId: generateInvoiceId(),
         amount: amount,
         surabhiEarned: 0,
         sevaEarned: 0,
@@ -446,6 +446,8 @@ export const GoSevaPool = () => {
       await addDoc(collection(db, 'Activity'), {
         type: 'seva_allocation',
         remarks: allocationDescription,
+        credit: 0,
+        debit: amount,
         amount: amount,
         customerName: adminDetails.staffName,
         customerMobile: adminDetails.staffMobile,

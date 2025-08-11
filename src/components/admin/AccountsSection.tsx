@@ -189,8 +189,12 @@ const Accounts = () => {
         customerMobile: '',
         type: 'settlement',
         amount: Math.abs(amount),
+        debit: amount >= 0 ? Math.abs(amount) : 0,
+        credit: amount < 0 ? Math.abs(amount) : 0,
         adminCut: 0,
+        adminProfit: 0,
         currentBalance: newStoreBalance,
+        sevaBalance: selectedStoreForSettlement.storeSevaBalance || 0,
         adminCurrentBalance: newAdminBalance,
         // invoiceId: invoiceId,
         remarks: settlementDescription || `Settlement adjustment ${amount >= 0 ? 'from store to admin' : 'from admin to store'} for ${selectedStoreForSettlement.storeName}`
@@ -548,6 +552,8 @@ const Accounts = () => {
                     <TableHead className="hidden md:table-cell">Mobile</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-right">Credit</TableHead>
+                    <TableHead className="text-right">Debit</TableHead>
                     <TableHead className="hidden lg:table-cell text-right">Admin Cut</TableHead>
                     <TableHead className="hidden xl:table-cell text-right">Admin Profit</TableHead>
                     <TableHead className="text-right">Store Balance</TableHead>
@@ -585,6 +591,18 @@ const Accounts = () => {
                         <span className={tx.amount >= 0 ? 'text-green-600' : 'text-red-600'}>
                           {tx.amount >= 0 ? '+' : ''}
                           ₹{Math.abs(tx.amount).toFixed(2)}
+                        </span>
+                      </TableCell>
+                       <TableCell className="text-right">
+                        <span className={tx.debit >= 0 ? 'text-red-600' : 'text-green-600'}>
+                          {tx.debit >= 0 ? '' : '+'}
+                          ₹{Math.abs(tx.debit).toFixed(2)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className={tx.credit >= 0 ? 'text-green-600' : 'text-red-600'}>
+                          {tx.credit >= 0 ? '+' : ''}
+                          ₹{Math.abs(tx.credit).toFixed(2)}
                         </span>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-right">

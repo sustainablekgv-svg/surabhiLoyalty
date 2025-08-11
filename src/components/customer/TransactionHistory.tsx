@@ -54,7 +54,7 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
         txQuery = query(
           collection(db, 'CustomerTx'),
           where('customerMobile', '==', mobileNumber),
-          where('amount', '>', 0),
+          // where('amount', '>', 0),
           orderBy('createdAt', 'desc'),
           limit(recordsPerPage)
         );
