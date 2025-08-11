@@ -287,14 +287,14 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
                     <div className="flex items-center justify-between mb-3">
                       <div>
                         <h3 className="font-medium text-gray-900">{customer?.name}</h3>
-                        <div className="flex items-center gap-2 mt-1">
+                        {/* <div className="flex items-center gap-2 mt-1">
                           <Badge variant={customer.walletRechargeDone ? 'default' : 'secondary'} className="text-xs">
                             {customer?.walletRechargeDone ? 'Active' : 'Pending'}
                           </Badge>
                           <Badge variant="outline" className="text-xs">
                             {customer?.saleEligibility ? 'Eligible' : 'Not Eligible'}
                           </Badge>
-                        </div>
+                        </div> */}
                       </div>
                     </div>
                     
@@ -320,14 +320,14 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
                         <Coins className="h-4 w-4" />
                         <span>{customer?.surabhiBalance?.toLocaleString()} coins</span>
                       </div> */}
-                      <div className="flex items-center gap-2">
+                      {/* <div className="flex items-center gap-2">
                         {customer.walletRechargeDone ? (
                           <Check className="h-4 w-4 text-green-500" />
                         ) : (
                           <X className="h-4 w-4 text-red-500" />
                         )}
                         <span>Recharged</span>
-                      </div>
+                      </div> */}
                     </div>
                     
                     {customer.lastTransactionDate && (

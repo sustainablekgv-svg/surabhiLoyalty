@@ -21,6 +21,8 @@ import {
   Plus,
   ArrowDown,
   ArrowUp,
+  ArrowUpRight,
+  ArrowDownLeft,
   Edit
 } from 'lucide-react';
 import {
@@ -39,7 +41,7 @@ import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { AccountTxType, StoreType } from '@/types/types';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
@@ -113,14 +115,13 @@ const Accounts = () => {
           customerMobile: txData.customerMobile || '',
           type: txData.type || 'settlement',
           amount: txData.amount || 0,
-          debit: txData.debit || 0,
+          debit: txData.debit || 0, // Keep for backward compatibility
           adminCut: txData.adminCut || 0,
           adminProfit: txData.adminProfit || 0,
-          credit: txData.credit || 0,
+          credit: txData.credit || 0, // Keep for backward compatibility
           currentBalance: txData.currentBalance || 0,
           sevaBalance: txData.sevaBalance || 0,
           adminCurrentBalance: txData.adminCurrentBalance || 0,
-          // invoiceId: txData.invoiceId || '',
           remarks: txData.remarks || ''
         };
 
@@ -158,7 +159,24 @@ const Accounts = () => {
       setIsSubmittingSettlement(true);
 
       const amount = Number(settlementAmount);
-      const newStoreBalance = (selectedStoreForSettlement.storeCurrentBalance || 0) + amount;
+      
+      // For positive amounts: add to adminCurrentBalance, deduct from storeCurrentBalance
+      // For negative amounts: deduct from adminCurrentBalance, add to storeCurrentBalance
+      const newStoreBalance = (selectedStoreForSettlement.storeCurrentBalance || 0) - amount;
+      const newAdminBalance = (selectedStoreForSettlement.adminCurrentBalance || 0) + amount;
+      
+      // Check if the amount is within the allowed range
+      if (amount > 0 && amount > (selectedStoreForSettlement.storeCurrentBalance || 0)) {
+        toast.error(`Amount exceeds store's current balance of ₹${selectedStoreForSettlement.storeCurrentBalance || 0}`); 
+        setIsSubmittingSettlement(false);
+        return;
+      }
+      
+      if (amount < 0 && Math.abs(amount) > (selectedStoreForSettlement.adminCurrentBalance || 0)) {
+        toast.error(`Amount exceeds admin's current balance of ₹${selectedStoreForSettlement.adminCurrentBalance || 0}`);
+        setIsSubmittingSettlement(false);
+        return;
+      }
 
       // Generate invoice ID for the settlement transaction
       const invoiceId = `STLMNT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
@@ -171,12 +189,11 @@ const Accounts = () => {
         customerMobile: '',
         type: 'settlement',
         amount: Math.abs(amount),
-        credit: amount > 0 ? Math.abs(amount) : 0,
-        debit: amount < 0 ? Math.abs(amount) : 0,
         adminCut: 0,
-        balance: newStoreBalance,
-        invoiceId: invoiceId,
-        remarks: settlementDescription || `Settlement adjustment for ${selectedStoreForSettlement.storeName}`
+        currentBalance: newStoreBalance,
+        adminCurrentBalance: newAdminBalance,
+        // invoiceId: invoiceId,
+        remarks: settlementDescription || `Settlement adjustment ${amount >= 0 ? 'from store to admin' : 'from admin to store'} for ${selectedStoreForSettlement.storeName}`
       };
 
       // Query for the store by name
@@ -203,7 +220,7 @@ const Accounts = () => {
       // Update store balance
       batch.update(storeRef, {
         storeCurrentBalance: newStoreBalance,
-        adminStoreBalance: increment(amount),
+        adminCurrentBalance: newAdminBalance,
         updatedAt: Timestamp.now()
       });
 
@@ -335,13 +352,27 @@ const Accounts = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Adjust Balance for {selectedStoreForSettlement?.storeName}
+              Balance Adjustment
             </DialogTitle>
+            <DialogDescription>
+              Transfer funds between {selectedStoreForSettlement?.storeName} and Admin account
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <Label>Store Current Balance</Label>
+                <div className="text-lg font-semibold">₹{selectedStoreForSettlement?.storeCurrentBalance?.toFixed(2) || '0.00'}</div>
+              </div>
+              <div>
+                <Label>Admin Current Balance</Label>
+                <div className="text-lg font-semibold">₹{selectedStoreForSettlement?.adminCurrentBalance?.toFixed(2) || '0.00'}</div>
+              </div>
+            </div>
+            
             <div className="flex items-center gap-2">
               <div className="flex-1">
-                <Label htmlFor="amount">Amount</Label>
+                <Label htmlFor="amount">Transfer Amount</Label>
                 <Input
                   id="amount"
                   type="number"
@@ -355,17 +386,19 @@ const Accounts = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => setSettlementAmount(Math.abs(settlementAmount))}
+                  title="Transfer from store to admin"
                 >
                   <ArrowUp className="h-4 w-4 mr-1" />
-                  Credit
+                  Store to Admin
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setSettlementAmount(-Math.abs(settlementAmount))}
+                  title="Transfer from admin to store"
                 >
                   <ArrowDown className="h-4 w-4 mr-1" />
-                  Debit
+                  Admin to Store
                 </Button>
               </div>
             </div>
@@ -379,6 +412,23 @@ const Accounts = () => {
                 placeholder="Reason for adjustment"
               />
             </div>
+            
+            {settlementAmount !== 0 && (
+              <div className="grid grid-cols-2 gap-4 p-3 border rounded-md bg-gray-50">
+                <div>
+                  <Label>New Store Balance</Label>
+                  <div className={`text-lg font-semibold ${(selectedStoreForSettlement?.storeCurrentBalance || 0) - settlementAmount < 0 ? 'text-red-500' : ''}`}>
+                    ₹{((selectedStoreForSettlement?.storeCurrentBalance || 0) - settlementAmount).toFixed(2)}
+                  </div>
+                </div>
+                <div>
+                  <Label>New Admin Balance</Label>
+                  <div className={`text-lg font-semibold ${(selectedStoreForSettlement?.adminCurrentBalance || 0) + settlementAmount < 0 ? 'text-red-500' : ''}`}>
+                    ₹{((selectedStoreForSettlement?.adminCurrentBalance || 0) + settlementAmount).toFixed(2)}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end gap-2">
               <Button
@@ -392,14 +442,26 @@ const Accounts = () => {
               </Button>
               <Button
                 onClick={handleAddSettlement}
-                disabled={isSubmittingSettlement}
+                disabled={isSubmittingSettlement || !settlementAmount || 
+                  (settlementAmount > 0 && settlementAmount > (selectedStoreForSettlement?.storeCurrentBalance || 0)) ||
+                  (settlementAmount < 0 && Math.abs(settlementAmount) > (selectedStoreForSettlement?.adminCurrentBalance || 0))}
               >
                 {isSubmittingSettlement ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <Plus className="h-4 w-4" />
+                  settlementAmount > 0 ? (
+                    <ArrowUpRight className="h-4 w-4" />
+                  ) : settlementAmount < 0 ? (
+                    <ArrowDownLeft className="h-4 w-4" />
+                  ) : (
+                    <Plus className="h-4 w-4" />
+                  )
                 )}
-                <span className="ml-2">Apply Adjustment</span>
+                <span className="ml-2">
+                  {settlementAmount > 0 ? 'Store → Admin' : 
+                   settlementAmount < 0 ? 'Admin → Store' : 
+                   'Apply Adjustment'}
+                </span>
               </Button>
             </div>
           </div>
@@ -487,10 +549,9 @@ const Accounts = () => {
                     <TableHead>Type</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead className="hidden lg:table-cell text-right">Admin Cut</TableHead>
-                    <TableHead className="hidden lg:table-cell text-right">Credit</TableHead>
-                    <TableHead className="hidden lg:table-cell text-right">Debit</TableHead>
                     <TableHead className="hidden xl:table-cell text-right">Admin Profit</TableHead>
-                    <TableHead className="text-right">Balance</TableHead>
+                    <TableHead className="text-right">Store Balance</TableHead>
+                    <TableHead className="text-right">Admin Balance</TableHead>
                     <TableHead className="hidden md:table-cell">Remarks</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -521,24 +582,22 @@ const Accounts = () => {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        {tx.amount >= 0 ? '+' : ''}
-                        ₹{tx.amount.toFixed(2)}
+                        <span className={tx.amount >= 0 ? 'text-green-600' : 'text-red-600'}>
+                          {tx.amount >= 0 ? '+' : ''}
+                          ₹{Math.abs(tx.amount).toFixed(2)}
+                        </span>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-right">
                         {tx.adminCut > 0 ? `₹${tx.adminCut.toFixed(2)}` : '-'}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-right text-green-600">
-                        {tx.debit > 0 ? `+₹${tx.debit.toFixed(2)}` : '-'}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-right text-red-600">
-                        {tx.credit > 0 ? `-₹${tx.credit.toFixed(2)}` : '-'}
                       </TableCell>
                       <TableCell className="hidden xl:table-cell text-right">
                         {Number(tx.adminProfit) && tx.adminProfit > 0 ? `₹${tx.adminProfit.toFixed(2)}` : '-'}
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        {tx?.adminCurrentBalance >= 0 ? '+' : ''}
-                        ₹{tx?.adminCurrentBalance.toFixed(2)}
+                        ₹{tx?.currentBalance?.toFixed(2) || '0.00'}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        ₹{tx?.adminCurrentBalance?.toFixed(2) || '0.00'}
                       </TableCell>
                       <TableCell className="hidden md:table-cell max-w-xs truncate">
                         {tx.remarks}

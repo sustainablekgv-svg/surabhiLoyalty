@@ -100,6 +100,7 @@ export const StaffManagement = () => {
           storeAddress: doc.data().storeAddress || '',
           storeContactNumber: doc.data().storeContactNumber || '',
           storeCurrentBalance: Number(doc.data().storeCurrentBalance) || 0,
+          storeSevaBalance: Number(doc.data().storeSevaBalance) || 0,
           referralCommission: Number(doc.data().referralCommission) || 0,
           surabhiCommission: Number(doc.data().surabhiCommission) || 0,
           sevaCommission: Number(doc.data().sevaCommission) || 0,
@@ -208,7 +209,7 @@ export const StaffManagement = () => {
         staffPin: currentStaff.staffPin || '',
         staffPassword: currentStaff.staffPassword || '',
         lastActive: currentStaff.lastActive || null,
-        staffCreatedAt: currentStaff.createdAt,
+        staffCreatedAt: currentStaff.id ? currentStaff.createdAt : Timestamp.now(),
         staffUpdatedAt: Timestamp.now()
       };
 
@@ -294,6 +295,7 @@ export const StaffManagement = () => {
         surabhiCommission: Number(currentStore.surabhiCommission) || 0,
         sevaCommission: Number(currentStore.sevaCommission) || 0,
         storeCurrentBalance: Number(currentStore.storeCurrentBalance) || 0,
+        storeSevaBalance: Number(currentStore.storeSevaBalance) || 0,
         cashOnlyCommission: Number(currentStore.cashOnlyCommission) || 0,
         storeStatus: currentStore.storeStatus || 'active',
         adminCurrentBalance: Number(currentStore.adminCurrentBalance) || 0,
@@ -312,7 +314,8 @@ export const StaffManagement = () => {
           ...storeData,
           storeCreatedAt: serverTimestamp(),
           adminCurrentBalance: 0,
-          adminStoreProfit: 0
+          adminStoreProfit: 0,
+          storeSevaBalance: 0
         });
         toast.success('Store created successfully');
       }
@@ -326,6 +329,7 @@ export const StaffManagement = () => {
         storeAddress: doc.data().storeAddress || '',
         storeContactNumber: doc.data().storeContactNumber || '',
         storeCurrentBalance: Number(doc.data().storeCurrentBalance) || 0,
+        storeSevaBalance: Number(doc.data().storeSevaBalance) || 0,
         referralCommission: Number(doc.data().referralCommission) || 0,
         surabhiCommission: Number(doc.data().surabhiCommission) || 0,
         sevaCommission: Number(doc.data().sevaCommission) || 0,
@@ -435,7 +439,8 @@ export const StaffManagement = () => {
                   staffSalesCount: 0,
                   staffRechargesCount: 0,
                   staffPin: '',
-                  staffPassword: ''
+                  staffPassword: '',
+                  createdAt: Timestamp.now()
                 });
                 setIsStaffDialogOpen(true);
               }}>
@@ -594,29 +599,37 @@ export const StaffManagement = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
+                  {/* <TableHead>ID</TableHead> */}
                   <TableHead>Name</TableHead>
                   <TableHead>Location</TableHead>
+                  <TableHead>Address</TableHead>
                   <TableHead>Contact</TableHead>
-                  <TableHead>Current Balance</TableHead>
-                  <TableHead>Referral</TableHead>
-                  <TableHead>Surabhi</TableHead>
-                  <TableHead>Cash Only</TableHead>
-                  <TableHead>Seva</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Store Balance</TableHead>
+                  <TableHead>Seva Balance</TableHead>
+                  <TableHead>Admin Balance</TableHead>
+                  <TableHead>Admin Profit</TableHead>
+                  <TableHead>Referral %</TableHead>
+                  <TableHead>Surabhi %</TableHead>
+                  <TableHead>Cash Only %</TableHead>
+                  <TableHead>Seva %</TableHead>
+                  {/* <TableHead>Status</TableHead> */}
+                  {/* <TableHead>Created</TableHead>
+                  <TableHead>Updated</TableHead> */}
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {stores.map((store) => (
                   <TableRow key={store.id}>
+                    {/* <TableCell className="text-xs">
+                      {store.id.substring(0, 8)}...
+                    </TableCell> */}
                     <TableCell className="font-medium">
                       {store.storeName}
-                      <div className="text-sm text-muted-foreground">
-                        {store.storeAddress}
-                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
@@ -624,11 +637,23 @@ export const StaffManagement = () => {
                         {store.storeLocation}
                       </div>
                     </TableCell>
+                    <TableCell className="max-w-[150px] truncate">
+                      {store.storeAddress}
+                    </TableCell>
                     <TableCell>
                       {store.storeContactNumber}
                     </TableCell>
                     <TableCell>
-                      {store.storeCurrentBalance || 0}
+                      ₹{store.storeCurrentBalance.toFixed(2) || 0}
+                    </TableCell>
+                    <TableCell>
+                      ₹{store.storeSevaBalance.toFixed(2) || 0}
+                    </TableCell>
+                    <TableCell>
+                      ₹{store.adminCurrentBalance.toFixed(2) || 0}
+                    </TableCell>
+                    <TableCell>
+                      ₹{store.adminStoreProfit.toFixed(2) || 0}
                     </TableCell>
                     <TableCell>
                       {store.referralCommission}%
@@ -642,11 +667,17 @@ export const StaffManagement = () => {
                     <TableCell>
                       {store.sevaCommission}%
                     </TableCell>
-                    <TableCell>
+                    {/* <TableCell>
                       <Badge variant={store.storeStatus === 'active' ? 'default' : 'secondary'}>
                         {store.storeStatus}
                       </Badge>
+                    </TableCell> */}
+                    {/* <TableCell className="text-xs">
+                      {new Date(store.storeCreatedAt).toLocaleDateString()}
                     </TableCell>
+                    <TableCell className="text-xs">
+                      {new Date(store.storeUpdatedAt).toLocaleDateString()}
+                    </TableCell> */}
                     <TableCell>
                       <div className="flex gap-2">
                         <Button
@@ -678,6 +709,7 @@ export const StaffManagement = () => {
                 ))}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -1006,18 +1038,33 @@ export const StaffManagement = () => {
                 />
               </div>
             </div>
-            
-            <div className="space-y-2">
-              <Label>Admin Store Profit</Label>
-              <Input
-                type="number"
-                value={currentStore?.adminStoreProfit || 0}
-                onChange={(e) => setCurrentStore({
-                  ...currentStore,
-                  adminStoreProfit: Number(e.target.value)
-                })}
-                placeholder="Enter admin store profit"
-              />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Store Seva Balance</Label>
+                <Input
+                  type="number"
+                  value={currentStore?.storeSevaBalance || 0}
+                  onChange={(e) => setCurrentStore({
+                    ...currentStore,
+                    storeSevaBalance: Number(e.target.value)
+                  })}
+                  placeholder="Enter store seva balance"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Admin Store Profit</Label>
+                <Input
+                  type="number"
+                  value={currentStore?.adminStoreProfit || 0}
+                  onChange={(e) => setCurrentStore({
+                    ...currentStore,
+                    adminStoreProfit: Number(e.target.value)
+                  })}
+                  placeholder="Enter admin store profit"
+                />
+              </div>
             </div>
 
             <div className="border-t pt-4">
@@ -1132,6 +1179,7 @@ export const StaffManagement = () => {
                     storeAddress: doc.data().storeAddress || '',
                     storeContactNumber: doc.data().storeContactNumber || '',
                     storeCurrentBalance: Number(doc.data().storeCurrentBalance) || 0,
+                    storeSevaBalance: Number(doc.data().storeSevaBalance) || 0,
                     referralCommission: Number(doc.data().referralCommission) || 0,
                     surabhiCommission: Number(doc.data().surabhiCommission) || 0,
                     sevaCommission: Number(doc.data().sevaCommission) || 0,

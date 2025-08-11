@@ -311,10 +311,15 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       const customerRef = customerDoc.ref;
       console.log('Customer document in line 266 is', customerRef, newSurabhiCoins, newSurabhiCoins);
 
+      const newSevaBalance = (selectedCustomer.sevaBalance || 0) + saleCalculation.goSevaContribution;
+      const newSevaTotal = (selectedCustomer.sevaTotal || 0) + saleCalculation.goSevaContribution;
+      
       await updateDoc(customerRef, {
         saleElgibility: true,
         walletBalance: newWalletBalance,
         surabhiBalance: newSurabhiCoins,
+        sevaBalance: newSevaBalance,
+        sevaTotal: newSevaTotal,
         lastTransactionDate: serverTimestamp(),
       });
 
@@ -361,8 +366,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         surabhiBalance: newSurabhiCoins,
         sevaCredit: saleCalculation.goSevaContribution, 
         sevaDebit: 0,
-        sevaBalance: selectedCustomer.sevaBalance,
-        sevaTotal: selectedCustomer.sevaTotal
+        sevaBalance: selectedCustomer.sevaBalance + saleCalculation.goSevaContribution,
+        sevaTotal: selectedCustomer.sevaTotal + saleCalculation.goSevaContribution
       };
       await addDoc(collection(db, 'CustomerTx'), customerTxData);
 
@@ -389,17 +394,10 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             // Safely increment referral amount (handle null/NaN)
             const incrementAmount = Number.isNaN(referralAmount) || referralAmount === null ? 0 : referralAmount;
 
-            // Update referrer's data
-            const newReferredUser = {
-              customerMobile: selectedCustomer.customerMobile,
-              customerName: selectedCustomer.customerName,
-              createdAt: Timestamp.fromDate(new Date()),
-            };
-            
+            // Update referrer's data - only update Surabhi balance without modifying referredUsers
             await updateDoc(referrerDoc.ref, {
               referralSurabhi: increment(incrementAmount),
-              surabhiBalance: increment(incrementAmount),
-              referredUsers: arrayUnion(newReferredUser) // This ensures no duplicates
+              surabhiBalance: increment(incrementAmount)
             });
 
             // Add activity record for referrer
@@ -409,7 +407,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               amount: incrementAmount,
               customerMobile: selectedCustomer.referredBy,
               storeLocation: selectedCustomer.storeLocation,
-              customerName: selectedCustomer.customerName,
+              customerName: referrerData.customerName,
               createdAt : Timestamp.fromDate(new Date())
             });
             
@@ -739,6 +737,26 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
           await addDoc(collection(db, 'CustomerTx'), customerTxData);
 
+          // Update customer document in Firestore for cash payment
+          const customersRef = collection(db, "Customers");
+          const customerQuery = query(customersRef, where("customerMobile", "==", selectedCustomer.customerMobile));
+          const customerSnapshot = await getDocs(customerQuery);
+          
+          if (!customerSnapshot.empty) {
+            const customerDoc = customerSnapshot.docs[0];
+            const newSevaBalance = (selectedCustomer.sevaBalance || 0) + saleCalculation.goSevaContribution;
+            const newSevaTotal = (selectedCustomer.sevaTotal || 0) + saleCalculation.goSevaContribution;
+            
+            await updateDoc(customerDoc.ref, {
+              walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
+              surabhiBalance: selectedCustomer.surabhiBalance - saleCalculation.surabhiCoinsUsed + saleCalculation.surabhiCoinsEarned,
+              sevaBalance: newSevaBalance,
+              sevaTotal: newSevaTotal,
+              lastTransactionDate: serverTimestamp(),
+              saleElgibility: true
+            });
+          }
+
           // Update store balance
           const storeQuery = query(
             collection(db, 'stores'),
@@ -912,6 +930,26 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
             await addDoc(collection(db, 'CustomerTx'), customerTxData);
 
+            // Update customer document in Firestore for mixed payment
+            const customersRef = collection(db, "Customers");
+            const customerQuery = query(customersRef, where("customerMobile", "==", selectedCustomer.customerMobile));
+            const customerSnapshot = await getDocs(customerQuery);
+            
+            if (!customerSnapshot.empty) {
+              const customerDoc = customerSnapshot.docs[0];
+              const newSevaBalance = (selectedCustomer.sevaBalance || 0) + saleCalculation.goSevaContribution;
+              const newSevaTotal = (selectedCustomer.sevaTotal || 0) + saleCalculation.goSevaContribution;
+              
+              await updateDoc(customerDoc.ref, {
+                walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
+                surabhiBalance: selectedCustomer.surabhiBalance - saleCalculation.surabhiCoinsUsed + saleCalculation.surabhiCoinsEarned,
+                sevaBalance: newSevaBalance,
+                sevaTotal: newSevaTotal,
+                lastTransactionDate: serverTimestamp(),
+                saleElgibility: true
+              });
+            }
+
             // Update store balance
             const storeQuery = query(
               collection(db, 'stores'),
@@ -975,17 +1013,10 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           const referralAmount = saleCalculation.referrerSurabhiCoinsEarned;
           const referrerRef = doc(db, 'Customers', referrer.id); // Assuming you have id field
           console.log("The referrer id is", referrerRef);
-          // Update referrer's balances
-          const newReferredUser = {
-            customerMobile: selectedCustomer.customerMobile,
-            customerName: selectedCustomer.customerName,
-            createdAt: Timestamp.fromDate(new Date()),
-          };
-          
+          // Update referrer's balances - only update Surabhi balance without modifying referredUsers
           await updateDoc(referrerRef, {
             surabhiBalance: increment(referralAmount),
             referralSurabhi: increment(referralAmount),
-            referredUsers: arrayUnion(newReferredUser), // This ensures no duplicates
             updatedAt: serverTimestamp()
           });
           
@@ -1050,6 +1081,21 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
       await addDoc(collection(db, 'Activity'), activity);
 
+      // Update customer document in Firestore
+      const customersRefNew = collection(db, "Customers");
+      const customerQuery = query(customersRefNew, where("customerMobile", "==", selectedCustomer.customerMobile));
+      const customerSnapshot = await getDocs(customerQuery);
+      
+      if (!customerSnapshot.empty) {
+        const customerDoc = customerSnapshot.docs[0];
+        await updateDoc(customerDoc.ref, {
+          walletBalance: newWalletBalance,
+          surabhiBalance: newSurabhiCoins,
+          lastTransactionDate: serverTimestamp(),
+          saleElgibility: true
+        });
+      }
+      
       // Update local state
       setCustomers(customers.map(c =>
         c.customerMobile === selectedCustomer.customerMobile ?

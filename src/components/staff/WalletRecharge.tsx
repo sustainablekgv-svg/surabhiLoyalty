@@ -70,7 +70,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerType | null>(null);
   const [rechargeAmount, setRechargeAmount] = useState('');
-  const [invoiceId, setInvoiceId] = useState('');
+  // const [invoiceId, setInvoiceId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [customers, setCustomers] = useState<CustomerType[]>([]);
   const [isFetchingCustomers, setIsFetchingCustomers] = useState(true);
@@ -386,14 +386,14 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       await updateDoc(customerDoc.ref, updateData);
 
       // Generate a unique invoice ID (timestamp + random string) or use provided one
-      const generateInvoiceId = () => {
-        if (invoiceId.trim()) {
-          return invoiceId.trim();
-        }
-        const timestamp = new Date().getTime();
-        const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
-        return `INV-${timestamp}-${randomStr}`;
-      };
+      // const generateInvoiceId = () => {
+      //   if (invoiceId.trim()) {
+      //     return invoiceId.trim();
+      //   }
+      //   const timestamp = new Date().getTime();
+      //   const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
+      //   return `INV-${timestamp}-${randomStr}`;
+      // };
 
       // Create CustomerTx record
       const customerTxData: Omit<CustomerTxType, 'id'> = {
@@ -404,7 +404,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         storeName: storeDetails.storeName,
         createdAt: Timestamp.fromDate(new Date()),
         staffName: user.name,
-        invoiceId: generateInvoiceId(), // Add unique invoice ID
+        // invoiceId: generateInvoiceId(), // Add unique invoice ID
         amount: rechargeAmountNum,
         surabhiEarned: surabhiCoinsEarned,
         processedBy: user.name,
@@ -425,14 +425,14 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       await addDoc(collection(db, 'CustomerTx'), customerTxData);
 
       // Use the same invoice ID for both CustomerTx and AccountTx for consistency
-      const txInvoiceId = invoiceId.trim() ? invoiceId.trim() : generateInvoiceId();
+      // const txInvoiceId = invoiceId.trim() ? invoiceId.trim() : generateInvoiceId();
       
       const accountTxData: Omit<AccountTxType, 'id'> = {
         createdAt: Timestamp.fromDate(new Date()),
         storeName: storeDetails.storeName,
         type: 'recharge',
         amount: rechargeAmountNum,
-        invoiceId: txInvoiceId, // Add invoice ID for consistency
+        // invoiceId: txInvoiceId, // Add invoice ID for consistency
         credit: rechargeAmountNum,
         adminCut: 0,
         debit: 0,
@@ -455,14 +455,16 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       console.log("storeSnapshot in line 330 is", storeSnapshot);
       if (!storeSnapshot.empty) {
         const storeDoc = storeSnapshot.docs[0];
-        const storeData = storeDoc.data();
+        const storeData = storeDoc.data() as StoreType;
         const incrementAmount = rechargeAmountNum;
         const sevaIncrementAmount = sevaAmountEarned;
         
+        // Update all relevant store fields
         await updateDoc(storeDoc.ref, {
           storeCurrentBalance: increment(incrementAmount),
+          adminCurrentBalance: increment(-incrementAmount),
           storeSevaBalance: increment(sevaIncrementAmount),
-          updatedAt: serverTimestamp()
+          storeUpdatedAt: serverTimestamp()
         });
         
         console.log(`Updated store balances: Current +${incrementAmount}, Seva +${sevaIncrementAmount}`);
@@ -503,69 +505,61 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       });
 
       // Handle referral Surabhi Coins if customer has a referrer
-      // In the processRecharge function, replace the referral handling code with:
-if (currentData.referredBy && referralAmount > 0) {
-  // Find referrer's document
-  const referrerQuery = query(customersCollection, where('customerMobile', '==', currentData.referredBy));
-  const referrerSnapshot = await getDocs(referrerQuery);
+      if (currentData.referredBy && referralAmount > 0) {
+        // Find referrer's document
+        const referrerQuery = query(customersCollection, where('customerMobile', '==', currentData.referredBy));
+        const referrerSnapshot = await getDocs(referrerQuery);
 
-  if (!referrerSnapshot.empty) {
-    const referrerDoc = referrerSnapshot.docs[0];
-    const referrerData = referrerDoc.data() as CustomerType;
+        if (!referrerSnapshot.empty) {
+          const referrerDoc = referrerSnapshot.docs[0];
+          const referrerData = referrerDoc.data() as CustomerType;
 
-    const newReferredUser = {
-      customerMobile: currentData.customerMobile,
-      customerName: currentData.customerName,
-      createdAt: Timestamp.fromDate(new Date()),
-    };
+          // Update referrer's Surabhi balance without modifying referredUsers
+          await updateDoc(referrerDoc.ref, {
+            surabhiBalance: increment(referralAmount),
+            surabhiReferral: increment(referralAmount)
+          });
 
-    // Use arrayUnion to ensure we don't duplicate entries
-    await updateDoc(referrerDoc.ref, {
-      surabhiBalance: increment(referralAmount),
-      surabhiReferral: increment(referralAmount),
-      referredUsers: arrayUnion(newReferredUser) // This ensures no duplicates
-    });
-
-    // Add activity record for referrer here to avoid duplicate records
-    await addActivityRecord({
-      type: 'referral',
-      remarks: `${currentData.referredBy} - Earned Surabhi Referral of ₹${referralAmount}`,
-      amount: rechargeAmountNum,
-      customerName: referrerData.customerName,
-      customerMobile: currentData.referredBy,
-      storeLocation: storeLocation,
-      createdAt: Timestamp.fromDate(new Date())
-    });
+          // Add activity record for referrer here to avoid duplicate records
+          await addActivityRecord({
+            type: 'referral',
+            remarks: `${currentData.referredBy} - Earned Surabhi Referral of ₹${referralAmount}`,
+            amount: rechargeAmountNum,
+            customerName: referrerData.customerName,
+            customerMobile: currentData.referredBy,
+            storeLocation: storeLocation,
+            createdAt: Timestamp.fromDate(new Date())
+          });
     
-    // Add CustomerTx record for the referral Surabhi Coins earned by referrer
-    const referrerTxData = {
-      type: 'surabhi_earn',
-      customerMobile: currentData.referredBy,
-      customerName: referrerData.customerName,
-      storeLocation: storeLocation,
-      storeName: storeLocation,
-      createdAt: Timestamp.fromDate(new Date()),
-      processedBy: user.name,
-      invoiceId: generateInvoiceId(), // Add unique invoice ID
-      amount: referralAmount,
-      walletCredit: 0,
-      walletDebit: 0,
-      walletBalance: referrerData.walletBalance,
-      surabhiDebit: 0,
-      surabhiCredit: referralAmount,
-      surabhiBalance: referrerData.surabhiBalance + referralAmount,
-      sevaCredit: 0,
-      sevaDebit: 0,
-      sevaBalance: referrerData.sevaBalanceCurrentMonth,
-      sevaTotal: referrerData.sevaTotal,
-      remarks: `Referral bonus from ${currentData.customerName}'s wallet recharge`
-    };
-    
-    await addDoc(collection(db, 'CustomerTx'), referrerTxData);
-    
-    console.log(`Referral bonus of ${referralAmount} credited to ${referrerData.customerName}`);
-  }
-}
+            // Add CustomerTx record for the referral Surabhi Coins earned by referrer
+            const referrerTxData = {
+              type: 'surabhi_earn',
+              customerMobile: currentData.referredBy,
+              customerName: referrerData.customerName,
+              storeLocation: storeLocation,
+              storeName: storeLocation,
+              createdAt: Timestamp.fromDate(new Date()),
+              processedBy: user.name,
+              // invoiceId: generateInvoiceId(), // Add unique invoice ID
+              amount: referralAmount,
+              walletCredit: 0,
+              walletDebit: 0,
+              walletBalance: referrerData.walletBalance,
+              surabhiDebit: 0,
+              surabhiCredit: referralAmount,
+              surabhiBalance: referrerData.surabhiBalance + referralAmount,
+              sevaCredit: 0,
+              sevaDebit: 0,
+              sevaBalance: referrerData.sevaBalanceCurrentMonth,
+              sevaTotal: referrerData.sevaTotal,
+              remarks: `Referral bonus from ${currentData.customerName}'s wallet recharge`
+            };
+            
+            await addDoc(collection(db, 'CustomerTx'), referrerTxData);
+            
+            console.log(`Referral bonus of ${referralAmount} credited to ${referrerData.customerName}`);
+          }
+        }
 
       // If this was their first recharge, add a special activity
       if (currentData.walletRechargeDone === false) {
@@ -676,7 +670,7 @@ if (currentData.referredBy && referralAmount > 0) {
       setRechargeAmount('');
       setSelectedCustomer(null);
       setSearchTerm('');
-      setInvoiceId('');
+      // setInvoiceId('');
       setShowConfirmation(false);
     } catch (error) {
       toast.error('Recharge failed. Please try again.');
@@ -962,7 +956,7 @@ if (currentData.referredBy && referralAmount > 0) {
                   )}
                 </div>
                 
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label htmlFor="invoiceId">Invoice ID (Optional)</Label>
                   <Input
                     id="invoiceId"
@@ -971,7 +965,7 @@ if (currentData.referredBy && referralAmount > 0) {
                     onChange={(e) => setInvoiceId(e.target.value)}
                     className="h-12"
                   />
-                </div>
+                </div> */}
 
                 {rechargeAmountNum >= 2000 && storeDetails && (
                   <div className="space-y-3">

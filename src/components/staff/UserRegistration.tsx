@@ -245,6 +245,8 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
 
         if (!referrerSnapshot.empty) {
           const referrerDoc = referrerSnapshot.docs[0];
+          
+          // Only record the referral relationship during registration
           await updateDoc(doc(customersCollection, referrerDoc.id), {
             referredUsers: arrayUnion({
               customerMobile: formData.customerMobile,
@@ -252,6 +254,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
               createdAt: Timestamp.now()
             })
           });
+          
           toast.success(`User registered! Referral recorded.`, { id: toastId });
         }
       } else {

@@ -107,13 +107,16 @@ export const CustomerManagement = () => {
     const fetchStores = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, 'stores'));
-        const storesData: StoreType[] = querySnapshot.docs.map((doc) => {
+        const storesData = querySnapshot.docs.map((doc): StoreType => {
           const data = doc.data();
           return {
             id: doc.id,
             storeName: data.storeName || data.name || '',
             storeLocation: data.storeLocation || data.location || '',
             storeAddress: data.storeAddress || data.address || '',
+            storeSevaBalance: data.storeSevaBalance || 0,
+            adminCurrentBalance: data.adminCurrentBalance || 0,
+            adminStoreProfit: data.adminStoreProfit || 0,
             referralCommission: data.referralCommission || 0,
             surabhiCommission: data.surabhiCommission || 0,
             sevaCommission: data.sevaCommission || 0,
@@ -310,7 +313,9 @@ export const CustomerManagement = () => {
                     <p><span className="text-muted-foreground">Mobile:</span> {selectedCustomer.customerMobile}</p>
                     <p><span className="text-muted-foreground">Email:</span> {selectedCustomer.customerEmail || 'N/A'}</p>
                     <p><span className="text-muted-foreground">Store Location:</span> {selectedCustomer.storeLocation}</p>
-                    <p><span className="text-muted-foreground">Registered:</span> {selectedCustomer.walletRechargeDone ? 'Yes' : 'No'}</p>
+                    <p><span className="text-muted-foreground">City:</span> {selectedCustomer?.city || ''}</p>
+                    <p><span className="text-muted-foreground">District:</span> {selectedCustomer?.district || ''}</p>
+                    {/* <p><span className="text-muted-foreground">Registered:</span> {selectedCustomer.walletRechargeDone ? 'Yes' : 'No'}</p> */}
                     <p><span className="text-muted-foreground">Role:</span> {selectedCustomer.role}</p>
                   </div>
                 </div>
@@ -320,9 +325,9 @@ export const CustomerManagement = () => {
                   <div className="space-y-2 mt-2 text-sm">
                     <p><span className="text-muted-foreground">Wallet Balance:</span> ₹{selectedCustomer.walletBalance.toFixed(2)}</p>
                     <p><span className="text-muted-foreground">This Month:</span> ₹{selectedCustomer.walletBalanceCurrentMonth.toFixed(2)}</p>
-                    <p><span className="text-muted-foreground">Surabhi Coins:</span> {selectedCustomer.surabhiBalance}</p>
+                    <p><span className="text-muted-foreground">Surabhi Balance:</span> {selectedCustomer.surabhiBalance}</p>
                     <p><span className="text-muted-foreground">This Month:</span> {selectedCustomer.surabhiBalanceCurrentMonth}</p>
-                    <p><span className="text-muted-foreground">Seva Coins:</span> {selectedCustomer.sevaTotal}</p>
+                    <p><span className="text-muted-foreground">Seva Balance:</span> {selectedCustomer.sevaTotal}</p>
                     <p><span className="text-muted-foreground">This Month:</span> {selectedCustomer.sevaBalanceCurrentMonth}</p>
                   </div>
                 </div>

@@ -363,7 +363,7 @@ export const GoSevaPool = () => {
       const currentSevaPool = poolDoc.data();
 
       await updateDoc(poolRef, {
-        currentBalance: (currentSevaPool?.currentBalance || 0) - amount,
+        currentSevaBalance: (currentSevaPool?.currentSevaBalance || 0) - amount,
         totalAllocations: (currentSevaPool?.totalAllocations || 0) + amount,
         allocationsCurrentMonth: (currentSevaPool?.allocationsCurrentMonth || 0) + amount,
         lastAllocatedDate: serverTimestamp()
@@ -380,7 +380,7 @@ export const GoSevaPool = () => {
         const storeDoc = storeSnapshot.docs[0];
         await updateDoc(storeDoc.ref, {
           storeSevaBalance: storeSevaBalance - amount,
-          updatedAt: serverTimestamp()
+          storeUpdatedAt: serverTimestamp()
         });
         
         // Update local state
