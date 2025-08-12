@@ -157,7 +157,7 @@ export interface CustomerTxType {
   id?: string;
   type: 'recharge' | 'sale' | 'referral';
   invoiceId?: string; // Optional invoice ID field
-
+  // staffName: string; // Used in recharge
   // Common Fields
   customerMobile: string;
   customerName: string;
@@ -166,6 +166,7 @@ export interface CustomerTxType {
   createdAt: Timestamp;
   paymentMethod?: 'cash' | 'wallet' | 'mixed';
   processedBy: string; // Used in sale
+  remarks: string; // Description of the transaction
 
   // Recharge-Specific Fields
   amount: number; 

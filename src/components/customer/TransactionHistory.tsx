@@ -207,6 +207,7 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Invoice ID</TableHead>
                   <TableHead>Date & Time</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead className="text-right">Wallet Credit</TableHead>
@@ -219,12 +220,14 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
                   <TableHead className="text-right">Seva Debit</TableHead>
                   <TableHead className="text-right">Seva Current</TableHead>
                   <TableHead className="text-right">Seva Total</TableHead>
+                  <TableHead>Remarks</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredTransactions.length > 0 ? (
                   filteredTransactions.map((tx) => (
                     <TableRow key={tx.id}>
+                      <TableCell>{tx.invoiceId || 'NA'}</TableCell>
                       <TableCell>{formatDate(tx.createdAt)}</TableCell>
                       <TableCell>{tx.storeLocation}</TableCell>
                       <TableCell className="text-right">{tx.walletCredit ? formatCurrency(tx.walletCredit) : '-'}</TableCell>
@@ -237,11 +240,12 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
                       <TableCell className="text-right">{tx.sevaDebit || '-'}</TableCell>
                       <TableCell className="text-right font-medium">{tx.sevaBalance}</TableCell>
                       <TableCell className="text-right font-medium">{tx.sevaTotal}</TableCell>
+                      <TableCell>{tx.remarks || '-'}</TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={12} className="text-center py-12 text-gray-500">
+                    <TableCell colSpan={13} className="text-center py-12 text-gray-500">
                       No transactions found
                     </TableCell>
                   </TableRow>

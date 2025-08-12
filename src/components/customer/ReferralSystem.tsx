@@ -248,11 +248,11 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
                 </div>
                 <div className="flex items-start gap-2">
                   <div className="bg-green-100 text-green-600 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">2</div>
-                  <p>They register using your number as referral</p>
+                  <p>Ask them to share at Store during their registration</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <div className="bg-green-100 text-green-600 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">3</div>
-                  <p>You earn Surabhi Coins on their purchases</p>
+                  <p>You earn Surabhi coins on referrals recharges and amount spent by them during sales</p>
                 </div>
               </div>
             </div>

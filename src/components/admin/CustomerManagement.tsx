@@ -65,6 +65,8 @@ export const CustomerManagement = () => {
             customerMobile: data.customerMobile || data.mobile || '',
             customerEmail: data.customerEmail || data.email || '',
             storeLocation: data.storeLocation || 'Unassigned',
+            city: data.city || 'N/A',
+            district: data.district || 'N/A',
             referredBy: data.referredBy || null,
             referredUsers: (data.referredUsers || []).map((ref: any) => ({
               customerMobile: ref.customerMobile || ref.mobile,
@@ -185,6 +187,8 @@ export const CustomerManagement = () => {
       customerName: customer.customerName,
       customerEmail: customer.customerEmail,
       storeLocation: customer.storeLocation,
+      city: customer.city || 'N/A',
+      district: customer.district || 'N/A',
       walletBalance: customer.walletBalance,
       surabhiBalance: customer.surabhiBalance,
       sevaTotal: customer.sevaTotal,
@@ -254,6 +258,8 @@ export const CustomerManagement = () => {
         customerName: editedData.customerName,
         customerEmail: editedData.customerEmail,
         storeLocation: editedData.storeLocation,
+        city: editedData.city,
+        district: editedData.district,
         walletBalance: editedData.walletBalance,
         surabhiBalance: editedData.surabhiBalance,
         sevaTotal: editedData.sevaTotal,
@@ -313,8 +319,8 @@ export const CustomerManagement = () => {
                     <p><span className="text-muted-foreground">Mobile:</span> {selectedCustomer.customerMobile}</p>
                     <p><span className="text-muted-foreground">Email:</span> {selectedCustomer.customerEmail || 'N/A'}</p>
                     <p><span className="text-muted-foreground">Store Location:</span> {selectedCustomer.storeLocation}</p>
-                    <p><span className="text-muted-foreground">City:</span> {selectedCustomer?.city || ''}</p>
-                    <p><span className="text-muted-foreground">District:</span> {selectedCustomer?.district || ''}</p>
+                    <p><span className="text-muted-foreground">City:</span> {selectedCustomer?.city || 'N/A'}</p>
+                    <p><span className="text-muted-foreground">District:</span> {selectedCustomer?.district || 'N/A'}</p>
                     {/* <p><span className="text-muted-foreground">Registered:</span> {selectedCustomer.walletRechargeDone ? 'Yes' : 'No'}</p> */}
                     <p><span className="text-muted-foreground">Role:</span> {selectedCustomer.role}</p>
                   </div>
@@ -455,6 +461,32 @@ export const CustomerManagement = () => {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="city" className="text-right">
+                City
+              </Label>
+              <Input
+                id="city"
+                name="city"
+                value={editedData.city || ''}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="district" className="text-right">
+                District
+              </Label>
+              <Input
+                id="district"
+                name="district"
+                value={editedData.district || ''}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
             </div>
 
             <div className="grid grid-cols-4 items-center gap-4">

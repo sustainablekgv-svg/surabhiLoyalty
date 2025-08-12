@@ -27,7 +27,8 @@ export const CustomerDetails = () => {
       
       if (!querySnapshot.empty) {
         // Assuming mobile is unique, we take the first document
-        const customerData = querySnapshot.docs[0].data() as CustomerType;
+        const doc = querySnapshot.docs[0];
+        const customerData = { id: doc.id, ...doc.data() } as CustomerType;
         setCustomer(customerData);
       } else {
         setError('Customer not found');

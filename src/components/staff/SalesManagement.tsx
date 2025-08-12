@@ -50,7 +50,8 @@ const fetchCustomerByMobile = async (mobile: string): Promise<CustomerType | nul
     const q = query(collection(db, 'Customers'), where('customerMobile', '==', mobile));
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
-      return querySnapshot.docs[0].data() as CustomerType;
+      const doc = querySnapshot.docs[0];
+      return { id: doc.id, ...doc.data() } as CustomerType;
     }
     return null;
   } catch (error) {
@@ -67,6 +68,13 @@ const calculateAdminCut = (saleAmount: number, storeDetails: StoreType) => {
   const sevaAmount = Math.floor(saleAmount * (storeDetails.sevaCommission / 100));
 
   return referralAmount + sevaAmount + surabhiAmount;
+};
+
+// Generate a unique invoice ID or use the provided one
+const generateInvoiceId = () => {
+const timestamp = new Date().getTime();
+const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
+return `INV-${timestamp}-${randomStr}`;
 };
 
 export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
@@ -302,7 +310,26 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       if (querySnapshot.empty) {
         throw new Error('Customer not found in database');
       }
-      console.log("Is it comig here in line 259")
+      // Check if user-provided invoiceId already exists in the database
+      let txInvoiceId;
+      if (invoiceId) {
+        // Query CustomerTx collection to check if invoiceId already exists
+        const txQuery = query(collection(db, 'CustomerTx'), where('invoiceId', '==', invoiceId));
+        const txSnapshot = await getDocs(txQuery);
+        
+        if (!txSnapshot.empty) {
+          // Invoice ID already exists, show error and stop processing
+          toast.error('Invoice ID already exists. Please enter a different Invoice ID.');
+          setIsLoading(false);
+          return; // Exit the function early
+        } else {
+          // Invoice ID doesn't exist, use the provided one
+          txInvoiceId = invoiceId;
+        }
+      } else {
+        // No invoice ID provided, generate a new one
+        txInvoiceId = generateInvoiceId();
+      }
       const newWalletBalance = (selectedCustomer.walletBalance) - saleCalculation.walletDeduction;
       const newSurabhiCoins = (selectedCustomer.surabhiBalance) - saleCalculation.surabhiCoinsUsed + saleCalculation.surabhiCoinsEarned; 
       console.log("Is it comig here in line 261", newWalletBalance, newSurabhiCoins)
@@ -333,7 +360,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         createdAt: Timestamp.fromDate(new Date()),
         paymentMethod: paymentMethod,
         processedBy: user.name, 
-      
+        invoiceId: txInvoiceId, // Add the invoice ID
+        remarks: `Sale of ₹${saleAmount} by ${user.name}`,
         // Recharge-Specific Fields (with defaults)
         amount: saleAmount,
         surabhiEarned: saleCalculation.surabhiCoinsEarned,
@@ -419,8 +447,9 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               storeLocation: selectedCustomer.storeLocation,
               storeName: selectedCustomer.storeLocation,
               createdAt: Timestamp.fromDate(new Date()),
+              remarks: `Referral bonus of ₹${incrementAmount} for referring ${selectedCustomer.customerName}`,
               processedBy: user.name,
-              invoiceId: `INV-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`, // Add unique invoice ID
+              invoiceId: txInvoiceId,
               amount: 0,
               surabhiEarned: incrementAmount,
               sevaEarned: 0,
@@ -477,9 +506,6 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       // Add AccountTx record(s) based on payment method
       if (paymentMethod === "wallet") {
         const adminCutTx = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
-        // Generate invoice ID or use the provided one
-        // const txInvoiceId = invoiceId.trim() ? invoiceId.trim() : generateInvoiceId();
-        
         const accountTxData: Omit<AccountTxType, 'id'> = {
           createdAt: Timestamp.fromDate(new Date()),
           storeName: storeDetails.storeName,
@@ -488,7 +514,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           adminProfit:adminProfitTaken,
           type: 'sale',
           amount: saleAmount,
-          // invoiceId: txInvoiceId, // Add invoice ID for consistency
+          invoiceId: txInvoiceId, // Add invoice ID for consistency
           credit: 0,
           debit: saleCalculation.totalAmount - adminCutTx,
           adminCut: adminCutTx,
@@ -498,64 +524,6 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           remarks: `Wallet sale for ${selectedCustomer.customerName} (${selectedCustomer.customerMobile})`,
         };
         await addDoc(collection(db, 'AccountTx'), accountTxData);
-
-//         interface CustomerTxType {
-//   id?: string;
-//   type: 'recharge' | 'sale';
-
-//   // Common Fields
-//   customerMobile: string;
-//   customerName: string;
-//   storeLocation: string;
-//   storeName: string; // Only for recharge
-//   createdAt: Timestamp;
-//   paymentMethod?: 'cash' | 'wallet' | 'mixed';
-//   staffName: string; // Used in recharge
-//   processedBy: string; // Used in sale
-
-//   // Recharge-Specific Fields
-//   amount: number; // Recharge amount
-//   surabhiEarned: number;
-//   sevaEarned?: number;
-//   referralEarned?: number;
-//   referredBy?: string | null;
-
-//   // Sale-Specific Fields
-//   surabhiUsed?: number;
-//   walletDeduction?: number;
-//   cashPayment?: number;
-
-//   previousBalance?: {
-//     walletBalance: number;
-//     surabhiBalance: number;
-//   };
-
-//   newBalance?: {
-//     walletBalance: number;
-//     surabhiBalance: number;
-//   };
-
-//   walletCredit: number;
-//   walletDebit: number;
-//   walletBalance: number;
-//   surabhiDebit: number;
-//   surabhiCredit: number;
-//   surabhiBalance: number;
-//   sevaCredit: number;
-//   sevaDebit: number;
-//   sevaBalance: number;
-//   sevaTotal: number;
-// }
-
-        // Generate a unique invoice ID or use the provided one
-        const generateInvoiceId = () => {
-          if (invoiceId.trim()) {
-            return invoiceId.trim();
-          }
-          const timestamp = new Date().getTime();
-          const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
-          return `INV-${timestamp}-${randomStr}`;
-        };
         
         // Create CustomerTx record
         const customerTxData: Omit<Partial<CustomerTxType>, 'id'> = {
@@ -567,7 +535,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           createdAt: Timestamp.fromDate(new Date()),
           paymentMethod: paymentMethod, 
           processedBy: user.name, 
-          invoiceId: generateInvoiceId(), // Add unique invoice ID
+          invoiceId: txInvoiceId, // Add unique invoice ID
+          remarks: `Sale transaction for ${selectedCustomer.customerName}`,
           
           // Sale-Specific Fields
           surabhiUsed: saleCalculation.surabhiCoinsUsed,
@@ -624,15 +593,12 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       } else
         if (paymentMethod === 'cash') {
           const adminCutTx = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
-          // Generate invoice ID or use the provided one
-          // const txInvoiceId = invoiceId.trim() ? invoiceId.trim() : generateInvoiceId();
-          
           const accountTxData: Omit<AccountTxType, 'id'> = {
             createdAt: Timestamp.fromDate(new Date()),
             storeName: storeDetails.storeName,
             type: 'sale',
             amount: saleAmount,
-            // invoiceId: txInvoiceId, // Add invoice ID for consistency
+            invoiceId: txInvoiceId, 
             customerName: selectedCustomer.customerName,
             customerMobile: selectedCustomer.customerMobile,
             credit: saleCalculation.cashPayment,
@@ -650,7 +616,6 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           }
           await addDoc(collection(db, 'AccountTx'), accountTxData);
 
-
           // Fetch current SevaPool data to increment balance properly
           const poolRef = doc(db, 'SevaPool', 'main');
           const poolDoc = await getDoc(poolRef);
@@ -665,48 +630,15 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             lastAllocatedDate: serverTimestamp()
           });
 
-          // Create CustomerTx record
-          // const customerTxData: Omit<Partial<CustomerTxType>, 'id'> = {
-          //   createdAt: Timestamp.fromDate(new Date()),
-          //   type: 'sale',
-          //   customerName: selectedCustomer.customerName,
-          //   customerMobile: selectedCustomer.customerMobile,
-          //   storeName: storeDetails.storeName,
-          //   storeLocation: storeLocation,
-          //   processedBy: user.name,
-          //   walletCredit: 0,
-          //   walletDebit: saleCalculation.walletDeduction,
-          //   walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
-          //   surabhiDebit: saleCalculation.surabhiCoinsUsed,
-          //   surabhiCredit: saleCalculation.surabhiCoinsEarned,
-          //   surabhiBalance: selectedCustomer.surabhiBalance + saleCalculation.surabhiCoinsEarned,
-          //   sevaCredit: saleCalculation.goSevaContribution,
-          //   sevaDebit: 0,
-          //   sevaBalance: (selectedCustomer.sevaBalanceCurrentMonth) + saleCalculation.goSevaContribution,
-          //   sevaTotal: (selectedCustomer.sevaBalance) + saleCalculation.goSevaContribution
-          // };
-
-          // Generate a unique invoice ID or use the provided one
-          const generateInvoiceId = () => {
-            if (invoiceId.trim()) {
-              return invoiceId.trim();
-            }
-            const timestamp = new Date().getTime();
-            const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
-            return `INV-${timestamp}-${randomStr}`;
-          };
-
           const customerTxData: Omit<Partial<CustomerTxType>, 'id'> = {
-            type: 'sale', // Added the required type field
+            type: 'sale',
             customerMobile: selectedCustomer.customerMobile,
-            customerName: selectedCustomer.customerName, // Added customerName
-            // storeLocation: storeLocation,
+            customerName: selectedCustomer.customerName, 
             storeName: user.storeLocation, 
             createdAt: Timestamp.fromDate(new Date()),
             paymentMethod: paymentMethod, 
             processedBy: user.name, 
-            invoiceId: generateInvoiceId(), // Add unique invoice ID
-            
+            invoiceId: txInvoiceId,
             // Sale-Specific Fields
             surabhiUsed: saleCalculation.surabhiCoinsUsed,
             walletDeduction: saleCalculation.walletDeduction,
@@ -733,6 +665,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             sevaDebit: 0,
             sevaBalance: (selectedCustomer.sevaBalanceCurrentMonth) + saleCalculation.goSevaContribution,
             sevaTotal: (selectedCustomer.sevaTotal) + saleCalculation.goSevaContribution,
+            remarks: `Sale transaction for ${selectedCustomer.customerName}`
           };
 
           await addDoc(collection(db, 'CustomerTx'), customerTxData);
@@ -781,61 +714,15 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             console.log(`New store balances: Current ${storeData.storeCurrentBalance + currentBalanceIncrement}, Seva ${storeData.storeSevaBalance + sevaBalanceIncrement}`);
           }
         } else {
-          // Mixed payment - create two separate records
-
-          // 1. Wallet portion record
-          // if (saleCalculation.walletDeduction > 0) {
-          //   const walletAdminCut = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
-          //   const walletTxData: Omit<AccountTx, 'id'> = {
-          //     date: Timestamp.fromDate(new Date()),
-          //     storeName: storeDetails.name,
-          //     type: 'sale',
-          //     amount: saleCalculation.totalAmount,
-          //     debit: saleCalculation.walletDeduction - walletAdminCut,
-          //     adminCut: walletAdminCut,
-          //     credit: 0,
-          //     balance: storeDetails.currentBalance - saleCalculation.walletDeduction - walletAdminCut,
-          //     description: `Wallet portion (${saleCalculation.walletDeduction}) of mixed payment for ${selectedCustomer.name}`,
-          //     settled: false
-          //   };
-          //   await addDoc(collection(db, 'AccountTx'), walletTxData);
-          // }
-
-          // 2. Cash portion record
-          // if (saleCalculation.cashPayment > 0) {
-          //   const cashAdminCut = calculateAdminCut(saleCalculation.cashPayment, storeDetails, saleCalculation.surabhiCoinsUsed);
-          //   const cashTxData: Omit<AccountTx, 'id'> = {
-          //     date: Timestamp.fromDate(new Date()),
-          //     storeName: storeDetails.name,
-          //     type: 'sale',
-          //     amount: saleCalculation.cashPayment,
-          //     credit: saleCalculation.cashPayment,
-          //     debit: cashAdminCut,
-          //     balance: storeDetails.currentBalance + saleCalculation.cashPayment - cashAdminCut,
-          //     description: `Cash portion (${saleCalculation.cashPayment}) of mixed payment for ${selectedCustomer.name}`,
-          //     settled: false
-          //   };
-          //   await addDoc(collection(db, 'AccountTx'), cashTxData);
-          //   const poolRef = doc(db, 'SevaPool', 'main');
-          //   await updateDoc(poolRef, {
-          //     currentBalance: sevaPool.currentBalance + saleCalculation.goSevaContribution,
-          //     totalAllocations: sevaPool.totalAllocations,
-          //     allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
-          //     lastAllocatedDate: serverTimestamp()
-          //   });
-          // }
-
           if (saleCalculation.cashPayment > 0) {
             const adminCutTx = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
-            // Generate invoice ID or use the provided one
-// const txInvoiceId = invoiceId.trim() ? invoiceId.trim() : `INV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-            
+            // Generate invoice ID or use the provided one            
             const cashTxData: Omit<AccountTxType, 'id'> = {
               createdAt: Timestamp.fromDate(new Date()),
               storeName: storeDetails.storeName,
               type: 'sale',
               amount: saleAmount,
-              // Remove invoiceId since it's not part of AccountTxType
+              invoiceId: txInvoiceId, // Add invoice ID for consistency
               customerName: selectedCustomer.customerName,
               customerMobile: selectedCustomer.customerMobile,
               adminCut: adminCutTx,
@@ -870,24 +757,6 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               lastAllocatedDate: serverTimestamp()
             });
 
-
-            // Create CustomerTx record
-            // const customerTxData: Omit<CustomerTxType>, 'id'> = {
-            //   createdAt: Timestamp.fromDate(new Date()),
-            //   customerMobile: selectedCustomer.customerMobile,
-            //   storeLocation: storeLocation,
-            //   walletCredit: 0,
-            //   walletDebit: saleCalculation.walletDeduction,
-            //   walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
-            //   surabhiDebit: saleCalculation.surabhiCoinsUsed,
-            //   surabhiCredit: saleCalculation.surabhiCoinsEarned,
-            //   surabhiBalance: selectedCustomer.surabhiBalance + saleCalculation.surabhiCoinsEarned,
-            //   sevaCredit: saleCalculation.goSevaContribution,
-            //   sevaDebit: 0,
-            //   sevaBalance: selectedCustomer.sevaBalance + saleCalculation.goSevaContribution,
-            //   sevaTotal: selectedCustomer.sevaTotal + saleCalculation.goSevaContribution
-            // };
-
             const customerTxData: Omit<Partial<CustomerTxType>, 'id'> = {
               type: 'sale', // Added the required type field
               customerMobile: selectedCustomer.customerMobile,
@@ -896,14 +765,12 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               storeName: user.storeLocation, 
               createdAt: Timestamp.fromDate(new Date()),
               paymentMethod: paymentMethod, 
-              processedBy: user.name, 
-              // invoiceId: generateInvoiceId(), // Add unique invoice ID
-              
+              processedBy: user.name,
+              invoiceId: txInvoiceId,               
               // Sale-Specific Fields
               surabhiUsed: saleCalculation.surabhiCoinsUsed,
               walletDeduction: saleCalculation.walletDeduction,
-              cashPayment: saleCalculation.cashPayment,
-              
+              cashPayment: saleCalculation.cashPayment,              
               // Balance fields
               previousBalance: {
                 walletBalance: selectedCustomer.walletBalance,
@@ -925,6 +792,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               sevaDebit: 0,
               sevaBalance: (selectedCustomer.sevaBalanceCurrentMonth) + saleCalculation.goSevaContribution,
               sevaTotal: (selectedCustomer.sevaTotal) + saleCalculation.goSevaContribution,
+              remarks: `Mixed payment sale transaction for ${selectedCustomer.customerName}`
             };
             
 
@@ -1029,7 +897,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             storeName: selectedCustomer.storeLocation,
             createdAt: Timestamp.fromDate(new Date()),
             processedBy: user.name,
-            // invoiceId: generateInvoiceId(), // Add unique invoice ID
+            invoiceId: txInvoiceId, // Add unique invoice ID
+            remarks: `Referral bonus for referring ${selectedCustomer.customerName}`,
             amount: 0,
             walletCredit: 0,
             walletDebit: 0,
@@ -1329,6 +1198,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                         className="pl-10 h-12"
                       />
                     </div>
+                    <p className="text-xs text-gray-500 mt-1">Leave blank to auto-generate an invoice ID</p>
                   </div>
 
                   {selectedCustomer && selectedCustomer.surabhiBalance > 0 && (

@@ -316,6 +316,17 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                 <p className="text-xs sm:text-sm text-purple-700 mb-1.5 sm:mb-2">Earn Surabhi Coins on every recharge</p>
                 <div className="text-[10px] sm:text-xs text-purple-600">Visit store to recharge</div>
               </div>
+
+              <div className="p-3 sm:p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-purple-200">
+                <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
+                  <div className="bg-purple-100 p-1.5 sm:p-2 rounded-full">
+                    <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-600" />
+                  </div>
+                  <h3 className="font-medium text-sm sm:text-base text-red-900">Amount Spent</h3>
+                </div>
+                <p className="text-xs sm:text-sm text-blue-700 mb-1.5 sm:mb-2">Earn Surabhi coins on amount spent during sales</p>
+                <div className="text-[10px] sm:text-xs text-blue-600">Shop at the Store</div>
+              </div>
               
               <div className="p-3 sm:p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
                 <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
@@ -326,6 +337,17 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                 </div>
                 <p className="text-xs sm:text-sm text-green-700 mb-1.5 sm:mb-2">Earn Referral coins on friend's purchases</p>
                 <div className="text-[10px] sm:text-xs text-green-600">Ask friends to use your number when signing up</div>
+              </div>
+
+              <div className="p-3 sm:p-4 bg-gradient-to-r from-purple-50 to-amber-50 rounded-lg border border-purple-200">
+                <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
+                  <div className="bg-purple-100 p-1.5 sm:p-2 rounded-full">
+                    <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-600" />
+                  </div>
+                  <h3 className="font-medium text-sm sm:text-base text-purple-900">Seva Contribution</h3>
+                </div>
+                <p className="text-xs sm:text-sm text-purple-700 mb-1.5 sm:mb-2">Earn Seva Coins on every recharge and amount spent during sales</p>
+                <div className="text-[10px] sm:text-xs text-purple-600">Help the Community</div>
               </div>
             </div>
           </CardContent>

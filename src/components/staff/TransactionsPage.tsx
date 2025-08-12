@@ -159,7 +159,7 @@ useEffect(() => {
         setIsLoadingMore(false);
       }
     };
-    
+    console.log("The transactions are", transactions)
     // Update the useEffect hook for tab changes
     useEffect(() => {
       setTransactions([]);
@@ -232,7 +232,7 @@ useEffect(() => {
         result = result.filter(
           (tx) =>
             tx.customerName?.toLowerCase().includes(term) ||
-            tx.customerMobile?.toLowerCase().includes(term)
+            tx.customerMobile?.toLowerCase().includes(term) || tx.invoiceId?.toLowerCase().includes(term)
         );
       }
     
@@ -457,6 +457,7 @@ useEffect(() => {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead>Invoice ID</TableHead>
                           <TableHead>Customer</TableHead>
                           <TableHead>Mobile</TableHead>
                           <TableHead>Amount</TableHead>
@@ -475,6 +476,9 @@ useEffect(() => {
                           .filter(tx => tx.type === 'sale')
                           .map((tx) => (
                             <TableRow key={tx.id} className="hover:bg-gray-50">
+                              <TableCell className="font-medium">
+                                <span className="font-bold">{tx.invoiceId || 'N/A'}</span>
+                              </TableCell>
                               <TableCell className="font-medium">
                                 <span className="font-bold">{tx.customerName}</span>
                               </TableCell>

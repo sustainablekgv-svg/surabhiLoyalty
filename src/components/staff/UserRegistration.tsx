@@ -79,8 +79,9 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
           const querySnapshot = await getDocs(referralQuery);
 
           if (!querySnapshot.empty) {
-            const referralData = querySnapshot.docs[0].data() as CustomerType;
-            // Check if wallet recharge is done OR sale eligibility is true
+            const doc = querySnapshot.docs[0];
+            const referralData = { id: doc.id, ...doc.data() } as CustomerType;
+            // Check if wallet recharge is done OR wallet balance is greater than zero OR sale eligibility is true
             if (referralData.walletRechargeDone === true || referralData.saleElgibility === true) {
               setReferralName(referralData.customerName);
               setIsElgibleForReferral(true);
@@ -88,9 +89,9 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
             } else {
               setReferralName(null);
               setIsElgibleForReferral(false);
-              if (referralData.walletRechargeDone === false && referralData.saleElgibility === false) {
-                toast.error('This customer is not eligible for referral (wallet recharge not done and no sale is done)');
-              } else if (referralData.walletRechargeDone === false) {
+              if (referralData.walletRechargeDone === false && referralData.walletBalance <= 0 && referralData.saleElgibility === false) {
+                toast.error('This customer is not eligible for referral (wallet recharge not done, and no sale is done)');
+              } else if (referralData.walletRechargeDone === false && referralData.walletBalance <= 0) {
                 toast.error('This customer is not eligible for referral (wallet recharge not done)');
               } else {
                 toast.error('This customer is not eligible for referral (no sale is done)');

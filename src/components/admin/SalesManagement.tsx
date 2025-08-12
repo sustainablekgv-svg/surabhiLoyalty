@@ -109,7 +109,7 @@ export const SalesManagement = () => {
     if (tx.type !== 'sale') return false;
     
     const matchesSearch = tx.customerName.toLowerCase().includes(transactionsSearchTerm.toLowerCase()) ||
-                         tx.customerMobile.includes(transactionsSearchTerm);
+                         tx.customerMobile.includes(transactionsSearchTerm) || tx.invoiceId.includes(transactionsSearchTerm);
     const matchesStore = filterStore === 'all' || tx.storeLocation === filterStore;
     const matchesPayment = filterPayment === 'all' || tx.paymentMethod === filterPayment;
     
@@ -324,6 +324,7 @@ export const SalesManagement = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Invoice ID</TableHead>
                         <TableHead>Customer</TableHead>
                         <TableHead>Mobile</TableHead>
                         <TableHead>Invoice ID</TableHead>
@@ -339,7 +340,10 @@ export const SalesManagement = () => {
                     </TableHeader>
                     <TableBody>
                       {paginatedTransactions.map((transaction) => (
-                        <TableRow key={transaction.id}>
+                        <TableRow key={transaction.invoiceId}>
+                          <TableCell>
+                            {transaction.invoiceId || 'N/A'}
+                          </TableCell>
                           <TableCell className="font-medium">
                             {transaction.customerName}
                             {transaction.type === 'sale' && !transaction.customerMobile && (

@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, updateDoc, addDoc, serverTimestamp, doc, getDoc, Timestamp, arrayUnion, increment, onSnapshot } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-import { CustomerType, WalletRechargeProps, ActivityType, StoreType, AccountTxType, SevaPoolType, StaffType, CustomerTxType } from '@/types/types2';
+import { CustomerType, WalletRechargeProps, ActivityType, StoreType, AccountTxType, SevaPoolType, StaffType, CustomerTxType } from '@/types/types';
 import { FieldValue } from 'firebase/firestore';
 import { useAuth } from '@/hooks/auth-context';
 
@@ -403,7 +403,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         storeLocation: user.storeLocation,
         storeName: storeDetails.storeName,
         createdAt: Timestamp.fromDate(new Date()),
-        staffName: user.name,
+        // staffName: user.name,
         // invoiceId: generateInvoiceId(), // Add unique invoice ID
         amount: rechargeAmountNum,
         surabhiEarned: surabhiCoinsEarned,
@@ -419,23 +419,21 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         sevaCredit: sevaAmountEarned,
         sevaDebit: 0,
         sevaBalance: (currentData.sevaBalanceCurrentMonth) + sevaAmountEarned,
-        sevaTotal: (currentData.sevaTotal) + sevaAmountEarned
+        sevaTotal: (currentData.sevaTotal) + sevaAmountEarned,
+        remarks: `Wallet recharge of ₹${rechargeAmountNum} for ${selectedCustomer.customerName}`
       };
 
       await addDoc(collection(db, 'CustomerTx'), customerTxData);
-
-      // Use the same invoice ID for both CustomerTx and AccountTx for consistency
-      // const txInvoiceId = invoiceId.trim() ? invoiceId.trim() : generateInvoiceId();
       
       const accountTxData: Omit<AccountTxType, 'id'> = {
         createdAt: Timestamp.fromDate(new Date()),
         storeName: storeDetails.storeName,
         type: 'recharge',
         amount: rechargeAmountNum,
-        // invoiceId: txInvoiceId, // Add invoice ID for consistency
         credit: rechargeAmountNum,
         adminCut: 0,
         debit: 0,
+        adminProfit: 0,
         currentBalance: storeDetails.storeCurrentBalance + rechargeAmountNum,
         adminCurrentBalance: storeDetails.adminCurrentBalance - rechargeAmountNum,
         sevaBalance: storeDetails.storeSevaBalance + sevaAmountEarned, // Total seva balance after increment
@@ -485,7 +483,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       // Validate updateData against StaffType interface
       const staffUpdates: Partial<StaffType> = {
         staffRechargesCount: increment(1) as unknown as number,
-        staffLastActive: Timestamp.fromDate(new Date())
+        lastActive: Timestamp.fromDate(new Date())
       };
 
       await updateDoc(staffRef, staffUpdates);
@@ -536,12 +534,12 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
               type: 'referral',
               customerMobile: currentData.referredBy,
               customerName: referrerData.customerName,
-              staffName:user.name,
+              // staffName:user.name,
               storeLocation: storeLocation,
               storeName: storeLocation,
               createdAt: Timestamp.fromDate(new Date()),
               processedBy: user.name,
-              // invoiceId: `INV-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+              // invoiceId: generateInvoiceId(), // Add unique invoice ID
               amount: referralAmount,
               surabhiEarned: referralAmount,
               sevaEarned: 0,
@@ -568,7 +566,8 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
               sevaCredit: 0,
               sevaDebit: 0,
               sevaBalance: referrerData.sevaBalanceCurrentMonth || 0,
-              sevaTotal: referrerData.sevaTotal || 0
+              sevaTotal: referrerData.sevaTotal || 0,
+              remarks: `Referral bonus of ₹${referralAmount} for referring ${selectedCustomer.customerName}`
             };
             
             await addDoc(collection(db, 'CustomerTx'), referrerTxData);
@@ -709,8 +708,10 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       return;
     }
 
-    if (amount < 2000) {
-      toast.error('Minimum recharge amount is ₹2,000');
+    // Check if customer is a student to determine minimum recharge amount
+    const minimumAmount = selectedCustomer.isStudent ? 500 : 2000;
+    if (amount < minimumAmount) {
+      toast.error(`Minimum recharge amount is ₹${minimumAmount}`);
       return;
     }
 
@@ -876,7 +877,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
               Recharge Details
             </CardTitle>
             <CardDescription>
-              Enter recharge amount (minimum ₹2,000)
+              Enter recharge amount (minimum ₹500 for students, ₹2,000 for others)
             </CardDescription>
           </CardHeader>
 
@@ -958,17 +959,17 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                     <Input
                       id="amount"
                       type="number"
-                      placeholder="Enter amount (₹2,000 - ₹50,000)"
+                      placeholder={`Enter amount (₹${selectedCustomer.isStudent ? '500' : '2,000'} - ₹50,000)`}
                       value={rechargeAmount}
                       onChange={(e) => setRechargeAmount(e.target.value)}
                       className="pl-10 h-12"
-                      min="2000"
+                      min={selectedCustomer.isStudent ? "500" : "2000"}
                       max="50000"
                       step="100"
                     />
                   </div>
-                  {rechargeAmountNum > 0 && rechargeAmountNum < 2000 && (
-                    <p className="text-sm text-red-500">Minimum recharge amount is ₹2,000</p>
+                  {rechargeAmountNum > 0 && rechargeAmountNum < (selectedCustomer.isStudent ? 500 : 2000) && (
+                    <p className="text-sm text-red-500">Minimum recharge amount is ₹{selectedCustomer.isStudent ? '500' : '2,000'}</p>
                   )}
                 </div>
                 
@@ -1032,7 +1033,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
 
                 <Button
                   onClick={handleRechargeClick}
-                  disabled={isLoading || !rechargeAmount || rechargeAmountNum < 2000 || !storeDetails || !isSameStore(selectedCustomer)}
+                  disabled={isLoading || !rechargeAmount || rechargeAmountNum < (selectedCustomer.isStudent ? 500 : 2000) || !storeDetails || !isSameStore(selectedCustomer)}
                   className={`w-full h-12 font-medium transition-all ${isSameStore(selectedCustomer)
                     ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
