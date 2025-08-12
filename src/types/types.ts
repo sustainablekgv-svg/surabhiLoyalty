@@ -42,6 +42,7 @@ export interface CustomerType {
 
 export interface StaffHeaderProps {
   user: {
+    id: string;
     name?: string;
     mobile: string;
     role: string;

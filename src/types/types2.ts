@@ -140,7 +140,7 @@ export interface AdminHeaderProps {
 
 export interface CustomerTxType {
   id?: string;
-  type: 'recharge' | 'sale';
+  type: 'recharge' | 'sale' | 'referral' ;
   invoiceId?: string; // Optional invoice ID field
 
   // Common Fields

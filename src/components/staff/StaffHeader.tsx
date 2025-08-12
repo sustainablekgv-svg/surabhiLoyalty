@@ -1,9 +1,13 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Coins, LogOut } from 'lucide-react';
+import { Coins, LogOut, Settings } from 'lucide-react';
 import { StaffHeaderProps } from '@/types/types';
+import { StaffSettings } from './StaffSettings';
 
 export const StaffHeader = ({ user, onLogout }: StaffHeaderProps) => {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
   return (
     <div className="bg-white shadow-sm border-b w-full">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
@@ -20,15 +24,25 @@ export const StaffHeader = ({ user, onLogout }: StaffHeaderProps) => {
               </div>
             </div>
             
-            {/* Mobile logout button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onLogout}
-              className="sm:hidden text-red-600 hover:text-red-700 hover:bg-red-50 p-2"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
+            {/* Mobile buttons */}
+            <div className="flex sm:hidden items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsSettingsOpen(true)}
+                className="text-gray-600 hover:text-gray-700 hover:bg-gray-50 p-2"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onLogout}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           {/* User Info Section */}
@@ -48,16 +62,27 @@ export const StaffHeader = ({ user, onLogout }: StaffHeaderProps) => {
                 </div>
               </div>
 
-              {/* Desktop logout button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onLogout}
-                className="hidden sm:flex text-red-600 hover:text-red-700 hover:bg-red-50"
-              >
-                <LogOut className="h-4 w-4" />
-                <span className="ml-2 hidden md:inline">Logout</span>
-              </Button>
+              {/* Desktop buttons */}
+              <div className="hidden sm:flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span className="ml-2 hidden md:inline">Settings</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onLogout}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span className="ml-2 hidden md:inline">Logout</span>
+                </Button>
+              </div>
               
               {/* Mobile user info (collapsed) */}
               <div className="sm:hidden flex items-center gap-2">
@@ -72,6 +97,13 @@ export const StaffHeader = ({ user, onLogout }: StaffHeaderProps) => {
           </div>
         </div>
       </div>
+
+      {/* Staff Settings Dialog */}
+      <StaffSettings 
+        user={user} 
+        isOpen={isSettingsOpen} 
+        onOpenChange={setIsSettingsOpen} 
+      />
     </div>
   );
 };
