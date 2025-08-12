@@ -11,17 +11,23 @@ import StaffDashboard from "./pages/staff/Dashboard";
 import CustomerDashboard from "./pages/customer/Dashboard";
 import NotFound from "./pages/NotFound";
 import { CustomerDetails } from "./components/staff/CustomerDetails";
+import { useEffect } from "react";
+import { logAnalyticsEvent } from "./lib/firebase";
+import { AnalyticsProvider } from "./components/AnalyticsProvider";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AnalyticsProvider>
+              <Routes>
             <Route path="/" element={<Index />} />
             <Route 
               path="/admin/dashboard" 
@@ -57,10 +63,12 @@ const App = () => (
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
-      </TooltipProvider>  
-    </AuthProvider>
-  </QueryClientProvider>
+            </AnalyticsProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
