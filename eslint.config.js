@@ -75,6 +75,7 @@ export default tseslint.config(
       ],
       'no-var': 'error', // Enforce let/const instead of var
       '@typescript-eslint/no-require-imports': 'off', // Disable if you need to use require()
+      '@typescript-eslint/no-explicit-any': 'off', // Disable no-explicit-any rule
     },
   }
 );

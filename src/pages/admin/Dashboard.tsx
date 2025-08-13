@@ -5,14 +5,13 @@ import { toast } from 'sonner';
 
 import Accounts from '@/components/admin/AccountsSection';
 import { AdminHeader } from '@/components/admin/AdminHeader';
-import { useAuth } from '@/hooks/auth-context';
 import { AdminStats } from '@/components/admin/AdminStats';
 import { CustomerManagement } from '@/components/admin/CustomerManagement';
 import { GoSevaPool } from '@/components/admin/GoSevaPool';
 import { SalesManagement } from '@/components/admin/SalesManagement';
 import { StaffManagement } from '@/components/admin/StaffManagement';
-import { CardHeader } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/hooks/auth-context';
 
 const AdminDashboard = () => {
   const { user, logout, isLoading: authLoading } = useAuth();

@@ -1,15 +1,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
-import NotFound from './pages/NotFound';
-import { CustomerDetails } from './components/staff/CustomerDetails';
-import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { logAnalyticsEvent } from './lib/firebase';
+
 import { AnalyticsProvider } from './components/AnalyticsProvider';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { CustomerDetails } from './components/staff/CustomerDetails';
 import AdminDashboard from './pages/admin/Dashboard';
 import CustomerDashboard from './pages/customer/Dashboard';
 import Index from './pages/Index';
+import NotFound from './pages/NotFound';
 import StaffDashboard from './pages/staff/Dashboard';
 
 import { ProtectedRoute } from '@/components/protectedRoutes';

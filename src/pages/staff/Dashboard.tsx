@@ -17,11 +17,9 @@ import { StaffStats } from '@/components/staff/StaffStats';
 import StoreAccounts from '@/components/staff/storeAccounts';
 import { TransactionsPage } from '@/components/staff/TransactionsPage';
 import { UserRegistration } from '@/components/staff/UserRegistration';
-import { CardContent, CardHeader } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-import { useAuth } from '@/hooks/auth-context';
 import { WalletRecharge } from '@/components/staff/WalletRecharge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/hooks/auth-context';
 
 const StaffDashboard = () => {
   const { user, logout, isLoading: authLoading } = useAuth();

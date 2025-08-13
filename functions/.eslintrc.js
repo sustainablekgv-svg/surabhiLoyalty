@@ -12,6 +12,7 @@ export default [
       parserOptions: {
         ecmaVersion: 2020,
         sourceType: 'module',
+        project: './tsconfig.app.json',
       },
       globals: {
         ...globals.node, // This includes Node.js globals like require, exports, console, etc.
