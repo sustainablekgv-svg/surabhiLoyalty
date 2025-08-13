@@ -1,11 +1,33 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { toast } from 'sonner';
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import { toast } from 'sonner';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface Staff {
   id: string;
@@ -30,16 +52,11 @@ export const EditStaffDialog = ({ staff, isOpen, onClose, onUpdate }: EditStaffD
     mobile: staff?.mobile || '',
     email: staff?.email || '',
     storeLocation: staff?.storeLocation || '',
-    status: staff?.status || 'active'
+    status: staff?.status || 'active',
   });
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-  const storeLocations = [
-    'Downtown Branch',
-    'Mall Branch',
-    'Airport Branch',
-    'Central Plaza'
-  ];
+  const storeLocations = ['Downtown Branch', 'Mall Branch', 'Airport Branch', 'Central Plaza'];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +69,7 @@ export const EditStaffDialog = ({ staff, isOpen, onClose, onUpdate }: EditStaffD
     const updatedStaff: Staff = {
       ...staff,
       ...formData,
-      status: formData.status as 'active' | 'inactive'
+      status: formData.status as 'active' | 'inactive',
     };
 
     onUpdate(updatedStaff);
@@ -69,52 +86,53 @@ export const EditStaffDialog = ({ staff, isOpen, onClose, onUpdate }: EditStaffD
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Staff Member</DialogTitle>
-            <DialogDescription>
-              Update staff member information and permissions
-            </DialogDescription>
+            <DialogDescription>Update staff member information and permissions</DialogDescription>
           </DialogHeader>
-          
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="mobile">Mobile Number</Label>
               <Input
                 id="mobile"
                 type="tel"
                 value={formData.mobile}
-                onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
+                onChange={e => setFormData({ ...formData, mobile: e.target.value })}
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
               <Input
                 id="email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={e => setFormData({ ...formData, email: e.target.value })}
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="store">Store Location</Label>
-              <Select value={formData.storeLocation} onValueChange={(value) => setFormData({ ...formData, storeLocation: value })}>
+              <Select
+                value={formData.storeLocation}
+                onValueChange={value => setFormData({ ...formData, storeLocation: value })}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {storeLocations.map((location) => (
+                  {storeLocations.map(location => (
                     <SelectItem key={location} value={location}>
                       {location}
                     </SelectItem>
@@ -122,10 +140,15 @@ export const EditStaffDialog = ({ staff, isOpen, onClose, onUpdate }: EditStaffD
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
-              <Select value={formData.status} onValueChange={(value: 'active' | 'inactive') => setFormData({ ...formData, status: value })}>
+              <Select
+                value={formData.status}
+                onValueChange={(value: 'active' | 'inactive') =>
+                  setFormData({ ...formData, status: value })
+                }
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -135,7 +158,7 @@ export const EditStaffDialog = ({ staff, isOpen, onClose, onUpdate }: EditStaffD
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="flex gap-2 pt-4">
               <Button type="submit" className="flex-1">
                 Update Staff
@@ -158,9 +181,7 @@ export const EditStaffDialog = ({ staff, isOpen, onClose, onUpdate }: EditStaffD
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmUpdate}>
-              Yes, Update Staff
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleConfirmUpdate}>Yes, Update Staff</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

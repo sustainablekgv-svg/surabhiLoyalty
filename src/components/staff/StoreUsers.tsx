@@ -1,8 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
+import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import {
   Users,
   Search,
@@ -11,26 +8,37 @@ import {
   Coins,
   Eye,
   Filter,
-  UserCheck,
-  UserX,
   Loader2,
   ChevronDown,
   ChevronUp,
   Star,
-  Calendar
 } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
-import { CustomerType, StoreUsersProps } from "@/types/types";
-import { format } from 'date-fns';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { db } from '@/lib/firebase';
+import { CustomerType, StoreUsersProps } from '@/types/types';
+
 export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
-  console.log("THe store location is", storeLocation);
+  console.log('THe store location is', storeLocation);
   const [searchTerm, setSearchTerm] = useState('');
-  const [registrationFilter, setRegistrationFilter] = useState<'all' | 'registered' | 'unregistered'>('all');
-  const [sortField, setSortField] = useState<'name' | 'walletBalance' | 'surabhiCoins' | 'lastTransactionDate'>('name');
+  const [registrationFilter, setRegistrationFilter] = useState<
+    'all' | 'registered' | 'unregistered'
+  >('all');
+  const [sortField, setSortField] = useState<
+    'name' | 'walletBalance' | 'surabhiCoins' | 'lastTransactionDate'
+  >('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [customers, setCustomers] = useState<CustomerType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,15 +55,12 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
         const customersRef = collection(db, 'Customers');
 
         // First query to get customers by store location
-        const q = query(
-          customersRef,
-          where('storeLocation', '==', storeLocation)
-        );
+        const q = query(customersRef, where('storeLocation', '==', storeLocation));
 
         const querySnapshot = await getDocs(q);
         const customersData = querySnapshot.docs.map(doc => ({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
         })) as unknown as CustomerType[];
 
         // Sort locally by lastTransactionDate if needed
@@ -72,10 +77,11 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
           .sort((a, b) => (b.walletBalance || 0) - (a.walletBalance || 0))
           .slice(0, 5);
         setTopCustomers(topByWallet);
-
       } catch (err) {
         console.error('Error fetching customers:', err);
-        setError(`Failed to load customers. ${err instanceof Error ? err.message : 'Please try again.'}`);
+        setError(
+          `Failed to load customers. ${err instanceof Error ? err.message : 'Please try again.'}`
+        );
       } finally {
         setLoading(false);
       }
@@ -89,7 +95,8 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
       const matchesSearch =
         customer.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         customer.customerMobile.includes(searchTerm) ||
-        (customer.customerEmail && customer.customerEmail.toLowerCase().includes(searchTerm.toLowerCase()));
+        (customer.customerEmail &&
+          customer.customerEmail.toLowerCase().includes(searchTerm.toLowerCase()));
       return matchesSearch;
     })
     .sort((a, b) => {
@@ -114,7 +121,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
     totalUsers: customers.length,
     totalWallet: customers.reduce((sum, c) => sum + (c.walletBalance || 0), 0),
     totalCoins: customers.reduce((sum, c) => sum + (c.surabhiBalance || 0), 0),
-    currentMonthCoins: customers.reduce((sum, c) => sum + (c.sevaBalanceCurrentMonth || 0), 0)
+    currentMonthCoins: customers.reduce((sum, c) => sum + (c.sevaBalanceCurrentMonth || 0), 0),
   };
 
   const handleSort = (field: typeof sortField) => {
@@ -163,11 +170,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
   }
 
   if (error) {
-    return (
-      <div className="flex items-center justify-center h-64 text-red-500">
-        {error}
-      </div>
-    );
+    return <div className="flex items-center justify-center h-64 text-red-500">{error}</div>;
   }
 
   return (
@@ -200,7 +203,9 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
               <Wallet className="h-4 w-4 text-purple-600" />
               <span className="text-xs font-medium text-purple-600">Total Wallet</span>
             </div>
-            <p className="text-xl font-bold text-purple-900">₹{stats.totalWallet.toLocaleString()}</p>
+            <p className="text-xl font-bold text-purple-900">
+              ₹{stats.totalWallet.toLocaleString()}
+            </p>
           </CardContent>
         </Card>
 
@@ -210,7 +215,9 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
               <Coins className="h-4 w-4 text-amber-600" />
               <span className="text-xs font-medium text-amber-600">This Month Coins</span>
             </div>
-            <p className="text-xl font-bold text-amber-900">{stats.currentMonthCoins.toLocaleString()}</p>
+            <p className="text-xl font-bold text-amber-900">
+              {stats.currentMonthCoins.toLocaleString()}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -223,9 +230,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
               <Star className="h-5 w-5 text-yellow-500" />
               Top Customers by Wallet Balance
             </CardTitle>
-            <CardDescription>
-              Our most valuable customers at {storeLocation}
-            </CardDescription>
+            <CardDescription>Our most valuable customers at {storeLocation}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -237,7 +242,9 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-medium text-gray-900 truncate">{customer.customerName}</h3>
-                    <Badge variant="secondary" className="ml-2">#{index + 1}</Badge>
+                    <Badge variant="secondary" className="ml-2">
+                      #{index + 1}
+                    </Badge>
                   </div>
                   <div className="flex items-center gap-2 text-purple-600 text-sm">
                     <Wallet className="h-3 w-3" />
@@ -273,7 +280,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                 <Input
                   placeholder="Search customers..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={e => setSearchTerm(e.target.value)}
                   className="pl-10 w-full sm:w-64"
                 />
               </div>
@@ -287,7 +294,9 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
 
               <Select
                 value={registrationFilter}
-                onValueChange={(value: 'all' | 'registered' | 'unregistered') => setRegistrationFilter(value)}
+                onValueChange={(value: 'all' | 'registered' | 'unregistered') =>
+                  setRegistrationFilter(value)
+                }
               >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Registration" />
@@ -307,15 +316,15 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
             <table className="w-full">
               <thead>
                 <tr className="text-left text-sm text-gray-500 border-b">
-                  <th
-                    className="pb-3 px-4 cursor-pointer"
-                    onClick={() => handleSort('name')}
-                  >
+                  <th className="pb-3 px-4 cursor-pointer" onClick={() => handleSort('name')}>
                     <div className="flex items-center gap-1">
                       Name
-                      {sortField === 'name' && (
-                        sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
-                      )}
+                      {sortField === 'name' &&
+                        (sortDirection === 'asc' ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        ))}
                     </div>
                   </th>
                   <th className="pb-3 px-4">Contact</th>
@@ -325,9 +334,12 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                   >
                     <div className="flex items-center gap-1">
                       Wallet
-                      {sortField === 'walletBalance' && (
-                        sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
-                      )}
+                      {sortField === 'walletBalance' &&
+                        (sortDirection === 'asc' ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        ))}
                     </div>
                   </th>
                   <th
@@ -336,9 +348,12 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                   >
                     <div className="flex items-center gap-1">
                       Coins
-                      {sortField === 'surabhiCoins' && (
-                        sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
-                      )}
+                      {sortField === 'surabhiCoins' &&
+                        (sortDirection === 'asc' ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        ))}
                     </div>
                   </th>
                   <th
@@ -347,9 +362,12 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                   >
                     <div className="flex items-center gap-1">
                       Last Activity
-                      {sortField === 'lastTransactionDate' && (
-                        sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
-                      )}
+                      {sortField === 'lastTransactionDate' &&
+                        (sortDirection === 'asc' ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        ))}
                     </div>
                   </th>
                   <th className="pb-3 px-4">Status</th>
@@ -357,7 +375,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {filteredCustomers.map((customer) => (
+                {filteredCustomers.map(customer => (
                   <tr key={customer.customerMobile} className="hover:bg-gray-50">
                     <td className="py-4 px-4">
                       <div className="font-medium text-gray-900">{customer.customerName}</div>

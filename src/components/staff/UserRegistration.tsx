@@ -1,4 +1,19 @@
-import { useState, useEffect } from 'react';
+import {
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  User as FirebaseUser,
+} from 'firebase/auth';
+import {
+  doc,
+  setDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  updateDoc,
+  arrayUnion,
+  Timestamp,
+} from 'firebase/firestore';
 import {
   UserPlus,
   Phone,
@@ -10,27 +25,12 @@ import {
   CheckCircle,
   Link2,
   Loader2,
-  Search,
-  X
+  X,
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+
 import { auth, db } from '@/lib/firebase';
-import {
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  User as FirebaseUser
-} from 'firebase/auth';
-import {
-  doc,
-  setDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  updateDoc,
-  arrayUnion,
-  Timestamp
-} from 'firebase/firestore';
 import { CustomerType, UserRegistrationProps } from '@/types/types2';
 
 export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
@@ -50,7 +50,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
     isStudent: false,
     tpin: '',
     district: '',
-    city: ''
+    city: '',
   });
 
   // Initialize auth state
@@ -59,8 +59,8 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
       // setIsAuthReady(true);
       if (user) {
         toast.success('Authentication ready');
-    }
-  });
+      }
+    });
 
     return () => unsubscribe();
   }, []);
@@ -89,10 +89,21 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
             } else {
               setReferralName(null);
               setIsElgibleForReferral(false);
-              if (referralData.walletRechargeDone === false && referralData.walletBalance <= 0 && referralData.saleElgibility === false) {
-                toast.error('This customer is not eligible for referral (wallet recharge not done, and no sale is done)');
-              } else if (referralData.walletRechargeDone === false && referralData.walletBalance <= 0) {
-                toast.error('This customer is not eligible for referral (wallet recharge not done)');
+              if (
+                referralData.walletRechargeDone === false &&
+                referralData.walletBalance <= 0 &&
+                referralData.saleElgibility === false
+              ) {
+                toast.error(
+                  'This customer is not eligible for referral (wallet recharge not done, and no sale is done)'
+                );
+              } else if (
+                referralData.walletRechargeDone === false &&
+                referralData.walletBalance <= 0
+              ) {
+                toast.error(
+                  'This customer is not eligible for referral (wallet recharge not done)'
+                );
               } else {
                 toast.error('This customer is not eligible for referral (no sale is done)');
               }
@@ -136,7 +147,13 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
     //   return;
     // }
 
-    if (!formData.customerName || !formData.customerMobile || !formData.customerEmail || !formData.customerPassword || !formData.tpin) {
+    if (
+      !formData.customerName ||
+      !formData.customerMobile ||
+      !formData.customerEmail ||
+      !formData.customerPassword ||
+      !formData.tpin
+    ) {
       toast.error('Please fill all required fields');
       return;
     }
@@ -173,7 +190,10 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
       const customersCollection = collection(db, 'Customers');
 
       // Check if email already exists
-      const emailQuery = query(customersCollection, where('customerEmail', '==', formData.customerEmail));
+      const emailQuery = query(
+        customersCollection,
+        where('customerEmail', '==', formData.customerEmail)
+      );
       const emailSnap = await getDocs(emailQuery);
       if (!emailSnap.empty) {
         toast.error('This email is already registered.', { id: toastId });
@@ -182,7 +202,10 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
       }
 
       // Check if mobile number already exists
-      const mobileQuery = query(customersCollection, where('customerMobile', '==', formData.customerMobile));
+      const mobileQuery = query(
+        customersCollection,
+        where('customerMobile', '==', formData.customerMobile)
+      );
       const mobileSnap = await getDocs(mobileQuery);
       if (!mobileSnap.empty) {
         toast.error('This mobile number is already registered.', { id: toastId });
@@ -225,13 +248,13 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
         surabhiReferral: 0,
         surabhiBalanceCurrentMonth: 0,
         sevaBalance: 0,
-        sevaTotal:0,
+        sevaTotal: 0,
         sevaBalanceCurrentMonth: 0,
         lastTransactionDate: null,
         quarterlyPurchaseTotal: 0,
         lastQuarterCheck: null,
         coinsFrozen: true,
-        currentQuarterStart: null
+        currentQuarterStart: null,
       };
 
       await setDoc(doc(customersCollection, newUserUid), newUserData);
@@ -246,16 +269,16 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
 
         if (!referrerSnapshot.empty) {
           const referrerDoc = referrerSnapshot.docs[0];
-          
+
           // Only record the referral relationship during registration
           await updateDoc(doc(customersCollection, referrerDoc.id), {
             referredUsers: arrayUnion({
               customerMobile: formData.customerMobile,
               customerName: formData.customerName,
-              createdAt: Timestamp.now()
-            })
+              createdAt: Timestamp.now(),
+            }),
           });
-          
+
           toast.success(`User registered! Referral recorded.`, { id: toastId });
         }
       } else {
@@ -273,11 +296,10 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
         isStudent: false,
         tpin: '',
         district: '',
-        city: ''
+        city: '',
       });
       setReferralName(null);
       setIsElgibleForReferral(false);
-
     } catch (error: any) {
       console.error('Registration error:', error);
       let errorMessage = 'Registration failed. Please try again.';
@@ -319,7 +341,12 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
   };
 
   const generateTPIN = () => {
-    if (!formData.customerName || !formData.customerMobile || !formData.customerEmail || !formData.customerPassword) {
+    if (
+      !formData.customerName ||
+      !formData.customerMobile ||
+      !formData.customerEmail ||
+      !formData.customerPassword
+    ) {
       toast.error('Please fill name, mobile and email first');
       return;
     }
@@ -372,7 +399,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                       type="text"
                       placeholder="Enter customer name"
                       value={formData.customerName}
-                      onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
+                      onChange={e => setFormData({ ...formData, customerName: e.target.value })}
                       className="w-full pl-10 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       required
                     />
@@ -381,7 +408,10 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
 
                 {/* Mobile Field */}
                 <div className="space-y-2">
-                  <label htmlFor="customerMobile" className="block text-sm font-medium text-gray-700">
+                  <label
+                    htmlFor="customerMobile"
+                    className="block text-sm font-medium text-gray-700"
+                  >
                     Mobile Number <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -391,7 +421,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                       type="tel"
                       placeholder="Enter 10-digit number"
                       value={formData.customerMobile}
-                      onChange={(e) => setFormData({ ...formData, customerMobile: e.target.value })}
+                      onChange={e => setFormData({ ...formData, customerMobile: e.target.value })}
                       className="w-full pl-10 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       maxLength={10}
                       required
@@ -401,7 +431,10 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
 
                 {/* Email Field */}
                 <div className="space-y-2">
-                  <label htmlFor="customerEmail" className="block text-sm font-medium text-gray-700">
+                  <label
+                    htmlFor="customerEmail"
+                    className="block text-sm font-medium text-gray-700"
+                  >
                     Email <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -411,7 +444,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                       type="email"
                       placeholder="Enter email address"
                       value={formData.customerEmail}
-                      onChange={(e) => setFormData({ ...formData, customerEmail: e.target.value })}
+                      onChange={e => setFormData({ ...formData, customerEmail: e.target.value })}
                       className="w-full pl-10 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       required
                     />
@@ -429,7 +462,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                       type="text"
                       placeholder="Enter city"
                       value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      onChange={e => setFormData({ ...formData, city: e.target.value })}
                       className="w-full pl-3 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -446,7 +479,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                       type="text"
                       placeholder="Enter district"
                       value={formData.district}
-                      onChange={(e) => setFormData({ ...formData, district: e.target.value })}
+                      onChange={e => setFormData({ ...formData, district: e.target.value })}
                       className="w-full pl-3 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -497,9 +530,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
 
                 {/* Student Field */}
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Is Student?
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700">Is Student?</label>
                   <div className="flex gap-4">
                     <label className="inline-flex items-center">
                       <input
@@ -529,17 +560,27 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                 {/* Password Field */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <label htmlFor="customerPassword" className="block text-sm font-medium text-gray-700">
+                    <label
+                      htmlFor="customerPassword"
+                      className="block text-sm font-medium text-gray-700"
+                    >
                       Password <span className="text-red-500">*</span>
                     </label>
                     <button
                       type="button"
                       onClick={generatePassword}
-                      disabled={!formData.customerName || !formData.customerMobile || !formData.customerEmail}
-                      className={`text-xs px-2 py-1 rounded ${!formData.customerName || !formData.customerMobile || !formData.customerEmail
-                        ? 'text-gray-400 cursor-not-allowed'
-                        : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
-                        }`}
+                      disabled={
+                        !formData.customerName ||
+                        !formData.customerMobile ||
+                        !formData.customerEmail
+                      }
+                      className={`text-xs px-2 py-1 rounded ${
+                        !formData.customerName ||
+                        !formData.customerMobile ||
+                        !formData.customerEmail
+                          ? 'text-gray-400 cursor-not-allowed'
+                          : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+                      }`}
                     >
                       Generate Password
                     </button>
@@ -551,7 +592,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                       type={showPassword ? 'text' : 'password'}
                       placeholder="Enter password"
                       value={formData.customerPassword}
-                      onChange={(e) => setFormData({ ...formData, customerPassword: e.target.value })}
+                      onChange={e => setFormData({ ...formData, customerPassword: e.target.value })}
                       className="w-full pl-10 pr-10 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       required
                     />
@@ -574,11 +615,20 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                     <button
                       type="button"
                       onClick={generateTPIN}
-                      disabled={!formData.customerName || !formData.customerMobile || !formData.customerEmail || !formData.customerPassword}
-                      className={`text-xs px-2 py-1 rounded ${!formData.customerName || !formData.customerMobile || !formData.customerEmail || !formData.customerPassword
-                        ? 'text-gray-400 cursor-not-allowed'
-                        : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
-                        }`}
+                      disabled={
+                        !formData.customerName ||
+                        !formData.customerMobile ||
+                        !formData.customerEmail ||
+                        !formData.customerPassword
+                      }
+                      className={`text-xs px-2 py-1 rounded ${
+                        !formData.customerName ||
+                        !formData.customerMobile ||
+                        !formData.customerEmail ||
+                        !formData.customerPassword
+                          ? 'text-gray-400 cursor-not-allowed'
+                          : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+                      }`}
                     >
                       Generate TPIN
                     </button>
@@ -590,7 +640,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                       type="password"
                       placeholder="Enter 4-digit TPIN"
                       value={formData.tpin}
-                      onChange={(e) => setFormData({ ...formData, tpin: e.target.value })}
+                      onChange={e => setFormData({ ...formData, tpin: e.target.value })}
                       className="w-full pl-10 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       maxLength={4}
                       required
@@ -610,7 +660,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                       type="tel"
                       placeholder="Enter referrer's mobile number"
                       value={formData.referredBy}
-                      onChange={(e) => setFormData({ ...formData, referredBy: e.target.value })}
+                      onChange={e => setFormData({ ...formData, referredBy: e.target.value })}
                       className="w-full pl-10 pr-10 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       maxLength={10}
                     />
@@ -666,9 +716,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                 <CheckCircle className="h-5 w-5 text-green-600" />
                 Registration Benefits
               </h2>
-              <p className="text-sm text-gray-600 mt-1">
-                What customers get when they register
-              </p>
+              <p className="text-sm text-gray-600 mt-1">What customers get when they register</p>
             </div>
 
             <div className="p-6 pt-0 space-y-4">
@@ -679,7 +727,9 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                 </div>
                 <div>
                   <h3 className="font-medium text-blue-900">Digital Wallet</h3>
-                  <p className="text-sm text-blue-700">Secure storage for your money with 1:1 value</p>
+                  <p className="text-sm text-blue-700">
+                    Secure storage for your money with 1:1 value
+                  </p>
                 </div>
               </div>
 
@@ -690,7 +740,9 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                 </div>
                 <div>
                   <h3 className="font-medium text-amber-900">Reward Coins</h3>
-                  <p className="text-sm text-amber-700">Earn Surabhi coins on every wallet recharge</p>
+                  <p className="text-sm text-amber-700">
+                    Earn Surabhi coins on every wallet recharge
+                  </p>
                 </div>
               </div>
 
@@ -712,7 +764,9 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                 </div>
                 <div>
                   <h3 className="font-medium text-purple-900">Community Support</h3>
-                  <p className="text-sm text-purple-700">Fraction of a recharges support community welfare</p>
+                  <p className="text-sm text-purple-700">
+                    Fraction of a recharges support community welfare
+                  </p>
                 </div>
               </div>
 

@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
 import { collection, getDocs, limit, query, Timestamp, where } from 'firebase/firestore';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { doc, updateDoc } from 'firebase/firestore';
 import { Coins, LogOut, Settings } from 'lucide-react';
+import { useState, useEffect } from 'react';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -12,9 +14,14 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { StaffType } from '@/types/types';
 
@@ -37,8 +44,8 @@ function safeFormatDate(date: any, dateFormat: string = 'dd MMM yyyy'): string {
   }
 }
 
-
 import { StoreType, AdminHeaderProps } from '@/types/types';
+
 import { format } from 'date-fns';
 export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
   const [stores, setStores] = useState<StoreType[]>([]);
@@ -57,29 +64,29 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
   const { toast } = useToast();
 
   useEffect(() => {
-  const fetchStores = async () => {
-    try {
-      const querySnapshot = await getDocs(collection(db, 'stores'));
-      const storesData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as StoreType[];
-      setStores(storesData);
-    } catch (error) {
-      console.error('Error fetching stores:', error);
-    }
-  };
+    const fetchStores = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'stores'));
+        const storesData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as StoreType[];
+        setStores(storesData);
+      } catch (error) {
+        console.error('Error fetching stores:', error);
+      }
+    };
 
-  fetchStores();
-}, []);
+    fetchStores();
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-  const { name, value } = e.target;
-  setFormData(prev => ({
-    ...prev,
-    [name]: value
-  }));
-};
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
   const handleSelectChange = (name: keyof StaffType, value: string) => {
     setFormData(prev => ({
@@ -90,74 +97,75 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
 
   const handleSaveChanges = async () => {
     if (!user.id) return;
-    
+
     setIsUpdating(true);
-try {
-  // Only include fields that have values and are different from current
-  const updateData: Partial<StaffType> = {};
-  
-  // Required fields that should always be included if they exist in formData
-  if (formData.staffName) updateData.staffName = formData.staffName;
-  if (formData.staffEmail) updateData.staffEmail = formData.staffEmail;
-  if (formData.storeLocation) updateData.storeLocation = formData.storeLocation;
-  if (formData.role) updateData.role = formData.role;
-  if (formData.staffStatus) updateData.staffStatus = formData.staffStatus;
+    try {
+      // Only include fields that have values and are different from current
+      const updateData: Partial<StaffType> = {};
 
-  // Conditional updates for sensitive fields
-  if (formData.staffPin && formData.staffPin !== user.staffPin) {
-    updateData.staffPin = formData.staffPin;
-  }
-  if (formData.staffPassword && formData.staffPassword !== user.staffPassword) {
-    updateData.staffPassword = formData.staffPassword;
-  }
+      // Required fields that should always be included if they exist in formData
+      if (formData.staffName) updateData.staffName = formData.staffName;
+      if (formData.staffEmail) updateData.staffEmail = formData.staffEmail;
+      if (formData.storeLocation) updateData.storeLocation = formData.storeLocation;
+      if (formData.role) updateData.role = formData.role;
+      if (formData.staffStatus) updateData.staffStatus = formData.staffStatus;
 
-  // Verify we have at least one field to update
-  if (Object.keys(updateData).length === 0) {
-    toast({
-      title: "No changes detected",
-      description: "Make changes before saving.",
-      variant: "default",
-    });
-    return;
-  }
+      // Conditional updates for sensitive fields
+      if (formData.staffPin && formData.staffPin !== user.staffPin) {
+        updateData.staffPin = formData.staffPin;
+      }
+      if (formData.staffPassword && formData.staffPassword !== user.staffPassword) {
+        updateData.staffPassword = formData.staffPassword;
+      }
 
-  const staffQuery = query(
-    collection(db, 'staff'),
-    where('staffMobile', '==', user.staffMobile),
-    limit(1)
-  );
-  
-  const querySnapshot = await getDocs(staffQuery);
+      // Verify we have at least one field to update
+      if (Object.keys(updateData).length === 0) {
+        toast({
+          title: 'No changes detected',
+          description: 'Make changes before saving.',
+          variant: 'default',
+        });
+        return;
+      }
 
-  if (querySnapshot.empty) {
-    console.error('No staff found with mobile:', user.staffMobile);
-    toast({
-      title: "Update failed",
-      description: "No staff record found for your account.",
-      variant: "destructive",
-    });
-    return;
-  }
+      const staffQuery = query(
+        collection(db, 'staff'),
+        where('staffMobile', '==', user.staffMobile),
+        limit(1)
+      );
 
-  const staffRef = doc(db, 'staff', querySnapshot.docs[0].id);
-  await updateDoc(staffRef, updateData);
+      const querySnapshot = await getDocs(staffQuery);
 
-  console.log('Staff record updated for:', user.staffMobile);
-  toast({
-    title: "Profile updated",
-    description: "Your changes have been saved successfully.",
-    variant: "default",
-  });
-  
-  setIsSettingsOpen(false);
-} catch (error) {
-  console.error('Error updating staff profile:', error);
-  toast({
-    title: "Update failed",
-    description: error instanceof Error ? error.message : "There was an error saving your changes.",
-    variant: "destructive",
-  });
-} finally {
+      if (querySnapshot.empty) {
+        console.error('No staff found with mobile:', user.staffMobile);
+        toast({
+          title: 'Update failed',
+          description: 'No staff record found for your account.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const staffRef = doc(db, 'staff', querySnapshot.docs[0].id);
+      await updateDoc(staffRef, updateData);
+
+      console.log('Staff record updated for:', user.staffMobile);
+      toast({
+        title: 'Profile updated',
+        description: 'Your changes have been saved successfully.',
+        variant: 'default',
+      });
+
+      setIsSettingsOpen(false);
+    } catch (error) {
+      console.error('Error updating staff profile:', error);
+      toast({
+        title: 'Update failed',
+        description:
+          error instanceof Error ? error.message : 'There was an error saving your changes.',
+        variant: 'destructive',
+      });
+    } finally {
       setIsUpdating(false);
     }
   };
@@ -174,21 +182,21 @@ try {
               <h1 className="text-lg sm:text-xl font-bold text-gray-900">Loyalty Rewards</h1>
               <p className="text-xs sm:text-sm text-gray-600">Admin Portal</p>
             </div>
-            
+
             {/* Mobile buttons */}
             <div className="flex items-center gap-1 sm:hidden">
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setIsSettingsOpen(true)}
                 className="text-gray-600 hover:text-gray-900 hover:bg-gray-50 p-1"
               >
                 <Settings className="h-4 w-4" />
               </Button>
-              
-              <Button 
-                variant="ghost" 
-                size="sm" 
+
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={onLogout}
                 className="text-red-600 hover:text-red-700 hover:bg-red-50 p-1"
               >
@@ -196,7 +204,7 @@ try {
               </Button>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto justify-between sm:justify-end">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="text-center sm:text-right">
@@ -210,21 +218,21 @@ try {
                   <span className="text-[10px] sm:text-xs text-gray-600">{user.staffMobile}</span>
                 </div>
               </div>
-              
+
               {/* Desktop buttons */}
               <div className="hidden sm:flex items-center gap-1">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setIsSettingsOpen(true)}
                   className="text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                 >
                   <Settings className="h-4 w-4" />
                 </Button>
-                
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={onLogout}
                   className="text-red-600 hover:text-red-700 hover:bg-red-50"
                 >
@@ -249,7 +257,9 @@ try {
           <div className="space-y-3 sm:space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="name" className="text-xs sm:text-sm">Full Name</Label>
+                <Label htmlFor="name" className="text-xs sm:text-sm">
+                  Full Name
+                </Label>
                 <Input
                   value={user.staffName}
                   disabled
@@ -257,7 +267,9 @@ try {
                 />
               </div>
               <div>
-                <Label htmlFor="mobile" className="text-xs sm:text-sm">Mobile Number</Label>
+                <Label htmlFor="mobile" className="text-xs sm:text-sm">
+                  Mobile Number
+                </Label>
                 <Input
                   value={user.staffMobile}
                   disabled
@@ -268,60 +280,76 @@ try {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="email" className="text-xs sm:text-sm">Email</Label>
+                <Label htmlFor="email" className="text-xs sm:text-sm">
+                  Email
+                </Label>
                 <Input
                   value={user.staffEmail}
                   disabled
                   className="bg-gray-100 h-8 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
-                <div>
-                <Label htmlFor="storeLocation" className="text-xs sm:text-sm">Store Location</Label>
+              <div>
+                <Label htmlFor="storeLocation" className="text-xs sm:text-sm">
+                  Store Location
+                </Label>
                 <select
-                id="storeLocation"
-                name="storeLocation"
-                value={formData.storeLocation || ''}
-                onChange={handleInputChange}
-                className="w-full p-1.5 sm:p-2 border rounded h-8 sm:h-10 text-xs sm:text-sm"
+                  id="storeLocation"
+                  name="storeLocation"
+                  value={formData.storeLocation || ''}
+                  onChange={handleInputChange}
+                  className="w-full p-1.5 sm:p-2 border rounded h-8 sm:h-10 text-xs sm:text-sm"
                 >
-                <option value="">Select a store</option>
-                {stores.map(store => (
-                <option key={store.id} value={store.storeName}>
-                {store.storeName} - {store.storeLocation}
-                </option>
-                ))}
+                  <option value="">Select a store</option>
+                  {stores.map(store => (
+                    <option key={store.id} value={store.storeName}>
+                      {store.storeName} - {store.storeLocation}
+                    </option>
+                  ))}
                 </select>
-                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="role" className="text-xs sm:text-sm">Role</Label>
+                <Label htmlFor="role" className="text-xs sm:text-sm">
+                  Role
+                </Label>
                 <Select
                   value={formData.role}
-                  onValueChange={(value) => handleSelectChange('role', value)}
+                  onValueChange={value => handleSelectChange('role', value)}
                 >
                   <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin" className="text-xs sm:text-sm">Admin</SelectItem>
-                    <SelectItem value="staff" className="text-xs sm:text-sm">Staff</SelectItem>
+                    <SelectItem value="admin" className="text-xs sm:text-sm">
+                      Admin
+                    </SelectItem>
+                    <SelectItem value="staff" className="text-xs sm:text-sm">
+                      Staff
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="status" className="text-xs sm:text-sm">Status</Label>
+                <Label htmlFor="status" className="text-xs sm:text-sm">
+                  Status
+                </Label>
                 <Select
                   value={formData.staffStatus}
-                  onValueChange={(value) => handleSelectChange('staffStatus', value)}
+                  onValueChange={value => handleSelectChange('staffStatus', value)}
                 >
                   <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active" className="text-xs sm:text-sm">Active</SelectItem>
-                    <SelectItem value="inactive" className="text-xs sm:text-sm">Inactive</SelectItem>
+                    <SelectItem value="active" className="text-xs sm:text-sm">
+                      Active
+                    </SelectItem>
+                    <SelectItem value="inactive" className="text-xs sm:text-sm">
+                      Inactive
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -329,7 +357,9 @@ try {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="staffPin" className="text-xs sm:text-sm">Staff PIN</Label>
+                <Label htmlFor="staffPin" className="text-xs sm:text-sm">
+                  Staff PIN
+                </Label>
                 <Input
                   id="staffPin"
                   name="staffPin"
@@ -340,7 +370,9 @@ try {
                 />
               </div>
               <div>
-                <Label htmlFor="staffPassword" className="text-xs sm:text-sm">New Password</Label>
+                <Label htmlFor="staffPassword" className="text-xs sm:text-sm">
+                  New Password
+                </Label>
                 <Input
                   id="staffPassword"
                   name="staffPassword"
@@ -355,11 +387,11 @@ try {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <Label className="text-xs sm:text-sm">Created At</Label>
-                    <Input
-                    value={safeFormatDate(user.createdAt)} // Using our safeFormatDate utility
-                    disabled
-                    className="bg-gray-100 h-8 sm:h-10 text-xs sm:text-sm"
-                    />
+                <Input
+                  value={safeFormatDate(user.createdAt)} // Using our safeFormatDate utility
+                  disabled
+                  className="bg-gray-100 h-8 sm:h-10 text-xs sm:text-sm"
+                />
               </div>
               <div>
                 <Label className="text-xs sm:text-sm">Sales Count</Label>
@@ -372,15 +404,15 @@ try {
             </div>
 
             <div className="flex justify-end gap-2 pt-3 sm:pt-4">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setIsSettingsOpen(false)}
                 disabled={isUpdating}
                 className="h-8 sm:h-10 text-xs sm:text-sm px-2 sm:px-4"
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={handleSaveChanges}
                 disabled={isUpdating}
                 className="h-8 sm:h-10 text-xs sm:text-sm px-2 sm:px-4"

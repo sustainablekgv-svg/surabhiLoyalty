@@ -1,4 +1,5 @@
 import React, { ComponentType, useEffect } from 'react';
+
 import { startPerformanceTrace } from '@/lib/firebase';
 
 /**
@@ -11,15 +12,16 @@ export function withPerformanceMonitoring<P extends object>(
   componentName?: string
 ) {
   // Use the component's display name, the provided name, or a fallback
-  const displayName = componentName || WrappedComponent.displayName || WrappedComponent.name || 'Component';
-  
+  const displayName =
+    componentName || WrappedComponent.displayName || WrappedComponent.name || 'Component';
+
   // Create a wrapper component with the same props
   const WithPerformanceMonitoring = (props: P) => {
     useEffect(() => {
       // Only measure performance in production
       if (import.meta.env.PROD) {
         const trace = startPerformanceTrace(`render_${displayName}`);
-        
+
         return () => {
           if (trace) {
             trace.stop();

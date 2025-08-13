@@ -1,19 +1,14 @@
+import { TrendingUp, Share2, History } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  TrendingUp,
-  Share2,
-  History
-} from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from '@/hooks/auth-context';
+
 import { CustomerHeader } from '@/components/customer/CustomerHeader';
 import { CustomerStats } from '@/components/customer/CustomerStats';
 import { ReferralSystem } from '@/components/customer/ReferralSystem';
 import { TransactionHistory } from '@/components/customer/TransactionHistory';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/hooks/auth-context';
 
 const CustomerDashboard = () => {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -78,8 +73,12 @@ const CustomerDashboard = () => {
       <CustomerHeader user={user} onLogout={handleLogout} />
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         <div className="mb-4 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">My Rewards Dashboard</h1>
-          <p className="text-sm sm:text-base text-gray-600">Track your coins, referrals, and transaction history</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">
+            My Rewards Dashboard
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600">
+            Track your coins, referrals, and transaction history
+          </p>
         </div>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-4 sm:mb-8">
@@ -87,7 +86,10 @@ const CustomerDashboard = () => {
               <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
               <span className="text-[10px] sm:text-xs">Overview</span>
             </TabsTrigger>
-            <TabsTrigger value="referrals" className="flex flex-col items-center gap-1 py-2 sm:py-3">
+            <TabsTrigger
+              value="referrals"
+              className="flex flex-col items-center gap-1 py-2 sm:py-3"
+            >
               <Share2 className="h-4 w-4 sm:h-5 sm:w-5" />
               <span className="text-[10px] sm:text-xs">Referrals</span>
             </TabsTrigger>

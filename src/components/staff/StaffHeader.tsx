@@ -1,9 +1,11 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Coins, LogOut, Settings } from 'lucide-react';
-import { StaffHeaderProps } from '@/types/types';
+import { useState } from 'react';
+
 import { StaffSettings } from './StaffSettings';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { StaffHeaderProps } from '@/types/types';
 
 export const StaffHeader = ({ user, onLogout }: StaffHeaderProps) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -23,7 +25,7 @@ export const StaffHeader = ({ user, onLogout }: StaffHeaderProps) => {
                 <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">Staff Portal</p>
               </div>
             </div>
-            
+
             {/* Mobile buttons */}
             <div className="flex sm:hidden items-center gap-1">
               <Button
@@ -56,9 +58,7 @@ export const StaffHeader = ({ user, onLogout }: StaffHeaderProps) => {
                   <Badge variant="secondary" className="text-xs">
                     {user.role.toUpperCase()}
                   </Badge>
-                  <span className="text-xs text-gray-600 hidden md:inline">
-                    {user.mobile}
-                  </span>
+                  <span className="text-xs text-gray-600 hidden md:inline">{user.mobile}</span>
                 </div>
               </div>
 
@@ -83,7 +83,7 @@ export const StaffHeader = ({ user, onLogout }: StaffHeaderProps) => {
                   <span className="ml-2 hidden md:inline">Logout</span>
                 </Button>
               </div>
-              
+
               {/* Mobile user info (collapsed) */}
               <div className="sm:hidden flex items-center gap-2">
                 <Badge variant="secondary" className="text-xs">
@@ -99,11 +99,7 @@ export const StaffHeader = ({ user, onLogout }: StaffHeaderProps) => {
       </div>
 
       {/* Staff Settings Dialog */}
-      <StaffSettings 
-        user={user} 
-        isOpen={isSettingsOpen} 
-        onOpenChange={setIsSettingsOpen} 
-      />
+      <StaffSettings user={user} isOpen={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
     </div>
   );
 };

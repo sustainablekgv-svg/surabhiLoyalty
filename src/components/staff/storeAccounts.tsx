@@ -1,20 +1,4 @@
-import { useState, useEffect } from 'react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  RefreshCw,
-  Loader2,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react';
+import { format } from 'date-fns';
 import {
   collection,
   query,
@@ -22,17 +6,26 @@ import {
   getDocs,
   orderBy,
   Timestamp,
-  updateDoc,
-  doc,
   limit,
-  startAfter
+  startAfter,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { format } from 'date-fns';
+import { RefreshCw, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
-
-import { AccountTxType, StoreAccountsProps } from '@/types/types';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { useAuth } from '@/hooks/auth-context';
+import { db } from '@/lib/firebase';
+import { AccountTxType, StoreAccountsProps } from '@/types/types';
 
 const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userRole: string }) => {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -52,7 +45,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
   const [lastVisible, setLastVisible] = useState<any>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  
+
   // Replace the existing fetchTransactions function with this one
   const fetchTransactions = async (loadMore = false) => {
     try {
@@ -61,19 +54,19 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
       } else {
         setIsLoadingMore(true);
       }
-  
+
       if (!user.storeLocation) {
         console.log('No store location provided');
         return;
       }
-  
+
       let txQuery = query(
         collection(db, 'AccountTx'),
         where('storeName', '==', user.storeLocation),
         orderBy('createdAt', 'desc'),
         limit(rowsPerPage)
       );
-  
+
       // If loading more and we have a last visible document, start after it
       if (loadMore && lastVisible) {
         txQuery = query(
@@ -84,10 +77,10 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
           limit(rowsPerPage)
         );
       }
-  
+
       const txSnapshot = await getDocs(txQuery);
       const txData: AccountTxType[] = [];
-  
+
       txSnapshot.forEach(doc => {
         const data = doc.data();
         txData.push({
@@ -104,24 +97,23 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
           currentBalance: data.currentBalance || 0,
           sevaBalance: data.sevaBalance || 0,
           remarks: data.remarks || '',
-          adminCurrentBalance: data.adminCurrentBalance ||  0,
-          adminCut: data.adminCut || 0
+          adminCurrentBalance: data.adminCurrentBalance || 0,
+          adminCut: data.adminCut || 0,
         });
       });
-  
+
       // Update last visible document for next pagination
       const lastVisibleDoc = txSnapshot.docs[txSnapshot.docs.length - 1];
       setLastVisible(lastVisibleDoc);
-  
+
       // Check if there are more documents to load
       setHasMore(txSnapshot.docs.length === rowsPerPage);
-  
+
       if (loadMore) {
         setTransactions(prev => [...prev, ...txData]);
       } else {
         setTransactions(txData);
       }
-  
     } catch (err) {
       console.error('Error fetching transactions:', err);
     } finally {
@@ -130,12 +122,10 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
       setRefreshing(false);
     }
   };
-  
+
   // Replace the pagination controls with this updated version
   <div className="flex items-center justify-between mt-4">
-    <div className="text-sm text-gray-600">
-      Showing {transactions.length} transactions
-    </div>
+    <div className="text-sm text-gray-600">Showing {transactions.length} transactions</div>
     <div className="flex space-x-2">
       <Button
         variant="outline"
@@ -156,14 +146,10 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
         onClick={() => fetchTransactions(true)}
         disabled={!hasMore || loading || isLoadingMore}
       >
-        {isLoadingMore ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          'Load More'
-        )}
+        {isLoadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Load More'}
       </Button>
     </div>
-  </div>
+  </div>;
   const formatTimestamp = (timestamp: Timestamp): string => {
     return format(timestamp.toDate(), 'MMM dd, yyyy HH:mm');
   };
@@ -200,10 +186,14 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">{user.storeLocation} Transactions</h2>
-        <Button variant="outline" onClick={() => {
-          setRefreshing(true);
-          fetchTransactions();
-        }} disabled={refreshing}>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setRefreshing(true);
+            fetchTransactions();
+          }}
+          disabled={refreshing}
+        >
           {refreshing ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
@@ -220,10 +210,10 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
               <span className="text-sm text-gray-600">Rows per page:</span>
               <select
                 value={rowsPerPage}
-                onChange={(e) => handleRowsPerPageChange(Number(e.target.value))}
+                onChange={e => handleRowsPerPageChange(Number(e.target.value))}
                 className="border rounded-md px-2 py-1 text-sm"
               >
-                {[5, 10, 20, 50, 100].map((size) => (
+                {[5, 10, 20, 50, 100].map(size => (
                   <option key={size} value={size}>
                     {size}
                   </option>
@@ -246,22 +236,24 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
               </TableRow>
             </TableHeader>
             <TableBody>
-              {getPaginatedTransactions().map((tx) => (
+              {getPaginatedTransactions().map(tx => (
                 <TableRow key={tx.id}>
+                  <TableCell>{formatTimestamp(tx.createdAt)}</TableCell>
                   <TableCell>
-                    {formatTimestamp(tx.createdAt)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={
-                      tx.type === 'recharge' ? 'default' :
-                        tx.type === 'sale' ? 'secondary' : 'outline'
-                    }>
+                    <Badge
+                      variant={
+                        tx.type === 'recharge'
+                          ? 'default'
+                          : tx.type === 'sale'
+                            ? 'secondary'
+                            : 'outline'
+                      }
+                    >
                       {tx.type}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    {tx.amount >= 0 ? '+' : ''}
-                    ₹{tx.amount.toFixed(2)}
+                    {tx.amount >= 0 ? '+' : ''}₹{tx.amount.toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right text-green-600">
                     {tx.credit > 0 ? `+₹${tx.credit.toFixed(2)}` : '-'}
@@ -284,8 +276,8 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
           <div className="flex items-center justify-between mt-4">
             <div className="text-sm text-gray-600">
               Showing {(currentPage - 1) * rowsPerPage + 1} to{' '}
-              {Math.min(currentPage * rowsPerPage, transactions.length)} of{' '}
-              {transactions.length} transactions
+              {Math.min(currentPage * rowsPerPage, transactions.length)} of {transactions.length}{' '}
+              transactions
             </div>
             <div className="flex space-x-2">
               <Button

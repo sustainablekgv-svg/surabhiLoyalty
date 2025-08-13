@@ -1,6 +1,6 @@
 export const STORAGE_KEYS = {
   USER: 'user',
-  LAST_ACTIVE: 'lastActive'
+  LAST_ACTIVE: 'lastActive',
 } as const;
 
 export const storageUtils = {
@@ -51,5 +51,5 @@ export const storageUtils = {
   clearAll: (): void => {
     localStorage.removeItem(STORAGE_KEYS.USER);
     localStorage.removeItem(STORAGE_KEYS.LAST_ACTIVE);
-  }
+  },
 };

@@ -1,28 +1,27 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  UserPlus, 
-  Wallet, 
+import {
+  UserPlus,
+  Wallet,
   TrendingUp,
   Store,
   ShoppingCart,
-  Scan,
-  Gift,
   History,
-  WalletCards
+  WalletCards,
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useAuth } from '@/hooks/auth-context';
+
+import { SalesManagement } from '@/components/staff/SalesManagement';
 import { StaffHeader } from '@/components/staff/StaffHeader';
 import { StaffStats } from '@/components/staff/StaffStats';
-import { UserRegistration } from '@/components/staff/UserRegistration';
-import { WalletRecharge } from '@/components/staff/WalletRecharge';
-import { SalesManagement } from '@/components/staff/SalesManagement';
-import { TransactionsPage } from '@/components/staff/TransactionsPage';
 import StoreAccounts from '@/components/staff/storeAccounts';
+import { TransactionsPage } from '@/components/staff/TransactionsPage';
+import { UserRegistration } from '@/components/staff/UserRegistration';
+import { CardContent, CardHeader } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+import { useAuth } from '@/hooks/auth-context';
+import { WalletRecharge } from '@/components/staff/WalletRecharge';
 
 const StaffDashboard = () => {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -79,7 +78,9 @@ const StaffDashboard = () => {
           <div className="flex items-center gap-3">
             <Store className="h-8 w-8 text-purple-600" />
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{user?.storeLocation || 'Store Dashboard'}</h1>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {user?.storeLocation || 'Store Dashboard'}
+              </h1>
               <p className="text-gray-600">Welcome back, {user?.name || 'Staff Member'}</p>
             </div>
           </div>
@@ -95,13 +96,13 @@ const StaffDashboard = () => {
               { value: 'sales', icon: ShoppingCart, label: 'Sales' },
               { value: 'transactions', icon: History, label: 'Transactions' },
               { value: 'accounts', icon: WalletCards, label: 'Accounts' },
-            ].map((tab) => (
+            ].map(tab => (
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
                 className={`flex flex-col items-center gap-1 py-2 px-1 rounded-md transition-all ${
-                  activeTab === tab.value 
-                    ? 'bg-white shadow-sm text-purple-600 font-medium' 
+                  activeTab === tab.value
+                    ? 'bg-white shadow-sm text-purple-600 font-medium'
                     : 'text-gray-600 hover:text-purple-500'
                 }`}
               >

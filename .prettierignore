@@ -1,0 +1,17 @@
+# Ignore artifacts:
+dist
+node_modules
+.firebase
+
+# Ignore all HTML files:
+*.html
+
+# Ignore build files
+build
+
+# Ignore coverage reports
+coverage
+
+# Ignore logs
+logs
+*.log

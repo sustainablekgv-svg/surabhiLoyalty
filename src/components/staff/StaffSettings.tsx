@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
+
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -11,8 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+import { db } from '@/lib/firebase';
 import { StaffType } from '@/types/types';
 
 interface StaffSettingsProps {
@@ -30,7 +31,7 @@ export const StaffSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
   const [formData, setFormData] = useState<Partial<StaffType>>({
     staffName: '',
     staffPassword: '',
-    staffPin: ''
+    staffPin: '',
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const [staffData, setStaffData] = useState<StaffType | null>(null);
@@ -41,14 +42,14 @@ export const StaffSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
         // Fetch staff data directly using the user.id
         const staffRef = doc(db, 'staff', user.id);
         const staffSnapshot = await getDoc(staffRef);
-        
+
         if (staffSnapshot.exists()) {
           const data = staffSnapshot.data() as StaffType;
           setStaffData(data);
           setFormData({
             staffName: data.staffName,
             staffPassword: data.staffPassword,
-            staffPin: data.staffPin
+            staffPin: data.staffPin,
           });
         }
       } catch (error) {
@@ -66,13 +67,13 @@ export const StaffSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
   const handleSaveChanges = async () => {
     if (!user.id) return;
-    
+
     // Validate required fields
     if (!formData.staffName || !formData.staffPassword || !formData.staffPin) {
       toast.error('All fields are required');
@@ -84,7 +85,7 @@ export const StaffSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
       toast.error('Staff PIN must be a 4-digit number');
       return;
     }
-    
+
     setIsUpdating(true);
     try {
       // Update staff document directly using user.id
@@ -92,12 +93,12 @@ export const StaffSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
       await updateDoc(staffRef, {
         staffName: formData.staffName,
         staffPassword: formData.staffPassword,
-        staffPin: formData.staffPin
+        staffPin: formData.staffPin,
       });
 
       console.log('Staff record updated for ID:', user.id);
       toast.success('Profile updated successfully');
-      
+
       onOpenChange(false);
     } catch (error) {
       console.error('Error updating staff profile:', error);
@@ -111,9 +112,7 @@ export const StaffSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] p-6">
         <DialogHeader className="pb-4">
-          <DialogTitle className="text-xl font-semibold text-gray-900">
-            Staff Settings
-          </DialogTitle>
+          <DialogTitle className="text-xl font-semibold text-gray-900">Staff Settings</DialogTitle>
           <DialogDescription className="text-sm text-gray-600">
             Update your account details below
           </DialogDescription>
@@ -121,7 +120,9 @@ export const StaffSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
 
         <div className="space-y-5 py-4">
           <div className="space-y-2">
-            <Label htmlFor="mobile" className="text-sm font-semibold">Mobile Number</Label>
+            <Label htmlFor="mobile" className="text-sm font-semibold">
+              Mobile Number
+            </Label>
             <Input
               id="mobile"
               value={user.mobile}
@@ -129,9 +130,11 @@ export const StaffSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
               className="bg-gray-100 text-gray-700 font-medium"
             />
           </div>
-          
+
           <div className="space-y-2">
-            <Label htmlFor="staffName" className="text-sm font-semibold">Full Name</Label>
+            <Label htmlFor="staffName" className="text-sm font-semibold">
+              Full Name
+            </Label>
             <Input
               id="staffName"
               name="staffName"
@@ -142,7 +145,9 @@ export const StaffSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="staffPassword" className="text-sm font-semibold">Password</Label>
+            <Label htmlFor="staffPassword" className="text-sm font-semibold">
+              Password
+            </Label>
             <Input
               id="staffPassword"
               name="staffPassword"
@@ -154,7 +159,9 @@ export const StaffSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="staffPin" className="text-sm font-semibold">Staff PIN (4 digits)</Label>
+            <Label htmlFor="staffPin" className="text-sm font-semibold">
+              Staff PIN (4 digits)
+            </Label>
             <Input
               id="staffPin"
               name="staffPin"
@@ -168,15 +175,15 @@ export const StaffSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
         </div>
 
         <DialogFooter className="mt-6 gap-3">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isUpdating}
             className="min-w-[100px]"
           >
             Cancel
           </Button>
-          <Button 
+          <Button
             type="submit"
             onClick={handleSaveChanges}
             disabled={isUpdating}

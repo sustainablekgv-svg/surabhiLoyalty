@@ -1,10 +1,7 @@
 // src/hooks/useAuth.ts
-import { auth } from '../lib/firebase' // your initialized firebase app
-import {
-  sendSignInLinkToEmail,
-  isSignInWithEmailLink,
-  signInWithEmailLink,
-} from 'firebase/auth';
+import { sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
+
+import { auth } from '../lib/firebase'; // your initialized firebase app
 
 const actionCodeSettings = {
   url: window.location.origin + '/login',

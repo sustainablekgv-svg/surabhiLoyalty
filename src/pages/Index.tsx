@@ -1,16 +1,23 @@
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { Coins, Shield, Users, Phone, Lock, Eye, EyeOff, UserCircle, Mail } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from 'sonner';
+
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Coins, Shield, Users, Phone, Lock, Eye, EyeOff, UserCircle, Mail } from 'lucide-react';
-import { toast } from 'sonner';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useAuth } from '@/hooks/auth-context';
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 import { getCustomerByMobile } from '@/lib/db';
+import { auth } from '@/lib/firebase';
 
 const Index = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -19,13 +26,13 @@ const Index = () => {
     password: string;
     role: 'customer' | 'staff' | 'admin';
   }
-  
+
   const [formData, setFormData] = useState<FormData>({
     mobile: '',
     password: '',
-    role: 'customer'
+    role: 'customer',
   });
-  console.log("The role selected is", formData.role);
+  console.log('The role selected is', formData.role);
   const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
   const [customerEmail, setCustomerEmail] = useState('');
   const [isLoadingEmail, setIsLoadingEmail] = useState(false);
@@ -38,15 +45,18 @@ const Index = () => {
   useEffect(() => {
     if (isInitialized && isAuthenticated) {
       // Get the intended path from location state or use role-based default
-      const redirectPath = location.state?.from?.pathname ||
-        (formData.role === 'admin' ? '/admin/dashboard' :
-          formData.role === 'staff' ? '/staff/dashboard' :
-            '/customer/dashboard');
-      
+      const redirectPath =
+        location.state?.from?.pathname ||
+        (formData.role === 'admin'
+          ? '/admin/dashboard'
+          : formData.role === 'staff'
+            ? '/staff/dashboard'
+            : '/customer/dashboard');
+
       navigate(redirectPath, { replace: true });
     }
   }, [isAuthenticated, isInitialized, formData.role, navigate, location]);
-  
+
   // Show loading while initializing
   if (!isInitialized) {
     return (
@@ -55,24 +65,24 @@ const Index = () => {
       </div>
     );
   }
-  
+
   // Update the handleSubmit function
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-  
+
     if (!formData.role) {
       toast.error('Please select your role');
       return;
     }
-  
+
     try {
       const user = await login(formData.mobile, formData.password, formData.role);
-  
+
       if (user.role !== formData.role) {
         toast.error(`Access denied. You are not registered as ${formData.role}`);
         return;
       }
-  
+
       // Don't navigate here - let the useEffect handle it
       toast.success('Login successful!');
     } catch (error) {
@@ -111,7 +121,6 @@ const Index = () => {
       }
 
       setForgotPasswordMode(true);
-
     } catch (error: unknown) {
       if (error instanceof Error) {
         toast.error(error.message || 'Error processing your request. Please try again.');
@@ -174,7 +183,9 @@ const Index = () => {
                 {forgotPasswordMode ? 'Reset Password' : 'Welcome Back'}
               </CardTitle>
               <CardDescription className="text-gray-600">
-                {forgotPasswordMode ? 'We\'ll send a reset link to your registered email' : 'Sign in to access your loyalty rewards'}
+                {forgotPasswordMode
+                  ? "We'll send a reset link to your registered email"
+                  : 'Sign in to access your loyalty rewards'}
               </CardDescription>
             </CardHeader>
 
@@ -216,7 +227,12 @@ const Index = () => {
                     <Label htmlFor="role" className="text-sm font-medium text-gray-700">
                       Select Your Role
                     </Label>
-                    <Select value={formData.role} onValueChange={(value: 'customer' | 'staff' | 'admin') => setFormData({ ...formData, role: value })}>
+                    <Select
+                      value={formData.role}
+                      onValueChange={(value: 'customer' | 'staff' | 'admin') =>
+                        setFormData({ ...formData, role: value })
+                      }
+                    >
                       <SelectTrigger className="h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500">
                         <div className="flex items-center gap-2">
                           <UserCircle className="h-4 w-4 text-gray-400" />
@@ -257,7 +273,7 @@ const Index = () => {
                         type="tel"
                         placeholder="Enter your mobile number"
                         value={formData.mobile}
-                        onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
+                        onChange={e => setFormData({ ...formData, mobile: e.target.value })}
                         className="pl-10 h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                         required
                       />
@@ -275,7 +291,7 @@ const Index = () => {
                         type={showPassword ? 'text' : 'password'}
                         placeholder="Enter your password"
                         value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        onChange={e => setFormData({ ...formData, password: e.target.value })}
                         className="pl-10 pr-10 h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                         required
                       />
@@ -284,7 +300,11 @@ const Index = () => {
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
                       >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
                       </button>
                     </div>
                   </div>

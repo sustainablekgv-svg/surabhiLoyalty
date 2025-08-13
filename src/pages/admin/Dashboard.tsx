@@ -1,35 +1,22 @@
+import { Users, Heart, TrendingUp, UserPlus, DollarSign, ShoppingCart } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Users, 
-  Coins, 
-  Heart, 
-  TrendingUp, 
-  Store, 
-  UserPlus,
-  DollarSign,
-  Gift,
-  Settings,
-  LogOut,
-  ShoppingCart
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { useAuth } from '@/hooks/auth-context';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+
+import Accounts from '@/components/admin/AccountsSection';
 import { AdminHeader } from '@/components/admin/AdminHeader';
+import { useAuth } from '@/hooks/auth-context';
 import { AdminStats } from '@/components/admin/AdminStats';
-import { StaffManagement } from '@/components/admin/StaffManagement';
 import { CustomerManagement } from '@/components/admin/CustomerManagement';
 import { GoSevaPool } from '@/components/admin/GoSevaPool';
 import { SalesManagement } from '@/components/admin/SalesManagement';
-import Accounts from '@/components/admin/AccountsSection';
+import { StaffManagement } from '@/components/admin/StaffManagement';
+import { CardHeader } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const AdminDashboard = () => {
   const { user, logout, isLoading: authLoading } = useAuth();
-  console.log("THe user data is", user)
+  console.log('THe user data is', user);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [isLoading, setIsLoading] = useState(true);
@@ -79,50 +66,75 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50">
-      <AdminHeader user={{
-        id: user.id,
-        staffName: user.name || '',
-        staffEmail: user.email || '',
-        staffMobile: user.mobile || '',
-        role: user.role as 'admin',
-        storeLocation: user.storeLocation || '',
-        staffPassword: '',
-        staffPin: '',
-        staffStatus: 'active',
-        staffSalesCount: 0,
-        staffRechargesCount: 0,
-        createdAt: new Date() as any
-      }} onLogout={handleLogout} />
-      
+      <AdminHeader
+        user={{
+          id: user.id,
+          staffName: user.name || '',
+          staffEmail: user.email || '',
+          staffMobile: user.mobile || '',
+          role: user.role as 'admin',
+          storeLocation: user.storeLocation || '',
+          staffPassword: '',
+          staffPin: '',
+          staffStatus: 'active',
+          staffSalesCount: 0,
+          staffRechargesCount: 0,
+          createdAt: new Date() as any,
+        }}
+        onLogout={handleLogout}
+      />
+
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         <div className="mb-4 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">Admin Dashboard</h1>
-          <p className="text-sm sm:text-base text-gray-600">Manage your loyalty program and monitor performance</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">
+            Admin Dashboard
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600">
+            Manage your loyalty program and monitor performance
+          </p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 lg:grid-cols-6 mb-4 sm:mb-8">
-            <TabsTrigger value="overview" className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3">
+            <TabsTrigger
+              value="overview"
+              className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3"
+            >
               <TrendingUp className="h-4 w-4" />
               <span className="text-[10px] sm:text-xs">Overview</span>
             </TabsTrigger>
-            <TabsTrigger value="staff" className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3">
+            <TabsTrigger
+              value="staff"
+              className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3"
+            >
               <UserPlus className="h-4 w-4" />
               <span className="text-[10px] sm:text-xs">Staff</span>
             </TabsTrigger>
-            <TabsTrigger value="users" className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3">
+            <TabsTrigger
+              value="users"
+              className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3"
+            >
               <Users className="h-4 w-4" />
               <span className="text-[10px] sm:text-xs">Users</span>
             </TabsTrigger>
-            <TabsTrigger value="sales" className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3">
+            <TabsTrigger
+              value="sales"
+              className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3"
+            >
               <ShoppingCart className="h-4 w-4" />
               <span className="text-[10px] sm:text-xs">Sales</span>
             </TabsTrigger>
-            <TabsTrigger value="accounts" className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3">
+            <TabsTrigger
+              value="accounts"
+              className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3"
+            >
               <DollarSign className="h-4 w-4" />
               <span className="text-[10px] sm:text-xs">Accounts</span>
             </TabsTrigger>
-            <TabsTrigger value="goseva" className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3">
+            <TabsTrigger
+              value="goseva"
+              className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3"
+            >
               <Heart className="h-4 w-4" />
               <span className="text-[10px] sm:text-xs">Seva</span>
             </TabsTrigger>

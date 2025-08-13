@@ -17,5 +17,5 @@ export const sessionManager = {
   clearSession: (): void => {
     localStorage.removeItem('user');
     localStorage.removeItem('lastActive');
-  }
+  },
 };

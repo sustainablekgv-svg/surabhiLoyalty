@@ -1,17 +1,16 @@
-"use client"
+'use client';
 
-import { useState, useEffect } from 'react';
+import { format } from 'date-fns';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+  collection,
+  query,
+  getDocs,
+  orderBy,
+  Timestamp,
+  doc,
+  writeBatch,
+  where,
+} from 'firebase/firestore';
 import {
   RefreshCw,
   Loader2,
@@ -23,26 +22,33 @@ import {
   ArrowUp,
   ArrowUpRight,
   ArrowDownLeft,
-  Edit
+  Edit,
 } from 'lucide-react';
-import {
-  collection,
-  query,
-  getDocs,
-  orderBy,
-  Timestamp,
-  updateDoc,
-  doc,
-  writeBatch,
-  where,
-  increment
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { format } from 'date-fns';
-import { AccountTxType, StoreType } from '@/types/types';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { db } from '@/lib/firebase';
+import { AccountTxType, StoreType } from '@/types/types';
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
@@ -68,7 +74,9 @@ const Accounts = () => {
   const [isSettlementDialogOpen, setIsSettlementDialogOpen] = useState(false);
   const [settlementAmount, setSettlementAmount] = useState(0);
   const [settlementDescription, setSettlementDescription] = useState('');
-  const [selectedStoreForSettlement, setSelectedStoreForSettlement] = useState<StoreType | null>(null);
+  const [selectedStoreForSettlement, setSelectedStoreForSettlement] = useState<StoreType | null>(
+    null
+  );
   const [isSubmittingSettlement, setIsSubmittingSettlement] = useState(false);
 
   const fetchStores = async () => {
@@ -76,7 +84,7 @@ const Accounts = () => {
       const storesSnapshot = await getDocs(collection(db, 'stores'));
       const storesData = storesSnapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       })) as StoreType[];
       setStores(storesData);
       return storesData;
@@ -95,17 +103,17 @@ const Accounts = () => {
       const storesData = await fetchStores();
 
       // Fetch transactions
-      const txQuery = query(
-        collection(db, 'AccountTx'),
-        orderBy('createdAt', 'desc')
-      );
+      const txQuery = query(collection(db, 'AccountTx'), orderBy('createdAt', 'desc'));
       const txSnapshot = await getDocs(txQuery);
 
       // Process transactions
       const transactions: AccountTxType[] = [];
       txSnapshot.forEach(doc => {
         const txData = doc.data();
-        const txDate = txData.createdAt instanceof Timestamp ? txData.createdAt.toDate() : new Date(txData.createdAt);
+        const txDate =
+          txData.createdAt instanceof Timestamp
+            ? txData.createdAt.toDate()
+            : new Date(txData.createdAt);
 
         const tx: AccountTxType = {
           id: doc.id,
@@ -122,7 +130,7 @@ const Accounts = () => {
           currentBalance: txData.currentBalance || 0,
           sevaBalance: txData.sevaBalance || 0,
           adminCurrentBalance: txData.adminCurrentBalance || 0,
-          remarks: txData.remarks || ''
+          remarks: txData.remarks || '',
         };
 
         transactions.push(tx);
@@ -130,11 +138,10 @@ const Accounts = () => {
 
       // Prepare admin deck
       const adminDeck: AdminDeck = {
-        recentTransactions: transactions
+        recentTransactions: transactions,
       };
 
       setAccountData(adminDeck);
-
     } catch (err) {
       console.error('Error fetching account data:', err);
       setError('Failed to load account data');
@@ -159,21 +166,25 @@ const Accounts = () => {
       setIsSubmittingSettlement(true);
 
       const amount = Number(settlementAmount);
-      
+
       // For positive amounts: add to adminCurrentBalance, deduct from storeCurrentBalance
       // For negative amounts: deduct from adminCurrentBalance, add to storeCurrentBalance
       const newStoreBalance = (selectedStoreForSettlement.storeCurrentBalance || 0) - amount;
       const newAdminBalance = (selectedStoreForSettlement.adminCurrentBalance || 0) + amount;
-      
+
       // Check if the amount is within the allowed range
       if (amount > 0 && amount > (selectedStoreForSettlement.storeCurrentBalance || 0)) {
-        toast.error(`Amount exceeds store's current balance of ₹${selectedStoreForSettlement.storeCurrentBalance || 0}`); 
+        toast.error(
+          `Amount exceeds store's current balance of ₹${selectedStoreForSettlement.storeCurrentBalance || 0}`
+        );
         setIsSubmittingSettlement(false);
         return;
       }
-      
+
       if (amount < 0 && Math.abs(amount) > (selectedStoreForSettlement.adminCurrentBalance || 0)) {
-        toast.error(`Amount exceeds admin's current balance of ₹${selectedStoreForSettlement.adminCurrentBalance || 0}`);
+        toast.error(
+          `Amount exceeds admin's current balance of ₹${selectedStoreForSettlement.adminCurrentBalance || 0}`
+        );
         setIsSubmittingSettlement(false);
         return;
       }
@@ -197,7 +208,9 @@ const Accounts = () => {
         sevaBalance: selectedStoreForSettlement.storeSevaBalance || 0,
         adminCurrentBalance: newAdminBalance,
         // invoiceId: invoiceId,
-        remarks: settlementDescription || `Settlement adjustment ${amount >= 0 ? 'from store to admin' : 'from admin to store'} for ${selectedStoreForSettlement.storeName}`
+        remarks:
+          settlementDescription ||
+          `Settlement adjustment ${amount >= 0 ? 'from store to admin' : 'from admin to store'} for ${selectedStoreForSettlement.storeName}`,
       };
 
       // Query for the store by name
@@ -206,11 +219,11 @@ const Accounts = () => {
         where('storeName', '==', selectedStoreForSettlement.storeName)
       );
       const storeSnapshot = await getDocs(storeQuery);
-      
+
       if (storeSnapshot.empty) {
         throw new Error(`Store with name '${selectedStoreForSettlement.storeName}' not found`);
       }
-      
+
       const storeDoc = storeSnapshot.docs[0];
       const storeRef = doc(db, 'stores', storeDoc.id);
 
@@ -225,7 +238,7 @@ const Accounts = () => {
       batch.update(storeRef, {
         storeCurrentBalance: newStoreBalance,
         adminCurrentBalance: newAdminBalance,
-        updatedAt: Timestamp.now()
+        updatedAt: Timestamp.now(),
       });
 
       await batch.commit();
@@ -253,14 +266,16 @@ const Accounts = () => {
     setIsSettlementDialogOpen(true);
   };
 
-  const filteredTransactions = accountData?.recentTransactions.filter(tx => {
-    const matchesSearch = tx.remarks.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tx.storeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tx.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tx.customerMobile.includes(searchTerm);
-    const matchesStore = selectedStore === 'all' || tx.storeName === selectedStore;
-    return matchesSearch && matchesStore;
-  }) || [];
+  const filteredTransactions =
+    accountData?.recentTransactions.filter(tx => {
+      const matchesSearch =
+        tx.remarks.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        tx.storeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        tx.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        tx.customerMobile.includes(searchTerm);
+      const matchesStore = selectedStore === 'all' || tx.storeName === selectedStore;
+      return matchesSearch && matchesStore;
+    }) || [];
 
   // Pagination logic
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
@@ -323,17 +338,20 @@ const Accounts = () => {
                   <CardTitle className="text-lg">{store.storeName}</CardTitle>
                   <CardDescription>{store.storeLocation}</CardDescription>
                   <CardDescription>Admin Profit:</CardDescription>
-                  <div className={`text-2xl font-bold ${(store.adminStoreProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {(store.adminStoreProfit || 0) >= 0 ? '+' : ''}
-                    ₹{(store.adminStoreProfit || 0).toFixed(2)}
+                  <div
+                    className={`text-2xl font-bold ${(store.adminStoreProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                  >
+                    {(store.adminStoreProfit || 0) >= 0 ? '+' : ''}₹
+                    {(store.adminStoreProfit || 0).toFixed(2)}
                   </div>
-
                 </CardHeader>
                 <CardContent>
                   <CardDescription>Admin Current Balance:</CardDescription>
-                  <div className={`text-2xl font-bold ${(store.adminCurrentBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {(store.adminCurrentBalance || 0) >= 0 ? '+' : ''}
-                    ₹{(store.adminCurrentBalance || 0).toFixed(2)}
+                  <div
+                    className={`text-2xl font-bold ${(store.adminCurrentBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                  >
+                    {(store.adminCurrentBalance || 0) >= 0 ? '+' : ''}₹
+                    {(store.adminCurrentBalance || 0).toFixed(2)}
                   </div>
                   <Button
                     variant="ghost"
@@ -355,9 +373,7 @@ const Accounts = () => {
       <Dialog open={isSettlementDialogOpen} onOpenChange={setIsSettlementDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              Balance Adjustment
-            </DialogTitle>
+            <DialogTitle>Balance Adjustment</DialogTitle>
             <DialogDescription>
               Transfer funds between {selectedStoreForSettlement?.storeName} and Admin account
             </DialogDescription>
@@ -366,14 +382,18 @@ const Accounts = () => {
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
                 <Label>Store Current Balance</Label>
-                <div className="text-lg font-semibold">₹{selectedStoreForSettlement?.storeCurrentBalance?.toFixed(2) || '0.00'}</div>
+                <div className="text-lg font-semibold">
+                  ₹{selectedStoreForSettlement?.storeCurrentBalance?.toFixed(2) || '0.00'}
+                </div>
               </div>
               <div>
                 <Label>Admin Current Balance</Label>
-                <div className="text-lg font-semibold">₹{selectedStoreForSettlement?.adminCurrentBalance?.toFixed(2) || '0.00'}</div>
+                <div className="text-lg font-semibold">
+                  ₹{selectedStoreForSettlement?.adminCurrentBalance?.toFixed(2) || '0.00'}
+                </div>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <div className="flex-1">
                 <Label htmlFor="amount">Transfer Amount</Label>
@@ -381,7 +401,7 @@ const Accounts = () => {
                   id="amount"
                   type="number"
                   value={settlementAmount}
-                  onChange={(e) => setSettlementAmount(Number(e.target.value))}
+                  onChange={e => setSettlementAmount(Number(e.target.value))}
                   placeholder="Enter amount"
                 />
               </div>
@@ -412,23 +432,33 @@ const Accounts = () => {
               <Input
                 id="description"
                 value={settlementDescription}
-                onChange={(e) => setSettlementDescription(e.target.value)}
+                onChange={e => setSettlementDescription(e.target.value)}
                 placeholder="Reason for adjustment"
               />
             </div>
-            
+
             {settlementAmount !== 0 && (
               <div className="grid grid-cols-2 gap-4 p-3 border rounded-md bg-gray-50">
                 <div>
                   <Label>New Store Balance</Label>
-                  <div className={`text-lg font-semibold ${(selectedStoreForSettlement?.storeCurrentBalance || 0) - settlementAmount < 0 ? 'text-red-500' : ''}`}>
-                    ₹{((selectedStoreForSettlement?.storeCurrentBalance || 0) - settlementAmount).toFixed(2)}
+                  <div
+                    className={`text-lg font-semibold ${(selectedStoreForSettlement?.storeCurrentBalance || 0) - settlementAmount < 0 ? 'text-red-500' : ''}`}
+                  >
+                    ₹
+                    {(
+                      (selectedStoreForSettlement?.storeCurrentBalance || 0) - settlementAmount
+                    ).toFixed(2)}
                   </div>
                 </div>
                 <div>
                   <Label>New Admin Balance</Label>
-                  <div className={`text-lg font-semibold ${(selectedStoreForSettlement?.adminCurrentBalance || 0) + settlementAmount < 0 ? 'text-red-500' : ''}`}>
-                    ₹{((selectedStoreForSettlement?.adminCurrentBalance || 0) + settlementAmount).toFixed(2)}
+                  <div
+                    className={`text-lg font-semibold ${(selectedStoreForSettlement?.adminCurrentBalance || 0) + settlementAmount < 0 ? 'text-red-500' : ''}`}
+                  >
+                    ₹
+                    {(
+                      (selectedStoreForSettlement?.adminCurrentBalance || 0) + settlementAmount
+                    ).toFixed(2)}
                   </div>
                 </div>
               </div>
@@ -446,25 +476,31 @@ const Accounts = () => {
               </Button>
               <Button
                 onClick={handleAddSettlement}
-                disabled={isSubmittingSettlement || !settlementAmount || 
-                  (settlementAmount > 0 && settlementAmount > (selectedStoreForSettlement?.storeCurrentBalance || 0)) ||
-                  (settlementAmount < 0 && Math.abs(settlementAmount) > (selectedStoreForSettlement?.adminCurrentBalance || 0))}
+                disabled={
+                  isSubmittingSettlement ||
+                  !settlementAmount ||
+                  (settlementAmount > 0 &&
+                    settlementAmount > (selectedStoreForSettlement?.storeCurrentBalance || 0)) ||
+                  (settlementAmount < 0 &&
+                    Math.abs(settlementAmount) >
+                      (selectedStoreForSettlement?.adminCurrentBalance || 0))
+                }
               >
                 {isSubmittingSettlement ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
+                ) : settlementAmount > 0 ? (
+                  <ArrowUpRight className="h-4 w-4" />
+                ) : settlementAmount < 0 ? (
+                  <ArrowDownLeft className="h-4 w-4" />
                 ) : (
-                  settlementAmount > 0 ? (
-                    <ArrowUpRight className="h-4 w-4" />
-                  ) : settlementAmount < 0 ? (
-                    <ArrowDownLeft className="h-4 w-4" />
-                  ) : (
-                    <Plus className="h-4 w-4" />
-                  )
+                  <Plus className="h-4 w-4" />
                 )}
                 <span className="ml-2">
-                  {settlementAmount > 0 ? 'Store → Admin' : 
-                   settlementAmount < 0 ? 'Admin → Store' : 
-                   'Apply Adjustment'}
+                  {settlementAmount > 0
+                    ? 'Store → Admin'
+                    : settlementAmount < 0
+                      ? 'Admin → Store'
+                      : 'Apply Adjustment'}
                 </span>
               </Button>
             </div>
@@ -489,7 +525,7 @@ const Accounts = () => {
                 <Input
                   placeholder="Search transactions..."
                   value={searchTerm}
-                  onChange={(e) => {
+                  onChange={e => {
                     setSearchTerm(e.target.value);
                     setCurrentPage(1);
                   }}
@@ -499,7 +535,7 @@ const Accounts = () => {
 
               <select
                 value={selectedStore}
-                onChange={(e) => {
+                onChange={e => {
                   setSelectedStore(e.target.value);
                   setCurrentPage(1);
                 }}
@@ -507,20 +543,24 @@ const Accounts = () => {
               >
                 <option value="all">All Stores</option>
                 {stores.map(store => (
-                  <option key={store.id} value={store.storeName}>{store.storeName}</option>
+                  <option key={store.id} value={store.storeName}>
+                    {store.storeName}
+                  </option>
                 ))}
               </select>
 
               <select
                 value={itemsPerPage}
-                onChange={(e) => {
+                onChange={e => {
                   setItemsPerPage(Number(e.target.value));
                   setCurrentPage(1);
                 }}
                 className="border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
               >
                 {ITEMS_PER_PAGE_OPTIONS.map(option => (
-                  <option key={option} value={option}>{option} per page</option>
+                  <option key={option} value={option}>
+                    {option} per page
+                  </option>
                 ))}
               </select>
             </div>
@@ -533,10 +573,13 @@ const Accounts = () => {
               <Search className="h-8 w-8" />
               <p>No transactions found</p>
               {(searchTerm || selectedStore !== 'all') && (
-                <Button variant="ghost" onClick={() => {
-                  setSearchTerm('');
-                  setSelectedStore('all');
-                }}>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setSelectedStore('all');
+                  }}
+                >
                   Clear filters
                 </Button>
               )}
@@ -562,7 +605,7 @@ const Accounts = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedTransactions.map((tx) => (
+                  {paginatedTransactions.map(tx => (
                     <TableRow key={tx.id} className="group hover:bg-gray-50">
                       <TableCell className="hidden md:table-cell whitespace-nowrap">
                         {formatTradeTimestamp(tx.createdAt)}
@@ -573,43 +616,44 @@ const Accounts = () => {
                           {formatTradeTimestamp(tx.createdAt)}
                         </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {tx.customerName}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {tx.customerMobile}
-                      </TableCell>
+                      <TableCell className="hidden md:table-cell">{tx.customerName}</TableCell>
+                      <TableCell className="hidden md:table-cell">{tx.customerMobile}</TableCell>
                       <TableCell>
-                        <Badge variant={
-                          tx.type === 'recharge' ? 'default' :
-                            tx.type === 'sale' ? 'secondary' : 'outline'
-                        }>
+                        <Badge
+                          variant={
+                            tx.type === 'recharge'
+                              ? 'default'
+                              : tx.type === 'sale'
+                                ? 'secondary'
+                                : 'outline'
+                          }
+                        >
                           {tx.type}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         {/* <span className={tx.amount >= 0 ? 'text-green-600' : 'text-red-600'}>
                           {tx.amount >= 0 ? '+' : ''} */}
-                          ₹{Math.abs(tx.amount).toFixed(2)}
+                        ₹{Math.abs(tx.amount).toFixed(2)}
                         {/* </span> */}
                       </TableCell>
-                       <TableCell className="text-right">
+                      <TableCell className="text-right">
                         <span className={tx.debit >= 0 ? 'text-red-600' : 'text-green-600'}>
-                          {tx.debit >= 0 ? '' : '+'}
-                          ₹{Math.abs(tx.debit).toFixed(2)}
+                          {tx.debit >= 0 ? '' : '+'}₹{Math.abs(tx.debit).toFixed(2)}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
                         <span className={tx.credit >= 0 ? 'text-green-600' : 'text-red-600'}>
-                          {tx.credit >= 0 ? '+' : ''}
-                          ₹{Math.abs(tx.credit).toFixed(2)}
+                          {tx.credit >= 0 ? '+' : ''}₹{Math.abs(tx.credit).toFixed(2)}
                         </span>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-right">
                         {tx.adminCut > 0 ? `₹${tx.adminCut.toFixed(2)}` : '-'}
                       </TableCell>
                       <TableCell className="hidden xl:table-cell text-right">
-                        {Number(tx.adminProfit) && tx.adminProfit > 0 ? `₹${tx.adminProfit.toFixed(2)}` : '-'}
+                        {Number(tx.adminProfit) && tx.adminProfit > 0
+                          ? `₹${tx.adminProfit.toFixed(2)}`
+                          : '-'}
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         ₹{tx?.currentBalance?.toFixed(2) || '0.00'}

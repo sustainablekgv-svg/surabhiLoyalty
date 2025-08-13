@@ -1,8 +1,13 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { 
+import {
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  limit,
+  onSnapshot,
+  Timestamp,
+} from 'firebase/firestore';
+import {
   TrendingUp,
   UserPlus,
   DollarSign,
@@ -11,19 +16,20 @@ import {
   Wallet,
   Filter,
   Loader2,
-  Store
+  Store,
 } from 'lucide-react';
-import { 
-  collection, 
-  getDocs, 
-  query, 
-  orderBy, 
-  limit,
-  onSnapshot,
-  Timestamp
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useState, useEffect } from 'react';
 
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { db } from '@/lib/firebase';
 import { StorePerformance, ActivityType, StoreType } from '@/types/types';
 
 export const AdminRecentActivity = () => {
@@ -33,7 +39,7 @@ export const AdminRecentActivity = () => {
   const [stores, setStores] = useState<StoreType[]>([]);
   const [storePerformance, setStorePerformance] = useState<StorePerformance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   useEffect(() => {
     const fetchInitialData = async () => {
       setIsLoading(true);
@@ -56,7 +62,7 @@ export const AdminRecentActivity = () => {
           adminCurrentBalance: Number(doc.data().adminCurrentBalance) || 0,
           adminStoreProfit: Number(doc.data().adminStoreProfit) || 0,
           storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
-          storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date()
+          storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date(),
         })) as StoreType[];
         setStores(storesData);
 
@@ -71,12 +77,12 @@ export const AdminRecentActivity = () => {
             surabhiCoinsUsed: 0,
             walletDeduction: 0,
             cashPayment: 0,
-            lastUpdated: Timestamp.fromDate(new Date())
+            lastUpdated: Timestamp.fromDate(new Date()),
           };
         });
 
         setStorePerformance(Object.values(performanceMap));
-        
+
         // Process initial activities
         await processActivities();
       } catch (error) {
@@ -95,7 +101,7 @@ export const AdminRecentActivity = () => {
           limit(20)
         );
         const activitiesSnapshot = await getDocs(activitiesQuery);
-        
+
         // Process activities
         const activitiesData = activitiesSnapshot.docs.map(doc => {
           const data = doc.data();
@@ -107,7 +113,7 @@ export const AdminRecentActivity = () => {
             customerName: data.customerName,
             customerMobile: data.customerMobile,
             storeLocation: data.storeLocation,
-            createdAt: data.createdAt
+            createdAt: data.createdAt,
           } as ActivityType;
         });
 
@@ -125,13 +131,17 @@ export const AdminRecentActivity = () => {
             surabhiCoinsUsed: 0,
             walletDeduction: 0,
             cashPayment: 0,
-            lastUpdated: Timestamp.fromDate(new Date())
+            lastUpdated: Timestamp.fromDate(new Date()),
           };
         });
 
         // Update performance based on activities
         activitiesData.forEach(activity => {
-          if ((activity.type === 'sale' || activity.type === 'recharge') && activity.storeLocation && activity.amount) {
+          if (
+            (activity.type === 'sale' || activity.type === 'recharge') &&
+            activity.storeLocation &&
+            activity.amount
+          ) {
             if (!newPerformanceMap[activity.storeLocation]) {
               newPerformanceMap[activity.storeLocation] = {
                 storeName: activity.storeLocation,
@@ -140,7 +150,7 @@ export const AdminRecentActivity = () => {
                 surabhiCoinsUsed: 0,
                 walletDeduction: 0,
                 cashPayment: 0,
-                lastUpdated: Timestamp.fromDate(new Date())
+                lastUpdated: Timestamp.fromDate(new Date()),
               };
             }
             newPerformanceMap[activity.storeLocation].transactions += 1;
@@ -162,8 +172,8 @@ export const AdminRecentActivity = () => {
         orderBy('createdAt', 'desc'),
         limit(1)
       );
-      const activitiesUnsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
+      const activitiesUnsubscribe = onSnapshot(activitiesQuery, snapshot => {
+        snapshot.docChanges().forEach(change => {
           if (change.type === 'added') {
             const data = change.doc.data();
             const newActivity: ActivityType = {
@@ -174,14 +184,17 @@ export const AdminRecentActivity = () => {
               customerName: data.customerName,
               customerMobile: data.customerMobile,
               storeLocation: data.storeLocation,
-              createdAt: data.createdAt
+              createdAt: data.createdAt,
             };
 
             // Update activities
             setActivities(prev => [newActivity, ...prev.slice(0, 14)]);
 
             // Update store performance if it's a transaction
-            if ((newActivity.type === 'sale' || newActivity.type === 'recharge') && newActivity.storeLocation) {
+            if (
+              (newActivity.type === 'sale' || newActivity.type === 'recharge') &&
+              newActivity.storeLocation
+            ) {
               setStorePerformance(prev => {
                 return prev.map(store => {
                   if (store.storeName === newActivity.storeLocation) {
@@ -189,7 +202,7 @@ export const AdminRecentActivity = () => {
                       ...store,
                       transactions: store.transactions + 1,
                       sales: store.sales + (newActivity.amount || 0),
-                      lastUpdated: Timestamp.fromDate(new Date())
+                      lastUpdated: Timestamp.fromDate(new Date()),
                     };
                   }
                   return store;
@@ -215,50 +228,66 @@ export const AdminRecentActivity = () => {
 
   const formatTimestamp = (firestoreTimestamp: Timestamp) => {
     if (!firestoreTimestamp?.seconds) return 'Just now';
-    
+
     const date = firestoreTimestamp.toDate();
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
+
     if (diffInSeconds < 60) return 'Just now';
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
     return `${Math.floor(diffInSeconds / 86400)} days ago`;
   };
-  
+
   const filteredActivities = activities.filter(activity => {
     // Apply type filter
     if (filter !== 'all' && activity.type !== filter) return false;
-    
+
     // Apply store filter
     if (storeFilter !== 'all' && activity.storeLocation !== storeFilter) return false;
-    
+
     return true;
   });
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'signup': return <UserPlus className="h-4 w-4 text-purple-600" />;
-      case 'sale': return <ShoppingCart className="h-4 w-4 text-green-600" />;
-      case 'recharge': return <Wallet className="h-4 w-4 text-amber-600" />;
-      case 'referral': return <Gift className="h-4 w-4 text-blue-600" />;
-      case 'seva_contribution': return <DollarSign className="h-4 w-4 text-teal-600" />;
-      case 'seva_allocation': return <Gift className="h-4 w-4 text-indigo-600" />;
-      case 'surabhi_earn': return <Gift className="h-4 w-4 text-indigo-600" />;
-      default: return <TrendingUp className="h-4 w-4 text-gray-600" />;
+      case 'signup':
+        return <UserPlus className="h-4 w-4 text-purple-600" />;
+      case 'sale':
+        return <ShoppingCart className="h-4 w-4 text-green-600" />;
+      case 'recharge':
+        return <Wallet className="h-4 w-4 text-amber-600" />;
+      case 'referral':
+        return <Gift className="h-4 w-4 text-blue-600" />;
+      case 'seva_contribution':
+        return <DollarSign className="h-4 w-4 text-teal-600" />;
+      case 'seva_allocation':
+        return <Gift className="h-4 w-4 text-indigo-600" />;
+      case 'surabhi_earn':
+        return <Gift className="h-4 w-4 text-indigo-600" />;
+      default:
+        return <TrendingUp className="h-4 w-4 text-gray-600" />;
     }
   };
 
   const getActivityColor = (type: string) => {
     switch (type) {
-      case 'signup': return 'bg-purple-50';
-      case 'sale': return 'bg-green-50';
-      case 'recharge': return 'bg-amber-50';
-      case 'referral': return 'bg-blue-50';
-      case 'seva_contribution': return 'bg-teal-50';
-      case 'seva_allocation': return 'bg-indigo-50';
-      case 'surabhi_earn': return 'bg-indigo-50';
-      default: return 'bg-gray-50';
+      case 'signup':
+        return 'bg-purple-50';
+      case 'sale':
+        return 'bg-green-50';
+      case 'recharge':
+        return 'bg-amber-50';
+      case 'referral':
+        return 'bg-blue-50';
+      case 'seva_contribution':
+        return 'bg-teal-50';
+      case 'seva_allocation':
+        return 'bg-indigo-50';
+      case 'surabhi_earn':
+        return 'bg-indigo-50';
+      default:
+        return 'bg-gray-50';
     }
   };
 
@@ -273,11 +302,9 @@ export const AdminRecentActivity = () => {
                 <TrendingUp className="h-5 w-5 text-purple-600" />
                 Recent Activity
               </CardTitle>
-              <CardDescription>
-                Filter and view recent system activities
-              </CardDescription>
+              <CardDescription>Filter and view recent system activities</CardDescription>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-gray-500" />
               <Select value={filter} onValueChange={setFilter}>
@@ -295,7 +322,7 @@ export const AdminRecentActivity = () => {
                   <SelectItem value="surabhi_earn">Surabhi Earnings</SelectItem>
                 </SelectContent>
               </Select>
-              
+
               <Select value={storeFilter} onValueChange={setStoreFilter}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Filter by store" />
@@ -312,7 +339,7 @@ export const AdminRecentActivity = () => {
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent>
           {isLoading ? (
             <div className="flex justify-center items-center h-40">
@@ -324,10 +351,15 @@ export const AdminRecentActivity = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredActivities.map((activity) => (
-                <div key={activity.id} className={`flex items-center justify-between p-3 ${getActivityColor(activity.type)} rounded-lg`}>
+              {filteredActivities.map(activity => (
+                <div
+                  key={activity.id}
+                  className={`flex items-center justify-between p-3 ${getActivityColor(activity.type)} rounded-lg`}
+                >
                   <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-full ${getActivityColor(activity.type).replace('50', '100')}`}>
+                    <div
+                      className={`p-2 rounded-full ${getActivityColor(activity.type).replace('50', '100')}`}
+                    >
                       {getActivityIcon(activity.type)}
                     </div>
                     <div>
@@ -342,9 +374,7 @@ export const AdminRecentActivity = () => {
                     </div>
                   </div>
                   {activity.amount !== undefined && (
-                    <Badge variant="secondary">
-                      ₹{activity.amount}
-                    </Badge>
+                    <Badge variant="secondary">₹{activity.amount}</Badge>
                   )}
                 </div>
               ))}
@@ -362,9 +392,7 @@ export const AdminRecentActivity = () => {
                 <Store className="h-5 w-5 text-amber-600" />
                 Today's Store Performance
               </CardTitle>
-              <CardDescription>
-                Summary of transactions across all stores
-              </CardDescription>
+              <CardDescription>Summary of transactions across all stores</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -378,8 +406,8 @@ export const AdminRecentActivity = () => {
           ) : (
             <div className="space-y-4">
               {storePerformance.map((store, index) => (
-                <div 
-                  key={index} 
+                <div
+                  key={index}
                   className={`flex items-center justify-between p-3 ${
                     index % 2 === 0 ? 'bg-blue-50' : 'bg-purple-50'
                   } rounded-lg`}
@@ -391,7 +419,9 @@ export const AdminRecentActivity = () => {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className={`font-bold ${index % 2 === 0 ? 'text-blue-600' : 'text-purple-600'}`}>
+                    <p
+                      className={`font-bold ${index % 2 === 0 ? 'text-blue-600' : 'text-purple-600'}`}
+                    >
                       ₹{store.sales.toLocaleString('en-IN')}
                     </p>
                     <div className="flex gap-2 text-xs text-gray-600">

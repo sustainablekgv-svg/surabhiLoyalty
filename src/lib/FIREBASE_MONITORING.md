@@ -37,18 +37,16 @@ import { useAnalytics } from '@/hooks/useAnalytics';
 
 const MyComponent = () => {
   const { trackButtonClick } = useAnalytics();
-  
+
   return (
-    <button onClick={() => trackButtonClick('submit_button', { page: 'checkout' })}>
-      Submit
-    </button>
+    <button onClick={() => trackButtonClick('submit_button', { page: 'checkout' })}>Submit</button>
   );
 };
 
 // Track form submissions
 const { trackFormSubmission } = useAnalytics();
 
-const handleSubmit = async (data) => {
+const handleSubmit = async data => {
   try {
     await submitForm(data);
     trackFormSubmission('login_form', true);

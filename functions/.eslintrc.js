@@ -11,21 +11,21 @@ export default [
       parser: tsParser,
       parserOptions: {
         ecmaVersion: 2020,
-        sourceType: 'module'
+        sourceType: 'module',
       },
       globals: {
         ...globals.node, // This includes Node.js globals like require, exports, console, etc.
-        node: true
-      }
+        node: true,
+      },
     },
     plugins: {
-      '@typescript-eslint': tsPlugin
+      '@typescript-eslint': tsPlugin,
     },
     rules: {
       ...tsPlugin.configs.recommended.rules,
       'no-console': 'off',
       '@typescript-eslint/no-var-requires': 'off',
       'no-var': 'off',
-    }
-  }
+    },
+  },
 ];

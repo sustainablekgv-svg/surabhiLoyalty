@@ -1,11 +1,10 @@
 // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getAnalytics, logEvent } from "firebase/analytics";
-import { getPerformance, trace } from "firebase/performance";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
-import { FirebaseError } from "firebase/app";
+import { getAnalytics, logEvent } from 'firebase/analytics';
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getPerformance, trace } from 'firebase/performance';
+import { getStorage } from 'firebase/storage';
 // Firebase v11 imports for monitoring and analytics
 
 // TODO: Add SDKs for Firebase products that you want to use
@@ -19,15 +18,14 @@ const firebaseConfig = {
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
-
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
 // Initialize services
-export const auth = getAuth(app);  
+export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 
@@ -56,7 +54,7 @@ export const startPerformanceTrace = (traceName: string) => {
 export const logError = (error: Error, additionalData: Record<string, any> = {}) => {
   // Log to console in development
   console.error('Error logged:', error, additionalData);
-  
+
   // In production, we would log to Firebase Crashlytics
   // This is a placeholder for actual Crashlytics implementation
   if (import.meta.env.PROD && analytics) {
@@ -65,7 +63,7 @@ export const logError = (error: Error, additionalData: Record<string, any> = {})
       error_name: error.name,
       error_message: error.message,
       error_stack: error.stack,
-      ...additionalData
+      ...additionalData,
     });
   }
   return null;

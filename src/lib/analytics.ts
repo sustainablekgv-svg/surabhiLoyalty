@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { analytics, logAnalyticsEvent, performance, startPerformanceTrace, logError } from './firebase';
+
+import { logAnalyticsEvent, startPerformanceTrace, logError } from './firebase';
 
 /**
  * Hook to track page views in Firebase Analytics
@@ -13,7 +14,7 @@ export const usePageViewTracking = () => {
     logAnalyticsEvent('page_view', {
       page_path: location.pathname,
       page_location: window.location.href,
-      page_title: document.title
+      page_title: document.title,
     });
   }, [location]);
 };
@@ -25,7 +26,7 @@ export const usePageViewTracking = () => {
 export const useComponentPerformance = (componentName: string) => {
   useEffect(() => {
     const perfTrace = startPerformanceTrace(`component_render_${componentName}`);
-    
+
     return () => {
       if (perfTrace) {
         perfTrace.stop();
@@ -60,7 +61,7 @@ export const trackError = (error: Error, additionalData: Record<string, any> = {
 export const usePerformanceTrace = (traceName: string) => {
   // Create and return the performance trace
   const trace = startPerformanceTrace(traceName);
-  
+
   // Return the trace object so the caller can stop it when needed
   return trace;
 };

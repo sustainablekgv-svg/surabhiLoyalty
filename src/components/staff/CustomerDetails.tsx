@@ -1,12 +1,24 @@
-import { useParams, useNavigate } from 'react-router-dom';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import {
+  ArrowLeft,
+  Wallet,
+  Coins,
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  Users,
+  CreditCard,
+  BarChart2,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft, Edit, Wallet, Coins, Gift, User, Mail, Phone, MapPin, Calendar, Shield, Users, CreditCard, BarChart2 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useParams, useNavigate } from 'react-router-dom';
 
-import {CustomerType} from "@/types/types"
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { db } from '@/lib/firebase';
+import { CustomerType } from '@/types/types';
 
 export const CustomerDetails = () => {
   const { mobile } = useParams<{ mobile: string }>();
@@ -16,33 +28,30 @@ export const CustomerDetails = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-  const fetchCustomer = async () => {
-    try {
-      const q = query(
-        collection(db, 'Customers'),
-        where('customerMobile', '==', mobile)
-      );
-      
-      const querySnapshot = await getDocs(q);
-      
-      if (!querySnapshot.empty) {
-        // Assuming mobile is unique, we take the first document
-        const doc = querySnapshot.docs[0];
-        const customerData = { id: doc.id, ...doc.data() } as CustomerType;
-        setCustomer(customerData);
-      } else {
-        setError('Customer not found');
-      }
-    } catch (err) {
-      console.error('Error fetching customer:', err);
-      setError('Failed to load customer data');
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchCustomer = async () => {
+      try {
+        const q = query(collection(db, 'Customers'), where('customerMobile', '==', mobile));
 
-  fetchCustomer();
-}, [mobile]);
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          // Assuming mobile is unique, we take the first document
+          const doc = querySnapshot.docs[0];
+          const customerData = { id: doc.id, ...doc.data() } as CustomerType;
+          setCustomer(customerData);
+        } else {
+          setError('Customer not found');
+        }
+      } catch (err) {
+        console.error('Error fetching customer:', err);
+        setError('Failed to load customer data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCustomer();
+  }, [mobile]);
 
   if (loading) {
     return (
@@ -71,9 +80,7 @@ export const CustomerDetails = () => {
           </Button>
           <h1 className="text-2xl font-bold">Error</h1>
         </div>
-        <div className="p-4 bg-red-50 text-red-600 rounded-lg">
-          {error}
-        </div>
+        <div className="p-4 bg-red-50 text-red-600 rounded-lg">{error}</div>
       </div>
     );
   }
@@ -182,11 +189,11 @@ export const CustomerDetails = () => {
             <div>
               <p className="text-xs text-muted-foreground">Last Transaction</p>
               <p>
-              {customer.lastTransactionDate 
-              ? customer.lastTransactionDate.toDate().toLocaleString() 
-              : 'No transactions yet'}
+                {customer.lastTransactionDate
+                  ? customer.lastTransactionDate.toDate().toLocaleString()
+                  : 'No transactions yet'}
               </p>
-</div>
+            </div>
             <div>
               <p className="text-xs text-muted-foreground">TPIN</p>
               <p className="font-mono">{customer.tpin || 'Not set'}</p>
@@ -203,7 +210,9 @@ export const CustomerDetails = () => {
           <CardContent className="space-y-4">
             <div>
               <p className="text-xs text-muted-foreground">Surabhi Coins</p>
-              <p className="text-lg font-medium">{customer.surabhiBalance?.toLocaleString() || '0'}</p>
+              <p className="text-lg font-medium">
+                {customer.surabhiBalance?.toLocaleString() || '0'}
+              </p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Total Seva Coins</p>
@@ -211,7 +220,9 @@ export const CustomerDetails = () => {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Current Month Seva Coins</p>
-              <p className="text-lg font-medium">{customer.sevaBalanceCurrentMonth?.toLocaleString() || '0'}</p>
+              <p className="text-lg font-medium">
+                {customer.sevaBalanceCurrentMonth?.toLocaleString() || '0'}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -227,9 +238,9 @@ export const CustomerDetails = () => {
               {customer.referredBy && (
                 <div>
                   <p className="text-xs text-muted-foreground">Referred By</p>
-                  <Button 
-                    variant="link" 
-                    className="h-auto p-0" 
+                  <Button
+                    variant="link"
+                    className="h-auto p-0"
                     onClick={() => navigate(`/customer/${customer.referredBy}`)}
                   >
                     {customer.referredBy}
@@ -248,14 +259,14 @@ export const CustomerDetails = () => {
                   <div className="space-y-2 mt-2">
                     {customer.referredUsers.map((user, index) => (
                       <div key={index} className="flex justify-between items-center">
-                        <Button 
-                          variant="link" 
-                          className="h-auto p-0" 
+                        <Button
+                          variant="link"
+                          className="h-auto p-0"
                           onClick={() => navigate(`/customer/${user.customerMobile}`)}
                         >
                           {user.customerMobile}
                         </Button>
-                      {/* <span className="text-xs text-muted-foreground">
+                        {/* <span className="text-xs text-muted-foreground">
                       {user..toDate().toLocaleString()}
                       </span> */}
                       </div>

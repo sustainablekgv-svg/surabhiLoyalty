@@ -1,8 +1,8 @@
-import { db } from '@/lib/firebase';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+
+import { db } from '@/lib/firebase';
 import { auth } from '@/lib/firebase';
-import { StaffType } from '@/types/types';
 export interface User {
   id: string;
   mobile: string;
@@ -13,16 +13,19 @@ export interface User {
   createdAt: string;
 }
 
-export const getCustomerByMobile = async (mobile: string, password: string): Promise<User | null> => {
+export const getCustomerByMobile = async (
+  mobile: string,
+  password: string
+): Promise<User | null> => {
   try {
     const customersRef = collection(db, 'Customers');
     const q = query(customersRef, where('customerMobile', '==', mobile));
     const querySnapshot = await getDocs(q);
-    
+
     if (!querySnapshot.empty) {
       const customerDoc = querySnapshot.docs[0];
       const customerData = customerDoc.data();
-      
+
       // In production, use proper password hashing (bcrypt, etc.)
       if (customerData.customerPassword === password) {
         return {
@@ -31,7 +34,7 @@ export const getCustomerByMobile = async (mobile: string, password: string): Pro
           role: 'customer',
           name: customerData.name,
           email: customerData.email,
-          createdAt: customerData.createdAt
+          createdAt: customerData.createdAt,
         };
       }
     }
@@ -41,7 +44,6 @@ export const getCustomerByMobile = async (mobile: string, password: string): Pro
     throw new Error('Failed to authenticate customer');
   }
 };
-
 
 export const getStaffByMobile = async (
   mobile: string,
@@ -80,7 +82,7 @@ export const getStaffByMobile = async (
       name: staffData.staffName,
       email: staffData.staffEmail,
       storeLocation: staffData.storeLocation,
-      createdAt: staffData.staffCreatedAt?.toDate().toISOString() || new Date().toISOString()
+      createdAt: staffData.staffCreatedAt?.toDate().toISOString() || new Date().toISOString(),
     };
 
     return user;

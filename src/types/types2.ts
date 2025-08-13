@@ -11,7 +11,7 @@ export interface CustomerType {
   district?: string;
   city?: string;
   referredBy: string | null;
-  referredUsers: { customerMobile: number; customerName: string; createdAt: Timestamp; }[] | null;
+  referredUsers: { customerMobile: number; customerName: string; createdAt: Timestamp }[] | null;
   customerPassword: string;
   tpin: string;
   createdAt: Timestamp;
@@ -126,11 +126,10 @@ export interface StoreType {
   storeContactNumber: string;
   storeStatus: 'active' | 'inactive';
   storeCurrentBalance: number;
-  storeSevaBalance:number;
+  storeSevaBalance: number;
   storeCreatedAt: Timestamp;
   storeUpdatedAt: Timestamp;
-  adminCurrentBalance:number;
-
+  adminCurrentBalance: number;
 }
 
 export interface AdminHeaderProps {
@@ -140,7 +139,7 @@ export interface AdminHeaderProps {
 
 export interface CustomerTxType {
   id?: string;
-  type: 'recharge' | 'sale' | 'referral' ;
+  type: 'recharge' | 'sale' | 'referral';
   invoiceId?: string; // Optional invoice ID field
 
   // Common Fields
@@ -186,8 +185,8 @@ export interface CustomerTxType {
   sevaDebit: number;
   sevaBalance: number;
   sevaTotal: number;
+  remarks: string;
 }
-
 
 // export interface SevaTransaction {
 //   type: 'contribution' | 'allocation';
@@ -214,7 +213,14 @@ export interface SevaPoolType {
 
 export interface ActivityType {
   id: string;
-  type: 'signup' | 'sale' | 'recharge' | 'referral' | 'seva_contribution' | 'seva_allocation' | 'surabhi_earn'  ;
+  type:
+    | 'signup'
+    | 'sale'
+    | 'recharge'
+    | 'referral'
+    | 'seva_contribution'
+    | 'seva_allocation'
+    | 'surabhi_earn';
   remarks: string;
   amount: number;
   customerName: string;
@@ -239,7 +245,6 @@ export interface AccountTxType {
   sevaBalance: number;
   remarks: string;
   adminCurrentBalance: number;
-
 }
 
 // export interface StoreSummary {
@@ -261,4 +266,3 @@ export interface StoreAccountsProps {
 //     netFlow: number;
 //   };
 // }
-

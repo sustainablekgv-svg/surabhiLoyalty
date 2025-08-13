@@ -16,33 +16,36 @@ export const monitoredFetch = async (
   const urlObj = new URL(url, window.location.origin);
   const path = urlObj.pathname;
   const name = traceName || `fetch_${path}`;
-  
+
   // Start performance trace
   const perfTrace = startPerformanceTrace(name);
   // No need to call start() as it's already called in startPerformanceTrace
-  
+
   try {
     // Make the fetch request
     const response = await fetch(url, options);
-    
+
     // Add custom metrics to the trace
     if (perfTrace) {
       perfTrace.putMetric('status_code', response.status);
-      perfTrace.putMetric('response_size', parseInt(response.headers.get('content-length') || '0', 10));
+      perfTrace.putMetric(
+        'response_size',
+        parseInt(response.headers.get('content-length') || '0', 10)
+      );
     }
-    
+
     return response;
   } catch (error) {
     // Log error to Crashlytics
     if (error instanceof Error) {
       logError(error, { url, method: options?.method || 'GET' });
     }
-    
+
     // Add error metric to trace
     if (perfTrace) {
       perfTrace.putMetric('error', 1);
     }
-    
+
     throw error;
   } finally {
     // Stop the trace
@@ -62,7 +65,7 @@ export function createMonitoredFunction<T extends (...args: any[]) => Promise<an
 ): T {
   return (async (...args: Parameters<T>): Promise<ReturnType<T>> => {
     const perfTrace = startPerformanceTrace(traceName);
-    
+
     try {
       const result = await fn(...args);
       return result;
@@ -71,7 +74,7 @@ export function createMonitoredFunction<T extends (...args: any[]) => Promise<an
       if (error instanceof Error) {
         logError(error, { function: fn.name || traceName, args: JSON.stringify(args) });
       }
-      
+
       throw error;
     } finally {
       if (perfTrace) perfTrace.stop();

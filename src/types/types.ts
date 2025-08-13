@@ -1,5 +1,6 @@
 import { Timestamp } from 'firebase/firestore';
-import {User} from "@/lib/authService"
+
+import { User } from '@/lib/authService';
 export interface CustomerType {
   id?: string;
   role: string;
@@ -12,7 +13,7 @@ export interface CustomerType {
   district?: string;
   city?: string;
   referredBy: string | null;
-  referredUsers: { customerMobile: number; customerName: string; createdAt: Timestamp; }[] | null;
+  referredUsers: { customerMobile: number; customerName: string; createdAt: Timestamp }[] | null;
   customerPassword: string;
   tpin: string;
   createdAt: Timestamp;
@@ -145,7 +146,7 @@ export interface StoreType {
   storeCreatedAt: Timestamp;
   storeUpdatedAt: Timestamp;
   adminCurrentBalance: number;
-  adminStoreProfit:number;
+  adminStoreProfit: number;
 }
 
 export interface AdminHeaderProps {
@@ -169,12 +170,12 @@ export interface CustomerTxType {
   remarks: string; // Description of the transaction
 
   // Recharge-Specific Fields
-  amount: number; 
+  amount: number;
   surabhiEarned: number;
   sevaEarned?: number;
   referralEarned?: number;
   referredBy?: string | null;
-  adminProft?:number;
+  adminProft?: number;
 
   // Sale-Specific Fields
   surabhiUsed?: number;
@@ -201,8 +202,8 @@ export interface CustomerTxType {
   sevaDebit: number;
   sevaBalance: number;
   sevaTotal: number;
+  // storeSevaBalance: number;
 }
-
 
 // export interface SevaTransaction {
 //   type: 'contribution' | 'allocation';
@@ -229,7 +230,14 @@ export interface SevaPoolType {
 
 export interface ActivityType {
   id?: string;
-  type: 'signup' | 'sale' | 'recharge' | 'referral' | 'seva_contribution' | 'seva_allocation' | 'surabhi_earn'  ;
+  type:
+    | 'signup'
+    | 'sale'
+    | 'recharge'
+    | 'referral'
+    | 'seva_contribution'
+    | 'seva_allocation'
+    | 'surabhi_earn';
   remarks: string;
   amount: number;
   customerName: string;
@@ -240,6 +248,7 @@ export interface ActivityType {
 
 export interface AccountTxType {
   id: string;
+  invoiceId?: string;
   createdAt: Timestamp;
   storeName: string;
   customerName: string;
@@ -251,8 +260,8 @@ export interface AccountTxType {
   adminProfit: number;
   credit: number;
   currentBalance: number;
-  sevaBalance:number;
-  adminCurrentBalance:number;
+  sevaBalance: number;
+  adminCurrentBalance: number;
   remarks: string;
 }
 
@@ -275,4 +284,3 @@ export interface StoreAccountsProps {
 //     netFlow: number;
 //   };
 // }
-

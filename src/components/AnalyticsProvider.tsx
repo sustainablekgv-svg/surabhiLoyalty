@@ -1,5 +1,6 @@
 import { ReactNode, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+
 import { logAnalyticsEvent } from '@/lib/firebase';
 
 interface AnalyticsProviderProps {
@@ -19,7 +20,7 @@ export const AnalyticsProvider = ({ children }: AnalyticsProviderProps) => {
       logAnalyticsEvent('page_view', {
         page_path: location.pathname,
         page_location: window.location.href,
-        page_title: document.title || 'Loyalty App'
+        page_title: document.title || 'Loyalty App',
       });
     }
   }, [location]);
@@ -29,7 +30,7 @@ export const AnalyticsProvider = ({ children }: AnalyticsProviderProps) => {
     if (import.meta.env.PROD) {
       logAnalyticsEvent('app_initialized', {
         timestamp: new Date().toISOString(),
-        app_version: import.meta.env.VITE_APP_VERSION || '1.0.0'
+        app_version: import.meta.env.VITE_APP_VERSION || '1.0.0',
       });
     }
   }, []);

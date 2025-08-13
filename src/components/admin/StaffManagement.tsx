@@ -1,17 +1,24 @@
 // components/StaffStoreManagement.tsx
-import { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  collection,
+  doc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  getDocs,
+  query,
+  where,
+  serverTimestamp,
+  addDoc,
+  Timestamp,
+} from 'firebase/firestore';
+import { UserPlus, MapPin, Edit, Trash2, User, Shield, Store, PlusCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -19,14 +26,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -34,24 +44,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import {
-  UserPlus, Search, MapPin, Phone, Mail, Edit, Trash2,
-  User, Shield, Lock, AlertCircle, Store, PlusCircle,
-  Eye,
-  EyeOff
-} from 'lucide-react';
-import { toast } from 'sonner';
-import {
-  collection, doc, setDoc, updateDoc, deleteDoc, getDocs,
-  query, where, serverTimestamp,
-  addDoc,
-  Timestamp
-} from 'firebase/firestore';
+} from '@/components/ui/table';
 import { db } from '@/lib/firebase';
 import { StoreType, StaffType } from '@/types/types';
 
-async function checkContactNumberExists(contactNumber: string, currentStoreId?: string): Promise<boolean> {
+async function checkContactNumberExists(
+  contactNumber: string,
+  currentStoreId?: string
+): Promise<boolean> {
   if (!contactNumber) return false;
 
   const storesRef = collection(db, 'tores');
@@ -109,7 +109,7 @@ export const StaffManagement = () => {
           adminCurrentBalance: Number(doc.data().adminCurrentBalance) || 0,
           adminStoreProfit: Number(doc.data().adminStoreProfit) || 0,
           storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
-          storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date()
+          storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date(),
         })) as StoreType[];
         setStores(storesData);
 
@@ -127,9 +127,8 @@ export const StaffManagement = () => {
           staffPin: doc.data().staffPin || '',
           staffPassword: doc.data().staffPassword || '',
           staffRechargesCount: Number(doc.data().staffRechargesCount) || 0,
-          staffCreatedAt: doc.data().staffCreatedAt?.toDate() || new Date(),
           lastActive: doc.data().lastActive?.toDate(),
-          createdAt: doc.data().createdAt?.toDate()
+          createdAt: doc.data().createdAt || Timestamp.now(),
         })) as StaffType[];
         setStaff(staffData);
       } catch (error) {
@@ -209,8 +208,14 @@ export const StaffManagement = () => {
         staffPin: currentStaff.staffPin || '',
         staffPassword: currentStaff.staffPassword || '',
         lastActive: currentStaff.lastActive || null,
-        staffCreatedAt: currentStaff.id ? currentStaff.createdAt : Timestamp.now(),
-        staffUpdatedAt: Timestamp.now()
+        createdAt: currentStaff.id
+          ? currentStaff.createdAt instanceof Timestamp
+            ? currentStaff.createdAt
+            : currentStaff.createdAt
+              ? Timestamp.fromDate(new Date(currentStaff.createdAt))
+              : Timestamp.now()
+          : Timestamp.now(),
+        // Ensure createdAt is always a Timestamp object
       };
 
       if (currentStaff.id) {
@@ -238,9 +243,8 @@ export const StaffManagement = () => {
         staffPin: doc.data().staffPin || '',
         staffRechargesCount: doc.data().staffRechargesCount || 0,
         staffPassword: doc.data().staffPassword || '',
-        staffCreatedAt: doc.data().staffCreatedAt?.toDate() || new Date(),
         lastActive: doc.data().lastActive?.toDate(),
-        createdAt : doc.data().createdAt
+        createdAt: doc.data().createdAt || Timestamp.now(),
       })) as StaffType[];
       setStaff(refreshedStaffData);
     } catch (error) {
@@ -263,8 +267,8 @@ export const StaffManagement = () => {
       const updatedStaff = staffSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: doc.data().staffCreatedAt?.toDate() || new Date(),
-        lastActive: doc.data().lastActive?.toDate()
+        lastActive: doc.data().lastActive?.toDate(),
+        createdAt: doc.data().createdAt || Timestamp.now(),
       })) as StaffType[];
       setStaff(updatedStaff);
 
@@ -280,7 +284,12 @@ export const StaffManagement = () => {
   const handleSaveStore = async () => {
     if (!currentStore) return false;
 
-    if (!currentStore.storeName || !currentStore.storeLocation || !currentStore.storeAddress || !currentStore.storeContactNumber) {
+    if (
+      !currentStore.storeName ||
+      !currentStore.storeLocation ||
+      !currentStore.storeAddress ||
+      !currentStore.storeContactNumber
+    ) {
       toast.error('Please fill all required fields');
       return false;
     }
@@ -300,7 +309,7 @@ export const StaffManagement = () => {
         storeStatus: currentStore.storeStatus || 'active',
         adminCurrentBalance: Number(currentStore.adminCurrentBalance) || 0,
         adminStoreProfit: Number(currentStore.adminStoreProfit) || 0,
-        storeUpdatedAt: serverTimestamp()
+        storeUpdatedAt: serverTimestamp(),
       };
 
       if (currentStore.id) {
@@ -315,7 +324,7 @@ export const StaffManagement = () => {
           storeCreatedAt: serverTimestamp(),
           adminCurrentBalance: 0,
           adminStoreProfit: 0,
-          storeSevaBalance: 0
+          storeSevaBalance: 0,
         });
         toast.success('Store created successfully');
       }
@@ -338,7 +347,7 @@ export const StaffManagement = () => {
         adminCurrentBalance: Number(doc.data().adminCurrentBalance) || 0,
         adminStoreProfit: Number(doc.data().adminStoreProfit) || 0,
         storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
-        storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date()
+        storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date(),
       })) as StoreType[];
       setStores(updatedStores);
 
@@ -347,7 +356,9 @@ export const StaffManagement = () => {
       return true;
     } catch (error) {
       console.error('Error saving store:', error);
-      toast.error(`Error saving store: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(
+        `Error saving store: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
       return false;
     }
   };
@@ -357,10 +368,7 @@ export const StaffManagement = () => {
 
     try {
       // Check for assigned staff
-      const staffQuery = query(
-        collection(db, 'staff'),
-        where('storeLocation', '==', storeId)
-      );
+      const staffQuery = query(collection(db, 'staff'), where('storeLocation', '==', storeId));
       const staffSnapshot = await getDocs(staffQuery);
 
       if (!staffSnapshot.empty) {
@@ -373,7 +381,9 @@ export const StaffManagement = () => {
       return true;
     } catch (error) {
       console.error('Error deleting store:', error);
-      toast.error(`Error deleting store: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(
+        `Error deleting store: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
       return false;
     }
   };
@@ -399,9 +409,7 @@ export const StaffManagement = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">System Configuration</h1>
-          <p className="text-muted-foreground">
-            Manage staff accounts and store locations
-          </p>
+          <p className="text-muted-foreground">Manage staff accounts and store locations</p>
         </div>
 
         <div className="flex gap-2">
@@ -432,18 +440,20 @@ export const StaffManagement = () => {
                   {staff.length} staff members across {stores.length} stores
                 </CardDescription>
               </div>
-              <Button onClick={() => {
-                setCurrentStaff({
-                  role: 'staff',
-                  staffStatus: 'active',
-                  staffSalesCount: 0,
-                  staffRechargesCount: 0,
-                  staffPin: '',
-                  staffPassword: '',
-                  createdAt: Timestamp.now()
-                });
-                setIsStaffDialogOpen(true);
-              }}>
+              <Button
+                onClick={() => {
+                  setCurrentStaff({
+                    role: 'staff',
+                    staffStatus: 'active',
+                    staffSalesCount: 0,
+                    staffRechargesCount: 0,
+                    staffPin: '',
+                    staffPassword: '',
+                    createdAt: Timestamp.now(),
+                  });
+                  setIsStaffDialogOpen(true);
+                }}
+              >
                 <UserPlus className="h-4 w-4 mr-2" />
                 Add Staff
               </Button>
@@ -497,47 +507,34 @@ export const StaffManagement = () => {
                 ))
               ) : (
                 <TableBody>
-                  {staff.map((member) => (
+                  {staff.map(member => (
                     <TableRow key={member.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           {member.staffName}
-                          {member.role === 'admin' && (
-                            <Shield className="h-4 w-4 text-primary" />
-                          )}
+                          {member.role === 'admin' && <Shield className="h-4 w-4 text-primary" />}
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          {member.staffEmail}
-                        </div>
+                        <div className="text-sm text-muted-foreground">{member.staffEmail}</div>
                       </TableCell>
-                      <TableCell>
-                        {member.staffMobile}
-                      </TableCell>
+                      <TableCell>{member.staffMobile}</TableCell>
                       <TableCell>
                         <Badge variant={member.role === 'admin' ? 'default' : 'outline'}>
                           {member.role}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {stores.find(s => s.storeName === member.storeLocation)?.storeName || 'Unassigned'}
+                        {stores.find(s => s.storeName === member.storeLocation)?.storeName ||
+                          'Unassigned'}
                       </TableCell>
                       <TableCell>
                         <Badge variant={member.staffStatus === 'active' ? 'default' : 'secondary'}>
                           {member.staffStatus}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        {member.staffSalesCount || 0}
-                      </TableCell>
-                      <TableCell>
-                        {member.staffRechargesCount || 0}
-                      </TableCell>
-                      <TableCell>
-                        {member.staffPin}
-                      </TableCell>
-                      <TableCell>
-                        {member.staffPassword}
-                      </TableCell>
+                      <TableCell>{member.staffSalesCount || 0}</TableCell>
+                      <TableCell>{member.staffRechargesCount || 0}</TableCell>
+                      <TableCell>{member.staffPin}</TableCell>
+                      <TableCell>{member.staffPassword}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
                           <Button
@@ -579,20 +576,20 @@ export const StaffManagement = () => {
             <div className="flex justify-between items-center">
               <div>
                 <CardTitle>Store Locations</CardTitle>
-                <CardDescription>
-                  Manage all store locations in the system
-                </CardDescription>
+                <CardDescription>Manage all store locations in the system</CardDescription>
               </div>
-              <Button onClick={() => {
-                setCurrentStore({
-                  storeStatus: 'active',
-                  referralCommission: 0,
-                  surabhiCommission: 0,
-                  sevaCommission: 0,
-                  cashOnlyCommission: 0
-                });
-                setIsStoreDialogOpen(true);
-              }}>
+              <Button
+                onClick={() => {
+                  setCurrentStore({
+                    storeStatus: 'active',
+                    referralCommission: 0,
+                    surabhiCommission: 0,
+                    sevaCommission: 0,
+                    cashOnlyCommission: 0,
+                  });
+                  setIsStoreDialogOpen(true);
+                }}
+              >
                 <PlusCircle className="h-4 w-4 mr-2" />
                 Add Store
               </Button>
@@ -601,114 +598,92 @@ export const StaffManagement = () => {
           <CardContent>
             <div className="overflow-x-auto">
               <Table>
-              <TableHeader>
-                <TableRow>
-                  {/* <TableHead>ID</TableHead> */}
-                  <TableHead>Name</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Address</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Store Balance</TableHead>
-                  <TableHead>Seva Balance</TableHead>
-                  <TableHead>Admin Balance</TableHead>
-                  <TableHead>Admin Profit</TableHead>
-                  <TableHead>Referral %</TableHead>
-                  <TableHead>Surabhi %</TableHead>
-                  <TableHead>Cash Only %</TableHead>
-                  <TableHead>Seva %</TableHead>
-                  {/* <TableHead>Status</TableHead> */}
-                  {/* <TableHead>Created</TableHead>
+                <TableHeader>
+                  <TableRow>
+                    {/* <TableHead>ID</TableHead> */}
+                    <TableHead>Name</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Address</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Store Balance</TableHead>
+                    <TableHead>Seva Balance</TableHead>
+                    <TableHead>Admin Balance</TableHead>
+                    <TableHead>Admin Profit</TableHead>
+                    <TableHead>Referral %</TableHead>
+                    <TableHead>Surabhi %</TableHead>
+                    <TableHead>Cash Only %</TableHead>
+                    <TableHead>Seva %</TableHead>
+                    {/* <TableHead>Status</TableHead> */}
+                    {/* <TableHead>Created</TableHead>
                   <TableHead>Updated</TableHead> */}
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {stores.map((store) => (
-                  <TableRow key={store.id}>
-                    {/* <TableCell className="text-xs">
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {stores.map(store => (
+                    <TableRow key={store.id}>
+                      {/* <TableCell className="text-xs">
                       {store.id.substring(0, 8)}...
                     </TableCell> */}
-                    <TableCell className="font-medium">
-                      {store.storeName}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-4 w-4" />
-                        {store.storeLocation}
-                      </div>
-                    </TableCell>
-                    <TableCell className="max-w-[150px] truncate">
-                      {store.storeAddress}
-                    </TableCell>
-                    <TableCell>
-                      {store.storeContactNumber}
-                    </TableCell>
-                    <TableCell>
-                      ₹{store.storeCurrentBalance.toFixed(2) || 0}
-                    </TableCell>
-                    <TableCell>
-                      ₹{store.storeSevaBalance.toFixed(2) || 0}
-                    </TableCell>
-                    <TableCell>
-                      ₹{store.adminCurrentBalance.toFixed(2) || 0}
-                    </TableCell>
-                    <TableCell>
-                      ₹{store.adminStoreProfit.toFixed(2) || 0}
-                    </TableCell>
-                    <TableCell>
-                      {store.referralCommission}%
-                    </TableCell>
-                    <TableCell>
-                      {store.surabhiCommission}%
-                    </TableCell>
-                    <TableCell>
-                      {store.cashOnlyCommission}%
-                    </TableCell>
-                    <TableCell>
-                      {store.sevaCommission}%
-                    </TableCell>
-                    {/* <TableCell>
+                      <TableCell className="font-medium">{store.storeName}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-4 w-4" />
+                          {store.storeLocation}
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-[150px] truncate">{store.storeAddress}</TableCell>
+                      <TableCell>{store.storeContactNumber}</TableCell>
+                      <TableCell>₹{store.storeCurrentBalance.toFixed(2) || 0}</TableCell>
+                      <TableCell>₹{store.storeSevaBalance.toFixed(2) || 0}</TableCell>
+                      <TableCell>₹{store.adminCurrentBalance.toFixed(2) || 0}</TableCell>
+                      <TableCell>₹{store.adminStoreProfit.toFixed(2) || 0}</TableCell>
+                      <TableCell>{store.referralCommission}%</TableCell>
+                      <TableCell>{store.surabhiCommission}%</TableCell>
+                      <TableCell>{store.cashOnlyCommission}%</TableCell>
+                      <TableCell>{store.sevaCommission}%</TableCell>
+                      {/* <TableCell>
                       <Badge variant={store.storeStatus === 'active' ? 'default' : 'secondary'}>
                         {store.storeStatus}
                       </Badge>
                     </TableCell> */}
-                    {/* <TableCell className="text-xs">
+                      {/* <TableCell className="text-xs">
                       {new Date(store.storeCreatedAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-xs">
                       {new Date(store.storeUpdatedAt).toLocaleDateString()}
                     </TableCell> */}
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setCurrentStore(store);
-                            setIsStoreDialogOpen(true);
-                          }}
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700"
-                          onClick={() => {
-                            setCurrentStore(store);
-                            setIsDeleteStoreDialogOpen(true);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Remove
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setCurrentStore(store);
+                              setIsStoreDialogOpen(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() => {
+                              setCurrentStore(store);
+                              setIsDeleteStoreDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Remove
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
         </Card>
@@ -732,10 +707,12 @@ export const StaffManagement = () => {
                 <Label>Full Name *</Label>
                 <Input
                   value={currentStaff?.staffName || ''}
-                  onChange={(e) => setCurrentStaff({
-                    ...currentStaff || {},
-                    staffName: e.target.value
-                  })}
+                  onChange={e =>
+                    setCurrentStaff({
+                      ...(currentStaff || {}),
+                      staffName: e.target.value,
+                    })
+                  }
                   placeholder="Enter staff name"
                 />
               </div>
@@ -745,10 +722,10 @@ export const StaffManagement = () => {
                 <Input
                   type="tel"
                   value={currentStaff?.staffMobile || ''}
-                  onChange={(e) => {
+                  onChange={e => {
                     setCurrentStaff({
-                      ...currentStaff || {},
-                      staffMobile: e.target.value.replace(/\D/g, '')
+                      ...(currentStaff || {}),
+                      staffMobile: e.target.value.replace(/\D/g, ''),
                     });
                     setMobileError(''); // Clear error when typing
                   }}
@@ -764,10 +741,10 @@ export const StaffManagement = () => {
               <Input
                 type="email"
                 value={currentStaff?.staffEmail || ''}
-                onChange={(e) => {
+                onChange={e => {
                   setCurrentStaff({
-                    ...currentStaff || {},
-                    staffEmail: e.target.value
+                    ...(currentStaff || {}),
+                    staffEmail: e.target.value,
                   });
                   setEmailError(''); // Clear error when typing
                 }}
@@ -782,11 +759,13 @@ export const StaffManagement = () => {
                 <Label>Role *</Label>
                 <Select
                   value={currentStaff?.role || 'staff'}
-                  onValueChange={(value) => setCurrentStaff({
-                    ...currentStaff || {},
-                    role: value as 'admin' | 'staff',
-                    ...(value === 'admin' ? { storeLocation: '' } : {})
-                  })}
+                  onValueChange={value =>
+                    setCurrentStaff({
+                      ...(currentStaff || {}),
+                      role: value as 'admin' | 'staff',
+                      ...(value === 'admin' ? { storeLocation: '' } : {}),
+                    })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select role" />
@@ -802,10 +781,12 @@ export const StaffManagement = () => {
                 <Label>Status *</Label>
                 <Select
                   value={currentStaff?.staffStatus || 'active'}
-                  onValueChange={(value) => setCurrentStaff({
-                    ...currentStaff || {},
-                    staffStatus: value as 'active' | 'inactive'
-                  })}
+                  onValueChange={value =>
+                    setCurrentStaff({
+                      ...(currentStaff || {}),
+                      staffStatus: value as 'active' | 'inactive',
+                    })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
@@ -823,10 +804,12 @@ export const StaffManagement = () => {
                 <Label>Assigned Store</Label>
                 <Select
                   value={currentStaff?.storeLocation || ''}
-                  onValueChange={(value) => setCurrentStaff({
-                    ...currentStaff || {},
-                    storeLocation: value
-                  })}
+                  onValueChange={value =>
+                    setCurrentStaff({
+                      ...(currentStaff || {}),
+                      storeLocation: value,
+                    })
+                  }
                   disabled={currentStaff?.role === 'admin'}
                 >
                   <SelectTrigger>
@@ -847,10 +830,12 @@ export const StaffManagement = () => {
                 <Input
                   type="text"
                   value={currentStaff?.staffPin || ''}
-                  onChange={(e) => setCurrentStaff({
-                    ...currentStaff || {},
-                    staffPin: e.target.value
-                  })}
+                  onChange={e =>
+                    setCurrentStaff({
+                      ...(currentStaff || {}),
+                      staffPin: e.target.value,
+                    })
+                  }
                   placeholder="Enter staff PIN"
                 />
               </div>
@@ -862,10 +847,12 @@ export const StaffManagement = () => {
                 <Input
                   type="number"
                   value={currentStaff?.staffSalesCount || 0}
-                  onChange={(e) => setCurrentStaff({
-                    ...currentStaff || {},
-                    staffSalesCount: Number(e.target.value)
-                  })}
+                  onChange={e =>
+                    setCurrentStaff({
+                      ...(currentStaff || {}),
+                      staffSalesCount: Number(e.target.value),
+                    })
+                  }
                   placeholder="Enter sales count"
                 />
               </div>
@@ -874,10 +861,12 @@ export const StaffManagement = () => {
                 <Input
                   type="number"
                   value={currentStaff?.staffRechargesCount || 0}
-                  onChange={(e) => setCurrentStaff({
-                    ...currentStaff || {},
-                    staffRechargesCount: Number(e.target.value)
-                  })}
+                  onChange={e =>
+                    setCurrentStaff({
+                      ...(currentStaff || {}),
+                      staffRechargesCount: Number(e.target.value),
+                    })
+                  }
                   placeholder="Enter Recharges count"
                 />
               </div>
@@ -888,10 +877,12 @@ export const StaffManagement = () => {
               <Input
                 type="text"
                 value={currentStaff?.staffPassword || ''}
-                onChange={(e) => setCurrentStaff({
-                  ...currentStaff || {},
-                  staffPassword: e.target.value
-                })}
+                onChange={e =>
+                  setCurrentStaff({
+                    ...(currentStaff || {}),
+                    staffPassword: e.target.value,
+                  })
+                }
                 placeholder="Enter staff password"
               />
             </div>
@@ -929,7 +920,8 @@ export const StaffManagement = () => {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete {currentStaff?.staffName}? This action cannot be undone.
+              Are you sure you want to delete {currentStaff?.staffName}? This action cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
 
@@ -945,9 +937,7 @@ export const StaffManagement = () => {
       <Dialog open={isStoreDialogOpen} onOpenChange={setIsStoreDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>
-              {currentStore?.id ? 'Edit Store' : 'Add New Store'}
-            </DialogTitle>
+            <DialogTitle>{currentStore?.id ? 'Edit Store' : 'Add New Store'}</DialogTitle>
             <DialogDescription>
               {currentStore?.id ? 'Update store details' : 'Create a new store location'}
             </DialogDescription>
@@ -959,10 +949,12 @@ export const StaffManagement = () => {
                 <Label>Store Name *</Label>
                 <Input
                   value={currentStore?.storeName || ''}
-                  onChange={(e) => setCurrentStore({
-                    ...currentStore,
-                    storeName: e.target.value
-                  })}
+                  onChange={e =>
+                    setCurrentStore({
+                      ...currentStore,
+                      storeName: e.target.value,
+                    })
+                  }
                   placeholder="Enter store name"
                 />
               </div>
@@ -971,10 +963,12 @@ export const StaffManagement = () => {
                 <Label>Location *</Label>
                 <Input
                   value={currentStore?.storeLocation || ''}
-                  onChange={(e) => setCurrentStore({
-                    ...currentStore,
-                    storeLocation: e.target.value
-                  })}
+                  onChange={e =>
+                    setCurrentStore({
+                      ...currentStore,
+                      storeLocation: e.target.value,
+                    })
+                  }
                   placeholder="Enter location"
                 />
               </div>
@@ -984,10 +978,12 @@ export const StaffManagement = () => {
               <Label>Address *</Label>
               <Input
                 value={currentStore?.storeAddress || ''}
-                onChange={(e) => setCurrentStore({
-                  ...currentStore,
-                  storeAddress: e.target.value
-                })}
+                onChange={e =>
+                  setCurrentStore({
+                    ...currentStore,
+                    storeAddress: e.target.value,
+                  })
+                }
                 placeholder="Enter full address"
               />
             </div>
@@ -997,11 +993,11 @@ export const StaffManagement = () => {
               <Input
                 type="tel"
                 value={currentStore?.storeContactNumber || ''}
-                onChange={(e) => {
+                onChange={e => {
                   const number = e.target.value.replace(/\D/g, '');
                   setCurrentStore({
                     ...currentStore,
-                    storeContactNumber: number
+                    storeContactNumber: number,
                   });
                   setContactNumberError('');
                 }}
@@ -1017,23 +1013,27 @@ export const StaffManagement = () => {
                 <Input
                   type="number"
                   value={currentStore?.storeCurrentBalance || 0}
-                  onChange={(e) => setCurrentStore({
-                    ...currentStore,
-                    storeCurrentBalance: Number(e.target.value)
-                  })}
+                  onChange={e =>
+                    setCurrentStore({
+                      ...currentStore,
+                      storeCurrentBalance: Number(e.target.value),
+                    })
+                  }
                   placeholder="Enter store current balance"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label>Admin Current Balance</Label>
                 <Input
                   type="number"
                   value={currentStore?.adminCurrentBalance || 0}
-                  onChange={(e) => setCurrentStore({
-                    ...currentStore,
-                    adminCurrentBalance: Number(e.target.value)
-                  })}
+                  onChange={e =>
+                    setCurrentStore({
+                      ...currentStore,
+                      adminCurrentBalance: Number(e.target.value),
+                    })
+                  }
                   placeholder="Enter admin current balance"
                 />
               </div>
@@ -1045,23 +1045,27 @@ export const StaffManagement = () => {
                 <Input
                   type="number"
                   value={currentStore?.storeSevaBalance || 0}
-                  onChange={(e) => setCurrentStore({
-                    ...currentStore,
-                    storeSevaBalance: Number(e.target.value)
-                  })}
+                  onChange={e =>
+                    setCurrentStore({
+                      ...currentStore,
+                      storeSevaBalance: Number(e.target.value),
+                    })
+                  }
                   placeholder="Enter store seva balance"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label>Admin Store Profit</Label>
                 <Input
                   type="number"
                   value={currentStore?.adminStoreProfit || 0}
-                  onChange={(e) => setCurrentStore({
-                    ...currentStore,
-                    adminStoreProfit: Number(e.target.value)
-                  })}
+                  onChange={e =>
+                    setCurrentStore({
+                      ...currentStore,
+                      adminStoreProfit: Number(e.target.value),
+                    })
+                  }
                   placeholder="Enter admin store profit"
                 />
               </div>
@@ -1077,10 +1081,12 @@ export const StaffManagement = () => {
                     min="0"
                     max="100"
                     value={currentStore?.referralCommission || 0}
-                    onChange={(e) => setCurrentStore({
-                      ...currentStore,
-                      referralCommission: Number(e.target.value)
-                    })}
+                    onChange={e =>
+                      setCurrentStore({
+                        ...currentStore,
+                        referralCommission: Number(e.target.value),
+                      })
+                    }
                   />
                 </div>
 
@@ -1091,10 +1097,12 @@ export const StaffManagement = () => {
                     min="0"
                     max="100"
                     value={currentStore?.surabhiCommission || 0}
-                    onChange={(e) => setCurrentStore({
-                      ...currentStore,
-                      surabhiCommission: Number(e.target.value)
-                    })}
+                    onChange={e =>
+                      setCurrentStore({
+                        ...currentStore,
+                        surabhiCommission: Number(e.target.value),
+                      })
+                    }
                   />
                 </div>
 
@@ -1105,10 +1113,12 @@ export const StaffManagement = () => {
                     min="0"
                     max="100"
                     value={currentStore?.cashOnlyCommission || 0}
-                    onChange={(e) => setCurrentStore({
-                      ...currentStore,
-                      cashOnlyCommission: Number(e.target.value)
-                    })}
+                    onChange={e =>
+                      setCurrentStore({
+                        ...currentStore,
+                        cashOnlyCommission: Number(e.target.value),
+                      })
+                    }
                   />
                 </div>
 
@@ -1119,10 +1129,12 @@ export const StaffManagement = () => {
                     min="0"
                     max="100"
                     value={currentStore?.sevaCommission || 0}
-                    onChange={(e) => setCurrentStore({
-                      ...currentStore,
-                      sevaCommission: Number(e.target.value)
-                    })}
+                    onChange={e =>
+                      setCurrentStore({
+                        ...currentStore,
+                        sevaCommission: Number(e.target.value),
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -1132,10 +1144,12 @@ export const StaffManagement = () => {
               <Label>Status *</Label>
               <Select
                 value={currentStore?.storeStatus || 'active'}
-                onValueChange={(value) => setCurrentStore({
-                  ...currentStore,
-                  storeStatus: value as 'active' | 'inactive'
-                })}
+                onValueChange={value =>
+                  setCurrentStore({
+                    ...currentStore,
+                    storeStatus: value as 'active' | 'inactive',
+                  })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select status" />
@@ -1162,7 +1176,8 @@ export const StaffManagement = () => {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete {currentStore?.storeName}? This action cannot be undone.
+              Are you sure you want to delete {currentStore?.storeName}? This action cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
 
@@ -1170,7 +1185,7 @@ export const StaffManagement = () => {
             <Button
               variant="destructive"
               onClick={async () => {
-                if (currentStore?.id && await handleDeleteStore(currentStore.id)) {
+                if (currentStore?.id && (await handleDeleteStore(currentStore.id))) {
                   const storesSnapshot = await getDocs(collection(db, 'stores'));
                   const updatedStores = storesSnapshot.docs.map(doc => ({
                     id: doc.id,
@@ -1188,7 +1203,7 @@ export const StaffManagement = () => {
                     adminCurrentBalance: Number(doc.data().adminCurrentBalance) || 0,
                     adminStoreProfit: Number(doc.data().adminStoreProfit) || 0,
                     storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
-                    storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date()
+                    storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date(),
                   })) as StoreType[];
                   setStores(updatedStores);
                   setIsDeleteStoreDialogOpen(false);

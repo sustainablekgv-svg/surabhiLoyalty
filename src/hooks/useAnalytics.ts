@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+
 import { logAnalyticsEvent } from '@/lib/firebase';
 
 /**
@@ -10,12 +11,15 @@ export const useAnalytics = () => {
    * @param buttonName Name of the button
    * @param additionalParams Additional parameters to track
    */
-  const trackButtonClick = useCallback((buttonName: string, additionalParams: Record<string, any> = {}) => {
-    logAnalyticsEvent('button_click', {
-      button_name: buttonName,
-      ...additionalParams
-    });
-  }, []);
+  const trackButtonClick = useCallback(
+    (buttonName: string, additionalParams: Record<string, any> = {}) => {
+      logAnalyticsEvent('button_click', {
+        button_name: buttonName,
+        ...additionalParams,
+      });
+    },
+    []
+  );
 
   /**
    * Track a form submission event
@@ -28,7 +32,7 @@ export const useAnalytics = () => {
       logAnalyticsEvent('form_submission', {
         form_name: formName,
         success,
-        ...additionalParams
+        ...additionalParams,
       });
     },
     []
@@ -43,7 +47,7 @@ export const useAnalytics = () => {
     (searchTerm: string, additionalParams: Record<string, any> = {}) => {
       logAnalyticsEvent('search', {
         search_term: searchTerm,
-        ...additionalParams
+        ...additionalParams,
       });
     },
     []
@@ -54,15 +58,12 @@ export const useAnalytics = () => {
    * @param method The login method used
    * @param additionalParams Additional parameters to track
    */
-  const trackLogin = useCallback(
-    (method: string, additionalParams: Record<string, any> = {}) => {
-      logAnalyticsEvent('login', {
-        method,
-        ...additionalParams
-      });
-    },
-    []
-  );
+  const trackLogin = useCallback((method: string, additionalParams: Record<string, any> = {}) => {
+    logAnalyticsEvent('login', {
+      method,
+      ...additionalParams,
+    });
+  }, []);
 
   /**
    * Track a feature usage event
@@ -73,7 +74,7 @@ export const useAnalytics = () => {
     (featureName: string, additionalParams: Record<string, any> = {}) => {
       logAnalyticsEvent('feature_use', {
         feature_name: featureName,
-        ...additionalParams
+        ...additionalParams,
       });
     },
     []
@@ -84,6 +85,6 @@ export const useAnalytics = () => {
     trackFormSubmission,
     trackSearch,
     trackLogin,
-    trackFeatureUsage
+    trackFeatureUsage,
   };
 };

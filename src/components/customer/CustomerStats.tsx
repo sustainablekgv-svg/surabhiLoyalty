@@ -1,20 +1,21 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { 
-  Wallet, 
-  Coins, 
-  Heart, 
-  TrendingUp, 
-  Gift,
-  Target,
-  Phone,
-  User
-} from 'lucide-react';
+import {
+  doc,
+  getDoc,
+  Timestamp,
+  collection,
+  query,
+  where,
+  orderBy,
+  limit,
+  getDocs,
+} from 'firebase/firestore';
+import { Wallet, Coins, Heart, TrendingUp, Gift, Target, Phone, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { doc, getDoc, Timestamp, collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/hooks/auth-context';
 import { db } from '@/lib/firebase';
 import { CustomerType, ActivityType } from '@/types/types';
-import { useAuth } from '@/hooks/auth-context';
 
 interface CustomerStatsProps {
   userId: string;
@@ -51,7 +52,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
             );
 
             const querySnapshot = await getDocs(activitiesQuery);
-            const activitiesData = querySnapshot.docs.map((doc) => ({
+            const activitiesData = querySnapshot.docs.map(doc => ({
               id: doc.id,
               ...doc.data(),
             })) as ActivityType[];
@@ -93,7 +94,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
         day: 'numeric',
       });
     }
-  
+
     if (createdAt instanceof Date) {
       return createdAt.toLocaleDateString('en-US', {
         year: 'numeric',
@@ -101,7 +102,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
         day: 'numeric',
       });
     }
-  
+
     if (typeof createdAt === 'string' || typeof createdAt === 'number') {
       return new Date(createdAt).toLocaleDateString('en-US', {
         year: 'numeric',
@@ -109,10 +110,10 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
         day: 'numeric',
       });
     }
-  
+
     return 'N/A';
   }
-  
+
   const memberSince = formatCreatedAt(customerData.createdAt);
 
   // Calculate referrals count
@@ -124,7 +125,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   };
 
@@ -157,7 +158,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       icon: Wallet,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
-      borderColor: 'border-purple-200'
+      borderColor: 'border-purple-200',
     },
     {
       title: 'Surabhi Coins',
@@ -166,7 +167,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       icon: Coins,
       color: 'text-amber-600',
       bgColor: 'bg-amber-50',
-      borderColor: 'border-amber-200'
+      borderColor: 'border-amber-200',
     },
     {
       title: 'Seva Contribution',
@@ -175,7 +176,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       icon: Heart,
       color: 'text-red-600',
       bgColor: 'bg-red-50',
-      borderColor: 'border-red-200'
+      borderColor: 'border-red-200',
     },
     {
       title: 'Total Referrals',
@@ -184,8 +185,8 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       icon: Gift,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
-      borderColor: 'border-green-200'
-    }
+      borderColor: 'border-green-200',
+    },
   ];
 
   return (
@@ -199,11 +200,13 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                 <User className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
               </div>
               <div>
-                <h2 className="text-lg sm:text-xl font-bold truncate max-w-[200px] sm:max-w-full">{customerData.customerName}</h2>
+                <h2 className="text-lg sm:text-xl font-bold truncate max-w-[200px] sm:max-w-full">
+                  {customerData.customerName}
+                </h2>
                 <p className="text-xs sm:text-sm text-gray-600">Member since {memberSince}</p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3 sm:gap-4 mt-3 sm:mt-0">
               <div className="bg-blue-100 p-2 sm:p-3 rounded-full">
                 <Phone className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
@@ -220,7 +223,10 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         {stats.map((stat, index) => (
-          <Card key={index} className={`shadow-lg border-0 ${stat.bgColor} ${stat.borderColor} hover:shadow-xl transition-shadow duration-200`}>
+          <Card
+            key={index}
+            className={`shadow-lg border-0 ${stat.bgColor} ${stat.borderColor} hover:shadow-xl transition-shadow duration-200`}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
               <CardTitle className="text-xs sm:text-sm font-medium text-gray-700">
                 {stat.title}
@@ -233,9 +239,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
               <div className={`text-lg sm:text-2xl font-bold ${stat.color} mb-0.5 sm:mb-1`}>
                 {stat.value}
               </div>
-              <p className="text-[10px] sm:text-xs text-gray-600">
-                {stat.description}
-              </p>
+              <p className="text-[10px] sm:text-xs text-gray-600">{stat.description}</p>
             </CardContent>
           </Card>
         ))}
@@ -253,33 +257,47 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
           <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6 pt-0">
             <div className="space-y-3 sm:space-y-4">
               {activities.length > 0 ? (
-                activities.map((activity) => (
-                  <div key={activity.id} className="flex items-center justify-between p-2 sm:p-3 bg-gray-50 rounded-lg">
+                activities.map(activity => (
+                  <div
+                    key={activity.id}
+                    className="flex items-center justify-between p-2 sm:p-3 bg-gray-50 rounded-lg"
+                  >
                     <div className="flex items-center gap-2 sm:gap-3">
                       <div className="bg-white p-1.5 sm:p-2 rounded-full border">
                         {getActivityIcon(activity.type)}
                       </div>
                       <div>
                         <p className="font-medium text-xs sm:text-sm truncate max-w-[120px] sm:max-w-full">
-                          {activity.type === 'recharge' ? 'Wallet Recharge' : 
-                           activity.type === 'sale' ? 'Purchase Made' :
-                           activity.type === 'referral' ? 'Referral Bonus' :
-                           activity.type === 'seva_contribution' ? 'Seva Contribution' :
-                           activity.type === 'seva_allocation' ? 'Seva Allocation' :
-                           activity.type === 'surabhi_earn' ? 'Surabhi Coins Earned' :
-                           'Account Activity'}
+                          {activity.type === 'recharge'
+                            ? 'Wallet Recharge'
+                            : activity.type === 'sale'
+                              ? 'Purchase Made'
+                              : activity.type === 'referral'
+                                ? 'Referral Bonus'
+                                : activity.type === 'seva_contribution'
+                                  ? 'Seva Contribution'
+                                  : activity.type === 'seva_allocation'
+                                    ? 'Seva Allocation'
+                                    : activity.type === 'surabhi_earn'
+                                      ? 'Surabhi Coins Earned'
+                                      : 'Account Activity'}
                         </p>
                         <p className="text-[10px] sm:text-xs text-gray-600 truncate max-w-[150px] sm:max-w-full">
-                          {activity.createdAt && formatActivityDate(activity.createdAt)} • {activity.storeLocation}
+                          {activity.createdAt && formatActivityDate(activity.createdAt)} •{' '}
+                          {activity.storeLocation}
                         </p>
                       </div>
                     </div>
                     {activity.amount && (
-                      <span className={`text-xs sm:text-sm font-bold ${
-                        activity.type === 'recharge' || activity.type === 'referral' || activity.type === 'surabhi_earn'
-                          ? 'text-green-600' 
-                          : 'text-blue-600'
-                      }`}>
+                      <span
+                        className={`text-xs sm:text-sm font-bold ${
+                          activity.type === 'recharge' ||
+                          activity.type === 'referral' ||
+                          activity.type === 'surabhi_earn'
+                            ? 'text-green-600'
+                            : 'text-blue-600'
+                        }`}
+                      >
                         {activity.remarks}
                       </span>
                     )}
@@ -311,10 +329,16 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                   <div className="bg-purple-100 p-1.5 sm:p-2 rounded-full">
                     <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-600" />
                   </div>
-                  <h3 className="font-medium text-sm sm:text-base text-purple-900">Recharge Wallet</h3>
+                  <h3 className="font-medium text-sm sm:text-base text-purple-900">
+                    Recharge Wallet
+                  </h3>
                 </div>
-                <p className="text-xs sm:text-sm text-purple-700 mb-1.5 sm:mb-2">Earn Surabhi Coins on every recharge</p>
-                <div className="text-[10px] sm:text-xs text-purple-600">Visit store to recharge</div>
+                <p className="text-xs sm:text-sm text-purple-700 mb-1.5 sm:mb-2">
+                  Earn Surabhi Coins on every recharge
+                </p>
+                <div className="text-[10px] sm:text-xs text-purple-600">
+                  Visit store to recharge
+                </div>
               </div>
 
               <div className="p-3 sm:p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-purple-200">
@@ -324,10 +348,12 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                   </div>
                   <h3 className="font-medium text-sm sm:text-base text-red-900">Amount Spent</h3>
                 </div>
-                <p className="text-xs sm:text-sm text-blue-700 mb-1.5 sm:mb-2">Earn Surabhi coins on amount spent during sales</p>
+                <p className="text-xs sm:text-sm text-blue-700 mb-1.5 sm:mb-2">
+                  Earn Surabhi coins on amount spent during sales
+                </p>
                 <div className="text-[10px] sm:text-xs text-blue-600">Shop at the Store</div>
               </div>
-              
+
               <div className="p-3 sm:p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
                 <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
                   <div className="bg-green-100 p-1.5 sm:p-2 rounded-full">
@@ -335,8 +361,12 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                   </div>
                   <h3 className="font-medium text-sm sm:text-base text-green-900">Refer Friends</h3>
                 </div>
-                <p className="text-xs sm:text-sm text-green-700 mb-1.5 sm:mb-2">Earn Referral coins on friend's purchases</p>
-                <div className="text-[10px] sm:text-xs text-green-600">Ask friends to use your number when signing up</div>
+                <p className="text-xs sm:text-sm text-green-700 mb-1.5 sm:mb-2">
+                  Earn Referral coins on friend's purchases
+                </p>
+                <div className="text-[10px] sm:text-xs text-green-600">
+                  Ask friends to use your number when signing up
+                </div>
               </div>
 
               <div className="p-3 sm:p-4 bg-gradient-to-r from-purple-50 to-amber-50 rounded-lg border border-purple-200">
@@ -344,9 +374,13 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                   <div className="bg-purple-100 p-1.5 sm:p-2 rounded-full">
                     <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-600" />
                   </div>
-                  <h3 className="font-medium text-sm sm:text-base text-purple-900">Seva Contribution</h3>
+                  <h3 className="font-medium text-sm sm:text-base text-purple-900">
+                    Seva Contribution
+                  </h3>
                 </div>
-                <p className="text-xs sm:text-sm text-purple-700 mb-1.5 sm:mb-2">Earn Seva Coins on every recharge and amount spent during sales</p>
+                <p className="text-xs sm:text-sm text-purple-700 mb-1.5 sm:mb-2">
+                  Earn Seva Coins on every recharge and amount spent during sales
+                </p>
                 <div className="text-[10px] sm:text-xs text-purple-600">Help the Community</div>
               </div>
             </div>

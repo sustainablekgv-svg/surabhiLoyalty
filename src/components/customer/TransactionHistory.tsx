@@ -1,11 +1,28 @@
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  getDocs,
+  Timestamp,
+  getDoc,
+  doc,
+  limit,
+  startAfter,
+} from 'firebase/firestore';
+import { Search } from 'lucide-react';
 import { useState, useEffect } from 'react';
+
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, ChevronLeft, ChevronRight, Download } from 'lucide-react';
-import { collection, query, where, orderBy, getDocs, Timestamp, getDoc, doc, limit, startAfter } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { useAuth } from '@/hooks/auth-context';
-import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -13,8 +30,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+} from '@/components/ui/table';
+import { useAuth } from '@/hooks/auth-context';
+import { db } from '@/lib/firebase';
 
 interface TransactionHistoryProps {
   userId: string;
@@ -46,9 +64,9 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
       }
 
       const mobileNumber = customerDoc.data().customerMobile;
-      
+
       let txQuery;
-      
+
       if (isInitial) {
         // Initial query
         txQuery = query(
@@ -65,7 +83,7 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
           setLoadingMore(false);
           return;
         }
-        
+
         txQuery = query(
           collection(db, 'CustomerTx'),
           where('customerMobile', '==', mobileNumber),
@@ -77,7 +95,7 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
       }
 
       const querySnapshot = await getDocs(txQuery);
-      
+
       // Check if we have more data to load
       if (querySnapshot.empty || querySnapshot.docs.length < recordsPerPage) {
         setHasMore(false);
@@ -88,7 +106,7 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
 
       const txData = querySnapshot.docs.map(doc => ({
         id: doc.id,
-        ...(doc.data() as CustomerTxType)
+        ...(doc.data() as CustomerTxType),
       })) as CustomerTxType[];
 
       if (isInitial) {
@@ -122,7 +140,7 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
       day: 'numeric',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   };
 
@@ -130,7 +148,7 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
-      minimumFractionDigits: 0
+      minimumFractionDigits: 0,
     }).format(amount);
   };
 
@@ -175,13 +193,13 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
                 <Input
                   placeholder="Search by location..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={e => setSearchTerm(e.target.value)}
                   className="pl-10"
                 />
               </div>
               <Select
                 value={recordsPerPage.toString()}
-                onValueChange={(value) => {
+                onValueChange={value => {
                   setRecordsPerPage(Number(value));
                   setLastVisible(null);
                   setHasMore(true);
@@ -191,7 +209,7 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
                   <SelectValue placeholder="Records" />
                 </SelectTrigger>
                 <SelectContent>
-                  {[10, 20, 50].map((size) => (
+                  {[10, 20, 50].map(size => (
                     <SelectItem key={size} value={size.toString()}>
                       {size} per page
                     </SelectItem>
@@ -218,27 +236,33 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
                   <TableHead className="text-right">Surabhi Balance</TableHead>
                   <TableHead className="text-right">Seva Credit</TableHead>
                   <TableHead className="text-right">Seva Debit</TableHead>
-                  <TableHead className="text-right">Seva Current</TableHead>
+                  {/* <TableHead className="text-right">Seva Current</TableHead> */}
                   <TableHead className="text-right">Seva Total</TableHead>
                   <TableHead>Remarks</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredTransactions.length > 0 ? (
-                  filteredTransactions.map((tx) => (
+                  filteredTransactions.map(tx => (
                     <TableRow key={tx.id}>
                       <TableCell>{tx.invoiceId || 'NA'}</TableCell>
                       <TableCell>{formatDate(tx.createdAt)}</TableCell>
                       <TableCell>{tx.storeLocation}</TableCell>
-                      <TableCell className="text-right">{tx.walletCredit ? formatCurrency(tx.walletCredit) : '-'}</TableCell>
-                      <TableCell className="text-right">{tx.walletDebit ? formatCurrency(tx.walletDebit) : '-'}</TableCell>
-                      <TableCell className="text-right font-medium">{formatCurrency(tx.walletBalance)}</TableCell>
+                      <TableCell className="text-right">
+                        {tx.walletCredit ? formatCurrency(tx.walletCredit) : '-'}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {tx.walletDebit ? formatCurrency(tx.walletDebit) : '-'}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(tx.walletBalance)}
+                      </TableCell>
                       <TableCell className="text-right">{tx.surabhiCredit || '-'}</TableCell>
                       <TableCell className="text-right">{tx.surabhiDebit || '-'}</TableCell>
                       <TableCell className="text-right font-medium">{tx.surabhiBalance}</TableCell>
                       <TableCell className="text-right">{tx.sevaCredit || '-'}</TableCell>
                       <TableCell className="text-right">{tx.sevaDebit || '-'}</TableCell>
-                      <TableCell className="text-right font-medium">{tx.sevaBalance}</TableCell>
+                      {/* <TableCell className="text-right font-medium">{tx.sevaBalance}</TableCell> */}
                       <TableCell className="text-right font-medium">{tx.sevaTotal}</TableCell>
                       <TableCell>{tx.remarks || '-'}</TableCell>
                     </TableRow>
@@ -258,8 +282,8 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
           {filteredTransactions.length > 0 && (
             <div className="flex justify-center mt-6">
               {hasMore ? (
-                <Button 
-                  onClick={handleLoadMore} 
+                <Button
+                  onClick={handleLoadMore}
                   disabled={loadingMore}
                   variant="outline"
                   className="w-full max-w-xs"
@@ -278,10 +302,11 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
               )}
             </div>
           )}
-          
+
           {/* Transaction Count */}
           <div className="mt-4 text-sm text-gray-500 text-center">
-            Showing {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''}
+            Showing {filteredTransactions.length} transaction
+            {filteredTransactions.length !== 1 ? 's' : ''}
           </div>
         </CardContent>
       </Card>

@@ -1,16 +1,16 @@
-import { createContext, useContext, useMemo, useState, useEffect, useCallback } from 'react';
-import { auth } from '@/lib/firebase';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { 
-  User, 
-  getCustomerByMobile, 
-  getStaffByMobile, 
+import { createContext, useContext, useMemo, useState, useEffect, useCallback } from 'react';
+
+import {
+  User,
+  getCustomerByMobile,
+  getStaffByMobile,
   verifyUserExists,
-  signInWithFirebase 
+  signInWithFirebase,
 } from '@/lib/authService';
-import { storageUtils } from '@/lib/storage';
+import { auth } from '@/lib/firebase';
 import { sessionManager } from '@/lib/sessionManager';
-import { StaffType } from '@/types/types';
+import { storageUtils } from '@/lib/storage';
 
 interface AuthContextType {
   user: User | null;
@@ -32,9 +32,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const initializeAuth = useCallback(async () => {
     try {
       setIsLoading(true);
-      
+
       const storedUser = storageUtils.getUser();
-      
+
       if (!storedUser) {
         setIsInitialized(true);
         setIsLoading(false);
@@ -52,7 +52,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Verify user still exists in database
       const userExists = await verifyUserExists(storedUser);
-      
+
       if (userExists) {
         setUser(storedUser);
         sessionManager.updateActivity();
@@ -74,7 +74,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const initAuth = async () => {
       try {
-        unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        unsubscribe = onAuthStateChanged(auth, async firebaseUser => {
           if (!isInitialized) {
             await initializeAuth();
           }
@@ -109,7 +109,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsLoading(true);
     try {
       let userData: User | null = null;
-      
+
       // Authenticate based on role
       if (role === 'customer') {
         userData = await getCustomerByMobile(mobile, password);
@@ -119,11 +119,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } else {
         throw new Error('Invalid role specified');
       }
-      
+
       if (!userData) {
         throw new Error('Invalid credentials');
       }
-      
+
       // Try to sign in with Firebase if email exists
       if (userData.email) {
         try {
@@ -132,12 +132,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.warn('Firebase auth failed, continuing with custom auth');
         }
       }
-      
+
       // Set user state and storage
       setUser(userData);
       storageUtils.setUser(userData);
       sessionManager.updateActivity();
-      
+
       return userData;
     } catch (error) {
       console.error('Login error:', error);
@@ -165,7 +165,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     // Set up activity listeners
     const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
-    
+
     events.forEach(event => {
       window.addEventListener(event, updateActivity, { passive: true });
     });
@@ -177,25 +177,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, [updateActivity]);
 
-  const value = useMemo(() => ({
-    user,
-    login,
-    logout,
-    isLoading,
-    isAuthenticated: !!user,
-    isInitialized
-  }), [user, isLoading, isInitialized]);
-
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({
+      user,
+      login,
+      logout,
+      isLoading,
+      isAuthenticated: !!user,
+      isInitialized,
+    }),
+    [user, isLoading, isInitialized]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  console.log("The line 190 is",  context)
+  console.log('The line 190 is', context);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
