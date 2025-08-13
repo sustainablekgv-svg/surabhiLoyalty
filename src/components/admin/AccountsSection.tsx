@@ -588,10 +588,10 @@ const Accounts = () => {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <span className={tx.amount >= 0 ? 'text-green-600' : 'text-red-600'}>
-                          {tx.amount >= 0 ? '+' : ''}
+                        {/* <span className={tx.amount >= 0 ? 'text-green-600' : 'text-red-600'}>
+                          {tx.amount >= 0 ? '+' : ''} */}
                           ₹{Math.abs(tx.amount).toFixed(2)}
-                        </span>
+                        {/* </span> */}
                       </TableCell>
                        <TableCell className="text-right">
                         <span className={tx.debit >= 0 ? 'text-red-600' : 'text-green-600'}>

@@ -399,8 +399,12 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       };
       await addDoc(collection(db, 'CustomerTx'), customerTxData);
 
-      // Handle Referrer Income 
-      if (selectedCustomer.referredBy && saleCalculation.referrerSurabhiCoinsEarned > 0) {
+      // Handle Referrer Income for non-cash/non-mixed payments
+      // For cash/mixed payments, referrer income is handled in a separate block below
+      if (selectedCustomer.referredBy && 
+          saleCalculation.referrerSurabhiCoinsEarned > 0 && 
+          paymentMethod !== 'cash' && 
+          paymentMethod !== 'mixed') {
         try {
           // Find referrer's document
           const customersCollection = collection(db, 'Customers');
@@ -440,47 +444,47 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             });
             
             // Add CustomerTx record for the referral Surabhi Coins earned by referrer
-            const referrerTxData: CustomerTxType = {
-              type: 'referral',
-              customerMobile: referrerData.customerMobile,
-              customerName: referrerData.customerName,
-              storeLocation: selectedCustomer.storeLocation,
-              storeName: selectedCustomer.storeLocation,
-              createdAt: Timestamp.fromDate(new Date()),
-              remarks: `Referral bonus of ₹${incrementAmount} for referring ${selectedCustomer.customerName}`,
-              processedBy: user.name,
-              invoiceId: txInvoiceId,
-              amount: 0,
-              surabhiEarned: incrementAmount,
-              sevaEarned: 0,
-              referralEarned: 0,
-              referredBy: '',
-              surabhiUsed: 0,
-              walletDeduction: 0,
-              cashPayment: 0,
-              adminProft: 0,
-              previousBalance: {
-                walletBalance: referrerData.walletBalance,
-                surabhiBalance: referrerData.surabhiBalance
-              },
-              newBalance: {
-                walletBalance: referrerData.walletBalance,
-                surabhiBalance: referrerData.surabhiBalance + incrementAmount
-              },
-              paymentMethod: paymentMethod,
-              walletCredit: 0,
-              walletDebit: 0,
-              walletBalance: referrerData.walletBalance,
-              surabhiDebit: 0,
-              surabhiCredit: incrementAmount,
-              surabhiBalance: referrerData.surabhiBalance + incrementAmount,
-              sevaCredit: 0,
-              sevaDebit: 0,
-              sevaBalance: referrerData.sevaBalanceCurrentMonth || 0,
-              sevaTotal: referrerData.sevaTotal || 0,
-            };
+            // const referrerTxData: CustomerTxType = {
+            //   type: 'referral',
+            //   customerMobile: referrerData.customerMobile,
+            //   customerName: referrerData.customerName,
+            //   storeLocation: selectedCustomer.storeLocation,
+            //   storeName: selectedCustomer.storeLocation,
+            //   createdAt: Timestamp.fromDate(new Date()),
+            //   remarks: `Referral bonus of ₹${incrementAmount} for referring ${selectedCustomer.customerName}`,
+            //   processedBy: user.name,
+            //   invoiceId: txInvoiceId,
+            //   amount: 0,
+            //   surabhiEarned: incrementAmount,
+            //   sevaEarned: 0,
+            //   referralEarned: 0,
+            //   referredBy: '',
+            //   surabhiUsed: 0,
+            //   walletDeduction: 0,
+            //   cashPayment: 0,
+            //   adminProft: 0,
+            //   previousBalance: {
+            //     walletBalance: referrerData.walletBalance,
+            //     surabhiBalance: referrerData.surabhiBalance
+            //   },
+            //   newBalance: {
+            //     walletBalance: referrerData.walletBalance,
+            //     surabhiBalance: referrerData.surabhiBalance + incrementAmount
+            //   },
+            //   paymentMethod: paymentMethod,
+            //   walletCredit: 0,
+            //   walletDebit: 0,
+            //   walletBalance: referrerData.walletBalance,
+            //   surabhiDebit: 0,
+            //   surabhiCredit: incrementAmount,
+            //   surabhiBalance: referrerData.surabhiBalance + incrementAmount,
+            //   sevaCredit: 0,
+            //   sevaDebit: 0,
+            //   sevaBalance: referrerData.sevaBalanceCurrentMonth || 0,
+            //   sevaTotal: referrerData.sevaTotal || 0,
+            // };
             
-            await addDoc(collection(db, 'CustomerTx'), referrerTxData);
+            // await addDoc(collection(db, 'CustomerTx'), referrerTxData);
           } else {
             console.warn(`Referrer with mobile ${selectedCustomer.referredBy} not found`);
           }
@@ -869,9 +873,10 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     if (
       (paymentMethod === 'cash' || paymentMethod === 'mixed') &&
       selectedCustomer.referredBy && 
-      saleCalculation.referrerSurabhiCoinsEarned > 0 &&
+      saleCalculation.referrerSurabhiCoinsEarned > 0
+      //  &&
       // Only process if not already processed for wallet payment
-!(paymentMethod === 'mixed' && saleCalculation?.walletDeduction > 0)
+// !(paymentMethod === 'mixed' && saleCalculation?.walletDeduction > 0)
     ) {
       try {
         // Find referrer's document
@@ -900,12 +905,28 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             invoiceId: txInvoiceId, // Add unique invoice ID
             remarks: `Referral bonus for referring ${selectedCustomer.customerName}`,
             amount: 0,
+            surabhiEarned: referralAmount,
+            sevaEarned: 0,
+            referralEarned: referralAmount,
+            referredBy: '',
+            surabhiUsed: 0,
+            walletDeduction: 0,
+            cashPayment: 0,
+            adminProft: 0,
+            previousBalance: {
+              walletBalance: referrer.walletBalance,
+              surabhiBalance: referrer.surabhiBalance
+            },
+            newBalance: {
+              walletBalance: referrer.walletBalance,
+              surabhiBalance: referrer.surabhiBalance + referralAmount
+            },
+            paymentMethod: paymentMethod,
             walletCredit: 0,
             walletDebit: 0,
             walletBalance: referrer.walletBalance,
             surabhiDebit: 0,
             surabhiCredit: referralAmount,
-            surabhiEarned: referralAmount,
             surabhiBalance: referrer.surabhiBalance + referralAmount,
             sevaCredit: 0,
             sevaDebit: 0,
