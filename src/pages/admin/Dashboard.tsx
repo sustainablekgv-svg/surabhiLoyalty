@@ -1,5 +1,5 @@
-import { Users, Heart, TrendingUp, UserPlus, DollarSign, ShoppingCart } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { DollarSign, Heart, ShoppingCart, TrendingUp, UserPlus, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -93,76 +93,63 @@ const AdminDashboard = () => {
           </p>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 lg:grid-cols-6 mb-4 sm:mb-8">
-            <TabsTrigger
-              value="overview"
-              className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3"
-            >
-              <TrendingUp className="h-4 w-4" />
-              <span className="text-[10px] sm:text-xs">Overview</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="staff"
-              className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3"
-            >
-              <UserPlus className="h-4 w-4" />
-              <span className="text-[10px] sm:text-xs">Staff</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="users"
-              className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3"
-            >
-              <Users className="h-4 w-4" />
-              <span className="text-[10px] sm:text-xs">Users</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="sales"
-              className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3"
-            >
-              <ShoppingCart className="h-4 w-4" />
-              <span className="text-[10px] sm:text-xs">Sales</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="accounts"
-              className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3"
-            >
-              <DollarSign className="h-4 w-4" />
-              <span className="text-[10px] sm:text-xs">Accounts</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="goseva"
-              className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 py-2 sm:py-3"
-            >
-              <Heart className="h-4 w-4" />
-              <span className="text-[10px] sm:text-xs">Seva</span>
-            </TabsTrigger>
-          </TabsList>
+        <div className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            {/* Tabs Navigation */}
+            <div className="mb-4 sm:mb-8">
+              <TabsList className="grid w-full grid-cols-2 xs:grid-cols-3 sm:grid-cols-6 lg:grid-cols-6 gap-1 bg-gray-100 p-1 rounded-lg">
+                {[
+                  { value: 'overview', icon: TrendingUp, label: 'Overview' },
+                  { value: 'staff', icon: UserPlus, label: 'Staff' },
+                  { value: 'users', icon: Users, label: 'Users' },
+                  { value: 'sales', icon: ShoppingCart, label: 'Sales' },
+                  { value: 'accounts', icon: DollarSign, label: 'Accounts' },
+                  { value: 'goseva', icon: Heart, label: 'Seva' },
+                ].map(tab => (
+                  <TabsTrigger
+                    key={tab.value}
+                    value={tab.value}
+                    className={`flex flex-col items-center gap-0.5 xs:gap-1 py-1 xs:py-1.5 sm:py-2 px-0.5 xs:px-1 sm:px-2 rounded-md transition-all ${
+                      activeTab === tab.value
+                        ? 'bg-white shadow-sm text-purple-600 font-medium'
+                        : 'text-gray-600 hover:text-purple-500'
+                    }`}
+                  >
+                    <tab.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="text-[10px] xs:text-xs sm:text-sm">{tab.label}</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
 
-          <TabsContent value="overview" className="space-y-6">
-            <AdminStats />
-          </TabsContent>
+            {/* Tab Content */}
+            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mt-4">
+              <TabsContent value="overview" className="space-y-6">
+                <AdminStats />
+              </TabsContent>
 
-          <TabsContent value="staff">
-            <StaffManagement />
-          </TabsContent>
+              <TabsContent value="staff">
+                <StaffManagement />
+              </TabsContent>
 
-          <TabsContent value="users">
-            <CustomerManagement />
-          </TabsContent>
+              <TabsContent value="users">
+                <CustomerManagement />
+              </TabsContent>
 
-          <TabsContent value="sales">
-            <SalesManagement />
-          </TabsContent>
+              <TabsContent value="sales">
+                <SalesManagement />
+              </TabsContent>
 
-          <TabsContent value="accounts">
-            <Accounts />
-          </TabsContent>
+              <TabsContent value="accounts">
+                <Accounts />
+              </TabsContent>
 
-          <TabsContent value="goseva">
-            <GoSevaPool />
-          </TabsContent>
-        </Tabs>
+              <TabsContent value="goseva">
+                <GoSevaPool />
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
       </div>
     </div>
   );

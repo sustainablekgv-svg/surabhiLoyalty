@@ -298,9 +298,13 @@ const Accounts = () => {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <p className="text-red-500">{error}</p>
-        <Button variant="outline" onClick={handleRefresh}>
+      <div className="flex flex-col items-center justify-center h-64 gap-3 xs:gap-4">
+        <p className="text-red-500 text-xs xs:text-sm sm:text-base">{error}</p>
+        <Button
+          variant="outline"
+          onClick={handleRefresh}
+          className="h-8 xs:h-9 sm:h-10 text-xs xs:text-sm"
+        >
           Retry
         </Button>
       </div>
@@ -310,45 +314,58 @@ const Accounts = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+      <div className="flex flex-col xs:flex-row gap-2 xs:gap-3 sm:gap-4 justify-between items-start xs:items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Accounts Dashboard</h2>
-          <p className="text-gray-600">Store balances and transaction history</p>
+          <h2 className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900">
+            Accounts Dashboard
+          </h2>
+          <p className="text-xs xs:text-sm text-gray-600">Store balances and transaction history</p>
         </div>
-        <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+        <Button
+          variant="outline"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="h-8 xs:h-9 sm:h-10 text-xs xs:text-sm"
+        >
           {refreshing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4 animate-spin" />
           ) : (
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
           )}
-          <span className="ml-2">Refresh</span>
+          <span className="ml-1 xs:ml-1.5 sm:ml-2">Refresh</span>
         </Button>
       </div>
 
       {/* Store Balances */}
       <Card>
-        <CardHeader>
-          <CardTitle>Store Balances</CardTitle>
+        <CardHeader className="pb-2 xs:pb-4 sm:pb-6">
+          <CardTitle className="text-base xs:text-lg sm:text-xl">Store Balances</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 xs:gap-3 sm:gap-4">
             {stores.map(store => (
               <Card key={store.id} className="relative">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">{store.storeName}</CardTitle>
-                  <CardDescription>{store.storeLocation}</CardDescription>
-                  <CardDescription>Admin Profit:</CardDescription>
+                <CardHeader className="pb-1 xs:pb-1.5 sm:pb-2">
+                  <CardTitle className="text-sm xs:text-base sm:text-lg">
+                    {store.storeName}
+                  </CardTitle>
+                  <CardDescription className="text-xs xs:text-sm">
+                    {store.storeLocation}
+                  </CardDescription>
+                  <CardDescription className="text-xs xs:text-sm">Admin Profit:</CardDescription>
                   <div
-                    className={`text-2xl font-bold ${(store.adminStoreProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                    className={`text-base xs:text-xl sm:text-2xl font-bold ${(store.adminStoreProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}
                   >
                     {(store.adminStoreProfit || 0) >= 0 ? '+' : ''}₹
                     {(store.adminStoreProfit || 0).toFixed(2)}
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <CardDescription>Admin Current Balance:</CardDescription>
+                  <CardDescription className="text-xs xs:text-sm">
+                    Admin Current Balance:
+                  </CardDescription>
                   <div
-                    className={`text-2xl font-bold ${(store.adminCurrentBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                    className={`text-base xs:text-xl sm:text-2xl font-bold ${(store.adminCurrentBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}
                   >
                     {(store.adminCurrentBalance || 0) >= 0 ? '+' : ''}₹
                     {(store.adminCurrentBalance || 0).toFixed(2)}
@@ -356,10 +373,10 @@ const Accounts = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="mt-2"
+                    className="mt-1 xs:mt-1.5 sm:mt-2 h-7 xs:h-8 sm:h-9 text-xs xs:text-sm"
                     onClick={() => openSettlementDialog(store)}
                   >
-                    <Edit className="h-4 w-4 mr-2" />
+                    <Edit className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4 mr-1 xs:mr-1.5 sm:mr-2" />
                     Adjust Balance
                   </Button>
                 </CardContent>
@@ -371,48 +388,54 @@ const Accounts = () => {
 
       {/* Settlement Dialog */}
       <Dialog open={isSettlementDialogOpen} onOpenChange={setIsSettlementDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Balance Adjustment</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="max-w-[90vw] xs:max-w-[85vw] sm:max-w-[500px] p-3 xs:p-4 sm:p-6">
+          <DialogHeader className="pb-2 xs:pb-3 sm:pb-4">
+            <DialogTitle className="text-base xs:text-lg sm:text-xl">
+              Balance Adjustment
+            </DialogTitle>
+            <DialogDescription className="text-xs xs:text-sm">
               Transfer funds between {selectedStoreForSettlement?.storeName} and Admin account
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="space-y-2 xs:space-y-3 sm:space-y-4">
+            <div className="grid grid-cols-2 gap-2 xs:gap-3 sm:gap-4 mb-2 xs:mb-3 sm:mb-4">
               <div>
-                <Label>Store Current Balance</Label>
-                <div className="text-lg font-semibold">
+                <Label className="text-xs xs:text-sm">Store Current Balance</Label>
+                <div className="text-sm xs:text-base sm:text-lg font-semibold">
                   ₹{selectedStoreForSettlement?.storeCurrentBalance?.toFixed(2) || '0.00'}
                 </div>
               </div>
               <div>
-                <Label>Admin Current Balance</Label>
-                <div className="text-lg font-semibold">
+                <Label className="text-xs xs:text-sm">Admin Current Balance</Label>
+                <div className="text-sm xs:text-base sm:text-lg font-semibold">
                   ₹{selectedStoreForSettlement?.adminCurrentBalance?.toFixed(2) || '0.00'}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="flex-1">
-                <Label htmlFor="amount">Transfer Amount</Label>
+            <div className="flex flex-col xs:flex-row items-start xs:items-center gap-2">
+              <div className="flex-1 w-full xs:w-auto">
+                <Label htmlFor="amount" className="text-xs xs:text-sm">
+                  Transfer Amount
+                </Label>
                 <Input
                   id="amount"
                   type="number"
                   value={settlementAmount}
                   onChange={e => setSettlementAmount(Number(e.target.value))}
                   placeholder="Enter amount"
+                  className="h-8 xs:h-9 sm:h-10 text-xs xs:text-sm"
                 />
               </div>
-              <div className="flex flex-col gap-1 pt-1">
+              <div className="flex flex-row xs:flex-col gap-1 pt-0 xs:pt-1 w-full xs:w-auto">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setSettlementAmount(Math.abs(settlementAmount))}
                   title="Transfer from store to admin"
+                  className="h-7 xs:h-8 sm:h-9 text-[10px] xs:text-xs sm:text-sm flex-1 xs:flex-auto"
                 >
-                  <ArrowUp className="h-4 w-4 mr-1" />
+                  <ArrowUp className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4 mr-0.5 xs:mr-1" />
                   Store to Admin
                 </Button>
                 <Button
@@ -420,20 +443,24 @@ const Accounts = () => {
                   size="sm"
                   onClick={() => setSettlementAmount(-Math.abs(settlementAmount))}
                   title="Transfer from admin to store"
+                  className="h-7 xs:h-8 sm:h-9 text-[10px] xs:text-xs sm:text-sm flex-1 xs:flex-auto"
                 >
-                  <ArrowDown className="h-4 w-4 mr-1" />
+                  <ArrowDown className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4 mr-0.5 xs:mr-1" />
                   Admin to Store
                 </Button>
               </div>
             </div>
 
             <div>
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description" className="text-xs xs:text-sm">
+                Description
+              </Label>
               <Input
                 id="description"
                 value={settlementDescription}
                 onChange={e => setSettlementDescription(e.target.value)}
                 placeholder="Reason for adjustment"
+                className="h-8 xs:h-9 sm:h-10 text-xs xs:text-sm"
               />
             </div>
 
@@ -511,17 +538,17 @@ const Accounts = () => {
       {/* Accounts History */}
       <Card>
         <CardHeader>
-          <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
+          <div className="flex flex-col lg:flex-row gap-2 xs:gap-3 sm:gap-4 justify-between items-start lg:items-center">
             <div>
-              <CardTitle>Transaction History</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-base xs:text-lg sm:text-xl">Transaction History</CardTitle>
+              <CardDescription className="text-xs xs:text-sm">
                 Showing {paginatedTransactions.length} of {filteredTransactions.length} transactions
               </CardDescription>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <div className="flex flex-col xs:flex-row gap-2 xs:gap-3 w-full lg:w-auto">
+              <div className="relative w-full xs:w-auto">
+                <Search className="absolute left-2 xs:left-3 top-2 xs:top-2.5 sm:top-3 h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4 text-gray-400" />
                 <Input
                   placeholder="Search transactions..."
                   value={searchTerm}
@@ -529,7 +556,7 @@ const Accounts = () => {
                     setSearchTerm(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="pl-10 w-full sm:w-64"
+                  className="pl-7 xs:pl-9 sm:pl-10 w-full xs:w-48 sm:w-64 h-8 xs:h-9 sm:h-10 text-xs xs:text-sm"
                 />
               </div>
 
@@ -539,7 +566,7 @@ const Accounts = () => {
                   setSelectedStore(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+                className="border rounded-md px-2 xs:px-2.5 sm:px-3 py-1.5 xs:py-2 text-xs xs:text-sm h-8 xs:h-9 sm:h-10 focus:outline-none focus:ring-2 focus:ring-gray-400 w-full xs:w-auto"
               >
                 <option value="all">All Stores</option>
                 {stores.map(store => (
@@ -555,7 +582,7 @@ const Accounts = () => {
                   setItemsPerPage(Number(e.target.value));
                   setCurrentPage(1);
                 }}
-                className="border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+                className="border rounded-md px-2 xs:px-2.5 sm:px-3 py-1.5 xs:py-2 text-xs xs:text-sm h-8 xs:h-9 sm:h-10 focus:outline-none focus:ring-2 focus:ring-gray-400 w-full xs:w-auto"
               >
                 {ITEMS_PER_PAGE_OPTIONS.map(option => (
                   <option key={option} value={option}>
@@ -569,9 +596,9 @@ const Accounts = () => {
 
         <CardContent>
           {filteredTransactions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-500">
-              <Search className="h-8 w-8" />
-              <p>No transactions found</p>
+            <div className="flex flex-col items-center justify-center py-6 xs:py-8 sm:py-12 gap-1 xs:gap-2 text-gray-500">
+              <Search className="h-6 xs:h-7 sm:h-8 w-6 xs:w-7 sm:w-8" />
+              <p className="text-xs xs:text-sm sm:text-base">No transactions found</p>
               {(searchTerm || selectedStore !== 'all') && (
                 <Button
                   variant="ghost"
@@ -579,6 +606,7 @@ const Accounts = () => {
                     setSearchTerm('');
                     setSelectedStore('all');
                   }}
+                  className="h-7 xs:h-8 sm:h-9 text-xs xs:text-sm mt-1 xs:mt-2"
                 >
                   Clear filters
                 </Button>
@@ -589,15 +617,29 @@ const Accounts = () => {
               <Table className="min-w-full border-separate border-spacing-0 overflow-hidden">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="hidden md:table-cell">Date</TableHead>
-                    <TableHead>Store</TableHead>
-                    <TableHead className="hidden md:table-cell">Customer</TableHead>
-                    <TableHead className="hidden md:table-cell">Mobile</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead className="text-right">Credit</TableHead>
-                    <TableHead className="text-right">Debit</TableHead>
-                    <TableHead className="hidden lg:table-cell text-right">Admin Cut</TableHead>
+                    <TableHead className="hidden md:table-cell text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                      Date
+                    </TableHead>
+                    <TableHead className="text-xs xs:text-sm py-2 xs:py-3 sm:py-4">Store</TableHead>
+                    <TableHead className="hidden md:table-cell text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                      Customer
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                      Mobile
+                    </TableHead>
+                    <TableHead className="text-xs xs:text-sm py-2 xs:py-3 sm:py-4">Type</TableHead>
+                    <TableHead className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                      Amount
+                    </TableHead>
+                    <TableHead className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                      Credit
+                    </TableHead>
+                    <TableHead className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                      Debit
+                    </TableHead>
+                    <TableHead className="hidden lg:table-cell text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                      Admin Cut
+                    </TableHead>
                     <TableHead className="hidden xl:table-cell text-right">Admin Profit</TableHead>
                     <TableHead className="text-right">Store Balance</TableHead>
                     <TableHead className="text-right">Admin Balance</TableHead>
@@ -607,18 +649,22 @@ const Accounts = () => {
                 <TableBody>
                   {paginatedTransactions.map(tx => (
                     <TableRow key={tx.id} className="group hover:bg-gray-50">
-                      <TableCell className="hidden md:table-cell whitespace-nowrap">
+                      <TableCell className="hidden md:table-cell whitespace-nowrap text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
                         {formatTradeTimestamp(tx.createdAt)}
                       </TableCell>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
                         <div>{tx.storeName}</div>
                         <div className="md:hidden text-xs text-gray-500">
                           {formatTradeTimestamp(tx.createdAt)}
                         </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">{tx.customerName}</TableCell>
-                      <TableCell className="hidden md:table-cell">{tx.customerMobile}</TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                        {tx.customerName}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                        {tx.customerMobile}
+                      </TableCell>
+                      <TableCell className="py-2 xs:py-3 sm:py-4">
                         <Badge
                           variant={
                             tx.type === 'recharge'
@@ -627,41 +673,42 @@ const Accounts = () => {
                                 ? 'secondary'
                                 : 'outline'
                           }
+                          className="text-[10px] xs:text-xs px-1 xs:px-2 py-0.5"
                         >
                           {tx.type}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
                         {/* <span className={tx.amount >= 0 ? 'text-green-600' : 'text-red-600'}>
                           {tx.amount >= 0 ? '+' : ''} */}
                         ₹{Math.abs(tx.amount).toFixed(2)}
                         {/* </span> */}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
                         <span className={tx.debit >= 0 ? 'text-red-600' : 'text-green-600'}>
                           {tx.debit >= 0 ? '' : '+'}₹{Math.abs(tx.debit).toFixed(2)}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
                         <span className={tx.credit >= 0 ? 'text-green-600' : 'text-red-600'}>
                           {tx.credit >= 0 ? '+' : ''}₹{Math.abs(tx.credit).toFixed(2)}
                         </span>
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell text-right">
+                      <TableCell className="hidden lg:table-cell text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
                         {tx.adminCut > 0 ? `₹${tx.adminCut.toFixed(2)}` : '-'}
                       </TableCell>
-                      <TableCell className="hidden xl:table-cell text-right">
+                      <TableCell className="hidden xl:table-cell text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
                         {Number(tx.adminProfit) && tx.adminProfit > 0
                           ? `₹${tx.adminProfit.toFixed(2)}`
                           : '-'}
                       </TableCell>
-                      <TableCell className="text-right font-medium">
+                      <TableCell className="text-right font-medium text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
                         ₹{tx?.currentBalance?.toFixed(2) || '0.00'}
                       </TableCell>
-                      <TableCell className="text-right font-medium">
+                      <TableCell className="text-right font-medium text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
                         ₹{tx?.adminCurrentBalance?.toFixed(2) || '0.00'}
                       </TableCell>
-                      <TableCell className="hidden md:table-cell max-w-xs truncate">
+                      <TableCell className="hidden md:table-cell max-w-xs truncate text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
                         {tx.remarks}
                       </TableCell>
                     </TableRow>
@@ -670,18 +717,19 @@ const Accounts = () => {
               </Table>
 
               {/* Pagination Controls */}
-              <div className="flex items-center justify-between mt-4">
-                <div className="text-sm text-gray-600">
+              <div className="flex flex-col xs:flex-row items-center justify-between mt-2 xs:mt-3 sm:mt-4 gap-2 xs:gap-0">
+                <div className="text-xs xs:text-sm text-gray-600 order-2 xs:order-1">
                   Page {currentPage} of {totalPages}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-1 xs:gap-1.5 sm:gap-2 order-1 xs:order-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
+                    className="h-7 xs:h-8 sm:h-9 text-xs xs:text-sm"
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4 mr-1" />
                     Previous
                   </Button>
                   <Button
@@ -689,9 +737,10 @@ const Accounts = () => {
                     size="sm"
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
+                    className="h-7 xs:h-8 sm:h-9 text-xs xs:text-sm"
                   >
                     Next
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4 ml-1" />
                   </Button>
                 </div>
               </div>

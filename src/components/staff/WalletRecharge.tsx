@@ -802,26 +802,34 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="bg-green-100 p-3 rounded-full">
-          <Wallet className="h-6 w-6 text-green-600" />
+    <div className="space-y-4 xs:space-y-6">
+      <div className="flex items-center gap-2 xs:gap-3 mb-4 xs:mb-6 p-2 xs:p-0">
+        <div className="bg-green-100 p-2 xs:p-3 rounded-full">
+          <Wallet className="h-5 w-5 xs:h-6 xs:w-6 text-green-600" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Wallet Recharge</h2>
-          <p className="text-gray-600">Recharge customer wallets at {storeLocation}</p>
+          <h2 className="text-xl xs:text-2xl font-bold text-gray-900">Wallet Recharge</h2>
+          <p className="text-sm xs:text-base text-gray-600">
+            Recharge customer wallets at {storeLocation}
+          </p>
           {storeDetails && (
-            <div className="flex gap-4 mt-2 text-sm">
-              <Badge variant="outline" className="border-green-200 text-red-800">
+            <div className="flex flex-wrap gap-2 xs:gap-4 mt-2 text-xs xs:text-sm">
+              <Badge variant="outline" className="border-green-200 text-red-800 text-xs xs:text-sm">
                 Surabhi: {storeDetails.surabhiCommission}%
               </Badge>
-              <Badge variant="outline" className="border-blue-200 text-blue-800">
+              <Badge variant="outline" className="border-blue-200 text-blue-800 text-xs xs:text-sm">
                 Referral: {storeDetails.referralCommission}%
               </Badge>
-              <Badge variant="outline" className="border-blue-200 text-green-800">
+              <Badge
+                variant="outline"
+                className="border-blue-200 text-green-800 text-xs xs:text-sm"
+              >
                 Cash Only: {storeDetails.cashOnlyCommission}%
               </Badge>
-              <Badge variant="outline" className="border-blue-200 text-purple-800">
+              <Badge
+                variant="outline"
+                className="border-blue-200 text-purple-800 text-xs xs:text-sm"
+              >
                 Seva: {storeDetails.sevaCommission}%
               </Badge>
             </div>
@@ -829,32 +837,34 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 xs:gap-6 md:gap-8">
         {/* Customer Selection */}
         <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Search className="h-5 w-5 text-blue-600" />
+          <CardHeader className="px-3 py-4 xs:p-6">
+            <CardTitle className="flex items-center gap-1 xs:gap-2 text-base xs:text-lg">
+              <Search className="h-4 w-4 xs:h-5 xs:w-5 text-blue-600" />
               Select Customer
             </CardTitle>
-            <CardDescription>Search by name, mobile or email to find customers</CardDescription>
+            <CardDescription className="text-xs xs:text-sm">
+              Search by name, mobile or email to find customers
+            </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3 xs:space-y-4 px-3 xs:px-6">
             <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-2 xs:left-3 top-2.5 xs:top-3 h-3.5 w-3.5 xs:h-4 xs:w-4 text-gray-400" />
               <Input
                 placeholder="Search by name, mobile or email"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="pl-10 h-12"
+                className="pl-8 xs:pl-10 h-9 xs:h-10 md:h-12 text-xs xs:text-sm md:text-base rounded-md"
               />
             </div>
 
-            <div className="space-y-2 max-h-96 overflow-y-auto">
+            <div className="space-y-1.5 xs:space-y-2 max-h-72 xs:max-h-80 md:max-h-96 overflow-y-auto">
               {isFetchingCustomers ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                <div className="flex justify-center py-4 xs:py-6 md:py-8">
+                  <Loader2 className="h-5 w-5 xs:h-6 xs:w-6 animate-spin text-blue-500" />
                 </div>
               ) : (
                 <>
@@ -865,22 +875,24 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                         setSelectedCustomer(customer);
                         setRechargeAmount('');
                       }}
-                      className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                      className={`p-2 xs:p-3 rounded-lg border cursor-pointer transition-all ${
                         selectedCustomer?.customerMobile === customer.customerMobile
                           ? 'border-green-500 bg-green-50'
                           : 'border-gray-200 hover:border-green-300 hover:bg-gray-50'
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-medium text-gray-900">{customer.customerName}</h3>
+                        <div className="flex-1 min-w-0 pr-2">
+                          <div className="flex items-center gap-1 xs:gap-2 mb-0.5 xs:mb-1">
+                            <h3 className="font-medium text-gray-900 text-sm xs:text-base truncate">
+                              {customer.customerName}
+                            </h3>
                             {(() => {
                               const storeMatch = isSameStore(customer);
                               return (
                                 <Badge
                                   variant={storeMatch ? 'default' : 'destructive'}
-                                  className={`group text-xs px-2 py-0.5 ${
+                                  className={`group text-[10px] xs:text-xs px-1.5 xs:px-2 py-0 xs:py-0.5 whitespace-nowrap ${
                                     storeMatch
                                       ? 'bg-green-100 text-green-800 border-green-200'
                                       : 'bg-red-100 text-red-800 border-red-200'
@@ -888,47 +900,51 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                                 >
                                   {storeMatch ? (
                                     <>
-                                      <Shield className="h-3 w-3 mr-1 text-green-800 group-hover:text-green-400 transition-colors duration-200" />
-                                      Same Store
+                                      <Shield className="h-2.5 w-2.5 xs:h-3 xs:w-3 mr-0.5 xs:mr-1 text-green-800 group-hover:text-green-400 transition-colors duration-200" />
+                                      <span className="hidden xs:inline">Same Store</span>
+                                      <span className="xs:hidden">Same</span>
                                     </>
                                   ) : (
                                     <>
-                                      <AlertTriangle className="h-3 w-3 mr-1" />
-                                      Other Store
+                                      <AlertTriangle className="h-2.5 w-2.5 xs:h-3 xs:w-3 mr-0.5 xs:mr-1" />
+                                      <span className="hidden xs:inline">Other Store</span>
+                                      <span className="xs:hidden">Other</span>
                                     </>
                                   )}
                                 </Badge>
                               );
                             })()}
                           </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Phone className="h-3 w-3" />
-                            <span>{customer.customerMobile}</span>
+                          <div className="flex items-center gap-1 xs:gap-2 text-xs xs:text-sm text-gray-600">
+                            <Phone className="h-2.5 w-2.5 xs:h-3 xs:w-3" />
+                            <span className="truncate">{customer.customerMobile}</span>
                           </div>
-                          <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
-                            <MapPin className="h-3 w-3" />
-                            <span>{customer.storeLocation}</span>
+                          <div className="flex items-center gap-1 xs:gap-2 text-[10px] xs:text-xs text-gray-500 mt-0.5 xs:mt-1">
+                            <MapPin className="h-2.5 w-2.5 xs:h-3 xs:w-3" />
+                            <span className="truncate">{customer.storeLocation}</span>
                           </div>
                           {customer.customerEmail && (
-                            <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-                              <Mail className="h-3 w-3" />
-                              <span>{customer.customerEmail}</span>
+                            <div className="flex items-center gap-1 xs:gap-2 text-xs xs:text-sm text-gray-600 mt-0.5 xs:mt-1">
+                              <Mail className="h-2.5 w-2.5 xs:h-3 xs:w-3" />
+                              <span className="truncate">{customer.customerEmail}</span>
                             </div>
                           )}
                           {customer.referredBy && (
-                            <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-                              <HandCoins className="h-3 w-3" />
-                              <span>{customer.referredBy}</span>
+                            <div className="flex items-center gap-1 xs:gap-2 text-xs xs:text-sm text-gray-600 mt-0.5 xs:mt-1">
+                              <HandCoins className="h-2.5 w-2.5 xs:h-3 xs:w-3" />
+                              <span className="truncate">{customer.referredBy}</span>
                             </div>
                           )}
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-medium text-green-600">
+                          <p className="text-xs xs:text-sm font-medium text-green-600">
                             ₹{customer.walletBalance.toLocaleString()}
                           </p>
-                          <p className="text-xs text-gray-500">Current Balance</p>
-                          <p className="text-sm font-medium text-amber-600 mt-1">
-                            {customer.surabhiBalance} Surabhi Balance
+                          <p className="text-[10px] xs:text-xs text-gray-500">Current Balance</p>
+                          <p className="text-xs xs:text-sm font-medium text-amber-600 mt-0.5 xs:mt-1">
+                            {customer.surabhiBalance}{' '}
+                            <span className="hidden xs:inline">Surabhi Balance</span>
+                            <span className="xs:hidden">Surabhi</span>
                           </p>
                         </div>
                       </div>
@@ -936,9 +952,9 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                   ))}
 
                   {filteredCustomers.length === 0 && searchTerm && !isFetchingCustomers && (
-                    <div className="text-center py-8 text-gray-500">
-                      <Search className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                      <p>No customers found</p>
+                    <div className="text-center py-4 xs:py-6 md:py-8 text-gray-500">
+                      <Search className="h-6 w-6 xs:h-7 xs:w-7 md:h-8 md:w-8 mx-auto mb-1 xs:mb-2 text-gray-300" />
+                      <p className="text-sm xs:text-base">No customers found</p>
                     </div>
                   )}
                 </>
@@ -949,40 +965,48 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
 
         {/* Recharge Form */}
         <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-green-600" />
+          <CardHeader className="px-3 py-4 xs:p-6">
+            <CardTitle className="flex items-center gap-1 xs:gap-2 text-base xs:text-lg">
+              <DollarSign className="h-4 w-4 xs:h-5 xs:w-5 text-green-600" />
               Recharge Details
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs xs:text-sm">
               Enter recharge amount (minimum ₹500 for students, ₹2,000 for others)
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-4 xs:space-y-6 px-3 xs:px-6">
             {selectedCustomer ? (
               <>
-                <div className="p-4 bg-blue-50 rounded-lg">
-                  <h3 className="font-medium text-blue-900 mb-2">Selected Customer</h3>
+                <div className="p-3 xs:p-4 bg-blue-50 rounded-lg">
+                  <h3 className="font-medium text-blue-900 text-sm xs:text-base mb-1.5 xs:mb-2">
+                    Selected Customer
+                  </h3>
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{selectedCustomer.customerName}</p>
-                      <p className="text-sm text-blue-700">{selectedCustomer.customerMobile}</p>
+                    <div className="flex-1 min-w-0 pr-2">
+                      <p className="font-medium text-sm xs:text-base truncate">
+                        {selectedCustomer.customerName}
+                      </p>
+                      <p className="text-xs xs:text-sm text-blue-700 truncate">
+                        {selectedCustomer.customerMobile}
+                      </p>
                       {selectedCustomer.customerEmail && (
-                        <p className="text-sm text-blue-700">{selectedCustomer.customerEmail}</p>
+                        <p className="text-xs xs:text-sm text-blue-700 truncate">
+                          {selectedCustomer.customerEmail}
+                        </p>
                       )}
                       {/* {selectedCustomer.coinsFrozen && (
-                        <Badge variant="destructive" className="mt-1">
+                        <Badge variant="destructive" className="mt-1 text-[10px] xs:text-xs">
                           Coins Frozen
                         </Badge>
                       )} */}
                     </div>
                     <div className="flex flex-col items-end">
-                      <Badge variant="secondary" className="mb-1">
+                      <Badge variant="secondary" className="mb-1 text-[10px] xs:text-xs">
                         ₹{selectedCustomer.walletBalance.toLocaleString()}
                       </Badge>
                       {/* {selectedCustomer.sevaTotal && selectedCustomer.sevaTotal > 0 && (
-                        <Badge variant="outline" className="text-blue-600 border-blue-200">
+                        <Badge variant="outline" className="text-blue-600 border-blue-200 text-[10px] xs:text-xs">
                           ₹{selectedCustomer.sevaTotal} Seva
                         </Badge>
                       )} */}
@@ -992,15 +1016,15 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
 
                 {/* Store Match Status */}
                 <div
-                  className={`p-4 rounded-lg border-2 transition-colors duration-200 ${
+                  className={`p-3 xs:p-4 rounded-lg border-2 transition-colors duration-200 ${
                     getStoreMatchStatus(selectedCustomer).isMatch
                       ? 'bg-green-50 border-green-200'
                       : 'bg-red-50 border-red-200'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 xs:gap-3">
                     <div
-                      className={`p-2 rounded-full ${
+                      className={`p-1.5 xs:p-2 rounded-full ${
                         getStoreMatchStatus(selectedCustomer).isMatch
                           ? 'bg-green-100'
                           : 'bg-red-100'
@@ -1010,7 +1034,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                         const IconComponent = getStoreMatchStatus(selectedCustomer).icon;
                         return (
                           <IconComponent
-                            className={`h-5 w-5 ${
+                            className={`h-4 w-4 xs:h-5 xs:w-5 ${
                               getStoreMatchStatus(selectedCustomer).isMatch
                                 ? 'text-green-600'
                                 : 'text-red-600'
@@ -1021,7 +1045,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                     </div>
                     <div className="flex-1">
                       <h4
-                        className={`font-medium ${
+                        className={`font-medium text-sm xs:text-base ${
                           getStoreMatchStatus(selectedCustomer).isMatch
                             ? 'text-green-900'
                             : 'text-red-900'
@@ -1032,7 +1056,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                           : 'Different Store Warning'}
                       </h4>
                       <p
-                        className={`text-sm ${
+                        className={`text-xs xs:text-sm ${
                           getStoreMatchStatus(selectedCustomer).isMatch
                             ? 'text-green-700'
                             : 'text-red-700'
@@ -1041,7 +1065,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                         {getStoreMatchStatus(selectedCustomer).message}
                       </p>
                       {!getStoreMatchStatus(selectedCustomer).isMatch && (
-                        <p className="text-xs text-red-600 mt-1 font-medium">
+                        <p className="text-[10px] xs:text-xs text-red-600 mt-0.5 xs:mt-1 font-medium">
                           ⚠️ Recharge blocked: Only same store staff can process recharges
                         </p>
                       )}
@@ -1049,17 +1073,19 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="amount">Recharge Amount (₹)</Label>
+                <div className="space-y-1.5 xs:space-y-2">
+                  <Label htmlFor="amount" className="text-xs xs:text-sm">
+                    Recharge Amount (₹)
+                  </Label>
                   <div className="relative">
-                    <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <DollarSign className="absolute left-2 xs:left-3 top-2.5 xs:top-3 h-3.5 w-3.5 xs:h-4 xs:w-4 text-gray-400" />
                     <Input
                       id="amount"
                       type="number"
                       placeholder={`Enter amount (₹${selectedCustomer.isStudent ? '500' : '2,000'} - ₹50,000)`}
                       value={rechargeAmount}
                       onChange={e => setRechargeAmount(e.target.value)}
-                      className="pl-10 h-12"
+                      className="pl-8 xs:pl-10 h-9 xs:h-10 md:h-12 text-xs xs:text-sm md:text-base rounded-md"
                       min={selectedCustomer.isStudent ? '500' : '2000'}
                       max="50000"
                       step="100"
@@ -1067,7 +1093,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                   </div>
                   {rechargeAmountNum > 0 &&
                     rechargeAmountNum < (selectedCustomer.isStudent ? 500 : 2000) && (
-                      <p className="text-sm text-red-500">
+                      <p className="text-xs xs:text-sm text-red-500">
                         Minimum recharge amount is ₹{selectedCustomer.isStudent ? '500' : '2,000'}
                       </p>
                     )}
@@ -1085,54 +1111,63 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                 </div> */}
 
                 {rechargeAmountNum >= 2000 && storeDetails && (
-                  <div className="space-y-3">
-                    <h3 className="font-medium text-gray-900">Reward Breakdown</h3>
+                  <div className="space-y-2 xs:space-y-3">
+                    <h3 className="font-medium text-gray-900 text-sm xs:text-base">
+                      Reward Breakdown
+                    </h3>
 
-                    <div className="grid grid-cols-1 gap-3">
-                      <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <Wallet className="h-4 w-4 text-purple-600" />
-                          <span className="text-sm font-medium text-purple-900">
+                    <div className="grid grid-cols-1 gap-2 xs:gap-3">
+                      <div className="flex items-center justify-between p-2 xs:p-3 bg-purple-50 rounded-lg">
+                        <div className="flex items-center gap-1.5 xs:gap-2">
+                          <Wallet className="h-3.5 w-3.5 xs:h-4 xs:w-4 text-purple-600" />
+                          <span className="text-xs xs:text-sm font-medium text-purple-900">
                             Wallet Balance
                           </span>
                         </div>
-                        <span className="font-bold text-purple-600">
+                        <span className="font-bold text-purple-600 text-xs xs:text-sm">
                           +₹{rechargeAmountNum.toLocaleString()}
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <Coins className="h-4 w-4 text-amber-600" />
-                          <span className="text-sm font-medium text-amber-900">
+                      <div className="flex items-center justify-between p-2 xs:p-3 bg-amber-50 rounded-lg">
+                        <div className="flex items-center gap-1.5 xs:gap-2">
+                          <Coins className="h-3.5 w-3.5 xs:h-4 xs:w-4 text-amber-600" />
+                          <span className="text-xs xs:text-sm font-medium text-amber-900">
                             Surabhi Coins ({storeDetails.surabhiCommission}%)
                           </span>
                         </div>
-                        <span className="font-bold text-amber-600">+{surabhiCoinsEarned}</span>
+                        <span className="font-bold text-amber-600 text-xs xs:text-sm">
+                          +{surabhiCoinsEarned}
+                        </span>
                       </div>
 
                       {selectedCustomer.referredBy && (
-                        <div className="flex items-center justify-between p-3 bg-green-100 rounded-lg">
-                          <div className="flex items-center gap-2">
-                            <HandCoins className="h-4 w-4 text-green-600" />
-                            <span className="text-sm font-medium text-green-900">
+                        <div className="flex items-center justify-between p-2 xs:p-3 bg-green-100 rounded-lg">
+                          <div className="flex items-center gap-1.5 xs:gap-2">
+                            <HandCoins className="h-3.5 w-3.5 xs:h-4 xs:w-4 text-green-600" />
+                            <span className="text-xs xs:text-sm font-medium text-green-900">
                               Referral Coins ({storeDetails.referralCommission}%)
                             </span>
                           </div>
-                          <span className="font-bold text-green-600">
-                            +{referralAmount} to {selectedCustomer.referredBy}
+                          <span className="font-bold text-green-600 text-xs xs:text-sm">
+                            +{referralAmount} to{' '}
+                            <span className="truncate max-w-[100px] inline-block align-bottom">
+                              {selectedCustomer.referredBy}
+                            </span>
                           </span>
                         </div>
                       )}
 
-                      <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <Wallet className="h-4 w-4 text-blue-600" />
-                          <span className="text-sm font-medium text-blue-900">
+                      <div className="flex items-center justify-between p-2 xs:p-3 bg-blue-50 rounded-lg">
+                        <div className="flex items-center gap-1.5 xs:gap-2">
+                          <Wallet className="h-3.5 w-3.5 xs:h-4 xs:w-4 text-blue-600" />
+                          <span className="text-xs xs:text-sm font-medium text-blue-900">
                             Seva Wallet ({storeDetails.sevaCommission}%)
                           </span>
                         </div>
-                        <span className="font-bold text-blue-600">+₹{sevaAmountEarned}</span>
+                        <span className="font-bold text-blue-600 text-xs xs:text-sm">
+                          +₹{sevaAmountEarned}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1147,27 +1182,29 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                     !storeDetails ||
                     !isSameStore(selectedCustomer)
                   }
-                  className={`w-full h-12 font-medium transition-all ${
+                  className={`w-full h-10 xs:h-12 text-xs xs:text-sm font-medium transition-all ${
                     isSameStore(selectedCustomer)
                       ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white'
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   }`}
                 >
                   {isLoading ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <Loader2 className="h-3.5 w-3.5 xs:h-4 xs:w-4 mr-1.5 xs:mr-2 animate-spin" />
                   ) : (
                     <>
-                      <CheckCircle className="h-4 w-4 mr-2" />
+                      <CheckCircle className="h-3.5 w-3.5 xs:h-4 xs:w-4 mr-1.5 xs:mr-2" />
                       Recharge ₹{rechargeAmountNum.toLocaleString()}
                     </>
                   )}
                 </Button>
               </>
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Wallet className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p className="text-lg font-medium mb-2">Select a Customer</p>
-                <p className="text-sm">Choose a customer from the list to proceed with recharge</p>
+              <div className="text-center py-6 xs:py-8 text-gray-500">
+                <Wallet className="h-10 w-10 xs:h-12 xs:w-12 mx-auto mb-3 xs:mb-4 text-gray-300" />
+                <p className="text-base xs:text-lg font-medium mb-1.5 xs:mb-2">Select a Customer</p>
+                <p className="text-xs xs:text-sm">
+                  Choose a customer from the list to proceed with recharge
+                </p>
               </div>
             )}
           </CardContent>
@@ -1176,21 +1213,21 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
 
       {/* Confirmation Dialog */}
       <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Confirm Recharge</DialogTitle>
+        <DialogContent className="max-w-[90vw] xs:max-w-[425px] p-4 xs:p-6">
+          <DialogHeader className="pb-2 xs:pb-3">
+            <DialogTitle className="text-base xs:text-lg">Confirm Recharge</DialogTitle>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <h4 className="font-medium">Customer Details</h4>
-              <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="grid gap-3 xs:gap-4 py-2 xs:py-4">
+            <div className="space-y-1.5 xs:space-y-2">
+              <h4 className="font-medium text-sm xs:text-base">Customer Details</h4>
+              <div className="grid grid-cols-2 gap-1.5 xs:gap-2 text-xs xs:text-sm">
                 <div className="text-gray-500">Customer Name:</div>
-                <div>{selectedCustomer?.customerName}</div>
+                <div className="truncate">{selectedCustomer?.customerName}</div>
                 <div className="text-gray-500">Customer Mobile:</div>
                 <div>{selectedCustomer?.customerMobile}</div>
                 <div className="text-gray-500">Customer Email:</div>
-                <div>{selectedCustomer?.customerEmail}</div>
+                <div className="truncate">{selectedCustomer?.customerEmail}</div>
                 <div className="text-gray-500">Wallet Balance:</div>
                 <div>₹{selectedCustomer?.walletBalance.toLocaleString()}</div>
                 <div className="text-gray-500">Surbahi Balance:</div>
@@ -1200,9 +1237,9 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <h4 className="font-medium">Recharge Details</h4>
-              <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="space-y-1.5 xs:space-y-2">
+              <h4 className="font-medium text-sm xs:text-base">Recharge Details</h4>
+              <div className="grid grid-cols-2 gap-1.5 xs:gap-2 text-xs xs:text-sm">
                 <div className="text-gray-500"> Recharge Amount:</div>
                 <div className="font-medium">₹{rechargeAmountNum.toLocaleString()}</div>
                 <div className="text-gray-500">Surabhi Coins Earned:</div>
@@ -1219,21 +1256,22 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 xs:gap-3">
             <Button
               variant="outline"
               onClick={() => setShowConfirmation(false)}
               disabled={isProcessing}
+              className="h-8 xs:h-10 text-xs xs:text-sm px-2 xs:px-4"
             >
               Cancel
             </Button>
             <Button
               onClick={processRecharge}
               disabled={isProcessing}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-green-600 hover:bg-green-700 h-8 xs:h-10 text-xs xs:text-sm px-2 xs:px-4"
             >
               {isProcessing ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 xs:h-4 xs:w-4 mr-1.5 xs:mr-2 animate-spin" />
               ) : (
                 'Confirm Recharge'
               )}

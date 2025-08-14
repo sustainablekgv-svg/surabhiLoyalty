@@ -42,14 +42,16 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       // You can render any custom fallback UI
       return (
         this.props.fallback || (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-            <h2 className="text-lg font-semibold text-red-800">Something went wrong</h2>
-            <p className="text-sm text-red-600 mt-1">
+          <div className="p-3 xs:p-4 bg-red-50 border border-red-200 rounded-md">
+            <h2 className="text-base xs:text-lg font-semibold text-red-800">
+              Something went wrong
+            </h2>
+            <p className="text-xs xs:text-sm text-red-600 mt-0.5 xs:mt-1">
               The application encountered an error. Please try refreshing the page.
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="mt-3 px-4 py-2 bg-red-100 text-red-800 rounded-md text-sm hover:bg-red-200 transition-colors"
+              className="mt-2 xs:mt-3 px-3 xs:px-4 py-1.5 xs:py-2 bg-red-100 text-red-800 rounded-md text-xs xs:text-sm hover:bg-red-200 transition-colors"
             >
               Refresh Page
             </button>

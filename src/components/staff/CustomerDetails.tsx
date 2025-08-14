@@ -55,16 +55,21 @@ export const CustomerDetails = () => {
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="flex items-center gap-4 mb-6">
-          <Button variant="outline" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4" />
+      <div className="p-3 xs:p-4 sm:p-6">
+        <div className="flex items-center gap-2 xs:gap-3 sm:gap-4 mb-3 xs:mb-4 sm:mb-6">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => navigate(-1)}
+            className="h-7 xs:h-8 sm:h-9 w-7 xs:w-8 sm:w-9"
+          >
+            <ArrowLeft className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
           </Button>
-          <h1 className="text-2xl font-bold">Loading customer...</h1>
+          <h1 className="text-lg xs:text-xl sm:text-2xl font-bold">Loading customer...</h1>
         </div>
-        <div className="space-y-4">
+        <div className="space-y-2 xs:space-y-3 sm:space-y-4">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
+            <div key={i} className="h-12 xs:h-14 sm:h-16 bg-gray-100 rounded-lg animate-pulse" />
           ))}
         </div>
       </div>
@@ -73,28 +78,40 @@ export const CustomerDetails = () => {
 
   if (error) {
     return (
-      <div className="p-6">
-        <div className="flex items-center gap-4 mb-6">
-          <Button variant="outline" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4" />
+      <div className="p-3 xs:p-4 sm:p-6">
+        <div className="flex items-center gap-2 xs:gap-3 sm:gap-4 mb-3 xs:mb-4 sm:mb-6">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => navigate(-1)}
+            className="h-7 xs:h-8 sm:h-9 w-7 xs:w-8 sm:w-9"
+          >
+            <ArrowLeft className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
           </Button>
-          <h1 className="text-2xl font-bold">Error</h1>
+          <h1 className="text-lg xs:text-xl sm:text-2xl font-bold">Error</h1>
         </div>
-        <div className="p-4 bg-red-50 text-red-600 rounded-lg">{error}</div>
+        <div className="p-2 xs:p-3 sm:p-4 bg-red-50 text-red-600 rounded-lg text-xs xs:text-sm sm:text-base">
+          {error}
+        </div>
       </div>
     );
   }
 
   if (!customer) {
     return (
-      <div className="p-6">
-        <div className="flex items-center gap-4 mb-6">
-          <Button variant="outline" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4" />
+      <div className="p-3 xs:p-4 sm:p-6">
+        <div className="flex items-center gap-2 xs:gap-3 sm:gap-4 mb-3 xs:mb-4 sm:mb-6">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => navigate(-1)}
+            className="h-7 xs:h-8 sm:h-9 w-7 xs:w-8 sm:w-9"
+          >
+            <ArrowLeft className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
           </Button>
-          <h1 className="text-2xl font-bold">Customer Not Found</h1>
+          <h1 className="text-lg xs:text-xl sm:text-2xl font-bold">Customer Not Found</h1>
         </div>
-        <div className="p-4 bg-yellow-50 text-yellow-600 rounded-lg">
+        <div className="p-2 xs:p-3 sm:p-4 bg-yellow-50 text-yellow-600 rounded-lg text-xs xs:text-sm sm:text-base">
           No customer found with mobile number: {mobile}
         </div>
       </div>
@@ -108,13 +125,18 @@ export const CustomerDetails = () => {
       : 'Not available';
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4" />
+    <div className="p-3 xs:p-4 sm:p-6">
+      <div className="flex items-center justify-between gap-2 xs:gap-3 sm:gap-4 mb-3 xs:mb-4 sm:mb-6">
+        <div className="flex items-center gap-2 xs:gap-3 sm:gap-4">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => navigate(-1)}
+            className="h-7 xs:h-8 sm:h-9 w-7 xs:w-8 sm:w-9"
+          >
+            <ArrowLeft className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
           </Button>
-          <h1 className="text-2xl font-bold">{customer.customerName}</h1>
+          <h1 className="text-base xs:text-xl sm:text-2xl font-bold">{customer.customerName}</h1>
         </div>
         {/* <Button variant="outline" onClick={() => navigate(`/customer/${mobile}/edit`)}>
           <Edit className="h-4 w-4 mr-2" />
@@ -122,40 +144,46 @@ export const CustomerDetails = () => {
         </Button> */}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 xs:gap-4 sm:gap-6">
         {/* Basic Information Card */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Basic Information</CardTitle>
-            <User className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 xs:pb-1.5 sm:pb-2 px-3 xs:px-4 sm:px-6 pt-3 xs:pt-4 sm:pt-6">
+            <CardTitle className="text-xs xs:text-sm sm:text-base font-medium">
+              Basic Information
+            </CardTitle>
+            <User className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-2 xs:space-y-3 sm:space-y-4 px-3 xs:px-4 sm:px-6 pb-3 xs:pb-4 sm:pb-6">
             <div>
-              <p className="text-xs text-muted-foreground">Mobile</p>
-              <div className="flex items-center gap-2">
-                <Phone className="h-4 w-4" />
-                <p>{customer.customerMobile}</p>
+              <p className="text-[10px] xs:text-xs text-muted-foreground">Mobile</p>
+              <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2">
+                <Phone className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4" />
+                <p className="text-xs xs:text-sm sm:text-base">{customer.customerMobile}</p>
               </div>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Email</p>
-              <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4" />
-                <p>{customer.customerEmail || 'Not provided'}</p>
+              <p className="text-[10px] xs:text-xs text-muted-foreground">Email</p>
+              <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2">
+                <Mail className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4" />
+                <p className="text-xs xs:text-sm sm:text-base">
+                  {customer.customerEmail || 'Not provided'}
+                </p>
               </div>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Store Location</p>
-              <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                <p>{customer.storeLocation || 'Not specified'}</p>
+              <p className="text-[10px] xs:text-xs text-muted-foreground">Store Location</p>
+              <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2">
+                <MapPin className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4" />
+                <p className="text-xs xs:text-sm sm:text-base">
+                  {customer.storeLocation || 'Not specified'}
+                </p>
               </div>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Registered On</p>
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                <p>{createdAtDate}</p>
+              <p className="text-[10px] xs:text-xs text-muted-foreground">Registered On</p>
+              <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2">
+                <Calendar className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4" />
+                <p className="text-xs xs:text-sm sm:text-base">{createdAtDate}</p>
               </div>
             </div>
             {/* <div>
@@ -167,6 +195,59 @@ export const CustomerDetails = () => {
             </div> */}
           </CardContent>
         </Card>
+
+        <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-2 xs:gap-3 sm:gap-4 mt-3 xs:mt-4 sm:mt-6">
+          {/* Wallet Balance Card */}
+          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100">
+            <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-xs sm:text-sm font-medium text-blue-600">Wallet Balance</h3>
+                  <p className="text-xl sm:text-2xl font-bold text-blue-700 mt-0.5 sm:mt-1">
+                    ₹{customer.walletBalance?.toLocaleString() || '0'}
+                  </p>
+                </div>
+                <div className="bg-blue-100 p-1.5 sm:p-2 rounded-full">
+                  <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Surabhi Coins Card */}
+          <Card className="bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-100">
+            <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-xs sm:text-sm font-medium text-amber-600">Surabhi Coins</h3>
+                  <p className="text-xl sm:text-2xl font-bold text-amber-700 mt-0.5 sm:mt-1">
+                    {customer.surabhiBalance?.toLocaleString() || '0'}
+                  </p>
+                </div>
+                <div className="bg-amber-100 p-1.5 sm:p-2 rounded-full">
+                  <Coins className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Seva Coins Card */}
+          <Card className="bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-100">
+            <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-xs sm:text-sm font-medium text-emerald-600">Seva Coins</h3>
+                  <p className="text-xl sm:text-2xl font-bold text-emerald-700 mt-0.5 sm:mt-1">
+                    {customer.sevaBalance?.toLocaleString() || '0'}
+                  </p>
+                </div>
+                <div className="bg-emerald-100 p-1.5 sm:p-2 rounded-full">
+                  <CreditCard className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Wallet Information Card */}
         <Card>

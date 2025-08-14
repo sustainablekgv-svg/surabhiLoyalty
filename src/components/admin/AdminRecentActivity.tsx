@@ -292,23 +292,25 @@ export const AdminRecentActivity = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 lg:flex-row">
+    <div className="flex flex-col gap-3 xs:gap-4 sm:gap-6 lg:flex-row">
       {/* Recent Activity Section */}
       <Card className="flex-1 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader>
-          <div className="flex items-center justify-between">
+        <CardHeader className="px-2 xs:px-3 sm:px-6 py-2 xs:py-3 sm:py-4">
+          <div className="flex flex-col xs:flex-row items-start xs:items-center justify-between gap-2 xs:gap-0">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-purple-600" />
+              <CardTitle className="flex items-center gap-0.5 xs:gap-1 sm:gap-2 text-sm xs:text-base sm:text-lg">
+                <TrendingUp className="h-3 w-3 xs:h-4 xs:w-4 sm:h-5 sm:w-5 text-purple-600" />
                 Recent Activity
               </CardTitle>
-              <CardDescription>Filter and view recent system activities</CardDescription>
+              <CardDescription className="text-[10px] xs:text-xs sm:text-sm">
+                Filter and view recent system activities
+              </CardDescription>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-gray-500" />
+            <div className="flex items-center gap-1 xs:gap-2 w-full xs:w-auto">
+              <Filter className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-gray-500" />
               <Select value={filter} onValueChange={setFilter}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-full xs:w-32 sm:w-40 h-7 xs:h-8 sm:h-9 text-[10px] xs:text-xs sm:text-sm rounded-[4px] xs:rounded">
                   <SelectValue placeholder="Filter by type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -324,7 +326,7 @@ export const AdminRecentActivity = () => {
               </Select>
 
               <Select value={storeFilter} onValueChange={setStoreFilter}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-full xs:w-32 sm:w-40 h-7 xs:h-8 sm:h-9 text-[10px] xs:text-xs sm:text-sm rounded-[4px] xs:rounded">
                   <SelectValue placeholder="Filter by store" />
                 </SelectTrigger>
                 <SelectContent>
@@ -340,41 +342,54 @@ export const AdminRecentActivity = () => {
           </div>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="px-2 xs:px-3 sm:px-6 pb-2 xs:pb-3 sm:pb-6">
           {isLoading ? (
-            <div className="flex justify-center items-center h-40">
-              <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+            <div className="flex justify-center items-center h-24 xs:h-32 sm:h-40">
+              <Loader2 className="h-5 w-5 xs:h-6 xs:w-6 sm:h-8 sm:w-8 animate-spin text-gray-500" />
             </div>
           ) : filteredActivities.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-4 xs:py-6 sm:py-8 text-gray-500 text-xs xs:text-sm sm:text-base">
               No activities found for the selected filters
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-2 xs:space-y-3 sm:space-y-4">
               {filteredActivities.map(activity => (
                 <div
                   key={activity.id}
-                  className={`flex items-center justify-between p-3 ${getActivityColor(activity.type)} rounded-lg`}
+                  className={`flex items-center justify-between p-2 xs:p-2.5 sm:p-3 ${getActivityColor(activity.type)} rounded-lg`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-3 overflow-hidden">
                     <div
-                      className={`p-2 rounded-full ${getActivityColor(activity.type).replace('50', '100')}`}
+                      className={`p-1 xs:p-1.5 sm:p-2 rounded-full ${getActivityColor(activity.type).replace('50', '100')}`}
                     >
-                      {getActivityIcon(activity.type)}
+                      <div className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 flex items-center justify-center">
+                        {getActivityIcon(activity.type)}
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-sm">{activity.remarks}</p>
-                      <div className="flex items-center gap-2 text-xs text-gray-600">
-                        <span>{activity.customerName}</span>
-                        <span>•</span>
-                        <span>{activity.storeLocation}</span>
-                        <span>•</span>
+                    <div className="overflow-hidden">
+                      <p className="font-medium text-[10px] xs:text-xs sm:text-sm truncate max-w-[150px] xs:max-w-[200px] sm:max-w-none">
+                        {activity.remarks}
+                      </p>
+                      <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 text-[8px] xs:text-[10px] sm:text-xs text-gray-600 flex-wrap">
+                        <span className="truncate max-w-[60px] xs:max-w-[80px] sm:max-w-none">
+                          {activity.customerName}
+                        </span>
+                        <span className="hidden xs:inline">•</span>
+                        <span className="truncate max-w-[60px] xs:max-w-[80px] sm:max-w-none">
+                          {activity.storeLocation}
+                        </span>
+                        <span className="hidden xs:inline">•</span>
                         <span>{formatTimestamp(activity.createdAt)}</span>
                       </div>
                     </div>
                   </div>
                   {activity.amount !== undefined && (
-                    <Badge variant="secondary">₹{activity.amount}</Badge>
+                    <Badge
+                      variant="secondary"
+                      className="text-[8px] xs:text-[10px] sm:text-xs px-1 xs:px-1.5 sm:px-2 py-0.5 h-4 xs:h-5 sm:h-6 min-w-[40px] xs:min-w-[50px] text-center"
+                    >
+                      ₹{activity.amount}
+                    </Badge>
                   )}
                 </div>
               ))}
@@ -385,18 +400,20 @@ export const AdminRecentActivity = () => {
 
       {/* Store Performance Section */}
       <Card className="flex-1 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader>
+        <CardHeader className="px-2 xs:px-3 sm:px-6 py-2 xs:py-3 sm:py-4">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <Store className="h-5 w-5 text-amber-600" />
+              <CardTitle className="flex items-center gap-0.5 xs:gap-1 sm:gap-2 text-sm xs:text-base sm:text-lg">
+                <Store className="h-3 w-3 xs:h-4 xs:w-4 sm:h-5 sm:w-5 text-amber-600" />
                 Today's Store Performance
               </CardTitle>
-              <CardDescription>Summary of transactions across all stores</CardDescription>
+              <CardDescription className="text-[10px] xs:text-xs sm:text-sm">
+                Summary of transactions across all stores
+              </CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-2 xs:px-3 sm:px-6 pb-2 xs:pb-3 sm:pb-6">
           {isLoading ? (
             <div className="space-y-4">
               {[...Array(3)].map((_, i) => (

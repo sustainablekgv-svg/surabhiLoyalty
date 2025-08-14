@@ -481,9 +481,9 @@ export const CustomerManagement = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="customerName" className="text-right">
+          <div className="grid gap-2 xs:gap-3 sm:gap-4 py-2 xs:py-3 sm:py-4">
+            <div className="grid grid-cols-4 items-center gap-2 xs:gap-3 sm:gap-4">
+              <Label htmlFor="customerName" className="text-right text-xs xs:text-sm">
                 Full Name
               </Label>
               <Input
@@ -491,7 +491,7 @@ export const CustomerManagement = () => {
                 name="customerName"
                 value={editedData.customerName || ''}
                 onChange={handleInputChange}
-                className="col-span-3"
+                className="col-span-3 h-7 xs:h-8 sm:h-9 text-xs xs:text-sm rounded-[4px] xs:rounded"
               />
             </div>
 
@@ -656,10 +656,10 @@ export const CustomerManagement = () => {
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 justify-between items-start sm:items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Customer Management</h2>
-          <p className="text-gray-600">View and manage all customer accounts</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Customer Management</h2>
+          <p className="text-xs sm:text-sm text-gray-600">View and manage all customer accounts</p>
         </div>
       </div>
 
@@ -752,28 +752,34 @@ export const CustomerManagement = () => {
               <CardDescription>{filteredCustomers.length} customers found</CardDescription>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <div className="flex flex-col xs:flex-row gap-2 sm:gap-3 w-full lg:w-auto">
+              <div className="relative w-full xs:w-auto">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
                 <Input
                   placeholder="Search by name, mobile or email"
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="pl-10 w-full sm:w-64"
+                  className="pl-10 w-full sm:w-64 h-8 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
 
               <Select value={filterStore} onValueChange={setFilterStore}>
-                <SelectTrigger className="w-full sm:w-48">
+                <SelectTrigger className="w-full xs:w-[150px] sm:w-48 h-8 sm:h-10 text-xs sm:text-sm">
                   <div className="flex items-center gap-2">
-                    <Filter className="h-4 w-4" />
+                    <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     <SelectValue placeholder="All Stores" />
                   </div>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Stores</SelectItem>
+                  <SelectItem value="all" className="text-xs sm:text-sm">
+                    All Stores
+                  </SelectItem>
                   {stores.map(store => (
-                    <SelectItem key={store.id} value={store.storeName}>
+                    <SelectItem
+                      key={store.id}
+                      value={store.storeName}
+                      className="text-xs sm:text-sm"
+                    >
                       {store.storeName}
                     </SelectItem>
                   ))}
@@ -793,59 +799,66 @@ export const CustomerManagement = () => {
               filteredCustomers.map(customer => (
                 <div
                   key={customer.customerMobile}
-                  className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-4 bg-gray-50 rounded-lg gap-4"
+                  className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg gap-2 sm:gap-4"
                 >
                   <div className="flex-1 min-w-0 w-full lg:w-auto">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-3">
-                      <h3 className="font-medium text-gray-900">{customer.customerName}</h3>
-                      <div className="flex gap-2">
-                        <Badge variant={customer.walletRechargeDone ? 'default' : 'secondary'}>
+                    <div className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2 sm:gap-3 mb-2 sm:mb-3">
+                      <h3 className="font-medium text-gray-900 text-sm sm:text-base">
+                        {customer.customerName}
+                      </h3>
+                      <div className="flex gap-1 sm:gap-2">
+                        <Badge
+                          variant={customer.walletRechargeDone ? 'default' : 'secondary'}
+                          className="text-[10px] sm:text-xs py-0 sm:py-0.5"
+                        >
                           {customer.walletRechargeDone ? 'Registered' : 'Guest'}
                         </Badge>
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-[10px] sm:text-xs py-0 sm:py-0.5">
                           {customer.referredUsers?.length || 0} referrals
                         </Badge>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-                      <div className="flex items-center gap-2 text-gray-600">
+                    <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-1 sm:gap-3 text-xs sm:text-sm">
+                      <div className="flex items-center gap-1 sm:gap-2 text-gray-600">
                         <Phone className="h-3 w-3" />
-                        <span>{customer.customerMobile}</span>
+                        <span className="truncate">{customer.customerMobile}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-gray-600">
+                      <div className="flex items-center gap-1 sm:gap-2 text-gray-600">
                         <MapPin className="h-3 w-3" />
-                        <span>{customer.storeLocation}</span>
+                        <span className="truncate">{customer.storeLocation}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-purple-600">
+                      <div className="flex items-center gap-1 sm:gap-2 text-purple-600">
                         <Wallet className="h-3 w-3" />
                         <span>₹{customer.walletBalance.toLocaleString()}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-amber-600">
+                      <div className="flex items-center gap-1 sm:gap-2 text-amber-600">
                         <Coins className="h-3 w-3" />
                         <span>{customer.surabhiBalance} coins</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex gap-2 w-full lg:w-auto">
+                  <div className="flex gap-2 w-full lg:w-auto mt-2 lg:mt-0">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 lg:flex-none"
+                      className="flex-1 lg:flex-none h-7 sm:h-8 text-[10px] sm:text-xs"
                       onClick={() => viewCustomerDetails(customer)}
                     >
                       <Eye className="h-3 w-3 mr-1" />
-                      View Details
+                      <span className="hidden xs:inline">View Details</span>
+                      <span className="xs:hidden">View</span>
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 lg:flex-none"
+                      className="flex-1 lg:flex-none h-7 sm:h-8 text-[10px] sm:text-xs"
                       onClick={() => handleEditClick(customer)}
                     >
                       <Edit className="h-3 w-3 mr-1" />
-                      Edit
+                      <span className="hidden xs:inline">Edit</span>
+                      <span className="xs:hidden">Edit</span>
                     </Button>
                   </div>
                 </div>

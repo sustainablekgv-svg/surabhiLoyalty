@@ -1,6 +1,5 @@
-import { Timestamp } from 'firebase/firestore';
-
 import { User } from '@/lib/authService';
+import { Timestamp } from 'firebase/firestore';
 export interface CustomerType {
   id?: string;
   role: string;
@@ -202,7 +201,7 @@ export interface CustomerTxType {
   sevaDebit: number;
   sevaBalance: number;
   sevaTotal: number;
-  // storeSevaBalance: number;
+  storeSevaBalance: number;
 }
 
 // export interface SevaTransaction {

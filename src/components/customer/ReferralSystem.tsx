@@ -131,49 +131,57 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
 
   if (loading) {
     return (
-      <div className="flex justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex justify-center py-4 xs:py-6 sm:py-8">
+        <div className="animate-spin rounded-full h-6 xs:h-7 sm:h-8 w-6 xs:w-7 sm:w-8 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="bg-green-100 p-3 rounded-full">
-          <Share2 className="h-6 w-6 text-green-600" />
+    <div className="space-y-4 xs:space-y-5 sm:space-y-6">
+      <div className="flex items-center gap-2 xs:gap-3 mb-4 xs:mb-5 sm:mb-6">
+        <div className="bg-green-100 p-2 xs:p-2.5 sm:p-3 rounded-full">
+          <Share2 className="h-4 xs:h-5 sm:h-6 w-4 xs:w-5 sm:w-6 text-green-600" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Referral Program</h2>
-          <p className="text-gray-600">Invite friends and earn on their spendings</p>
+          <h2 className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900">
+            Referral Program
+          </h2>
+          <p className="text-xs xs:text-sm text-gray-600">
+            Invite friends and earn on their spendings
+          </p>
         </div>
       </div>
 
       {/* Referral Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-3 xs:gap-4 sm:gap-6">
         <Card className="bg-blue-50 border-blue-200 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="bg-blue-100 p-2 rounded-full">
-                <Users className="h-5 w-5 text-blue-600" />
+          <CardContent className="p-3 xs:p-4 sm:p-6">
+            <div className="flex items-center gap-2 xs:gap-3 mb-2 xs:mb-3">
+              <div className="bg-blue-100 p-1.5 xs:p-2 rounded-full">
+                <Users className="h-3.5 xs:h-4 sm:h-5 w-3.5 xs:w-4 sm:w-5 text-blue-600" />
               </div>
-              <span className="text-sm font-medium text-blue-600">Total Referrals</span>
+              <span className="text-xs xs:text-sm font-medium text-blue-600">Total Referrals</span>
             </div>
-            <div className="text-3xl font-bold text-blue-900 mb-1">{totalReferrals}</div>
-            <div className="text-xs text-blue-700">Total referred</div>
+            <div className="text-xl xs:text-2xl sm:text-3xl font-bold text-blue-900 mb-0.5 xs:mb-1">
+              {totalReferrals}
+            </div>
+            <div className="text-[10px] xs:text-xs text-blue-700">Total referred</div>
           </CardContent>
         </Card>
 
         <Card className="bg-amber-50 border-amber-200 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="bg-amber-100 p-2 rounded-full">
-                <Coins className="h-5 w-5 text-amber-600" />
+          <CardContent className="p-3 xs:p-4 sm:p-6">
+            <div className="flex items-center gap-2 xs:gap-3 mb-2 xs:mb-3">
+              <div className="bg-amber-100 p-1.5 xs:p-2 rounded-full">
+                <Coins className="h-3.5 xs:h-4 sm:h-5 w-3.5 xs:w-4 sm:w-5 text-amber-600" />
               </div>
-              <span className="text-sm font-medium text-amber-600">Referral Income</span>
+              <span className="text-xs xs:text-sm font-medium text-amber-600">Referral Income</span>
             </div>
-            <div className="text-3xl font-bold text-amber-900 mb-1">{referralIncome}</div>
-            <div className="text-xs text-amber-700">Lifetime Referral Surabhi</div>
+            <div className="text-xl xs:text-2xl sm:text-3xl font-bold text-amber-900 mb-0.5 xs:mb-1">
+              {referralIncome}
+            </div>
+            <div className="text-[10px] xs:text-xs text-amber-700">Lifetime Referral Surabhi</div>
           </CardContent>
         </Card>
 
@@ -193,25 +201,27 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
         </Card> */}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 xs:gap-6 sm:gap-8">
         {/* Referral Number Card */}
         <Card className="shadow-lg border-0 bg-white">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Phone className="h-5 w-5 text-green-600" />
+          <CardHeader className="px-3 xs:px-4 sm:px-6 pt-3 xs:pt-4 sm:pt-6 pb-1 xs:pb-2 sm:pb-3">
+            <CardTitle className="flex items-center gap-1.5 xs:gap-2 text-base xs:text-lg sm:text-xl">
+              <Phone className="h-3.5 xs:h-4 sm:h-5 w-3.5 xs:w-4 sm:w-5 text-green-600" />
               Your Referral Number
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs xs:text-sm">
               Share your mobile number with friends to earn Surabhi Coins
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-6">
-            <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
+          <CardContent className="space-y-4 xs:space-y-5 sm:space-y-6 px-3 xs:px-4 sm:px-6 pb-3 xs:pb-4 sm:pb-6">
+            <div className="p-2 xs:p-3 sm:p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Your Referral Number</p>
-                  <p className="text-2xl font-bold text-green-900 font-mono">
+                  <p className="text-xs xs:text-sm text-gray-600 mb-0.5 xs:mb-1">
+                    Your Referral Number
+                  </p>
+                  <p className="text-lg xs:text-xl sm:text-2xl font-bold text-green-900 font-mono">
                     {userData?.customerMobile}
                   </p>
                 </div>
@@ -219,30 +229,30 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
                   onClick={copyReferralNumber}
                   variant="outline"
                   size="sm"
-                  className="border-green-300 text-green-600 hover:bg-green-50"
+                  className="border-green-300 text-green-600 hover:bg-green-50 h-7 xs:h-8 sm:h-9 w-7 xs:w-8 sm:w-9 p-0"
                 >
-                  <Copy className="h-4 w-4" />
+                  <Copy className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
                 </Button>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <h3 className="font-medium text-gray-900">How it works:</h3>
-              <div className="space-y-2 text-sm text-gray-600">
-                <div className="flex items-start gap-2">
-                  <div className="bg-green-100 text-green-600 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">
+            <div className="space-y-2 xs:space-y-3">
+              <h3 className="font-medium text-gray-900 text-sm xs:text-base">How it works:</h3>
+              <div className="space-y-1.5 xs:space-y-2 text-xs xs:text-sm text-gray-600">
+                <div className="flex items-start gap-1.5 xs:gap-2">
+                  <div className="bg-green-100 text-green-600 rounded-full w-4 xs:w-5 h-4 xs:h-5 flex items-center justify-center text-[10px] xs:text-xs font-bold mt-0.5">
                     1
                   </div>
                   <p>Share your mobile number with friends</p>
                 </div>
-                <div className="flex items-start gap-2">
-                  <div className="bg-green-100 text-green-600 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">
+                <div className="flex items-start gap-1.5 xs:gap-2">
+                  <div className="bg-green-100 text-green-600 rounded-full w-4 xs:w-5 h-4 xs:h-5 flex items-center justify-center text-[10px] xs:text-xs font-bold mt-0.5">
                     2
                   </div>
                   <p>Ask them to share at Store during their registration</p>
                 </div>
-                <div className="flex items-start gap-2">
-                  <div className="bg-green-100 text-green-600 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">
+                <div className="flex items-start gap-1.5 xs:gap-2">
+                  <div className="bg-green-100 text-green-600 rounded-full w-4 xs:w-5 h-4 xs:h-5 flex items-center justify-center text-[10px] xs:text-xs font-bold mt-0.5">
                     3
                   </div>
                   <p>
@@ -265,25 +275,29 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
 
         {/* Referred Customers List */}
         <Card className="shadow-lg border-0 bg-white">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-600" />
+          <CardHeader className="px-3 xs:px-4 sm:px-6 pt-3 xs:pt-4 sm:pt-6 pb-1 xs:pb-2 sm:pb-3">
+            <CardTitle className="flex items-center gap-1.5 xs:gap-2 text-base xs:text-lg sm:text-xl">
+              <Users className="h-3.5 xs:h-4 sm:h-5 w-3.5 xs:w-4 sm:w-5 text-blue-600" />
               Your Referred Customers
             </CardTitle>
-            <CardDescription>Customers who joined using your referral number</CardDescription>
+            <CardDescription className="text-xs xs:text-sm">
+              Customers who joined using your referral number
+            </CardDescription>
           </CardHeader>
 
-          <CardContent>
+          <CardContent className="px-3 xs:px-4 sm:px-6 pb-3 xs:pb-4 sm:pb-6">
             {referredCustomers.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-2 xs:space-y-3 sm:space-y-4">
                 {referredCustomers.map((customer, index) => (
                   <div
                     key={index}
-                    className="p-4 border rounded-lg hover:shadow-sm transition-shadow"
+                    className="p-2 xs:p-3 sm:p-4 border rounded-lg hover:shadow-sm transition-shadow"
                   >
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between mb-1.5 xs:mb-2 sm:mb-3">
                       <div>
-                        <h3 className="font-medium text-gray-900">{customer?.name}</h3>
+                        <h3 className="font-medium text-gray-900 text-sm xs:text-base">
+                          {customer?.name}
+                        </h3>
                         {/* <div className="flex items-center gap-2 mt-1">
                           <Badge variant={customer.walletRechargeDone ? 'default' : 'secondary'} className="text-xs">
                             {customer?.walletRechargeDone ? 'Active' : 'Pending'}
@@ -295,25 +309,25 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4" />
+                    <div className="grid grid-cols-2 gap-2 xs:gap-3 sm:gap-4 text-xs xs:text-sm text-gray-600">
+                      <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2">
+                        <Phone className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
                         <span>{customer?.mobile}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Store className="h-4 w-4" />
+                      <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2">
+                        <Store className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
                         <span>{customer?.storeLocation || 'N/A'}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
+                      <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2">
+                        <Calendar className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
                         <span>Joined {formatDate(customer?.createdAt)}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <CreditCard className="h-4 w-4" />
+                      <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2">
+                        <CreditCard className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
                         <span>₹{customer?.walletBalance.toLocaleString()}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Coins className="h-4 w-4" />
+                      <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2">
+                        <Coins className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
                         <span>{customer?.surabhiBalance?.toLocaleString()} coins</span>
                       </div>
                       {/* <div className="flex items-center gap-2">
@@ -327,7 +341,7 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
                     </div>
 
                     {customer.lastTransactionDate && (
-                      <div className="mt-3 text-xs text-gray-500">
+                      <div className="mt-1.5 xs:mt-2 sm:mt-3 text-[10px] xs:text-xs text-gray-500">
                         Last transaction: {formatDate(customer.lastTransactionDate)}
                       </div>
                     )}
@@ -335,10 +349,14 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p className="text-lg font-medium mb-2">No referred customers yet</p>
-                <p className="text-sm">Share your mobile number to start earning Surabhi Coins!</p>
+              <div className="text-center py-4 xs:py-6 sm:py-8 text-gray-500">
+                <Users className="h-8 xs:h-10 sm:h-12 w-8 xs:w-10 sm:w-12 mx-auto mb-2 xs:mb-3 sm:mb-4 text-gray-300" />
+                <p className="text-base xs:text-lg font-medium mb-1 xs:mb-1.5 sm:mb-2">
+                  No referred customers yet
+                </p>
+                <p className="text-xs xs:text-sm">
+                  Share your mobile number to start earning Surabhi Coins!
+                </p>
               </div>
             )}
           </CardContent>

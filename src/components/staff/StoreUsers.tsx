@@ -163,59 +163,75 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        <span className="ml-2">Loading customers...</span>
+        <Loader2 className="h-6 xs:h-7 sm:h-8 w-6 xs:w-7 sm:w-8 animate-spin text-blue-500" />
+        <span className="ml-1.5 xs:ml-2 text-xs xs:text-sm sm:text-base">Loading customers...</span>
       </div>
     );
   }
 
   if (error) {
-    return <div className="flex items-center justify-center h-64 text-red-500">{error}</div>;
+    return (
+      <div className="flex items-center justify-center h-64 text-red-500 text-xs xs:text-sm sm:text-base p-3 xs:p-4 sm:p-6">
+        {error}
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="bg-blue-100 p-3 rounded-full">
-          <Users className="h-6 w-6 text-blue-600" />
+    <div className="space-y-4 xs:space-y-5 sm:space-y-6">
+      <div className="flex items-center gap-2 xs:gap-3 mb-4 xs:mb-5 sm:mb-6">
+        <div className="bg-blue-100 p-2 xs:p-2.5 sm:p-3 rounded-full">
+          <Users className="h-4 xs:h-5 sm:h-6 w-4 xs:w-5 sm:w-6 text-blue-600" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Store Customers</h2>
-          <p className="text-gray-600">Manage customers registered at {storeLocation}</p>
+          <h2 className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900">
+            Store Customers
+          </h2>
+          <p className="text-xs xs:text-sm text-gray-600">
+            Manage customers registered at {storeLocation}
+          </p>
         </div>
       </div>
 
       {/* Store Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 xs:gap-3 sm:gap-4 mb-4 xs:mb-5 sm:mb-6">
         <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Users className="h-4 w-4 text-blue-600" />
-              <span className="text-xs font-medium text-blue-600">Total Customers</span>
+          <CardContent className="p-2 xs:p-3 sm:p-4">
+            <div className="flex items-center gap-1.5 xs:gap-2 mb-1 xs:mb-1.5 sm:mb-2">
+              <Users className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4 text-blue-600" />
+              <span className="text-[10px] xs:text-xs font-medium text-blue-600">
+                Total Customers
+              </span>
             </div>
-            <p className="text-2xl font-bold text-blue-900">{stats.totalUsers}</p>
+            <p className="text-lg xs:text-xl sm:text-2xl font-bold text-blue-900">
+              {stats.totalUsers}
+            </p>
           </CardContent>
         </Card>
 
         <Card className="bg-purple-50 border-purple-200">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Wallet className="h-4 w-4 text-purple-600" />
-              <span className="text-xs font-medium text-purple-600">Total Wallet</span>
+          <CardContent className="p-2 xs:p-3 sm:p-4">
+            <div className="flex items-center gap-1.5 xs:gap-2 mb-1 xs:mb-1.5 sm:mb-2">
+              <Wallet className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4 text-purple-600" />
+              <span className="text-[10px] xs:text-xs font-medium text-purple-600">
+                Total Wallet
+              </span>
             </div>
-            <p className="text-xl font-bold text-purple-900">
+            <p className="text-base xs:text-lg sm:text-xl font-bold text-purple-900">
               ₹{stats.totalWallet.toLocaleString()}
             </p>
           </CardContent>
         </Card>
 
         <Card className="bg-amber-50 border-amber-200">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Coins className="h-4 w-4 text-amber-600" />
-              <span className="text-xs font-medium text-amber-600">This Month Coins</span>
+          <CardContent className="p-2 xs:p-3 sm:p-4">
+            <div className="flex items-center gap-1.5 xs:gap-2 mb-1 xs:mb-1.5 sm:mb-2">
+              <Coins className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4 text-amber-600" />
+              <span className="text-[10px] xs:text-xs font-medium text-amber-600">
+                This Month Coins
+              </span>
             </div>
-            <p className="text-xl font-bold text-amber-900">
+            <p className="text-base xs:text-lg sm:text-xl font-bold text-amber-900">
               {stats.currentMonthCoins.toLocaleString()}
             </p>
           </CardContent>
@@ -225,36 +241,43 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
       {/* Top Customers Section */}
       {topCustomers.length > 0 && (
         <Card className="shadow-lg border-0 bg-gradient-to-r from-blue-50 to-purple-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Star className="h-5 w-5 text-yellow-500" />
+          <CardHeader className="px-3 xs:px-4 sm:px-6 pt-3 xs:pt-4 sm:pt-6 pb-1 xs:pb-2 sm:pb-3">
+            <CardTitle className="flex items-center gap-1.5 xs:gap-2 text-base xs:text-lg sm:text-xl">
+              <Star className="h-3.5 xs:h-4 sm:h-5 w-3.5 xs:w-4 sm:w-5 text-yellow-500" />
               Top Customers by Wallet Balance
             </CardTitle>
-            <CardDescription>Our most valuable customers at {storeLocation}</CardDescription>
+            <CardDescription className="text-xs xs:text-sm">
+              Our most valuable customers at {storeLocation}
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <CardContent className="px-3 xs:px-4 sm:px-6 pb-3 xs:pb-4 sm:pb-6">
+            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 xs:gap-3 sm:gap-4">
               {topCustomers.map((customer, index) => (
                 <div
                   key={customer.customerMobile}
-                  className="bg-white p-4 rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer"
+                  className="bg-white p-2 xs:p-3 sm:p-4 rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer"
                   onClick={() => viewCustomerDetails(customer.customerMobile)}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-medium text-gray-900 truncate">{customer.customerName}</h3>
-                    <Badge variant="secondary" className="ml-2">
+                  <div className="flex items-center justify-between mb-1 xs:mb-1.5 sm:mb-2">
+                    <h3 className="font-medium text-gray-900 truncate text-xs xs:text-sm sm:text-base">
+                      {customer.customerName}
+                    </h3>
+                    <Badge
+                      variant="secondary"
+                      className="ml-1 xs:ml-1.5 sm:ml-2 text-[10px] xs:text-xs"
+                    >
                       #{index + 1}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-2 text-purple-600 text-sm">
-                    <Wallet className="h-3 w-3" />
+                  <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 text-purple-600 text-[10px] xs:text-xs sm:text-sm">
+                    <Wallet className="h-2.5 xs:h-3 w-2.5 xs:w-3" />
                     <span>₹{(customer.walletBalance || 0).toLocaleString()}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-amber-600 text-sm mt-1">
-                    <Coins className="h-3 w-3" />
+                  <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 text-amber-600 text-[10px] xs:text-xs sm:text-sm mt-0.5 xs:mt-1">
+                    <Coins className="h-2.5 xs:h-3 w-2.5 xs:w-3" />
                     <span>{(customer.surabhiBalance || 0).toLocaleString()} coins</span>
                   </div>
-                  <div className="text-xs text-gray-500 mt-2">
+                  <div className="text-[8px] xs:text-[10px] sm:text-xs text-gray-500 mt-1 xs:mt-1.5 sm:mt-2">
                     Last active: {formatDate(customer.lastTransactionDate)}
                   </div>
                 </div>
@@ -265,31 +288,31 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
       )}
 
       <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+        <CardHeader className="px-3 xs:px-4 sm:px-6 pt-3 xs:pt-4 sm:pt-6 pb-1 xs:pb-2 sm:pb-3">
+          <div className="flex flex-col gap-2 xs:gap-3 sm:gap-4">
+            <div className="flex flex-col sm:flex-row gap-2 xs:gap-3 sm:gap-4 justify-between items-start sm:items-center">
               <div>
-                <CardTitle>Customer List</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-base xs:text-lg sm:text-xl">Customer List</CardTitle>
+                <CardDescription className="text-xs xs:text-sm">
                   {filteredCustomers.length} customers at {storeLocation}
                 </CardDescription>
               </div>
 
               <div className="relative w-full sm:w-auto">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-2 xs:left-2.5 sm:left-3 top-1/2 -translate-y-1/2 h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4 text-gray-400" />
                 <Input
                   placeholder="Search customers..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="pl-10 w-full sm:w-64"
+                  className="pl-7 xs:pl-8 sm:pl-10 w-full sm:w-64 h-8 xs:h-9 sm:h-10 text-xs xs:text-sm"
                 />
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-gray-500" />
-                <span className="text-sm text-gray-500">Filters:</span>
+            <div className="flex flex-col sm:flex-row gap-2 xs:gap-3">
+              <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2">
+                <Filter className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4 text-gray-500" />
+                <span className="text-xs xs:text-sm text-gray-500">Filters:</span>
               </div>
 
               <Select
@@ -298,7 +321,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                   setRegistrationFilter(value)
                 }
               >
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full xs:w-[150px] sm:w-[180px] h-8 xs:h-9 sm:h-10 text-xs xs:text-sm">
                   <SelectValue placeholder="Registration" />
                 </SelectTrigger>
                 <SelectContent>
@@ -311,111 +334,119 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
           </div>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="px-2 xs:px-3 sm:px-6 pb-3 xs:pb-4 sm:pb-6">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="text-left text-sm text-gray-500 border-b">
-                  <th className="pb-3 px-4 cursor-pointer" onClick={() => handleSort('name')}>
-                    <div className="flex items-center gap-1">
+                <tr className="text-left text-[10px] xs:text-xs sm:text-sm text-gray-500 border-b">
+                  <th
+                    className="pb-2 xs:pb-2.5 sm:pb-3 px-2 xs:px-3 sm:px-4 cursor-pointer"
+                    onClick={() => handleSort('name')}
+                  >
+                    <div className="flex items-center gap-0.5 xs:gap-1">
                       Name
                       {sortField === 'name' &&
                         (sortDirection === 'asc' ? (
-                          <ChevronUp className="h-4 w-4" />
+                          <ChevronUp className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
                         ) : (
-                          <ChevronDown className="h-4 w-4" />
+                          <ChevronDown className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
                         ))}
                     </div>
                   </th>
-                  <th className="pb-3 px-4">Contact</th>
+                  <th className="pb-2 xs:pb-2.5 sm:pb-3 px-2 xs:px-3 sm:px-4">Contact</th>
                   <th
-                    className="pb-3 px-4 cursor-pointer"
+                    className="pb-2 xs:pb-2.5 sm:pb-3 px-2 xs:px-3 sm:px-4 cursor-pointer"
                     onClick={() => handleSort('walletBalance')}
                   >
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5 xs:gap-1">
                       Wallet
                       {sortField === 'walletBalance' &&
                         (sortDirection === 'asc' ? (
-                          <ChevronUp className="h-4 w-4" />
+                          <ChevronUp className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
                         ) : (
-                          <ChevronDown className="h-4 w-4" />
+                          <ChevronDown className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
                         ))}
                     </div>
                   </th>
                   <th
-                    className="pb-3 px-4 cursor-pointer"
+                    className="pb-2 xs:pb-2.5 sm:pb-3 px-2 xs:px-3 sm:px-4 cursor-pointer"
                     onClick={() => handleSort('surabhiCoins')}
                   >
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5 xs:gap-1">
                       Coins
                       {sortField === 'surabhiCoins' &&
                         (sortDirection === 'asc' ? (
-                          <ChevronUp className="h-4 w-4" />
+                          <ChevronUp className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
                         ) : (
-                          <ChevronDown className="h-4 w-4" />
+                          <ChevronDown className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
                         ))}
                     </div>
                   </th>
                   <th
-                    className="pb-3 px-4 cursor-pointer"
+                    className="pb-2 xs:pb-2.5 sm:pb-3 px-2 xs:px-3 sm:px-4 cursor-pointer"
                     onClick={() => handleSort('lastTransactionDate')}
                   >
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5 xs:gap-1">
                       Last Activity
                       {sortField === 'lastTransactionDate' &&
                         (sortDirection === 'asc' ? (
-                          <ChevronUp className="h-4 w-4" />
+                          <ChevronUp className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
                         ) : (
-                          <ChevronDown className="h-4 w-4" />
+                          <ChevronDown className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
                         ))}
                     </div>
                   </th>
-                  <th className="pb-3 px-4">Status</th>
-                  <th className="pb-3 px-4">Actions</th>
+                  <th className="pb-2 xs:pb-2.5 sm:pb-3 px-2 xs:px-3 sm:px-4">Status</th>
+                  <th className="pb-2 xs:pb-2.5 sm:pb-3 px-2 xs:px-3 sm:px-4">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {filteredCustomers.map(customer => (
                   <tr key={customer.customerMobile} className="hover:bg-gray-50">
-                    <td className="py-4 px-4">
-                      <div className="font-medium text-gray-900">{customer.customerName}</div>
+                    <td className="py-2 xs:py-3 sm:py-4 px-2 xs:px-3 sm:px-4">
+                      <div className="font-medium text-gray-900 text-xs xs:text-sm sm:text-base">
+                        {customer.customerName}
+                      </div>
                     </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Phone className="h-4 w-4 text-gray-400" />
+                    <td className="py-2 xs:py-3 sm:py-4 px-2 xs:px-3 sm:px-4">
+                      <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 text-[10px] xs:text-xs sm:text-sm">
+                        <Phone className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4 text-gray-400" />
                         <span>{customer.customerMobile}</span>
                       </div>
                       {customer.customerEmail && (
-                        <div className="text-xs text-gray-500 mt-1">{customer.customerEmail}</div>
+                        <div className="text-[8px] xs:text-[10px] sm:text-xs text-gray-500 mt-0.5 xs:mt-1">
+                          {customer.customerEmail}
+                        </div>
                       )}
                     </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2 text-purple-600">
-                        <Wallet className="h-4 w-4" />
+                    <td className="py-2 xs:py-3 sm:py-4 px-2 xs:px-3 sm:px-4">
+                      <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 text-purple-600 text-[10px] xs:text-xs sm:text-sm">
+                        <Wallet className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
                         <span>₹{(customer.walletBalance || 0).toLocaleString()}</span>
                       </div>
                     </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2 text-amber-600">
-                        <Coins className="h-4 w-4" />
+                    <td className="py-2 xs:py-3 sm:py-4 px-2 xs:px-3 sm:px-4">
+                      <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 text-amber-600 text-[10px] xs:text-xs sm:text-sm">
+                        <Coins className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
                         <span>{(customer.surabhiBalance || 0).toLocaleString()}</span>
                       </div>
-                      <div className="text-xs text-green-600 mt-1">
+                      <div className="text-[8px] xs:text-[10px] sm:text-xs text-green-600 mt-0.5 xs:mt-1">
                         +{(customer.sevaBalanceCurrentMonth || 0).toLocaleString()} this month
                       </div>
                     </td>
-                    <td className="py-4 px-4">
-                      <div className="text-sm text-gray-500">
+                    <td className="py-2 xs:py-3 sm:py-4 px-2 xs:px-3 sm:px-4">
+                      <div className="text-[10px] xs:text-xs sm:text-sm text-gray-500">
                         {formatDate(customer.lastTransactionDate)}
                       </div>
                     </td>
-                    <td className="py-4 px-4">
+                    <td className="py-2 xs:py-3 sm:py-4 px-2 xs:px-3 sm:px-4">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => viewCustomerDetails(customer.customerMobile)}
+                        className="h-6 xs:h-7 sm:h-8 text-[10px] xs:text-xs sm:text-sm px-1.5 xs:px-2 sm:px-2.5 py-0.5 xs:py-1"
                       >
-                        <Eye className="h-3 w-3 mr-1" />
+                        <Eye className="h-2.5 xs:h-3 w-2.5 xs:w-3 mr-0.5 xs:mr-1" />
                         View
                       </Button>
                     </td>

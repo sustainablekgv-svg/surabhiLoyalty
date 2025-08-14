@@ -194,49 +194,54 @@ export const AdminStats = () => {
 
   if (loading) {
     return (
-      <div className="space-y-4 sm:space-y-6">
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+      <div className="space-y-3 xs:space-y-4 sm:space-y-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 xs:gap-3 sm:gap-4 md:gap-6">
           {stats.map((stat, index) => (
             <Card key={index} className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
-                <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0.5 xs:pb-1 sm:pb-2 px-2 xs:px-3 sm:px-6 pt-2 xs:pt-3 sm:pt-6">
+                <CardTitle className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600">
                   Loading...
                 </CardTitle>
-                <div className={`p-1 sm:p-2 rounded-full ${stat.bgColor}`}>
-                  <stat.icon className={`h-3 w-3 sm:h-4 sm:w-4 ${stat.color}`} />
+                <div className={`p-0.5 xs:p-1 sm:p-2 rounded-full ${stat.bgColor}`}>
+                  <stat.icon className={`h-2.5 w-2.5 xs:h-3 xs:w-3 sm:h-4 sm:w-4 ${stat.color}`} />
                 </div>
               </CardHeader>
-              <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6 pt-0">
-                <div className="text-lg sm:text-2xl font-bold text-gray-900 mb-0 sm:mb-1">...</div>
+              <CardContent className="px-2 xs:px-3 sm:px-6 pb-2 xs:pb-3 sm:pb-6 pt-0">
+                <div className="text-base xs:text-lg sm:text-2xl font-bold text-gray-900 mb-0 xs:mb-0 sm:mb-1">
+                  ...
+                </div>
               </CardContent>
             </Card>
           ))}
         </div>
         <div className="grid grid-cols-1 gap-4 sm:gap-6">
           <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-            <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
-              <CardTitle className="flex items-center gap-1 sm:gap-2 text-base sm:text-lg">
-                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
+            <CardHeader className="px-2 xs:px-3 sm:px-6 py-2 xs:py-3 sm:py-4">
+              <CardTitle className="flex items-center gap-0.5 xs:gap-1 sm:gap-2 text-sm xs:text-base sm:text-lg">
+                <TrendingUp className="h-3 w-3 xs:h-4 xs:w-4 sm:h-5 sm:w-5 text-purple-600" />
                 Recent Activity
               </CardTitle>
             </CardHeader>
-            <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
-              <div className="flex justify-center items-center h-28 sm:h-40">
-                <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-gray-500" />
+            <CardContent className="px-2 xs:px-3 sm:px-6 pb-2 xs:pb-3 sm:pb-6">
+              <div className="flex justify-center items-center h-20 xs:h-28 sm:h-40">
+                <Loader2 className="h-4 w-4 xs:h-6 xs:w-6 sm:h-8 sm:w-8 animate-spin text-gray-500" />
               </div>
             </CardContent>
           </Card>
           <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-            <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
-              <CardTitle className="flex items-center gap-1 sm:gap-2 text-base sm:text-lg">
-                <Store className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600" />
+            <CardHeader className="px-2 xs:px-3 sm:px-6 py-2 xs:py-3 sm:py-4">
+              <CardTitle className="flex items-center gap-0.5 xs:gap-1 sm:gap-2 text-sm xs:text-base sm:text-lg">
+                <Store className="h-3 w-3 xs:h-4 xs:w-4 sm:h-5 sm:w-5 text-amber-600" />
                 Store Performance
               </CardTitle>
             </CardHeader>
-            <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
-              <div className="space-y-2 sm:space-y-4">
+            <CardContent className="px-2 xs:px-3 sm:px-6 pb-2 xs:pb-3 sm:pb-6">
+              <div className="space-y-1.5 xs:space-y-2 sm:space-y-4">
                 {[...Array(2)].map((_, i) => (
-                  <div key={i} className="h-12 sm:h-16 bg-gray-100 rounded-lg animate-pulse" />
+                  <div
+                    key={i}
+                    className="h-8 xs:h-12 sm:h-16 bg-gray-100 rounded-lg animate-pulse"
+                  />
                 ))}
               </div>
             </CardContent>
@@ -247,24 +252,24 @@ export const AdminStats = () => {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-3 xs:space-y-4 sm:space-y-6">
       {/* Top Stats Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 xs:gap-3 sm:gap-4 md:gap-6">
         {stats.map((stat, index) => (
           <Card
             key={index}
             className="shadow-lg border-0 bg-white/80 backdrop-blur-sm hover:shadow-xl transition-shadow duration-200"
           >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
-              <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0.5 xs:pb-1 sm:pb-2 px-2 xs:px-3 sm:px-6 pt-2 xs:pt-3 sm:pt-6">
+              <CardTitle className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-600 truncate">
                 {stat.title}
               </CardTitle>
-              <div className={`p-1 sm:p-2 rounded-full ${stat.bgColor}`}>
-                <stat.icon className={`h-3 w-3 sm:h-4 sm:w-4 ${stat.color}`} />
+              <div className={`p-0.5 xs:p-1 sm:p-2 rounded-full ${stat.bgColor}`}>
+                <stat.icon className={`h-2.5 w-2.5 xs:h-3 xs:w-3 sm:h-4 sm:w-4 ${stat.color}`} />
               </div>
             </CardHeader>
-            <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6 pt-0">
-              <div className="text-lg sm:text-2xl font-bold text-gray-900 mb-0 sm:mb-1">
+            <CardContent className="px-2 xs:px-3 sm:px-6 pb-2 xs:pb-3 sm:pb-6 pt-0">
+              <div className="text-base xs:text-lg sm:text-2xl font-bold text-gray-900 mb-0 xs:mb-0 sm:mb-1">
                 {stat.value}
               </div>
             </CardContent>
@@ -273,16 +278,16 @@ export const AdminStats = () => {
       </div>
 
       {/* Bottom Section - Full width cards */}
-      <div className="space-y-4 sm:space-y-6">
+      <div className="space-y-3 xs:space-y-4 sm:space-y-6">
         {/* Recent Activity - Full width */}
         <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm w-full">
-          <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
-            <CardTitle className="flex items-center gap-1 sm:gap-2 text-base sm:text-lg">
-              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
+          <CardHeader className="px-2 xs:px-3 sm:px-6 py-2 xs:py-3 sm:py-4">
+            <CardTitle className="flex items-center gap-0.5 xs:gap-1 sm:gap-2 text-sm xs:text-base sm:text-lg">
+              <TrendingUp className="h-3 w-3 xs:h-4 xs:w-4 sm:h-5 sm:w-5 text-purple-600" />
               Recent Activity
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+          <CardContent className="px-2 xs:px-3 sm:px-6 pb-2 xs:pb-3 sm:pb-6">
             <AdminRecentActivity />
           </CardContent>
         </Card>

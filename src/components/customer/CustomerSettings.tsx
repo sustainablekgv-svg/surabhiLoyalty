@@ -120,15 +120,17 @@ export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSetting
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] p-6">
-        <DialogHeader className="pb-4">
-          <DialogTitle className="text-xl font-bold">Account Settings</DialogTitle>
-          <DialogDescription className="text-gray-600 text-sm mt-1">
+      <DialogContent className="sm:max-w-[500px] max-w-[95vw] p-3 xs:p-4 sm:p-6">
+        <DialogHeader className="pb-1.5 xs:pb-2 sm:pb-4">
+          <DialogTitle className="text-base xs:text-lg sm:text-xl font-bold">
+            Account Settings
+          </DialogTitle>
+          <DialogDescription className="text-gray-600 text-[10px] xs:text-xs sm:text-sm mt-0.5 xs:mt-1">
             Update your personal information here.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5 py-4">
+        <div className="space-y-2 xs:space-y-3 sm:space-y-5 py-1.5 xs:py-2 sm:py-4">
           {/* <div className="space-y-2">
             <Label htmlFor="mobile" className="text-sm font-semibold">Mobile Number</Label>
             <Input
@@ -139,8 +141,11 @@ export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSetting
             />
           </div> */}
 
-          <div className="space-y-2">
-            <Label htmlFor="customerName" className="text-sm font-semibold">
+          <div className="space-y-0.5 xs:space-y-1 sm:space-y-2">
+            <Label
+              htmlFor="customerName"
+              className="text-[10px] xs:text-xs sm:text-sm font-semibold"
+            >
               Full Name
             </Label>
             <Input
@@ -148,12 +153,15 @@ export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSetting
               name="customerName"
               value={formData.customerName || ''}
               onChange={handleInputChange}
-              className="text-gray-800 font-medium"
+              className="text-gray-800 font-medium h-8 xs:h-9 sm:h-10 text-xs xs:text-sm px-2 xs:px-3"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="customerPassword" className="text-sm font-semibold">
+          <div className="space-y-0.5 xs:space-y-1 sm:space-y-2">
+            <Label
+              htmlFor="customerPassword"
+              className="text-[10px] xs:text-xs sm:text-sm font-semibold"
+            >
               Password
             </Label>
             <Input
@@ -162,12 +170,12 @@ export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSetting
               type="text"
               value={formData.customerPassword || ''}
               onChange={handleInputChange}
-              className="text-gray-800 font-medium"
+              className="text-gray-800 font-medium h-8 xs:h-9 sm:h-10 text-xs xs:text-sm px-2 xs:px-3"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="tpin" className="text-sm font-semibold">
+          <div className="space-y-0.5 xs:space-y-1 sm:space-y-2">
+            <Label htmlFor="tpin" className="text-[10px] xs:text-xs sm:text-sm font-semibold">
               Transaction PIN (TPIN)
             </Label>
             <Input
@@ -176,17 +184,17 @@ export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSetting
               type="text"
               value={formData.tpin || ''}
               onChange={handleInputChange}
-              className="text-gray-800 font-medium"
+              className="text-gray-800 font-medium h-8 xs:h-9 sm:h-10 text-xs xs:text-sm px-2 xs:px-3"
             />
           </div>
         </div>
 
-        <DialogFooter className="mt-6 gap-3">
+        <DialogFooter className="mt-3 xs:mt-4 sm:mt-6 gap-1.5 xs:gap-2 sm:gap-3 flex-col xs:flex-row">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isUpdating}
-            className="min-w-[100px]"
+            className="min-w-[80px] xs:min-w-[100px] h-8 xs:h-9 sm:h-10 text-[10px] xs:text-xs sm:text-sm w-full xs:w-auto"
           >
             Cancel
           </Button>
@@ -194,7 +202,7 @@ export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSetting
             type="submit"
             onClick={handleSaveChanges}
             disabled={isUpdating}
-            className="min-w-[120px] bg-primary hover:bg-primary/90 text-white font-medium"
+            className="min-w-[100px] xs:min-w-[120px] bg-primary hover:bg-primary/90 text-white font-medium h-8 xs:h-9 sm:h-10 text-[10px] xs:text-xs sm:text-sm w-full xs:w-auto"
           >
             {isUpdating ? 'Saving...' : 'Save Changes'}
           </Button>

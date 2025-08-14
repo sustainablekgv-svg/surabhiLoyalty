@@ -161,14 +161,14 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-purple-600 to-amber-500 p-2 rounded-lg">
-              <Coins className="h-6 w-6 text-white" />
+        <div className="container mx-auto px-4 py-3 sm:py-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="bg-gradient-to-br from-purple-600 to-amber-500 p-1.5 sm:p-2 rounded-lg">
+              <Coins className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Surabhi Loyalty</h1>
-              <p className="text-sm text-gray-600">Retail Business Platform</p>
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900">Surabhi Loyalty</h1>
+              <p className="text-xs sm:text-sm text-gray-600">Retail Business Platform</p>
             </div>
           </div>
         </div>
@@ -191,38 +191,40 @@ const Index = () => {
 
             <CardContent>
               {forgotPasswordMode ? (
-                <div className="space-y-4">
-                  <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
-                    <div className="flex items-center gap-3">
-                      <Mail className="h-5 w-5 text-purple-600" />
+                <div className="space-y-4 sm:space-y-5">
+                  <div className="p-3 sm:p-4 bg-purple-50 rounded-lg border border-purple-100">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
                       <div>
-                        <p className="text-sm font-medium text-gray-700">Registered Email</p>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-xs sm:text-sm font-medium text-gray-700">
+                          Registered Email
+                        </p>
+                        <p className="text-xs sm:text-sm text-gray-600">
                           {isLoadingEmail ? 'Loading...' : customerEmail}
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex gap-3">
+                  <div className="flex gap-2 sm:gap-3">
                     <Button
                       onClick={cancelForgotPassword}
                       variant="outline"
-                      className="flex-1 h-12"
+                      className="flex-1 h-10 sm:h-12 text-sm"
                     >
                       Cancel
                     </Button>
                     <Button
                       onClick={sendResetEmail}
                       disabled={isLoadingEmail || !customerEmail}
-                      className="flex-1 h-12 bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white font-medium rounded-lg"
+                      className="flex-1 h-10 sm:h-12 text-sm bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white font-medium rounded-lg"
                     >
                       Send Reset Link
                     </Button>
                   </div>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
                   <div className="space-y-2">
                     <Label htmlFor="role" className="text-sm font-medium text-gray-700">
                       Select Your Role
@@ -233,7 +235,7 @@ const Index = () => {
                         setFormData({ ...formData, role: value })
                       }
                     >
-                      <SelectTrigger className="h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500">
+                      <SelectTrigger className="h-10 sm:h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500">
                         <div className="flex items-center gap-2">
                           <UserCircle className="h-4 w-4 text-gray-400" />
                           <SelectValue placeholder="Choose your role" />
@@ -267,14 +269,14 @@ const Index = () => {
                       Mobile Number
                     </Label>
                     <div className="relative">
-                      <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
                         id="mobile"
                         type="tel"
                         placeholder="Enter your mobile number"
                         value={formData.mobile}
                         onChange={e => setFormData({ ...formData, mobile: e.target.value })}
-                        className="pl-10 h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                        className="pl-10 h-10 sm:h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                         required
                       />
                     </div>
@@ -285,20 +287,20 @@ const Index = () => {
                       Password
                     </Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
                         id="password"
                         type={showPassword ? 'text' : 'password'}
                         placeholder="Enter your password"
                         value={formData.password}
                         onChange={e => setFormData({ ...formData, password: e.target.value })}
-                        className="pl-10 pr-10 h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                        className="pl-10 pr-10 h-10 sm:h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                         required
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                       >
                         {showPassword ? (
                           <EyeOff className="h-4 w-4" />
@@ -314,7 +316,7 @@ const Index = () => {
                       type="button"
                       onClick={handleForgotPassword}
                       disabled={isLoadingEmail}
-                      className="text-sm text-purple-600 hover:text-purple-700 font-medium disabled:opacity-50"
+                      className="text-xs sm:text-sm text-purple-600 hover:text-purple-700 font-medium disabled:opacity-50"
                     >
                       {isLoadingEmail ? 'Loading...' : 'Forgot Password?'}
                     </button>
@@ -323,9 +325,16 @@ const Index = () => {
                   <Button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full h-12 bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white font-medium rounded-lg transition-all duration-200"
+                    className="w-full h-10 sm:h-12 bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white font-medium rounded-lg transition-all duration-200"
                   >
-                    {isLoading ? 'Signing In...' : 'Sign In'}
+                    {isLoading ? (
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white mr-2"></div>
+                        <span>Signing in...</span>
+                      </div>
+                    ) : (
+                      'Sign In'
+                    )}
                   </Button>
                 </form>
               )}

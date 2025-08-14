@@ -1,19 +1,19 @@
 // components/StaffStoreManagement.tsx
 import {
+  addDoc,
   collection,
-  doc,
-  setDoc,
-  updateDoc,
   deleteDoc,
+  doc,
   getDocs,
   query,
-  where,
   serverTimestamp,
-  addDoc,
+  setDoc,
   Timestamp,
+  updateDoc,
+  where,
 } from 'firebase/firestore';
-import { UserPlus, MapPin, Edit, Trash2, User, Shield, Store, PlusCircle } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Edit, MapPin, PlusCircle, Shield, Store, Trash2, User, UserPlus } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
@@ -46,7 +46,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { db } from '@/lib/firebase';
-import { StoreType, StaffType } from '@/types/types';
+import { StaffType, StoreType } from '@/types/types';
 
 async function checkContactNumberExists(
   contactNumber: string,
@@ -572,11 +572,13 @@ export const StaffManagement = () => {
         </Card>
       ) : (
         <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
+          <CardHeader className="px-2 xs:px-3 sm:px-6 py-2 xs:py-3 sm:py-4">
+            <div className="flex flex-col xs:flex-row justify-between items-start xs:items-center gap-2 xs:gap-0">
               <div>
-                <CardTitle>Store Locations</CardTitle>
-                <CardDescription>Manage all store locations in the system</CardDescription>
+                <CardTitle className="text-sm xs:text-base sm:text-lg">Store Locations</CardTitle>
+                <CardDescription className="text-[10px] xs:text-xs sm:text-sm">
+                  Manage all store locations in the system
+                </CardDescription>
               </div>
               <Button
                 onClick={() => {
@@ -589,8 +591,9 @@ export const StaffManagement = () => {
                   });
                   setIsStoreDialogOpen(true);
                 }}
+                className="h-8 xs:h-9 sm:h-10 text-xs xs:text-sm px-2 xs:px-3 sm:px-4 w-full xs:w-auto"
               >
-                <PlusCircle className="h-4 w-4 mr-2" />
+                <PlusCircle className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 mr-1 xs:mr-1.5 sm:mr-2" />
                 Add Store
               </Button>
             </div>
@@ -691,20 +694,20 @@ export const StaffManagement = () => {
 
       {/* Staff Dialog */}
       <Dialog open={isStaffDialogOpen} onOpenChange={setIsStaffDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto px-2 xs:px-4 sm:px-6 py-3 xs:py-4 sm:py-6">
+          <DialogHeader className="space-y-1 xs:space-y-2">
+            <DialogTitle className="text-base xs:text-lg sm:text-xl">
               {currentStaff?.id ? 'Edit Staff Member' : 'Add New Staff Member'}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-[10px] xs:text-xs sm:text-sm">
               {currentStaff?.id ? 'Update staff details' : 'Create a new staff account'}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Full Name *</Label>
+            <div className="grid grid-cols-2 gap-2 xs:gap-3 sm:gap-4">
+              <div className="space-y-1 xs:space-y-1.5 sm:space-y-2">
+                <Label className="text-xs xs:text-sm">Full Name *</Label>
                 <Input
                   value={currentStaff?.staffName || ''}
                   onChange={e =>
@@ -714,11 +717,12 @@ export const StaffManagement = () => {
                     })
                   }
                   placeholder="Enter staff name"
+                  className="h-7 xs:h-8 sm:h-9 text-xs xs:text-sm rounded-[4px] xs:rounded"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>Mobile Number *</Label>
+              <div className="space-y-1 xs:space-y-1.5 sm:space-y-2">
+                <Label className="text-xs xs:text-sm">Mobile Number *</Label>
                 <Input
                   type="tel"
                   value={currentStaff?.staffMobile || ''}
@@ -731,13 +735,16 @@ export const StaffManagement = () => {
                   }}
                   placeholder="Enter mobile number"
                   disabled={!!currentStaff?.id}
+                  className="h-7 xs:h-8 sm:h-9 text-xs xs:text-sm rounded-[4px] xs:rounded"
                 />
-                {mobileError && <p className="text-sm text-red-500">{mobileError}</p>}
+                {mobileError && (
+                  <p className="text-[10px] xs:text-xs sm:text-sm text-red-500">{mobileError}</p>
+                )}
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Email *</Label>
+            <div className="space-y-1 xs:space-y-1.5 sm:space-y-2">
+              <Label className="text-xs xs:text-sm">Email *</Label>
               <Input
                 type="email"
                 value={currentStaff?.staffEmail || ''}
@@ -750,13 +757,16 @@ export const StaffManagement = () => {
                 }}
                 placeholder="Enter email address"
                 disabled={!!currentStaff?.id}
+                className="h-7 xs:h-8 sm:h-9 text-xs xs:text-sm rounded-[4px] xs:rounded"
               />
-              {emailError && <p className="text-sm text-red-500">{emailError}</p>}
+              {emailError && (
+                <p className="text-[10px] xs:text-xs sm:text-sm text-red-500">{emailError}</p>
+              )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Role *</Label>
+            <div className="grid grid-cols-2 gap-2 xs:gap-3 sm:gap-4">
+              <div className="space-y-1 xs:space-y-1.5 sm:space-y-2">
+                <Label className="text-xs xs:text-sm">Role *</Label>
                 <Select
                   value={currentStaff?.role || 'staff'}
                   onValueChange={value =>
@@ -767,7 +777,7 @@ export const StaffManagement = () => {
                     })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-7 xs:h-8 sm:h-9 text-xs xs:text-sm rounded-[4px] xs:rounded">
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
@@ -897,17 +907,21 @@ export const StaffManagement = () => {
             )}
 
             {currentStaff?.createdAt && (
-              <div className="space-y-2">
-                <Label>Created At</Label>
-                <div className="text-sm text-muted-foreground">
+              <div className="space-y-1 xs:space-y-1.5 sm:space-y-2">
+                <Label className="text-xs xs:text-sm">Created At</Label>
+                <div className="text-[10px] xs:text-xs sm:text-sm text-muted-foreground">
                   {currentStaff.createdAt.toLocaleString()}
                 </div>
               </div>
             )}
           </div>
 
-          <DialogFooter>
-            <Button onClick={handleSaveStaff} disabled={!!emailError || !!mobileError}>
+          <DialogFooter className="mt-4 xs:mt-6 sm:mt-8 flex flex-col xs:flex-row gap-2 xs:gap-3 sm:gap-4">
+            <Button
+              onClick={handleSaveStaff}
+              disabled={!!emailError || !!mobileError}
+              className="h-8 xs:h-9 sm:h-10 text-xs xs:text-sm w-full xs:w-auto"
+            >
               {currentStaff?.id ? 'Save Changes' : 'Create Staff'}
             </Button>
           </DialogFooter>
@@ -916,17 +930,21 @@ export const StaffManagement = () => {
 
       {/* Delete Staff Dialog */}
       <Dialog open={isDeleteStaffDialogOpen} onOpenChange={setIsDeleteStaffDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="sm:max-w-[425px] px-2 xs:px-4 sm:px-6 py-3 xs:py-4 sm:py-6">
+          <DialogHeader className="space-y-1 xs:space-y-2">
+            <DialogTitle className="text-base xs:text-lg sm:text-xl">Confirm Deletion</DialogTitle>
+            <DialogDescription className="text-[10px] xs:text-xs sm:text-sm">
               Are you sure you want to delete {currentStaff?.staffName}? This action cannot be
               undone.
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter>
-            <Button variant="destructive" onClick={handleDeleteStaff}>
+          <DialogFooter className="mt-4 xs:mt-6 sm:mt-8 flex flex-col xs:flex-row gap-2 xs:gap-3 sm:gap-4">
+            <Button
+              variant="destructive"
+              onClick={handleDeleteStaff}
+              className="h-8 xs:h-9 sm:h-10 text-xs xs:text-sm w-full xs:w-auto"
+            >
               Confirm Delete
             </Button>
           </DialogFooter>
@@ -935,18 +953,20 @@ export const StaffManagement = () => {
 
       {/* Store Dialog */}
       <Dialog open={isStoreDialogOpen} onOpenChange={setIsStoreDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>{currentStore?.id ? 'Edit Store' : 'Add New Store'}</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto px-2 xs:px-4 sm:px-6 py-3 xs:py-4 sm:py-6">
+          <DialogHeader className="space-y-1 xs:space-y-2">
+            <DialogTitle className="text-base xs:text-lg sm:text-xl">
+              {currentStore?.id ? 'Edit Store' : 'Add New Store'}
+            </DialogTitle>
+            <DialogDescription className="text-[10px] xs:text-xs sm:text-sm">
               {currentStore?.id ? 'Update store details' : 'Create a new store location'}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Store Name *</Label>
+            <div className="grid grid-cols-2 gap-2 xs:gap-3 sm:gap-4">
+              <div className="space-y-1 xs:space-y-1.5 sm:space-y-2">
+                <Label className="text-xs xs:text-sm">Store Name *</Label>
                 <Input
                   value={currentStore?.storeName || ''}
                   onChange={e =>
@@ -956,11 +976,12 @@ export const StaffManagement = () => {
                     })
                   }
                   placeholder="Enter store name"
+                  className="h-7 xs:h-8 sm:h-9 text-xs xs:text-sm rounded-[4px] xs:rounded"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>Location *</Label>
+              <div className="space-y-1 xs:space-y-1.5 sm:space-y-2">
+                <Label className="text-xs xs:text-sm">Location *</Label>
                 <Input
                   value={currentStore?.storeLocation || ''}
                   onChange={e =>
@@ -970,12 +991,13 @@ export const StaffManagement = () => {
                     })
                   }
                   placeholder="Enter location"
+                  className="h-7 xs:h-8 sm:h-9 text-xs xs:text-sm rounded-[4px] xs:rounded"
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Address *</Label>
+            <div className="space-y-1 xs:space-y-1.5 sm:space-y-2">
+              <Label className="text-xs xs:text-sm">Address *</Label>
               <Input
                 value={currentStore?.storeAddress || ''}
                 onChange={e =>
@@ -985,6 +1007,7 @@ export const StaffManagement = () => {
                   })
                 }
                 placeholder="Enter full address"
+                className="h-7 xs:h-8 sm:h-9 text-xs xs:text-sm rounded-[4px] xs:rounded"
               />
             </div>
 
@@ -1007,9 +1030,9 @@ export const StaffManagement = () => {
               {contactNumberError && <p className="text-sm text-red-500">{contactNumberError}</p>}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Store Current Balance</Label>
+            <div className="grid grid-cols-2 gap-2 xs:gap-3 sm:gap-4">
+              <div className="space-y-1 xs:space-y-1.5 sm:space-y-2">
+                <Label className="text-xs xs:text-sm">Store Current Balance</Label>
                 <Input
                   type="number"
                   value={currentStore?.storeCurrentBalance || 0}
@@ -1020,6 +1043,7 @@ export const StaffManagement = () => {
                     })
                   }
                   placeholder="Enter store current balance"
+                  className="h-7 xs:h-8 sm:h-9 text-xs xs:text-sm rounded-[4px] xs:rounded"
                 />
               </div>
 
@@ -1040,8 +1064,8 @@ export const StaffManagement = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Store Seva Balance</Label>
+              <div className="space-y-1 xs:space-y-1.5 sm:space-y-2">
+                <Label className="text-xs xs:text-sm">Store Seva Balance</Label>
                 <Input
                   type="number"
                   value={currentStore?.storeSevaBalance || 0}
@@ -1052,6 +1076,7 @@ export const StaffManagement = () => {
                     })
                   }
                   placeholder="Enter store seva balance"
+                  className="h-7 xs:h-8 sm:h-9 text-xs xs:text-sm rounded-[4px] xs:rounded"
                 />
               </div>
 
@@ -1172,18 +1197,19 @@ export const StaffManagement = () => {
 
       {/* Delete Store Dialog */}
       <Dialog open={isDeleteStoreDialogOpen} onOpenChange={setIsDeleteStoreDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="sm:max-w-[425px] px-2 xs:px-4 sm:px-6 py-3 xs:py-4 sm:py-6">
+          <DialogHeader className="space-y-1 xs:space-y-2">
+            <DialogTitle className="text-base xs:text-lg sm:text-xl">Confirm Deletion</DialogTitle>
+            <DialogDescription className="text-[10px] xs:text-xs sm:text-sm">
               Are you sure you want to delete {currentStore?.storeName}? This action cannot be
               undone.
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter>
+          <DialogFooter className="mt-4 xs:mt-6 sm:mt-8 flex flex-col xs:flex-row gap-2 xs:gap-3 sm:gap-4">
             <Button
               variant="destructive"
+              className="h-8 xs:h-9 sm:h-10 text-xs xs:text-sm w-full xs:w-auto"
               onClick={async () => {
                 if (currentStore?.id && (await handleDeleteStore(currentStore.id))) {
                   const storesSnapshot = await getDocs(collection(db, 'stores'));

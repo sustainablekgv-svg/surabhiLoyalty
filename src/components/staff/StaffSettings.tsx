@@ -110,29 +110,31 @@ export const StaffSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] p-6">
-        <DialogHeader className="pb-4">
-          <DialogTitle className="text-xl font-semibold text-gray-900">Staff Settings</DialogTitle>
-          <DialogDescription className="text-sm text-gray-600">
+      <DialogContent className="sm:max-w-[500px] max-w-[95vw] p-3 xs:p-4 sm:p-6">
+        <DialogHeader className="pb-1.5 xs:pb-2 sm:pb-4">
+          <DialogTitle className="text-base xs:text-lg sm:text-xl font-semibold text-gray-900">
+            Staff Settings
+          </DialogTitle>
+          <DialogDescription className="text-[10px] xs:text-xs sm:text-sm text-gray-600">
             Update your account details below
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="mobile" className="text-sm font-semibold">
+        <div className="space-y-2 xs:space-y-3 sm:space-y-5 py-1.5 xs:py-2 sm:py-4">
+          <div className="space-y-0.5 xs:space-y-1 sm:space-y-2">
+            <Label htmlFor="mobile" className="text-[10px] xs:text-xs sm:text-sm font-semibold">
               Mobile Number
             </Label>
             <Input
               id="mobile"
               value={user.mobile}
               disabled
-              className="bg-gray-100 text-gray-700 font-medium"
+              className="bg-gray-100 text-gray-700 font-medium h-7 xs:h-8 sm:h-10 text-xs xs:text-sm px-2 xs:px-3 rounded-md"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="staffName" className="text-sm font-semibold">
+          <div className="space-y-0.5 xs:space-y-1 sm:space-y-2">
+            <Label htmlFor="staffName" className="text-[10px] xs:text-xs sm:text-sm font-semibold">
               Full Name
             </Label>
             <Input
@@ -140,12 +142,15 @@ export const StaffSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
               name="staffName"
               value={formData.staffName || ''}
               onChange={handleInputChange}
-              className="text-gray-800 font-medium"
+              className="text-gray-800 font-medium h-7 xs:h-8 sm:h-10 text-xs xs:text-sm px-2 xs:px-3 rounded-md"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="staffPassword" className="text-sm font-semibold">
+          <div className="space-y-0.5 xs:space-y-1 sm:space-y-2">
+            <Label
+              htmlFor="staffPassword"
+              className="text-[10px] xs:text-xs sm:text-sm font-semibold"
+            >
               Password
             </Label>
             <Input
@@ -154,12 +159,12 @@ export const StaffSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
               type="text"
               value={formData.staffPassword || ''}
               onChange={handleInputChange}
-              className="text-gray-800 font-medium"
+              className="text-gray-800 font-medium h-7 xs:h-8 sm:h-10 text-xs xs:text-sm px-2 xs:px-3 rounded-md"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="staffPin" className="text-sm font-semibold">
+          <div className="space-y-0.5 xs:space-y-1 sm:space-y-2">
+            <Label htmlFor="staffPin" className="text-[10px] xs:text-xs sm:text-sm font-semibold">
               Staff PIN (4 digits)
             </Label>
             <Input
@@ -169,17 +174,17 @@ export const StaffSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
               maxLength={4}
               value={formData.staffPin || ''}
               onChange={handleInputChange}
-              className="text-gray-800 font-medium"
+              className="text-gray-800 font-medium h-7 xs:h-8 sm:h-10 text-xs xs:text-sm px-2 xs:px-3 rounded-md"
             />
           </div>
         </div>
 
-        <DialogFooter className="mt-6 gap-3">
+        <DialogFooter className="mt-3 xs:mt-4 sm:mt-6 gap-1.5 xs:gap-2 sm:gap-3 flex-col xs:flex-row">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isUpdating}
-            className="min-w-[100px]"
+            className="min-w-full xs:min-w-[90px] sm:min-w-[100px] h-7 xs:h-8 sm:h-10 text-[10px] xs:text-xs sm:text-sm px-2 xs:px-3"
           >
             Cancel
           </Button>
@@ -187,7 +192,7 @@ export const StaffSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
             type="submit"
             onClick={handleSaveChanges}
             disabled={isUpdating}
-            className="min-w-[120px] bg-primary hover:bg-primary/90 text-white font-medium"
+            className="min-w-full xs:min-w-[100px] sm:min-w-[120px] bg-primary hover:bg-primary/90 text-white font-medium h-7 xs:h-8 sm:h-10 text-[10px] xs:text-xs sm:text-sm px-2 xs:px-3"
           >
             {isUpdating ? 'Saving...' : 'Save Changes'}
           </Button>
