@@ -225,9 +225,9 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
   const calculateCommissions = (amount: number) => {
     if (!storeDetails) return { surabhiCoins: 0, sevaAmount: 0, referralAmount: 0 };
 
-    const surabhiCoins = Math.floor(amount * (storeDetails.surabhiCommission / 100));
-    const sevaAmount = Math.floor(amount * (storeDetails.sevaCommission / 100));
-    const referralAmount = Math.floor(amount * (storeDetails.referralCommission / 100));
+    const surabhiCoins = Number((amount * (storeDetails.surabhiCommission / 100)).toFixed(2));
+    const sevaAmount = Number((amount * (storeDetails.sevaCommission / 100)).toFixed(2));
+    const referralAmount = Number((amount * (storeDetails.referralCommission / 100)).toFixed(2));
     return { surabhiCoins, sevaAmount, referralAmount };
   };
 

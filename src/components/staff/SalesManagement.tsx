@@ -1,28 +1,28 @@
 import {
-  collection,
-  query,
-  where,
-  getDocs,
   addDoc,
-  updateDoc,
+  collection,
   doc,
   getDoc,
+  getDocs,
   increment,
+  query,
+  serverTimestamp,
   Timestamp,
+  updateDoc,
+  where,
 } from 'firebase/firestore';
-import { serverTimestamp } from 'firebase/firestore';
 import {
-  ShoppingCart,
-  Search,
-  DollarSign,
-  Coins,
   Calculator,
   CheckCircle,
-  Phone,
+  Coins,
+  DollarSign,
   HandCoins,
   Loader2,
+  Phone,
+  Search,
+  ShoppingCart,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
@@ -40,14 +40,14 @@ import {
 import { useAuth } from '@/hooks/auth-context';
 import { db } from '@/lib/firebase';
 import {
+  AccountTxType,
+  ActivityType,
+  CustomerTxType,
   CustomerType,
   SalesManagementProps,
-  ActivityType,
-  StoreType,
-  AccountTxType,
-  StaffType,
   SevaPoolType,
-  CustomerTxType,
+  StaffType,
+  StoreType,
 } from '@/types/types';
 
 const fetchCustomerByMobile = async (mobile: string): Promise<CustomerType | null> => {
@@ -68,10 +68,10 @@ const fetchCustomerByMobile = async (mobile: string): Promise<CustomerType | nul
 const calculateAdminCut = (saleAmount: number, storeDetails: StoreType) => {
   if (!storeDetails) return 0;
   // const remainingAmount = saleAmount - surabhiCoinsToUse;
-  const surabhiAmount = Math.floor(saleAmount * (storeDetails.surabhiCommission / 100));
-  const referralAmount = Math.floor(saleAmount * (storeDetails.referralCommission / 100));
-  const sevaAmount = Math.floor(saleAmount * (storeDetails.sevaCommission / 100));
-
+  const surabhiAmount = Number((saleAmount * (storeDetails.surabhiCommission / 100)).toFixed(2));
+  const referralAmount = Number((saleAmount * (storeDetails.referralCommission / 100)).toFixed(2));
+  const sevaAmount = Number((saleAmount * (storeDetails.sevaCommission / 100)).toFixed(2));
+  console.log('The line 74 data is', surabhiAmount, referralAmount, sevaAmount);
   return referralAmount + sevaAmount + surabhiAmount;
 };
 
@@ -194,7 +194,9 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
   // Automatically use all available Surabhi coins if customer is selected
   useEffect(() => {
     if (selectedCustomer && saleAmount && saleAmount > 0) {
-      const maxCoinsToUse = Math.min(selectedCustomer.surabhiBalance, saleAmount);
+      const maxCoinsToUse = Number(
+        Math.min(selectedCustomer.surabhiBalance, saleAmount).toFixed(2)
+      );
       setSurabhiCoinsToUse(maxCoinsToUse);
     } else {
       setSurabhiCoinsToUse(0);
@@ -208,7 +210,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       (saleCalculation.cashPayment *
         (storeDetails.surabhiCommission - storeDetails.cashOnlyCommission)) /
       100;
-
+    console.log('THe line 211 data is', cashPaymentPart);
     const surabhiCoinsPart =
       (saleCalculation.surabhiCoinsUsed *
         (storeDetails.referralCommission +
@@ -217,9 +219,10 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       100;
 
     const totalProfit = cashPaymentPart + surabhiCoinsPart;
+    console.log('The line 219 data is', totalProfit);
 
     // Round to 2 decimal places (for currency)
-    return Math.round(totalProfit * 100) / 100;
+    return Number(totalProfit.toFixed(2));
   };
 
   // Calculate sale details with accurate payment logic
@@ -227,7 +230,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     if (!saleAmount || saleAmount <= 0 || !storeDetails) return null;
 
     const coinsToUse = selectedCustomer
-      ? Math.min(surabhiCoinsToUse, selectedCustomer.surabhiBalance)
+      ? Number(Math.min(surabhiCoinsToUse, selectedCustomer.surabhiBalance).toFixed(2))
       : 0;
     // let totalAmount = saleAmount;
     let walletDeduction = 0;
@@ -257,21 +260,25 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         walletDeduction = walletBalance;
         cashPayment = saleAmount - walletBalance - coinsToUse;
         // Wallet portion gets surabhi commission, cash portion gets cashOnly commission
-        surabhiCoinsEarned = Math.floor(cashPayment * (storeDetails.cashOnlyCommission / 100));
-        referrerSurabhiCoinsEarned = Math.floor(
-          cashPayment * (storeDetails.referralCommission / 100)
+        surabhiCoinsEarned = Number(
+          (cashPayment * (storeDetails.cashOnlyCommission / 100)).toFixed(2)
         );
-        goSevaContribution = Math.floor(cashPayment * (storeDetails.sevaCommission / 100));
+        referrerSurabhiCoinsEarned = Number(
+          (cashPayment * (storeDetails.referralCommission / 100)).toFixed(2)
+        );
+        goSevaContribution = Number((cashPayment * (storeDetails.sevaCommission / 100)).toFixed(2));
       } else {
         return { isValid: false, error: 'Mixed is not needed' };
       }
     } else if (paymentMethod === 'cash') {
       cashPayment = saleAmount - coinsToUse;
-      surabhiCoinsEarned = Math.floor(cashPayment * (storeDetails.cashOnlyCommission / 100));
-      referrerSurabhiCoinsEarned += Math.floor(
-        cashPayment * (storeDetails.referralCommission / 100)
+      surabhiCoinsEarned = Number(
+        (cashPayment * (storeDetails.cashOnlyCommission / 100)).toFixed(2)
       );
-      goSevaContribution = Math.floor(cashPayment * (storeDetails.sevaCommission / 100));
+      referrerSurabhiCoinsEarned += Number(
+        (cashPayment * (storeDetails.referralCommission / 100)).toFixed(2)
+      );
+      goSevaContribution = Number((cashPayment * (storeDetails.sevaCommission / 100)).toFixed(2));
     }
 
     return {
@@ -288,6 +295,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
   const saleCalculation = saleAmount ? calculateSale() : null;
   const adminProfitTaken = calculateAdminProfit();
+  console.log('THe adminProfit taken is', adminProfitTaken);
 
   // console.log("The line 253 is", saleCalculation?.totalAmount)
 
@@ -1363,8 +1371,12 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                           value={surabhiCoinsToUse}
                           onChange={e => {
                             const value = Number(e.target.value);
-                            const maxCoins = Math.min(selectedCustomer.surabhiBalance, saleAmount);
-                            setSurabhiCoinsToUse(Math.max(0, Math.min(value, maxCoins)));
+                            const maxCoins = Number(
+                              Math.min(selectedCustomer.surabhiBalance, saleAmount).toFixed(2)
+                            );
+                            setSurabhiCoinsToUse(
+                              Number(Math.max(0, Math.min(value, maxCoins)).toFixed(2))
+                            );
                           }}
                           className="pl-10 h-12"
                           min="0"

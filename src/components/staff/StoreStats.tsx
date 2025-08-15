@@ -8,7 +8,7 @@ import { db } from '@/lib/firebase';
 import { CustomerType, ActivityType, StaffStatsProps } from '@/types/types2';
 // import { Timestamp } from 'firebase/firestore';
 
-export const StaffStats = ({ storeLocation }: StaffStatsProps) => {
+export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
   const [customers, setCustomers] = useState<CustomerType[]>([]);
   const [activities, setActivities] = useState<ActivityType[]>([]);
   const [loading, setLoading] = useState(true);

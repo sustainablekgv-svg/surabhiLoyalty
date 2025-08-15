@@ -1,13 +1,13 @@
 import { Coins, LogOut, Settings } from 'lucide-react';
 import { useState } from 'react';
 
-import { StaffSettings } from './StaffSettings';
+import { StoreSettings } from './StoreSettings';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StaffHeaderProps } from '@/types/types';
 
-export const StaffHeader = ({ user, onLogout }: StaffHeaderProps) => {
+export const StoreHeader = ({ user, onLogout }: StaffHeaderProps) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   return (
@@ -24,7 +24,7 @@ export const StaffHeader = ({ user, onLogout }: StaffHeaderProps) => {
                 <h1 className="text-base xs:text-lg sm:text-xl font-bold text-gray-900">
                   Loyalty Rewards
                 </h1>
-                <p className="text-xs sm:text-sm text-gray-600 hidden xs:block">Staff Portal</p>
+                <p className="text-xs sm:text-sm text-gray-600 hidden xs:block">Store Portal</p>
               </div>
             </div>
 
@@ -54,14 +54,14 @@ export const StaffHeader = ({ user, onLogout }: StaffHeaderProps) => {
             <div className="flex items-center gap-1 xs:gap-2 sm:gap-3">
               <div className="text-right hidden xs:block">
                 <p className="text-xs xs:text-sm font-medium text-gray-900 truncate max-w-[100px] sm:max-w-[120px] md:max-w-[180px]">
-                  {user.name || 'Staff Member'}
+                  {user.name || 'Store Member'}
                 </p>
                 <div className="flex items-center gap-1 sm:gap-2">
                   <Badge
                     variant="secondary"
                     className="text-[10px] xs:text-xs py-0 xs:py-0.5 h-4 xs:h-5"
                   >
-                    {user.role.toUpperCase()}
+                    {user.role.toUpperCase() === 'STAFF' ? 'STORE' : 'CUSTOMER'}
                   </Badge>
                   <span className="text-[10px] xs:text-xs text-gray-600 hidden md:inline">
                     {user.mobile}
@@ -101,7 +101,7 @@ export const StaffHeader = ({ user, onLogout }: StaffHeaderProps) => {
                   {user.role.toUpperCase()}
                 </Badge>
                 <span className="text-[10px] text-gray-600 truncate max-w-[60px]">
-                  {user.name?.split(' ')[0] || 'Staff'}
+                  {user.name?.split(' ')[0] || 'Store'}
                 </span>
               </div>
             </div>
@@ -109,8 +109,8 @@ export const StaffHeader = ({ user, onLogout }: StaffHeaderProps) => {
         </div>
       </div>
 
-      {/* Staff Settings Dialog */}
-      <StaffSettings user={user} isOpen={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+      {/* Store Settings Dialog */}
+      <StoreSettings user={user} isOpen={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
     </div>
   );
 };

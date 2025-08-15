@@ -190,7 +190,7 @@ const Accounts = () => {
       }
 
       // Generate invoice ID for the settlement transaction
-      const invoiceId = `STLMNT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const invoiceId = `STLMNT-${Date.now()}-${Number((Math.random() * 1000).toFixed(2))}`;
 
       // Create the transaction
       const newTx = {

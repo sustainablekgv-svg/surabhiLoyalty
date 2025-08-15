@@ -137,7 +137,7 @@ export const SalesManagement = () => {
   });
 
   // Pagination logic for transactions
-  const transactionsTotalPages = Math.ceil(filteredTransactions.length / transactionsPerPage);
+  const transactionsTotalPages = Number(Math.ceil(filteredTransactions.length / transactionsPerPage).toFixed(2));
   const transactionsStartIndex = (transactionsPage - 1) * transactionsPerPage;
   const transactionsEndIndex = transactionsStartIndex + transactionsPerPage;
   const paginatedTransactions = filteredTransactions.slice(
@@ -146,7 +146,7 @@ export const SalesManagement = () => {
   );
 
   // Pagination logic for recharges
-  const rechargesTotalPages = Math.ceil(filteredRecharges.length / rechargesPerPage);
+  const rechargesTotalPages = Number(Math.ceil(filteredRecharges.length / rechargesPerPage).toFixed(2));
   const rechargesStartIndex = (rechargesPage - 1) * rechargesPerPage;
   const rechargesEndIndex = rechargesStartIndex + rechargesPerPage;
   const paginatedRecharges = filteredRecharges.slice(rechargesStartIndex, rechargesEndIndex);
@@ -459,7 +459,7 @@ export const SalesManagement = () => {
                         <Button
                           variant="outline"
                           className="h-8 w-8 p-0"
-                          onClick={() => setTransactionsPage(Math.max(1, transactionsPage - 1))}
+                          onClick={() => setTransactionsPage(Number(Math.max(1, transactionsPage - 1).toFixed(2)))}
                           disabled={transactionsPage === 1}
                         >
                           <span className="sr-only">Go to previous page</span>
@@ -470,7 +470,7 @@ export const SalesManagement = () => {
                           className="h-8 w-8 p-0"
                           onClick={() =>
                             setTransactionsPage(
-                              Math.min(transactionsTotalPages, transactionsPage + 1)
+                              Number(Math.min(transactionsTotalPages, transactionsPage + 1).toFixed(2))
                             )
                           }
                           disabled={
@@ -618,7 +618,7 @@ export const SalesManagement = () => {
                         <Button
                           variant="outline"
                           className="h-8 w-8 p-0"
-                          onClick={() => setRechargesPage(Math.max(1, rechargesPage - 1))}
+                          onClick={() => setRechargesPage(Number(Math.max(1, rechargesPage - 1).toFixed(2)))}
                           disabled={rechargesPage === 1}
                         >
                           <span className="sr-only">Go to previous page</span>
@@ -628,7 +628,7 @@ export const SalesManagement = () => {
                           variant="outline"
                           className="h-8 w-8 p-0"
                           onClick={() =>
-                            setRechargesPage(Math.min(rechargesTotalPages, rechargesPage + 1))
+                            setRechargesPage(Number(Math.min(rechargesTotalPages, rechargesPage + 1).toFixed(2)))
                           }
                           disabled={
                             rechargesPage === rechargesTotalPages || rechargesTotalPages === 0

@@ -413,7 +413,7 @@ export const GoSevaPool = () => {
       // Generate a unique invoice ID (timestamp + random string)
       const generateInvoiceId = () => {
         const timestamp = new Date().getTime();
-        const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const randomStr = Number(Math.random().toFixed(2)).toString(36).substring(2, 8).toUpperCase();
         return `INV-${timestamp}-${randomStr}`;
       };
 
@@ -440,18 +440,18 @@ export const GoSevaPool = () => {
           surabhiBalance: 0,
         },
         newBalance: {
-          walletBalance: (currentSevaPool?.currentBalance || 0) - amount,
+          walletBalance: Number(((currentSevaPool?.currentBalance || 0) - amount).toFixed(2)),
           surabhiBalance: 0,
         },
         walletCredit: 0,
         walletDebit: amount, // Debit from the pool
-        walletBalance: (currentSevaPool?.currentBalance || 0) - amount,
+        walletBalance: Number(((currentSevaPool?.currentBalance || 0) - amount).toFixed(2)),
         surabhiDebit: 0,
         surabhiCredit: 0,
         surabhiBalance: 0,
         sevaCredit: 0,
         sevaDebit: amount, // Debit from the pool
-        sevaBalance: storeSevaBalances[selectedStoreForAllocation] - amount,
+        sevaBalance: Number((storeSevaBalances[selectedStoreForAllocation] - amount).toFixed(2)),
         sevaTotal: currentSevaPool?.totalContributions || 0,
         remarks: `${allocationDescription} (from ${selectedStoreForAllocation})`,
       });
@@ -519,7 +519,7 @@ export const GoSevaPool = () => {
     totalContributors: customers.length,
     avgContribution:
       customers.length > 0
-        ? transactions.reduce((sum, tx) => sum + (tx.sevaEarned || 0), 0) / customers.length
+        ? Number((transactions.reduce((sum, tx) => sum + (tx.sevaEarned || 0), 0) / customers.length).toFixed(2))
         : 0,
   };
 

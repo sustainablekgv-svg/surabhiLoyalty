@@ -12,8 +12,8 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { SalesManagement } from '@/components/staff/SalesManagement';
-import { StaffHeader } from '@/components/staff/StaffHeader';
-import { StaffStats } from '@/components/staff/StaffStats';
+import { StoreHeader } from '@/components/staff/StoreHeader';
+import { StoreStats } from '@/components/staff/StoreStats';
 import StoreAccounts from '@/components/staff/storeAccounts';
 import { TransactionsPage } from '@/components/staff/TransactionsPage';
 import { UserRegistration } from '@/components/staff/UserRegistration';
@@ -21,7 +21,7 @@ import { WalletRecharge } from '@/components/staff/WalletRecharge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/auth-context';
 
-const StaffDashboard = () => {
+const StoreDashboard = () => {
   const { user, logout, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
@@ -70,7 +70,7 @@ const StaffDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50">
-      <StaffHeader user={user} onLogout={handleLogout} />
+      <StoreHeader user={user} onLogout={handleLogout} />
       <div className="container mx-auto px-4 py-6">
         <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center gap-3">
@@ -79,7 +79,7 @@ const StaffDashboard = () => {
               <h1 className="text-2xl font-bold text-gray-900">
                 {user?.storeLocation || 'Store Dashboard'}
               </h1>
-              <p className="text-gray-600">Welcome back, {user?.name || 'Staff Member'}</p>
+              <p className="text-gray-600">Welcome back, {user?.name || 'Store Member'}</p>
             </div>
           </div>
         </div>
@@ -117,7 +117,7 @@ const StaffDashboard = () => {
             {/* Tab Content */}
             <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
               <TabsContent value="overview" className="space-y-6">
-                <StaffStats storeLocation={user?.storeLocation || ''} />
+                <StoreStats storeLocation={user?.storeLocation || ''} />
               </TabsContent>
 
               <TabsContent value="register">
@@ -147,4 +147,4 @@ const StaffDashboard = () => {
   );
 };
 
-export default StaffDashboard;
+export default StoreDashboard;

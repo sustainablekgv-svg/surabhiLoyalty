@@ -1,7 +1,7 @@
 import { sendPasswordResetEmail } from 'firebase/auth';
-import { Coins, Shield, Users, Phone, Lock, Eye, EyeOff, UserCircle, Mail } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Coins, Eye, EyeOff, Lock, Mail, Phone, Shield, UserCircle, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -185,7 +185,7 @@ const Index = () => {
               <CardDescription className="text-gray-600">
                 {forgotPasswordMode
                   ? "We'll send a reset link to your registered email"
-                  : 'Sign in to access your loyalty rewards'}
+                  : 'Sign in to access the application'}
               </CardDescription>
             </CardHeader>
 
@@ -251,7 +251,7 @@ const Index = () => {
                         <SelectItem value="staff">
                           <div className="flex items-center gap-2">
                             <Shield className="h-4 w-4 text-blue-600" />
-                            <span>Staff</span>
+                            <span>Store</span>
                           </div>
                         </SelectItem>
                         <SelectItem value="admin">

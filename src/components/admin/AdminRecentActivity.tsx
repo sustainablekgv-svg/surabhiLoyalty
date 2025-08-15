@@ -231,12 +231,12 @@ export const AdminRecentActivity = () => {
 
     const date = firestoreTimestamp.toDate();
     const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    const diffInSeconds = Number(((now.getTime() - date.getTime()) / 1000).toFixed(2));
 
     if (diffInSeconds < 60) return 'Just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
-    return `${Math.floor(diffInSeconds / 86400)} days ago`;
+    if (diffInSeconds < 3600) return `${Number((diffInSeconds / 60).toFixed(2))} minutes ago`;
+    if (diffInSeconds < 86400) return `${Number((diffInSeconds / 3600).toFixed(2))} hours ago`;
+    return `${Number((diffInSeconds / 86400).toFixed(2))} days ago`;
   };
 
   const filteredActivities = activities.filter(activity => {

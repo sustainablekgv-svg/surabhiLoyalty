@@ -27,7 +27,7 @@ interface StaffSettingsProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export const StaffSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps) => {
+export const StoreSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps) => {
   const [formData, setFormData] = useState<Partial<StaffType>>({
     staffName: '',
     staffPassword: '',
@@ -82,7 +82,7 @@ export const StaffSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
 
     // Validate PIN format
     if (formData.staffPin && (formData.staffPin.length !== 4 || !/^\d+$/.test(formData.staffPin))) {
-      toast.error('Staff PIN must be a 4-digit number');
+      toast.error('Store PIN must be a 4-digit number');
       return;
     }
 
@@ -113,7 +113,7 @@ export const StaffSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
       <DialogContent className="sm:max-w-[500px] max-w-[95vw] p-3 xs:p-4 sm:p-6">
         <DialogHeader className="pb-1.5 xs:pb-2 sm:pb-4">
           <DialogTitle className="text-base xs:text-lg sm:text-xl font-semibold text-gray-900">
-            Staff Settings
+            Store Settings
           </DialogTitle>
           <DialogDescription className="text-[10px] xs:text-xs sm:text-sm text-gray-600">
             Update your account details below
@@ -165,7 +165,7 @@ export const StaffSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
 
           <div className="space-y-0.5 xs:space-y-1 sm:space-y-2">
             <Label htmlFor="staffPin" className="text-[10px] xs:text-xs sm:text-sm font-semibold">
-              Staff PIN (4 digits)
+              Store PIN (4 digits)
             </Label>
             <Input
               id="staffPin"
