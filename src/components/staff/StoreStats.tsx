@@ -144,7 +144,7 @@ export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 xs:gap-4 sm:gap-6">
         {stats.map((stat, index) => (
           <Card
             key={index}
@@ -172,7 +172,7 @@ export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
       </div>
 
       {/* Bottom Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 xs:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 xs:gap-4 sm:gap-6">
         {/* Recent Activities */}
         <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader className="pb-2 xs:pb-4">

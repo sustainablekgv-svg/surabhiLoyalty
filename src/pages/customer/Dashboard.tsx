@@ -1,5 +1,5 @@
-import { TrendingUp, Share2, History } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { History, Share2, TrendingUp } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -71,17 +71,21 @@ const CustomerDashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50">
       <CustomerHeader user={user} onLogout={handleLogout} />
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-        <div className="mb-4 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">
+      <div className="container mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 py-3 xs:py-4 sm:py-6">
+        <div className="mb-3 xs:mb-4 sm:mb-6 lg:mb-8">
+          <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900 mb-0.5 xs:mb-1 sm:mb-2">
             My Rewards Dashboard
           </h1>
-          <p className="text-sm sm:text-base text-gray-600">
+          <p className="text-xs xs:text-sm sm:text-base text-gray-600">
             Track your coins, referrals, and transaction history
           </p>
         </div>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-4 sm:mb-8">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="w-full space-y-3 xs:space-y-4 sm:space-y-6"
+        >
+          <TabsList className="grid w-full grid-cols-3 mb-3 xs:mb-4 sm:mb-6">
             <TabsTrigger value="overview" className="flex flex-col items-center gap-1 py-2 sm:py-3">
               <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
               <span className="text-[10px] sm:text-xs">Overview</span>
@@ -99,15 +103,18 @@ const CustomerDashboard = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-4 sm:space-y-6">
+          <TabsContent
+            value="overview"
+            className="space-y-3 xs:space-y-4 sm:space-y-6 pt-1 xs:pt-2"
+          >
             <CustomerStats userId={user.id} />
           </TabsContent>
 
-          <TabsContent value="referrals">
+          <TabsContent value="referrals" className="pt-1 xs:pt-2">
             <ReferralSystem userId={user.id} userName={user.name || ''} userMobile={user.mobile} />
           </TabsContent>
 
-          <TabsContent value="history">
+          <TabsContent value="history" className="pt-1 xs:pt-2">
             <TransactionHistory userId={user.id} />
           </TabsContent>
         </Tabs>

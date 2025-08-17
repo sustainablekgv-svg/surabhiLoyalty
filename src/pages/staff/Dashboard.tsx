@@ -12,9 +12,9 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { SalesManagement } from '@/components/staff/SalesManagement';
+import StoreAccounts from '@/components/staff/storeAccounts';
 import { StoreHeader } from '@/components/staff/StoreHeader';
 import { StoreStats } from '@/components/staff/StoreStats';
-import StoreAccounts from '@/components/staff/storeAccounts';
 import { TransactionsPage } from '@/components/staff/TransactionsPage';
 import { UserRegistration } from '@/components/staff/UserRegistration';
 import { WalletRecharge } from '@/components/staff/WalletRecharge';
@@ -71,12 +71,12 @@ const StoreDashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50">
       <StoreHeader user={user} onLogout={handleLogout} />
-      <div className="container mx-auto px-4 py-6">
-        <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="container mx-auto px-2 xs:px-3 sm:px-4 py-3 sm:py-6">
+        <div className="mb-3 sm:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
           <div className="flex items-center gap-3">
-            <Store className="h-8 w-8 text-purple-600" />
+            <Store className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
                 {user?.storeLocation || 'Store Dashboard'}
               </h1>
               <p className="text-gray-600">Welcome back, {user?.name || 'Store Member'}</p>
@@ -88,8 +88,8 @@ const StoreDashboard = () => {
         <div className="w-full">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             {/* Tabs Navigation */}
-            <div className="mb-8">
-              <TabsList className="grid w-full grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-1 bg-gray-100 p-1 rounded-lg">
+            <div className="mb-4 sm:mb-6 md:mb-8">
+              <TabsList className="grid w-full grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-1 bg-gray-100 p-1 rounded-lg overflow-x-auto">
                 {[
                   { value: 'overview', icon: TrendingUp, label: 'Overview' },
                   { value: 'register', icon: UserPlus, label: 'Register' },
@@ -101,7 +101,7 @@ const StoreDashboard = () => {
                   <TabsTrigger
                     key={tab.value}
                     value={tab.value}
-                    className={`flex flex-col items-center gap-0.5 xs:gap-1 py-1 xs:py-1.5 sm:py-2 px-0.5 xs:px-1 sm:px-2 rounded-md transition-all ${
+                    className={`flex flex-col items-center gap-0.5 xs:gap-1 py-1 xs:py-1.5 sm:py-2 px-0.5 xs:px-1 sm:px-2 rounded-md transition-all text-center ${
                       activeTab === tab.value
                         ? 'bg-white shadow-sm text-purple-600 font-medium'
                         : 'text-gray-600 hover:text-purple-500'
@@ -115,28 +115,28 @@ const StoreDashboard = () => {
             </div>
 
             {/* Tab Content */}
-            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
-              <TabsContent value="overview" className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm p-2 xs:p-3 sm:p-6 mt-1">
+              <TabsContent value="overview" className="space-y-4 sm:space-y-6 pt-2">
                 <StoreStats storeLocation={user?.storeLocation || ''} />
               </TabsContent>
 
-              <TabsContent value="register">
+              <TabsContent value="register" className="pt-2">
                 <UserRegistration storeLocation={user?.storeLocation || ''} />
               </TabsContent>
 
-              <TabsContent value="recharge">
+              <TabsContent value="recharge" className="pt-2">
                 <WalletRecharge storeLocation={user?.storeLocation || ''} />
               </TabsContent>
 
-              <TabsContent value="sales">
+              <TabsContent value="sales" className="pt-2">
                 <SalesManagement storeLocation={user?.storeLocation || ''} />
               </TabsContent>
 
-              <TabsContent value="transactions">
+              <TabsContent value="transactions" className="pt-2">
                 <TransactionsPage storeLocation={user?.storeLocation || ''} />
               </TabsContent>
 
-              <TabsContent value="accounts">
+              <TabsContent value="accounts" className="pt-2">
                 <StoreAccounts storeLocation={user?.storeLocation || ''} userRole={''} />
               </TabsContent>
             </div>

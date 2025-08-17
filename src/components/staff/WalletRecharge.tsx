@@ -1,33 +1,33 @@
 import {
-  collection,
-  query,
-  where,
-  getDocs,
-  updateDoc,
   addDoc,
-  serverTimestamp,
+  collection,
   doc,
+  FieldValue,
   getDoc,
-  Timestamp,
+  getDocs,
   increment,
   onSnapshot,
+  query,
+  serverTimestamp,
+  Timestamp,
+  updateDoc,
+  where,
 } from 'firebase/firestore';
-import { FieldValue } from 'firebase/firestore';
 import {
-  Wallet,
-  Search,
-  DollarSign,
-  Coins,
+  AlertTriangle,
   CheckCircle,
-  Phone,
+  Coins,
+  DollarSign,
+  HandCoins,
   Loader2,
   Mail,
-  HandCoins,
   MapPin,
+  Phone,
+  Search,
   Shield,
-  AlertTriangle,
+  Wallet,
 } from 'lucide-react';
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -40,14 +40,14 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/auth-context';
 import { db } from '@/lib/firebase';
 import {
-  CustomerType,
-  WalletRechargeProps,
-  ActivityType,
-  StoreType,
   AccountTxType,
+  ActivityType,
+  CustomerTxType,
+  CustomerType,
   SevaPoolType,
   StaffType,
-  CustomerTxType,
+  StoreType,
+  WalletRechargeProps,
 } from '@/types/types';
 
 function getCurrentQuarterStart(): Date {
@@ -786,8 +786,8 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       return;
     }
 
-    // Check if customer is a student to determine minimum recharge amount
-    const minimumAmount = selectedCustomer.isStudent ? 500 : 2000;
+    // Minimum recharge amount is 2000 for all users
+    const minimumAmount = 2000;
     if (amount < minimumAmount) {
       toast.error(`Minimum recharge amount is ₹${minimumAmount}`);
       return;
@@ -840,9 +840,9 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 xs:gap-6 md:gap-8">
         {/* Customer Selection */}
         <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-          <CardHeader className="px-3 py-4 xs:p-6">
-            <CardTitle className="flex items-center gap-1 xs:gap-2 text-base xs:text-lg">
-              <Search className="h-4 w-4 xs:h-5 xs:w-5 text-blue-600" />
+          <CardHeader className="px-3 py-3 xs:px-4 xs:py-4 sm:p-6">
+            <CardTitle className="flex items-center gap-1 xs:gap-2 text-sm xs:text-base sm:text-lg">
+              <Search className="h-3.5 w-3.5 xs:h-4 xs:w-4 sm:h-5 sm:w-5 text-blue-600" />
               Select Customer
             </CardTitle>
             <CardDescription className="text-xs xs:text-sm">
@@ -965,17 +965,17 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
 
         {/* Recharge Form */}
         <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-          <CardHeader className="px-3 py-4 xs:p-6">
-            <CardTitle className="flex items-center gap-1 xs:gap-2 text-base xs:text-lg">
-              <DollarSign className="h-4 w-4 xs:h-5 xs:w-5 text-green-600" />
+          <CardHeader className="px-3 py-3 xs:px-4 xs:py-4 sm:p-6">
+            <CardTitle className="flex items-center gap-1 xs:gap-2 text-sm xs:text-base sm:text-lg">
+              <DollarSign className="h-3.5 w-3.5 xs:h-4 xs:w-4 sm:h-5 sm:w-5 text-green-600" />
               Recharge Details
             </CardTitle>
             <CardDescription className="text-xs xs:text-sm">
-              Enter recharge amount (minimum ₹500 for students, ₹2,000 for others)
+              Enter recharge amount (minimum ₹2,000 for all users)
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-4 xs:space-y-6 px-3 xs:px-6">
+          <CardContent className="space-y-3 xs:space-y-4 sm:space-y-6 px-3 xs:px-4 sm:px-6">
             {selectedCustomer ? (
               <>
                 <div className="p-3 xs:p-4 bg-blue-50 rounded-lg">
@@ -1082,21 +1082,20 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                     <Input
                       id="amount"
                       type="number"
-                      placeholder={`Enter amount (₹${selectedCustomer.isStudent ? '500' : '2,000'} - ₹50,000)`}
+                      placeholder={`Enter amount (₹2,000 - ₹50,000)`}
                       value={rechargeAmount}
                       onChange={e => setRechargeAmount(e.target.value)}
                       className="pl-8 xs:pl-10 h-9 xs:h-10 md:h-12 text-xs xs:text-sm md:text-base rounded-md"
-                      min={selectedCustomer.isStudent ? '500' : '2000'}
+                      min="2000"
                       max="50000"
                       step="100"
                     />
                   </div>
-                  {rechargeAmountNum > 0 &&
-                    rechargeAmountNum < (selectedCustomer.isStudent ? 500 : 2000) && (
-                      <p className="text-xs xs:text-sm text-red-500">
-                        Minimum recharge amount is ₹{selectedCustomer.isStudent ? '500' : '2,000'}
-                      </p>
-                    )}
+                  {rechargeAmountNum > 0 && rechargeAmountNum < 2000 && (
+                    <p className="text-xs xs:text-sm text-red-500">
+                      Minimum recharge amount is ₹2,000
+                    </p>
+                  )}
                 </div>
 
                 {/* <div className="space-y-2">

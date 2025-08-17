@@ -1266,6 +1266,14 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                               <span className="text-xs font-medium">Other Store</span>
                             </div>
                           )}
+                          {customer.isStudent && (
+                            <Badge
+                              variant="outline"
+                              className="border-blue-200 text-blue-800 text-xs"
+                            >
+                              Student
+                            </Badge>
+                          )}
                         </div>
                         <p className="font-medium text-green-600">₹{customer.walletBalance}</p>
                         <p className="text-amber-600">{customer.surabhiBalance} Surabhi Balance</p>

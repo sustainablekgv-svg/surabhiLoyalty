@@ -171,81 +171,58 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
   };
 
   return (
-    <div className="bg-white shadow-sm border-b">
-      <div className="container mx-auto px-3 xs:px-4 sm:px-6 lg:px-8 py-2 xs:py-3 sm:py-4">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-1 xs:gap-2 sm:gap-0">
-          <div className="flex items-center gap-1 xs:gap-2 sm:gap-4 w-full sm:w-auto justify-between sm:justify-start">
+    <div className="bg-white shadow-sm border-b sticky top-0 z-20 w-full">
+      <div className="container mx-auto px-2 xs:px-3 sm:px-6 lg:px-8 py-1.5 xs:py-2 sm:py-3 md:py-4">
+        <div className="flex flex-row items-center justify-between gap-1 xs:gap-2 sm:gap-0">
+          <div className="flex items-center gap-1 xs:gap-2 sm:gap-4 justify-start">
             <div className="bg-gradient-to-br from-purple-600 to-amber-500 p-1 xs:p-1.5 sm:p-2 rounded-lg">
-              <Coins className="h-4 w-4 xs:h-5 xs:w-5 sm:h-6 sm:w-6 text-white" />
+              <Coins className="h-3.5 w-3.5 xs:h-4 xs:w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-base xs:text-lg sm:text-xl font-bold text-gray-900">
+              <h1 className="text-sm xs:text-base sm:text-lg md:text-xl font-bold text-gray-900">
                 Loyalty Rewards
               </h1>
-              <p className="text-[10px] xs:text-xs sm:text-sm text-gray-600">Admin Portal</p>
+              <p className="text-[8px] xs:text-[10px] sm:text-xs md:text-sm text-gray-600">Admin Portal</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 xs:gap-2 sm:gap-3 justify-end">
+            <div className="hidden xs:block text-right">
+              <p className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-900 truncate max-w-[80px] xs:max-w-[100px] sm:max-w-[120px] md:max-w-none">
+                {user.staffName || 'Admin'}
+              </p>
+              <div className="flex items-center gap-0.5 xs:gap-1 sm:gap-2 justify-end">
+                <Badge
+                  variant="secondary"
+                  className="text-[8px] xs:text-[9px] sm:text-xs px-0.5 xs:px-1 sm:px-1.5 h-3.5 xs:h-4 sm:h-5"
+                >
+                  {user.role.toUpperCase()}
+                </Badge>
+                <span className="text-[8px] xs:text-[9px] sm:text-xs text-gray-600 truncate max-w-[40px] xs:max-w-[60px] sm:max-w-[80px] md:max-w-none">
+                  {user.staffMobile}
+                </span>
+              </div>
             </div>
 
-            {/* Mobile buttons */}
-            <div className="flex items-center gap-0.5 xs:gap-1 sm:hidden">
+            {/* Buttons for all screen sizes */}
+            <div className="flex items-center gap-0.5 xs:gap-1 sm:gap-2">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsSettingsOpen(true)}
-                className="text-gray-600 hover:text-gray-900 hover:bg-gray-50 p-0.5 xs:p-1 h-7 xs:h-8 min-w-7 xs:min-w-8"
+                className="text-gray-600 hover:text-gray-900 hover:bg-gray-50 p-0.5 xs:p-1 h-7 xs:h-8 sm:h-9 min-w-7 xs:min-w-8"
               >
-                <Settings className="h-3.5 w-3.5 xs:h-4 xs:w-4" />
+                <Settings className="h-3.5 w-3.5 xs:h-4 xs:w-4 sm:h-5 sm:w-5" />
               </Button>
 
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onLogout}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50 p-0.5 xs:p-1 h-7 xs:h-8 min-w-7 xs:min-w-8"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 p-0.5 xs:p-1 h-7 xs:h-8 sm:h-9 min-w-7 xs:min-w-8"
               >
-                <LogOut className="h-3.5 w-3.5 xs:h-4 xs:w-4" />
+                <LogOut className="h-3.5 w-3.5 xs:h-4 xs:w-4 sm:h-5 sm:w-5" />
               </Button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1 xs:gap-2 sm:gap-4 w-full sm:w-auto justify-between sm:justify-end">
-            <div className="flex items-center gap-1 xs:gap-2 sm:gap-3">
-              <div className="text-center sm:text-right">
-                <p className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-900 truncate max-w-[100px] xs:max-w-[120px] sm:max-w-none">
-                  {user.staffName || 'Admin'}
-                </p>
-                <div className="flex items-center gap-0.5 xs:gap-1 sm:gap-2 justify-center sm:justify-end">
-                  <Badge
-                    variant="secondary"
-                    className="text-[8px] xs:text-[10px] sm:text-xs px-0.5 xs:px-1 sm:px-2 h-4 xs:h-5 sm:h-auto"
-                  >
-                    {user.role.toUpperCase()}
-                  </Badge>
-                  <span className="text-[8px] xs:text-[10px] sm:text-xs text-gray-600 truncate max-w-[60px] xs:max-w-[80px] sm:max-w-none">
-                    {user.staffMobile}
-                  </span>
-                </div>
-              </div>
-
-              {/* Desktop buttons */}
-              <div className="hidden sm:flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsSettingsOpen(true)}
-                  className="text-gray-600 hover:text-gray-900 hover:bg-gray-50 h-8 xs:h-9 sm:h-10"
-                >
-                  <Settings className="h-4 w-4 xs:h-4.5 xs:w-4.5 sm:h-5 sm:w-5" />
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onLogout}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 xs:h-9 sm:h-10"
-                >
-                  <LogOut className="h-4 w-4 xs:h-4.5 xs:w-4.5 sm:h-5 sm:w-5" />
-                </Button>
-              </div>
             </div>
           </div>
         </div>
@@ -253,67 +230,68 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
 
       {/* Enhanced Settings Dialog with all StaffType fields */}
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto p-3 xs:p-4 sm:p-6">
-          <DialogHeader className="pb-1.5 xs:pb-2 sm:pb-4">
-            <DialogTitle className="text-base xs:text-lg sm:text-xl">Admin Settings</DialogTitle>
-            <DialogDescription className="text-[10px] xs:text-xs sm:text-sm">
+        <DialogContent className="w-[95vw] xs:w-[90vw] sm:w-[80vw] md:max-w-[600px] max-h-[85vh] overflow-y-auto p-2 xs:p-3 sm:p-4 md:p-6 rounded-lg">
+          <DialogHeader className="pb-1 xs:pb-1.5 sm:pb-2 md:pb-4">
+            <DialogTitle className="text-sm xs:text-base sm:text-lg md:text-xl">Admin Settings</DialogTitle>
+            <DialogDescription className="text-[9px] xs:text-[10px] sm:text-xs md:text-sm">
               Update your profile information
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-2 xs:space-y-3 sm:space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 xs:gap-3 sm:gap-4">
+          <div className="space-y-1.5 xs:space-y-2 sm:space-y-3 md:space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 xs:gap-2 sm:gap-3 md:gap-4">
               <div>
-                <Label htmlFor="name" className="text-[10px] xs:text-xs sm:text-sm">
+                <Label htmlFor="name" className="text-[9px] xs:text-[10px] sm:text-xs md:text-sm">
                   Full Name
                 </Label>
                 <Input
                   value={user.staffName}
                   disabled
-                  className="bg-gray-100 h-7 xs:h-8 sm:h-10 text-[10px] xs:text-xs sm:text-sm rounded-[4px] xs:rounded"
+                  className="bg-gray-100 h-6 xs:h-7 sm:h-8 md:h-10 text-[9px] xs:text-[10px] sm:text-xs md:text-sm rounded-[3px] xs:rounded-[4px] sm:rounded mt-0.5"
                 />
               </div>
               <div>
-                <Label htmlFor="mobile" className="text-[10px] xs:text-xs sm:text-sm">
+                <Label htmlFor="mobile" className="text-[9px] xs:text-[10px] sm:text-xs md:text-sm">
                   Mobile Number
                 </Label>
                 <Input
                   value={user.staffMobile}
                   disabled
-                  className="bg-gray-100 h-7 xs:h-8 sm:h-10 text-[10px] xs:text-xs sm:text-sm rounded-[4px] xs:rounded"
+                  className="bg-gray-100 h-6 xs:h-7 sm:h-8 md:h-10 text-[9px] xs:text-[10px] sm:text-xs md:text-sm rounded-[3px] xs:rounded-[4px] sm:rounded mt-0.5"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 xs:gap-2 sm:gap-3 md:gap-4">
               <div>
-                <Label htmlFor="email" className="text-[10px] xs:text-xs sm:text-sm">
+                <Label htmlFor="email" className="text-[9px] xs:text-[10px] sm:text-xs md:text-sm">
                   Email
                 </Label>
                 <Input
                   value={user.staffEmail}
                   disabled
-                  className="bg-gray-100 h-7 xs:h-8 sm:h-10 text-[10px] xs:text-xs sm:text-sm rounded-[4px] xs:rounded"
+                  className="bg-gray-100 h-6 xs:h-7 sm:h-8 md:h-10 text-[9px] xs:text-[10px] sm:text-xs md:text-sm rounded-[3px] xs:rounded-[4px] sm:rounded mt-0.5"
                 />
               </div>
               <div>
-                <Label htmlFor="storeLocation" className="text-[10px] xs:text-xs sm:text-sm">
+                <Label htmlFor="storeLocation" className="text-[9px] xs:text-[10px] sm:text-xs md:text-sm">
                   Store Location
                 </Label>
-                <select
-                  id="storeLocation"
-                  name="storeLocation"
+                <Select
                   value={formData.storeLocation || ''}
-                  onChange={handleInputChange}
-                  className="w-full p-1 xs:p-1.5 sm:p-2 border rounded-[4px] xs:rounded h-7 xs:h-8 sm:h-10 text-[10px] xs:text-xs sm:text-sm"
+                  onValueChange={value => handleSelectChange('storeLocation', value)}
                 >
-                  <option value="">Select a store</option>
-                  {stores.map(store => (
-                    <option key={store.id} value={store.storeName}>
-                      {store.storeName} - {store.storeLocation}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="h-6 xs:h-7 sm:h-8 md:h-10 text-[9px] xs:text-[10px] sm:text-xs md:text-sm rounded-[3px] xs:rounded-[4px] sm:rounded mt-0.5">
+                    <SelectValue placeholder="Select a store" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stores.map(store => (
+                      <SelectItem key={store.id} value={store.storeName} className="text-[9px] xs:text-[10px] sm:text-xs md:text-sm">
+                        {store.storeName} - {store.storeLocation}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -410,19 +388,19 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
               </div>
             </div>
 
-            <div className="flex flex-col xs:flex-row justify-end gap-1.5 xs:gap-2 pt-2 xs:pt-3 sm:pt-4 mt-2 xs:mt-3 sm:mt-4">
+            <div className="flex flex-col xs:flex-row justify-end gap-1.5 xs:gap-2 pt-2 xs:pt-3 sm:pt-4 md:pt-5 mt-2 xs:mt-3 sm:mt-4 md:mt-5">
               <Button
                 variant="outline"
                 onClick={() => setIsSettingsOpen(false)}
                 disabled={isUpdating}
-                className="h-7 xs:h-8 sm:h-10 text-[10px] xs:text-xs sm:text-sm px-1.5 xs:px-2 sm:px-4 w-full xs:w-auto min-w-[80px] xs:min-w-[100px]"
+                className="h-6 xs:h-7 sm:h-8 md:h-10 text-[9px] xs:text-[10px] sm:text-xs md:text-sm px-1.5 xs:px-2 sm:px-4 w-full xs:w-auto min-w-[80px] xs:min-w-[100px]"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSaveChanges}
                 disabled={isUpdating}
-                className="h-7 xs:h-8 sm:h-10 text-[10px] xs:text-xs sm:text-sm px-1.5 xs:px-2 sm:px-4 w-full xs:w-auto min-w-[80px] xs:min-w-[100px]"
+                className="h-6 xs:h-7 sm:h-8 md:h-10 text-[9px] xs:text-[10px] sm:text-xs md:text-sm px-1.5 xs:px-2 sm:px-4 w-full xs:w-auto min-w-[80px] xs:min-w-[100px]"
               >
                 {isUpdating ? 'Saving...' : 'Save Changes'}
               </Button>

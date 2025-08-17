@@ -1,17 +1,17 @@
 import { format } from 'date-fns';
-import { collection, getDocs, Timestamp, where, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query, Timestamp, where } from 'firebase/firestore';
 import {
-  ShoppingCart,
-  Search,
-  DollarSign,
-  TrendingUp,
-  Loader2,
-  RefreshCw,
-  Wallet,
   ChevronLeft,
   ChevronRight,
+  DollarSign,
+  Loader2,
+  RefreshCw,
+  Search,
+  ShoppingCart,
+  TrendingUp,
+  Wallet,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { db } from '@/lib/firebase';
-import { StoreType, CustomerTxType } from '@/types/types';
+import { CustomerTxType, StoreType } from '@/types/types';
 
 export const SalesManagement = () => {
   const [transactions, setTransactions] = useState<CustomerTxType[]>([]);
@@ -137,7 +137,9 @@ export const SalesManagement = () => {
   });
 
   // Pagination logic for transactions
-  const transactionsTotalPages = Number(Math.ceil(filteredTransactions.length / transactionsPerPage).toFixed(2));
+  const transactionsTotalPages = Number(
+    Math.ceil(filteredTransactions.length / transactionsPerPage).toFixed(2)
+  );
   const transactionsStartIndex = (transactionsPage - 1) * transactionsPerPage;
   const transactionsEndIndex = transactionsStartIndex + transactionsPerPage;
   const paginatedTransactions = filteredTransactions.slice(
@@ -146,7 +148,9 @@ export const SalesManagement = () => {
   );
 
   // Pagination logic for recharges
-  const rechargesTotalPages = Number(Math.ceil(filteredRecharges.length / rechargesPerPage).toFixed(2));
+  const rechargesTotalPages = Number(
+    Math.ceil(filteredRecharges.length / rechargesPerPage).toFixed(2)
+  );
   const rechargesStartIndex = (rechargesPage - 1) * rechargesPerPage;
   const rechargesEndIndex = rechargesStartIndex + rechargesPerPage;
   const paginatedRecharges = filteredRecharges.slice(rechargesStartIndex, rechargesEndIndex);
@@ -210,7 +214,7 @@ export const SalesManagement = () => {
               <span className="text-xs font-medium text-green-600">Total Sales</span>
             </div>
             <p className="text-xl font-bold text-green-900">
-              ₹{totalStats.totalSales.toLocaleString()}
+              ₹{totalStats.totalSales.toFixed(2).toLocaleString()}
             </p>
           </CardContent>
         </Card>
@@ -232,7 +236,7 @@ export const SalesManagement = () => {
               <span className="text-xs font-medium text-purple-600">Wallet Used</span>
             </div>
             <p className="text-xl font-bold text-purple-900">
-              ₹{totalStats.totalWalletDeductions.toLocaleString()}
+              ₹{totalStats.totalWalletDeductions.toFixed(2).toLocaleString()}
             </p>
           </CardContent>
         </Card>
@@ -254,7 +258,7 @@ export const SalesManagement = () => {
               <span className="text-xs font-medium text-gray-600">Cash Payments</span>
             </div>
             <p className="text-xl font-bold text-gray-900">
-              ₹{totalStats.totalCashPayments.toLocaleString()}
+              ₹{totalStats.totalCashPayments.toFixed(2).toLocaleString()}
             </p>
           </CardContent>
         </Card>
@@ -300,13 +304,19 @@ export const SalesManagement = () => {
                       setTransactionsPage(1);
                     }}
                   >
-                    <SelectTrigger className="w-full sm:w-48">
+                    <SelectTrigger className="w-full sm:w-36 md:w-40 lg:w-48 h-7 xs:h-8 sm:h-9 text-[10px] xs:text-xs sm:text-sm">
                       <SelectValue placeholder="Filter by store" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Stores</SelectItem>
+                      <SelectItem value="all" className="text-[10px] xs:text-xs sm:text-sm">
+                        All Stores
+                      </SelectItem>
                       {stores.map(store => (
-                        <SelectItem key={store.id} value={store.storeName}>
+                        <SelectItem
+                          key={store.id}
+                          value={store.storeName}
+                          className="text-[10px] xs:text-xs sm:text-sm"
+                        >
                           {store.storeName}
                         </SelectItem>
                       ))}
@@ -320,14 +330,22 @@ export const SalesManagement = () => {
                       setTransactionsPage(1);
                     }}
                   >
-                    <SelectTrigger className="w-full sm:w-40">
+                    <SelectTrigger className="w-full sm:w-32 md:w-36 lg:w-40 h-7 xs:h-8 sm:h-9 text-[10px] xs:text-xs sm:text-sm">
                       <SelectValue placeholder="Payment" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Methods</SelectItem>
-                      <SelectItem value="wallet">Wallet</SelectItem>
-                      <SelectItem value="cash">Cash</SelectItem>
-                      <SelectItem value="mixed">Mixed</SelectItem>
+                      <SelectItem value="all" className="text-[10px] xs:text-xs sm:text-sm">
+                        All Methods
+                      </SelectItem>
+                      <SelectItem value="wallet" className="text-[10px] xs:text-xs sm:text-sm">
+                        Wallet
+                      </SelectItem>
+                      <SelectItem value="cash" className="text-[10px] xs:text-xs sm:text-sm">
+                        Cash
+                      </SelectItem>
+                      <SelectItem value="mixed" className="text-[10px] xs:text-xs sm:text-sm">
+                        Mixed
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -354,69 +372,91 @@ export const SalesManagement = () => {
                 </div>
               ) : (
                 <>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Invoice ID</TableHead>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Mobile</TableHead>
-                        <TableHead>Invoice ID</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Payment</TableHead>
-                        <TableHead>Wallet</TableHead>
-                        <TableHead>Coins</TableHead>
-                        <TableHead>Cash</TableHead>
-                        <TableHead>Store</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Staff</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paginatedTransactions.map(transaction => (
-                        <TableRow key={transaction.invoiceId}>
-                          <TableCell>{transaction.invoiceId || 'N/A'}</TableCell>
-                          <TableCell className="font-medium">
-                            {transaction.customerName}
-                            {transaction.type === 'sale' && !transaction.customerMobile && (
-                              <Badge variant="outline" className="ml-2 text-xs">
-                                Guest
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>{transaction.customerMobile || 'N/A'}</TableCell>
-                          <TableCell>{transaction.invoiceId || 'N/A'}</TableCell>
-                          <TableCell className="font-bold">₹{transaction.amount}</TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                transaction.paymentMethod === 'wallet'
-                                  ? 'default'
-                                  : transaction.paymentMethod === 'cash'
-                                    ? 'secondary'
-                                    : 'outline'
-                              }
-                            >
-                              {transaction.paymentMethod}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-purple-600">
-                            ₹{transaction.walletDeduction || 0}
-                          </TableCell>
-                          <TableCell className="text-amber-600">
-                            {transaction.surabhiUsed || 0}
-                          </TableCell>
-                          <TableCell className="text-gray-600">
-                            ₹{transaction.cashPayment || 0}
-                          </TableCell>
-                          <TableCell>{transaction.storeLocation}</TableCell>
-                          <TableCell>
-                            {format(transaction.createdAt.toDate(), 'dd MMM yyyy, hh:mm a')}
-                          </TableCell>
-                          <TableCell>{transaction.processedBy || 'N/A'}</TableCell>
+                  <div className="overflow-x-auto">
+                    <Table className="min-w-[600px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Invoice ID
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Customer
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Mobile
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Amount
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Payment
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Wallet
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Coins
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Cash
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Store
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Date
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Staff
+                          </TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedTransactions.map(transaction => (
+                          <TableRow key={transaction.invoiceId}>
+                            <TableCell>{transaction.invoiceId || 'N/A'}</TableCell>
+                            <TableCell className="font-medium">
+                              {transaction.customerName}
+                              {transaction.type === 'sale' && !transaction.customerMobile && (
+                                <Badge variant="outline" className="ml-2 text-xs">
+                                  Guest
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>{transaction.customerMobile || 'N/A'}</TableCell>
+                            <TableCell className="font-bold">₹{transaction.amount}</TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  transaction.paymentMethod === 'wallet'
+                                    ? 'default'
+                                    : transaction.paymentMethod === 'cash'
+                                      ? 'secondary'
+                                      : 'outline'
+                                }
+                              >
+                                {transaction.paymentMethod}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-purple-600">
+                              ₹{(transaction.walletDeduction || 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-amber-600">
+                              {(transaction.surabhiUsed || 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-gray-600">
+                              ₹{(transaction.cashPayment || 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell>{transaction.storeLocation}</TableCell>
+                            <TableCell>
+                              {format(transaction.createdAt.toDate(), 'dd MMM yyyy, hh:mm a')}
+                            </TableCell>
+                            <TableCell>{transaction.processedBy || 'N/A'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
 
                   {/* Transactions Pagination */}
                   <div className="flex items-center justify-between px-2 mt-4">
@@ -459,7 +499,11 @@ export const SalesManagement = () => {
                         <Button
                           variant="outline"
                           className="h-8 w-8 p-0"
-                          onClick={() => setTransactionsPage(Number(Math.max(1, transactionsPage - 1).toFixed(2)))}
+                          onClick={() =>
+                            setTransactionsPage(
+                              Number(Math.max(1, transactionsPage - 1).toFixed(2))
+                            )
+                          }
                           disabled={transactionsPage === 1}
                         >
                           <span className="sr-only">Go to previous page</span>
@@ -470,7 +514,9 @@ export const SalesManagement = () => {
                           className="h-8 w-8 p-0"
                           onClick={() =>
                             setTransactionsPage(
-                              Number(Math.min(transactionsTotalPages, transactionsPage + 1).toFixed(2))
+                              Number(
+                                Math.min(transactionsTotalPages, transactionsPage + 1).toFixed(2)
+                              )
                             )
                           }
                           disabled={
@@ -511,11 +557,11 @@ export const SalesManagement = () => {
                   <CardTitle>Wallet Recharges</CardTitle>
                   <CardDescription>
                     {filteredRecharges.length} recharge records (Total: ₹
-                    {totalStats.totalRecharges.toLocaleString()})
+                    {totalStats.totalRecharges.toFixed(2).toLocaleString()})
                   </CardDescription>
                 </div>
                 <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-2 xs:left-2.5 sm:left-3 top-[7px] xs:top-[9px] sm:top-3 h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-gray-400" />
                   <Input
                     placeholder="Search recharges..."
                     value={rechargesSearchTerm}
@@ -523,7 +569,7 @@ export const SalesManagement = () => {
                       setRechargesSearchTerm(e.target.value);
                       setRechargesPage(1);
                     }}
-                    className="pl-10 w-full sm:w-64"
+                    className="pl-7 xs:pl-8 sm:pl-10 w-full sm:w-48 md:w-56 lg:w-64 h-7 xs:h-8 sm:h-9 text-[10px] xs:text-xs sm:text-sm rounded-[3px] xs:rounded-[4px] sm:rounded"
                   />
                 </div>
               </div>
@@ -542,40 +588,62 @@ export const SalesManagement = () => {
                 </div>
               ) : (
                 <>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Mobile</TableHead>
-                        <TableHead>Invoice ID</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Store</TableHead>
-                        <TableHead>Coins Earned</TableHead>
-                        <TableHead>Seva Amount</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Staff</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paginatedRecharges.map(recharge => (
-                        <TableRow key={recharge.id}>
-                          <TableCell className="font-medium">{recharge.customerName}</TableCell>
-                          <TableCell>{recharge.customerMobile}</TableCell>
-                          <TableCell>{recharge.invoiceId || 'N/A'}</TableCell>
-                          <TableCell className="text-green-600">₹{recharge.amount}</TableCell>
-                          <TableCell>
-                            {recharge.storeName} ({recharge.storeLocation})
-                          </TableCell>
-                          <TableCell>{recharge.surabhiEarned}</TableCell>
-                          <TableCell>₹{recharge.sevaEarned || 0}</TableCell>
-                          <TableCell>
-                            {format(recharge.createdAt.toDate(), 'dd MMM yyyy, hh:mm a')}
-                          </TableCell>
-                          <TableCell>{recharge.processedBy || 'N/A'}</TableCell>
+                  <div className="overflow-x-auto">
+                    <Table className="min-w-[600px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Customer
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Mobile
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Invoice ID
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Amount
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Store
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Coins Earned
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Seva Amount
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Date
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Staff
+                          </TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedRecharges.map(recharge => (
+                          <TableRow key={recharge.id}>
+                            <TableCell className="font-medium">{recharge.customerName}</TableCell>
+                            <TableCell>{recharge.customerMobile}</TableCell>
+                            <TableCell>{recharge.invoiceId || 'N/A'}</TableCell>
+                            <TableCell className="text-green-600">
+                              ₹{Number(recharge.amount).toFixed(2)}
+                            </TableCell>
+                            <TableCell>
+                              {recharge.storeName} ({recharge.storeLocation})
+                            </TableCell>
+                            <TableCell>{(recharge.surabhiEarned || 0).toFixed(2)}</TableCell>
+                            <TableCell>₹{(recharge.sevaEarned || 0).toFixed(2)}</TableCell>
+                            <TableCell>
+                              {format(recharge.createdAt.toDate(), 'dd MMM yyyy, hh:mm a')}
+                            </TableCell>
+                            <TableCell>{recharge.processedBy || 'N/A'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
 
                   {/* Recharges Pagination */}
                   <div className="flex items-center justify-between px-2 mt-4">
@@ -600,54 +668,58 @@ export const SalesManagement = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="flex items-center space-x-6 lg:space-x-8">
-                      <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                    <div className="flex items-center space-x-2 xs:space-x-4 sm:space-x-6 lg:space-x-8">
+                      <div className="flex w-[80px] xs:w-[90px] sm:w-[100px] items-center justify-center text-[10px] xs:text-xs sm:text-sm font-medium">
                         Page {rechargesPage} of {rechargesTotalPages}
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-1 xs:space-x-1.5 sm:space-x-2">
                         <Button
                           variant="outline"
-                          className="h-8 w-8 p-0"
+                          className="h-6 w-6 xs:h-7 xs:w-7 sm:h-8 sm:w-8 p-0"
                           onClick={() => setRechargesPage(1)}
                           disabled={rechargesPage === 1}
                         >
                           <span className="sr-only">Go to first page</span>
-                          <ChevronLeft className="h-4 w-4" />
-                          <ChevronLeft className="h-4 w-4 -ml-2" />
+                          <ChevronLeft className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4" />
+                          <ChevronLeft className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 -ml-1.5 xs:-ml-2" />
                         </Button>
                         <Button
                           variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={() => setRechargesPage(Number(Math.max(1, rechargesPage - 1).toFixed(2)))}
+                          className="h-6 w-6 xs:h-7 xs:w-7 sm:h-8 sm:w-8 p-0"
+                          onClick={() =>
+                            setRechargesPage(Number(Math.max(1, rechargesPage - 1).toFixed(2)))
+                          }
                           disabled={rechargesPage === 1}
                         >
                           <span className="sr-only">Go to previous page</span>
-                          <ChevronLeft className="h-4 w-4" />
+                          <ChevronLeft className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4" />
                         </Button>
                         <Button
                           variant="outline"
-                          className="h-8 w-8 p-0"
+                          className="h-6 w-6 xs:h-7 xs:w-7 sm:h-8 sm:w-8 p-0"
                           onClick={() =>
-                            setRechargesPage(Number(Math.min(rechargesTotalPages, rechargesPage + 1).toFixed(2)))
+                            setRechargesPage(
+                              Number(Math.min(rechargesTotalPages, rechargesPage + 1).toFixed(2))
+                            )
                           }
                           disabled={
                             rechargesPage === rechargesTotalPages || rechargesTotalPages === 0
                           }
                         >
                           <span className="sr-only">Go to next page</span>
-                          <ChevronRight className="h-4 w-4" />
+                          <ChevronRight className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4" />
                         </Button>
                         <Button
                           variant="outline"
-                          className="h-8 w-8 p-0"
+                          className="h-6 w-6 xs:h-7 xs:w-7 sm:h-8 sm:w-8 p-0"
                           onClick={() => setRechargesPage(rechargesTotalPages)}
                           disabled={
                             rechargesPage === rechargesTotalPages || rechargesTotalPages === 0
                           }
                         >
                           <span className="sr-only">Go to last page</span>
-                          <ChevronRight className="h-4 w-4" />
-                          <ChevronRight className="h-4 w-4 -ml-2" />
+                          <ChevronRight className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4" />
+                          <ChevronRight className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 -ml-1.5 xs:-ml-2" />
                         </Button>
                       </div>
                     </div>

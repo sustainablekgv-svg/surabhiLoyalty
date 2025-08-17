@@ -190,30 +190,30 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
   ];
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-3 xs:space-y-4 sm:space-y-6">
       {/* Customer Info Card */}
       <Card className="shadow-lg border-0 bg-white">
-        <CardContent className="p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="bg-purple-100 p-2 sm:p-3 rounded-full">
-                <User className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
+        <CardContent className="p-3 xs:p-4 sm:p-6">
+          <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 xs:gap-3 sm:gap-4">
+            <div className="flex items-center gap-2 xs:gap-3 sm:gap-4">
+              <div className="bg-purple-100 p-1.5 xs:p-2 sm:p-3 rounded-full">
+                <User className="h-4 w-4 xs:h-5 xs:w-5 sm:h-6 sm:w-6 text-purple-600" />
               </div>
               <div>
-                <h2 className="text-lg sm:text-xl font-bold truncate max-w-[200px] sm:max-w-full">
+                <h2 className="text-base xs:text-lg sm:text-xl font-bold truncate max-w-[150px] xs:max-w-[200px] sm:max-w-full">
                   {customerData.customerName}
                 </h2>
-                <p className="text-xs sm:text-sm text-gray-600">Member since {memberSince}</p>
+                <p className="text-[10px] xs:text-xs sm:text-sm text-gray-600">Member since {memberSince}</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 sm:gap-4 mt-3 sm:mt-0">
-              <div className="bg-blue-100 p-2 sm:p-3 rounded-full">
-                <Phone className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+            <div className="flex items-center gap-2 xs:gap-3 sm:gap-4 mt-2 xs:mt-0">
+              <div className="bg-blue-100 p-1.5 xs:p-2 sm:p-3 rounded-full">
+                <Phone className="h-4 w-4 xs:h-5 xs:w-5 sm:h-6 sm:w-6 text-blue-600" />
               </div>
               <div className="text-left sm:text-right">
-                <p className="text-xs sm:text-sm text-gray-600">Your referral number</p>
-                <p className="text-base sm:text-lg font-bold">{customerData.customerMobile}</p>
+                <p className="text-[10px] xs:text-xs sm:text-sm text-gray-600">Your referral number</p>
+                <p className="text-sm xs:text-base sm:text-lg font-bold">{customerData.customerMobile}</p>
               </div>
             </div>
           </div>
@@ -221,41 +221,41 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       </Card>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 xs:gap-3 sm:gap-6">
         {stats.map((stat, index) => (
           <Card
             key={index}
             className={`shadow-lg border-0 ${stat.bgColor} ${stat.borderColor} hover:shadow-xl transition-shadow duration-200`}
           >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
-              <CardTitle className="text-xs sm:text-sm font-medium text-gray-700">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 xs:pb-1 sm:pb-2 px-2 xs:px-3 sm:px-6 pt-2 xs:pt-3 sm:pt-6">
+              <CardTitle className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-700">
                 {stat.title}
               </CardTitle>
-              <div className="bg-white p-1.5 sm:p-2 rounded-full">
-                <stat.icon className={`h-3 w-3 sm:h-4 sm:w-4 ${stat.color}`} />
+              <div className="bg-white p-1 xs:p-1.5 sm:p-2 rounded-full">
+                <stat.icon className={`h-2.5 w-2.5 xs:h-3 xs:w-3 sm:h-4 sm:w-4 ${stat.color}`} />
               </div>
             </CardHeader>
-            <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6 pt-0">
-              <div className={`text-lg sm:text-2xl font-bold ${stat.color} mb-0.5 sm:mb-1`}>
+            <CardContent className="px-2 xs:px-3 sm:px-6 pb-2 xs:pb-3 sm:pb-6 pt-0">
+              <div className={`text-base xs:text-lg sm:text-2xl font-bold ${stat.color} mb-0.5 xs:mb-0.5 sm:mb-1`}>
                 {stat.value}
               </div>
-              <p className="text-[10px] sm:text-xs text-gray-600">{stat.description}</p>
+              <p className="text-[8px] xs:text-[10px] sm:text-xs text-gray-600">{stat.description}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
       {/* Recent Activity & Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 xs:gap-4 sm:gap-6">
         <Card className="shadow-lg border-0 bg-white">
-          <CardHeader className="px-4 sm:px-6 py-3 sm:py-4">
-            <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-base sm:text-lg">
-              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+          <CardHeader className="px-3 xs:px-4 sm:px-6 py-2 xs:py-3 sm:py-4">
+            <CardTitle className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 text-sm xs:text-base sm:text-lg">
+              <TrendingUp className="h-3.5 w-3.5 xs:h-4 xs:w-4 sm:h-5 sm:w-5 text-blue-600" />
               Recent Activity
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6 pt-0">
-            <div className="space-y-3 sm:space-y-4">
+          <CardContent className="px-3 xs:px-4 sm:px-6 pb-3 xs:pb-4 sm:pb-6 pt-0">
+            <div className="space-y-2 xs:space-y-3 sm:space-y-4">
               {activities.length > 0 ? (
                 activities.map(activity => (
                   <div

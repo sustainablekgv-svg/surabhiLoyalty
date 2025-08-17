@@ -159,7 +159,7 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
           <CardContent className="p-3 xs:p-4 sm:p-6">
             <div className="flex items-center gap-2 xs:gap-3 mb-2 xs:mb-3">
               <div className="bg-blue-100 p-1.5 xs:p-2 rounded-full">
-                <Users className="h-3.5 xs:h-4 sm:h-5 w-3.5 xs:w-4 sm:w-5 text-blue-600" />
+                <Users className="h-4 w-4 xs:h-5 xs:w-5 text-blue-600" />
               </div>
               <span className="text-xs xs:text-sm font-medium text-blue-600">Total Referrals</span>
             </div>
@@ -201,9 +201,9 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
         </Card> */}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 xs:gap-6 sm:gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 xs:gap-5 sm:gap-6">
         {/* Referral Number Card */}
-        <Card className="shadow-lg border-0 bg-white">
+        <Card className="shadow-lg border-0 bg-white overflow-hidden">
           <CardHeader className="px-3 xs:px-4 sm:px-6 pt-3 xs:pt-4 sm:pt-6 pb-1 xs:pb-2 sm:pb-3">
             <CardTitle className="flex items-center gap-1.5 xs:gap-2 text-base xs:text-lg sm:text-xl">
               <Phone className="h-3.5 xs:h-4 sm:h-5 w-3.5 xs:w-4 sm:w-5 text-green-600" />
@@ -217,7 +217,7 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
           <CardContent className="space-y-4 xs:space-y-5 sm:space-y-6 px-3 xs:px-4 sm:px-6 pb-3 xs:pb-4 sm:pb-6">
             <div className="p-2 xs:p-3 sm:p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="overflow-x-auto">
                   <p className="text-xs xs:text-sm text-gray-600 mb-0.5 xs:mb-1">
                     Your Referral Number
                   </p>
@@ -236,7 +236,7 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
               </div>
             </div>
 
-            <div className="space-y-2 xs:space-y-3">
+            <div className="space-y-2 xs:space-y-3 sm:space-y-4">
               <h3 className="font-medium text-gray-900 text-sm xs:text-base">How it works:</h3>
               <div className="space-y-1.5 xs:space-y-2 text-xs xs:text-sm text-gray-600">
                 <div className="flex items-start gap-1.5 xs:gap-2">

@@ -3,28 +3,28 @@
 import { format } from 'date-fns';
 import {
   collection,
-  query,
+  doc,
   getDocs,
   orderBy,
+  query,
   Timestamp,
-  doc,
-  writeBatch,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import {
-  RefreshCw,
-  Loader2,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  Plus,
   ArrowDown,
+  ArrowDownLeft,
   ArrowUp,
   ArrowUpRight,
-  ArrowDownLeft,
+  ChevronLeft,
+  ChevronRight,
   Edit,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Search,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
@@ -614,36 +614,36 @@ const Accounts = () => {
             </div>
           ) : (
             <>
-              <Table className="min-w-full border-separate border-spacing-0 overflow-hidden">
+              <Table className="min-w-[600px] border-separate border-spacing-0 overflow-hidden">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="hidden md:table-cell text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                    <TableHead className="hidden md:table-cell text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
                       Date
                     </TableHead>
-                    <TableHead className="text-xs xs:text-sm py-2 xs:py-3 sm:py-4">Store</TableHead>
-                    <TableHead className="hidden md:table-cell text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                    <TableHead className="text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">Store</TableHead>
+                    <TableHead className="hidden md:table-cell text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
                       Customer
                     </TableHead>
-                    <TableHead className="hidden md:table-cell text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                    <TableHead className="hidden md:table-cell text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
                       Mobile
                     </TableHead>
-                    <TableHead className="text-xs xs:text-sm py-2 xs:py-3 sm:py-4">Type</TableHead>
-                    <TableHead className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                    <TableHead className="text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">Type</TableHead>
+                    <TableHead className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
                       Amount
                     </TableHead>
-                    <TableHead className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                    <TableHead className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
                       Credit
                     </TableHead>
-                    <TableHead className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                    <TableHead className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
                       Debit
                     </TableHead>
-                    <TableHead className="hidden lg:table-cell text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                    <TableHead className="hidden lg:table-cell text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
                       Admin Cut
                     </TableHead>
-                    <TableHead className="hidden xl:table-cell text-right">Admin Profit</TableHead>
-                    <TableHead className="text-right">Store Balance</TableHead>
-                    <TableHead className="text-right">Admin Balance</TableHead>
-                    <TableHead className="hidden md:table-cell">Remarks</TableHead>
+                    <TableHead className="hidden xl:table-cell text-right whitespace-nowrap text-xs xs:text-sm py-2 xs:py-3 sm:py-4">Admin Profit</TableHead>
+                    <TableHead className="text-right whitespace-nowrap text-xs xs:text-sm py-2 xs:py-3 sm:py-4">Store Balance</TableHead>
+                    <TableHead className="text-right whitespace-nowrap text-xs xs:text-sm py-2 xs:py-3 sm:py-4">Admin Balance</TableHead>
+                    <TableHead className="hidden md:table-cell whitespace-nowrap text-xs xs:text-sm py-2 xs:py-3 sm:py-4">Remarks</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -695,11 +695,11 @@ const Accounts = () => {
                         </span>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
-                        {tx.adminCut > 0 ? `₹${tx.adminCut.toFixed(2)}` : '-'}
+                        {tx.adminCut > 0 ? `₹${Number(tx.adminCut).toFixed(2)}` : '-'}
                       </TableCell>
                       <TableCell className="hidden xl:table-cell text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
                         {Number(tx.adminProfit) && tx.adminProfit > 0
-                          ? `₹${tx.adminProfit.toFixed(2)}`
+                          ? `₹${Number(tx.adminProfit).toFixed(2)}`
                           : '-'}
                       </TableCell>
                       <TableCell className="text-right font-medium text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
@@ -727,20 +727,22 @@ const Accounts = () => {
                     size="sm"
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="h-7 xs:h-8 sm:h-9 text-xs xs:text-sm"
+                    className="h-7 xs:h-8 sm:h-9 text-[10px] xs:text-xs sm:text-sm px-1.5 xs:px-2 sm:px-3"
                   >
-                    <ChevronLeft className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4 mr-1" />
-                    Previous
+                    <ChevronLeft className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 mr-0.5 xs:mr-1" />
+                    <span className="hidden xs:inline">Previous</span>
+                    <span className="xs:hidden">Prev</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
-                    className="h-7 xs:h-8 sm:h-9 text-xs xs:text-sm"
+                    className="h-7 xs:h-8 sm:h-9 text-[10px] xs:text-xs sm:text-sm px-1.5 xs:px-2 sm:px-3"
                   >
-                    Next
-                    <ChevronRight className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4 ml-1" />
+                    <span className="hidden xs:inline">Next</span>
+                    <span className="xs:hidden">Next</span>
+                    <ChevronRight className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 ml-0.5 xs:ml-1" />
                   </Button>
                 </div>
               </div>

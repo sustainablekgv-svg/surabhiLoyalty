@@ -83,12 +83,12 @@ const AdminDashboard = () => {
         onLogout={handleLogout}
       />
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-        <div className="mb-4 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">
+      <div className="container mx-auto px-2 xs:px-4 sm:px-6 lg:px-8 py-3 xs:py-4 sm:py-6">
+        <div className="mb-3 xs:mb-4 sm:mb-8">
+          <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900 mb-0.5 xs:mb-1 sm:mb-2">
             Admin Dashboard
           </h1>
-          <p className="text-sm sm:text-base text-gray-600">
+          <p className="text-xs xs:text-sm sm:text-base text-gray-600">
             Manage your loyalty program and monitor performance
           </p>
         </div>
@@ -96,8 +96,8 @@ const AdminDashboard = () => {
         <div className="w-full">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             {/* Tabs Navigation */}
-            <div className="mb-4 sm:mb-8">
-              <TabsList className="grid w-full grid-cols-2 xs:grid-cols-3 sm:grid-cols-6 lg:grid-cols-6 gap-1 bg-gray-100 p-1 rounded-lg">
+            <div className="mb-3 xs:mb-4 sm:mb-8 sticky top-0 z-10 bg-gradient-to-br from-purple-50 via-white to-amber-50 pt-1 pb-2">
+              <TabsList className="grid w-full grid-cols-3 xs:grid-cols-3 sm:grid-cols-6 lg:grid-cols-6 gap-1 bg-gray-100 p-1 rounded-lg">
                 {[
                   { value: 'overview', icon: TrendingUp, label: 'Overview' },
                   { value: 'staff', icon: UserPlus, label: 'Staff' },
@@ -115,36 +115,36 @@ const AdminDashboard = () => {
                         : 'text-gray-600 hover:text-purple-500'
                     }`}
                   >
-                    <tab.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    <span className="text-[10px] xs:text-xs sm:text-sm">{tab.label}</span>
+                    <tab.icon className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4" />
+                    <span className="text-[9px] xs:text-[10px] sm:text-xs md:text-sm">{tab.label}</span>
                   </TabsTrigger>
                 ))}
               </TabsList>
             </div>
 
             {/* Tab Content */}
-            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mt-4">
-              <TabsContent value="overview" className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm p-2 xs:p-3 sm:p-4 md:p-6 mt-2 xs:mt-3 sm:mt-4">
+              <TabsContent value="overview" className="space-y-4 xs:space-y-5 sm:space-y-6 mt-0">
                 <AdminStats />
               </TabsContent>
 
-              <TabsContent value="staff">
+              <TabsContent value="staff" className="mt-0">
                 <StaffManagement />
               </TabsContent>
 
-              <TabsContent value="users">
+              <TabsContent value="users" className="mt-0">
                 <CustomerManagement />
               </TabsContent>
 
-              <TabsContent value="sales">
+              <TabsContent value="sales" className="mt-0">
                 <SalesManagement />
               </TabsContent>
 
-              <TabsContent value="accounts">
+              <TabsContent value="accounts" className="mt-0">
                 <Accounts />
               </TabsContent>
 
-              <TabsContent value="goseva">
+              <TabsContent value="goseva" className="mt-0">
                 <GoSevaPool />
               </TabsContent>
             </div>

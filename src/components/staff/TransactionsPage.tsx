@@ -477,21 +477,21 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <Table>
+                  <Table className="min-w-[600px]">
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Invoice ID</TableHead>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Mobile</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Payment</TableHead>
-                        <TableHead>Wallet</TableHead>
-                        <TableHead>Surabhi</TableHead>
-                        <TableHead>Seva</TableHead>
-                        <TableHead>Cash</TableHead>
-                        <TableHead>Store</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Staff</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Invoice ID</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Customer</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Mobile</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Amount</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Payment</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Wallet</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Surabhi</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Seva</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Cash</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Store</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Date</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Staff</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -499,24 +499,24 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                         .filter(tx => tx.type === 'sale')
                         .map(tx => (
                           <TableRow key={tx.id} className="hover:bg-gray-50">
-                            <TableCell className="font-medium">
+                            <TableCell className="font-medium py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                               <span className="font-bold">{tx.invoiceId || 'N/A'}</span>
                             </TableCell>
                             <TableCell className="font-medium">
                               <span className="font-bold">{tx.customerName}</span>
                             </TableCell>
-                            <TableCell>{tx.customerMobile}</TableCell>
+                            <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">{tx.customerMobile}</TableCell>
                             <TableCell className="font-bold">₹{tx.amount?.toFixed(2)}</TableCell>
-                            <TableCell>
+                            <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                               {tx.paymentMethod === 'mixed' ? 'mixed' : tx.paymentMethod || 'cash'}
                             </TableCell>
-                            <TableCell>{tx.walletDeduction || 0}</TableCell>
-                            <TableCell>{tx.surabhiUsed || 0}</TableCell>
-                            <TableCell>{tx.sevaEarned || 0}</TableCell>
-                            <TableCell>₹{tx.cashPayment?.toFixed(2) || 0}</TableCell>
+                            <TableCell>{tx.walletDeduction ? Number(tx.walletDeduction).toFixed(2) : '0.00'}</TableCell>
+                            <TableCell>{tx.surabhiUsed ? Number(tx.surabhiUsed).toFixed(2) : '0.00'}</TableCell>
+                            <TableCell>{tx.sevaEarned ? Number(tx.sevaEarned).toFixed(2) : '0.00'}</TableCell>
+                            <TableCell>₹{tx.cashPayment ? Number(tx.cashPayment).toFixed(2) : '0.00'}</TableCell>
                             <TableCell>{tx.storeLocation}</TableCell>
-                            <TableCell>{formatTimestamp(tx.createdAt)}</TableCell>
-                            <TableCell>{tx.processedBy || 'system'}</TableCell>
+                            <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">{formatTimestamp(tx.createdAt)}</TableCell>
+                            <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">{tx.processedBy || 'system'}</TableCell>
                           </TableRow>
                         ))}
                     </TableBody>
@@ -568,17 +568,17 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <Table>
+                  <Table className="min-w-[600px]">
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Mobile</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Store</TableHead>
-                        <TableHead>Coins Earned</TableHead>
-                        <TableHead>Seva Amount</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Staff</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Customer</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Mobile</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Amount</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Store</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Coins Earned</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Seva Amount</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Date</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Staff</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -590,12 +590,12 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                               <span className="font-bold">{tx.customerName}</span>
                             </TableCell>
                             <TableCell>{tx.customerMobile}</TableCell>
-                            <TableCell className="font-bold">₹{tx.amount.toFixed(2)}</TableCell>
+                            <TableCell className="font-bold py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">₹{tx.amount.toFixed(2)}</TableCell>
                             <TableCell>
                               {tx.storeName ? `${tx.storeName}` : tx.storeLocation}
                             </TableCell>
-                            <TableCell>{tx.surabhiEarned || 0}</TableCell>
-                            <TableCell>₹{tx.sevaEarned?.toFixed(2) || 0}</TableCell>
+                            <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">{tx.surabhiEarned ? Number(tx.surabhiEarned).toFixed(2) : '0.00'}</TableCell>
+                            <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">₹{tx.sevaEarned ? Number(tx.sevaEarned).toFixed(2) : '0.00'}</TableCell>
                             <TableCell>{formatTimestamp(tx.createdAt)}</TableCell>
                             <TableCell>{tx.processedBy || 'system'}</TableCell>
                           </TableRow>
@@ -611,11 +611,11 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
 
       {/* Pagination */}
       {filteredTransactions.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-4">
-          <div className="flex items-center gap-2">
-            <Label htmlFor="recordsPerPage">Records per page:</Label>
+        <div className="flex flex-col xs:flex-row items-center justify-between mt-3 xs:mt-4 gap-2 xs:gap-4">
+          <div className="flex items-center gap-1 xs:gap-2">
+            <Label htmlFor="recordsPerPage" className="text-xs xs:text-sm">Records per page:</Label>
             <Select value={recordsPerPage.toString()} onValueChange={handleRecordsPerPageChange}>
-              <SelectTrigger className="w-[100px]">
+              <SelectTrigger className="w-[80px] xs:w-[100px] h-8 xs:h-9 text-xs xs:text-sm">
                 <SelectValue placeholder="Select" />
               </SelectTrigger>
               <SelectContent>
@@ -627,14 +627,15 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
             </Select>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 xs:gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => paginate(currentPage - 1)}
               disabled={currentPage === 1}
+              className="h-8 xs:h-9 text-xs xs:text-sm px-2 xs:px-3"
             >
-              Previous
+              Prev
             </Button>
 
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -655,6 +656,7 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                 variant={currentPage === number ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => paginate(number)}
+                className="h-8 xs:h-9 w-8 xs:w-9 p-0 text-xs xs:text-sm"
               >
                 {number}
               </Button>
@@ -673,6 +675,7 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
               size="sm"
               onClick={() => paginate(currentPage + 1)}
               disabled={currentPage === totalPages}
+              className="h-8 xs:h-9 text-xs xs:text-sm px-2 xs:px-3"
             >
               Next
             </Button>

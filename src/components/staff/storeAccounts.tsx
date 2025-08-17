@@ -262,7 +262,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
                     {tx.debit > 0 ? `-₹${tx.debit.toFixed(2)}` : '-'}
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    ₹{tx.currentBalance > 0 ? `+₹${tx.currentBalance.toFixed(2)}` : '-'}
+                    {tx.currentBalance > 0 ? `+₹${tx.currentBalance.toFixed(2)}` : '-'}
                   </TableCell>
                   <TableCell className="whitespace-normal break-words max-w-md">
                     {tx.remarks}

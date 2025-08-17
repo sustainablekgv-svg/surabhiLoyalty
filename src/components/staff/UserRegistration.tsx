@@ -362,31 +362,31 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="bg-gray-50 py-4 xs:py-6 sm:py-8 px-2 xs:px-4 sm:px-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-8">
-          <div className="bg-blue-100 p-3 rounded-full">
-            <UserPlus className="h-6 w-6 text-blue-600" />
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 xs:gap-3 sm:gap-4 mb-4 xs:mb-6 sm:mb-8">
+          <div className="bg-blue-100 p-2 xs:p-2.5 sm:p-3 rounded-full">
+            <UserPlus className="h-4 w-4 xs:h-5 xs:w-5 sm:h-6 sm:w-6 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Customer Registration</h1>
+            <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900">Customer Registration</h1>
             <p className="text-gray-600">Register new customers for {storeLocation}</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 xs:gap-6 sm:gap-8">
           {/* Registration Form */}
           <div className="bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200">
-            <div className="p-6 pb-4">
+            <div className="p-3 xs:p-4 sm:p-6 pb-2 xs:pb-3 sm:pb-4">
               <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
                 <User className="h-5 w-5 text-blue-600" />
                 Customer Details
               </h2>
             </div>
 
-            <div className="p-6 pt-0">
-              <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="p-3 xs:p-4 sm:p-6 pt-0">
+              <form onSubmit={handleSubmit} className="space-y-3 xs:space-y-4">
                 {/* Name Field */}
                 <div className="space-y-2">
                   <label htmlFor="customerName" className="block text-sm font-medium text-gray-700">
@@ -400,7 +400,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                       placeholder="Enter customer name"
                       value={formData.customerName}
                       onChange={e => setFormData({ ...formData, customerName: e.target.value })}
-                      className="w-full pl-10 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full pl-10 pr-3 py-1.5 xs:py-2 h-10 xs:h-11 sm:h-12 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       required
                     />
                   </div>
@@ -422,7 +422,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                       placeholder="Enter 10-digit number"
                       value={formData.customerMobile}
                       onChange={e => setFormData({ ...formData, customerMobile: e.target.value })}
-                      className="w-full pl-10 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full pl-10 pr-3 py-1.5 xs:py-2 h-10 xs:h-11 sm:h-12 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       maxLength={10}
                       required
                     />
@@ -463,7 +463,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                       placeholder="Enter city"
                       value={formData.city}
                       onChange={e => setFormData({ ...formData, city: e.target.value })}
-                      className="w-full pl-3 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full pl-3 pr-3 py-1.5 xs:py-2 h-10 xs:h-11 sm:h-12 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                 </div>
