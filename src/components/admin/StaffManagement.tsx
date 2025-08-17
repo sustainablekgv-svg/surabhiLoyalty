@@ -406,25 +406,29 @@ export const StaffManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col xs:flex-row justify-between items-start xs:items-center gap-3 xs:gap-2">
         <div>
-          <h1 className="text-2xl font-bold">System Configuration</h1>
-          <p className="text-muted-foreground">Manage staff accounts and store locations</p>
+          <h1 className="text-xl xs:text-2xl font-bold">System Configuration</h1>
+          <p className="text-sm xs:text-base text-muted-foreground">
+            Manage staff accounts and store locations
+          </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-col xs:flex-row gap-2 w-full xs:w-auto">
           <Button
             variant={activeTab === 'staff' ? 'default' : 'outline'}
             onClick={() => setActiveTab('staff')}
+            className="h-10 text-xs xs:text-sm w-full xs:w-auto justify-start xs:justify-center"
           >
-            <User className="h-4 w-4 mr-2" />
+            <User className="h-3.5 w-3.5 xs:h-4 xs:w-4 mr-1.5 xs:mr-2" />
             Staff Management
           </Button>
           <Button
             variant={activeTab === 'stores' ? 'default' : 'outline'}
             onClick={() => setActiveTab('stores')}
+            className="h-10 text-xs xs:text-sm w-full xs:w-auto justify-start xs:justify-center"
           >
-            <Store className="h-4 w-4 mr-2" />
+            <Store className="h-3.5 w-3.5 xs:h-4 xs:w-4 mr-1.5 xs:mr-2" />
             Store Management
           </Button>
         </div>
@@ -432,11 +436,11 @@ export const StaffManagement = () => {
 
       {activeTab === 'staff' ? (
         <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
+          <CardHeader className="px-2 xs:px-3 sm:px-6 py-2 xs:py-3 sm:py-4">
+            <div className="flex flex-col xs:flex-row justify-between items-start xs:items-center gap-2 xs:gap-0">
               <div>
-                <CardTitle>Staff Members</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-sm xs:text-base sm:text-lg">Staff Members</CardTitle>
+                <CardDescription className="text-[10px] xs:text-xs sm:text-sm">
                   {staff.length} staff members across {stores.length} stores
                 </CardDescription>
               </div>
@@ -453,121 +457,139 @@ export const StaffManagement = () => {
                   });
                   setIsStaffDialogOpen(true);
                 }}
+                className="h-8 xs:h-9 sm:h-10 text-xs xs:text-sm px-2 xs:px-3 sm:px-4 w-full xs:w-auto"
               >
-                <UserPlus className="h-4 w-4 mr-2" />
+                <UserPlus className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 mr-1 xs:mr-1.5 sm:mr-2" />
                 Add Staff
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Store</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Sales Count</TableHead>
-                  <TableHead>Recharges Count</TableHead>
-                  <TableHead>Staff Pin</TableHead>
-                  <TableHead>Password</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, index) => (
-                  <TableRow key={index}>
-                    <TableCell>
-                      <Skeleton className="h-4 w-[150px]" />
-                      <Skeleton className="h-3 w-[100px] mt-2" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-[120px]" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-[80px]" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-[120px]" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-[70px]" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-[50px]" />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Skeleton className="h-8 w-[60px]" />
-                        <Skeleton className="h-8 w-[80px]" />
-                      </div>
-                    </TableCell>
+          <CardContent className="px-2 xs:px-3 sm:px-6 py-2 xs:py-3 sm:py-4">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs xs:text-sm">Name</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Contact</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Role</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Store</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Status</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Sales Count</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Recharges Count</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Staff Pin</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Password</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Actions</TableHead>
                   </TableRow>
-                ))
-              ) : (
-                <TableBody>
-                  {staff.map(member => (
-                    <TableRow key={member.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {member.staffName}
-                          {member.role === 'admin' && <Shield className="h-4 w-4 text-primary" />}
-                        </div>
-                        <div className="text-sm text-muted-foreground">{member.staffEmail}</div>
-                      </TableCell>
-                      <TableCell>{member.staffMobile}</TableCell>
+                </TableHeader>
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <TableRow key={index}>
                       <TableCell>
-                        <Badge variant={member.role === 'admin' ? 'default' : 'outline'}>
-                          {member.role}
-                        </Badge>
+                        <Skeleton className="h-4 w-[150px]" />
+                        <Skeleton className="h-3 w-[100px] mt-2" />
                       </TableCell>
                       <TableCell>
-                        {stores.find(s => s.storeName === member.storeLocation)?.storeName ||
-                          'Unassigned'}
+                        <Skeleton className="h-4 w-[120px]" />
                       </TableCell>
                       <TableCell>
-                        <Badge variant={member.staffStatus === 'active' ? 'default' : 'secondary'}>
-                          {member.staffStatus}
-                        </Badge>
+                        <Skeleton className="h-4 w-[80px]" />
                       </TableCell>
-                      <TableCell>{member.staffSalesCount || 0}</TableCell>
-                      <TableCell>{member.staffRechargesCount || 0}</TableCell>
-                      <TableCell>{member.staffPin}</TableCell>
-                      <TableCell>{member.staffPassword}</TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-[120px]" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-[70px]" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-[50px]" />
+                      </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setCurrentStaff(member);
-                              setIsStaffDialogOpen(true);
-                            }}
-                          >
-                            <Edit className="h-4 w-4 mr-1" />
-                            Edit
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() => {
-                              setCurrentStaff(member);
-                              setIsDeleteStaffDialogOpen(true);
-                            }}
-                            disabled={member.role === 'admin'}
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Remove
-                          </Button>
+                          <Skeleton className="h-8 w-[60px]" />
+                          <Skeleton className="h-8 w-[80px]" />
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              )}
-            </Table>
+                  ))
+                ) : (
+                  <TableBody>
+                    {staff.map(member => (
+                      <TableRow key={member.id}>
+                        <TableCell className="font-medium text-xs xs:text-sm">
+                          <div className="flex items-center gap-1 xs:gap-2">
+                            {member.staffName}
+                            {member.role === 'admin' && (
+                              <Shield className="h-3 w-3 xs:h-4 xs:w-4 text-primary" />
+                            )}
+                          </div>
+                          <div className="text-[10px] xs:text-xs sm:text-sm text-muted-foreground">
+                            {member.staffEmail}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs xs:text-sm">{member.staffMobile}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={member.role === 'admin' ? 'default' : 'outline'}
+                            className="text-[10px] xs:text-xs"
+                          >
+                            {member.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs xs:text-sm">
+                          {stores.find(s => s.storeName === member.storeLocation)?.storeName ||
+                            'Unassigned'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={member.staffStatus === 'active' ? 'default' : 'secondary'}
+                            className="text-[10px] xs:text-xs"
+                          >
+                            {member.staffStatus}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs xs:text-sm">
+                          {member.staffSalesCount || 0}
+                        </TableCell>
+                        <TableCell className="text-xs xs:text-sm">
+                          {member.staffRechargesCount || 0}
+                        </TableCell>
+                        <TableCell className="text-xs xs:text-sm">{member.staffPin}</TableCell>
+                        <TableCell className="text-xs xs:text-sm">{member.staffPassword}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col xs:flex-row gap-1 xs:gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-[10px] xs:text-xs h-7 xs:h-8 px-1.5 xs:px-2"
+                              onClick={() => {
+                                setCurrentStaff(member);
+                                setIsStaffDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="h-3 w-3 xs:h-4 xs:w-4 mr-0.5 xs:mr-1" />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 text-[10px] xs:text-xs h-7 xs:h-8 px-1.5 xs:px-2"
+                              onClick={() => {
+                                setCurrentStaff(member);
+                                setIsDeleteStaffDialogOpen(true);
+                              }}
+                              disabled={member.role === 'admin'}
+                            >
+                              <Trash2 className="h-3 w-3 xs:h-4 xs:w-4 mr-0.5 xs:mr-1" />
+                              Remove
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                )}
+              </Table>
+            </div>
           </CardContent>
         </Card>
       ) : (
@@ -598,28 +620,28 @@ export const StaffManagement = () => {
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-2 xs:px-3 sm:px-6 py-2 xs:py-3 sm:py-4">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     {/* <TableHead>ID</TableHead> */}
-                    <TableHead>Name</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Address</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Store Balance</TableHead>
-                    <TableHead>Seva Balance</TableHead>
-                    <TableHead>Admin Balance</TableHead>
-                    <TableHead>Admin Profit</TableHead>
-                    <TableHead>Referral %</TableHead>
-                    <TableHead>Surabhi %</TableHead>
-                    <TableHead>Cash Only %</TableHead>
-                    <TableHead>Seva %</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Name</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Location</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Address</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Contact</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Store Balance</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Seva Balance</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Admin Balance</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Admin Profit</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Referral %</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Surabhi %</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Cash Only %</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Seva %</TableHead>
                     {/* <TableHead>Status</TableHead> */}
                     {/* <TableHead>Created</TableHead>
                   <TableHead>Updated</TableHead> */}
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -628,23 +650,43 @@ export const StaffManagement = () => {
                       {/* <TableCell className="text-xs">
                       {store.id.substring(0, 8)}...
                     </TableCell> */}
-                      <TableCell className="font-medium">{store.storeName}</TableCell>
-                      <TableCell>
+                      <TableCell className="font-medium text-xs xs:text-sm">
+                        {store.storeName}
+                      </TableCell>
+                      <TableCell className="text-xs xs:text-sm">
                         <div className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4" />
+                          <MapPin className="h-3 w-3 xs:h-4 xs:w-4" />
                           {store.storeLocation}
                         </div>
                       </TableCell>
-                      <TableCell className="max-w-[150px] truncate">{store.storeAddress}</TableCell>
-                      <TableCell>{store.storeContactNumber}</TableCell>
-                      <TableCell>₹{store.storeCurrentBalance.toFixed(2) || 0}</TableCell>
-                      <TableCell>₹{store.storeSevaBalance.toFixed(2) || 0}</TableCell>
-                      <TableCell>₹{store.adminCurrentBalance.toFixed(2) || 0}</TableCell>
-                      <TableCell>₹{store.adminStoreProfit.toFixed(2) || 0}</TableCell>
-                      <TableCell>{store.referralCommission}%</TableCell>
-                      <TableCell>{store.surabhiCommission}%</TableCell>
-                      <TableCell>{store.cashOnlyCommission}%</TableCell>
-                      <TableCell>{store.sevaCommission}%</TableCell>
+                      <TableCell className="max-w-[150px] truncate text-xs xs:text-sm">
+                        {store.storeAddress}
+                      </TableCell>
+                      <TableCell className="text-xs xs:text-sm">
+                        {store.storeContactNumber}
+                      </TableCell>
+                      <TableCell className="text-xs xs:text-sm">
+                        ₹{store.storeCurrentBalance.toFixed(2) || 0}
+                      </TableCell>
+                      <TableCell className="text-xs xs:text-sm">
+                        ₹{store.storeSevaBalance.toFixed(2) || 0}
+                      </TableCell>
+                      <TableCell className="text-xs xs:text-sm">
+                        ₹{store.adminCurrentBalance.toFixed(2) || 0}
+                      </TableCell>
+                      <TableCell className="text-xs xs:text-sm">
+                        ₹{store.adminStoreProfit.toFixed(2) || 0}
+                      </TableCell>
+                      <TableCell className="text-xs xs:text-sm">
+                        {store.referralCommission}%
+                      </TableCell>
+                      <TableCell className="text-xs xs:text-sm">
+                        {store.surabhiCommission}%
+                      </TableCell>
+                      <TableCell className="text-xs xs:text-sm">
+                        {store.cashOnlyCommission}%
+                      </TableCell>
+                      <TableCell className="text-xs xs:text-sm">{store.sevaCommission}%</TableCell>
                       {/* <TableCell>
                       <Badge variant={store.storeStatus === 'active' ? 'default' : 'secondary'}>
                         {store.storeStatus}
@@ -657,28 +699,29 @@ export const StaffManagement = () => {
                       {new Date(store.storeUpdatedAt).toLocaleDateString()}
                     </TableCell> */}
                       <TableCell>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col xs:flex-row gap-1 xs:gap-2">
                           <Button
                             variant="outline"
                             size="sm"
+                            className="text-[10px] xs:text-xs h-7 xs:h-8 px-1.5 xs:px-2"
                             onClick={() => {
                               setCurrentStore(store);
                               setIsStoreDialogOpen(true);
                             }}
                           >
-                            <Edit className="h-4 w-4 mr-1" />
+                            <Edit className="h-3 w-3 xs:h-4 xs:w-4 mr-0.5 xs:mr-1" />
                             Edit
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            className="text-red-600 hover:text-red-700"
+                            className="text-red-600 hover:text-red-700 text-[10px] xs:text-xs h-7 xs:h-8 px-1.5 xs:px-2"
                             onClick={() => {
                               setCurrentStore(store);
                               setIsDeleteStoreDialogOpen(true);
                             }}
                           >
-                            <Trash2 className="h-4 w-4 mr-1" />
+                            <Trash2 className="h-3 w-3 xs:h-4 xs:w-4 mr-0.5 xs:mr-1" />
                             Remove
                           </Button>
                         </div>

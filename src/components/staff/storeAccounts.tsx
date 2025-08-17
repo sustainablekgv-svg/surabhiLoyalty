@@ -1,16 +1,16 @@
 import { format } from 'date-fns';
 import {
   collection,
-  query,
-  where,
   getDocs,
-  orderBy,
-  Timestamp,
   limit,
+  orderBy,
+  query,
   startAfter,
+  Timestamp,
+  where,
 } from 'firebase/firestore';
-import { RefreshCw, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -262,7 +262,9 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
                     {tx.debit > 0 ? `-₹${tx.debit.toFixed(2)}` : '-'}
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    {tx.currentBalance > 0 ? `+₹${tx.currentBalance.toFixed(2)}` : '-'}
+                    {tx.currentBalance > 0
+                      ? `+₹${tx.currentBalance.toFixed(2)}`
+                      : `-₹${tx.currentBalance.toFixed(2)}`}
                   </TableCell>
                   <TableCell className="whitespace-normal break-words max-w-md">
                     {tx.remarks}

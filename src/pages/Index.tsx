@@ -235,29 +235,29 @@ const Index = () => {
                         setFormData({ ...formData, role: value })
                       }
                     >
-                      <SelectTrigger className="h-10 sm:h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500">
-                        <div className="flex items-center gap-2">
-                          <UserCircle className="h-4 w-4 text-gray-400" />
+                      <SelectTrigger className="h-10 sm:h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500 text-xs sm:text-sm">
+                        <div className="flex items-center gap-4 sm:gap-5">
+                          <UserCircle className="h-4 sm:h-5 w-4 sm:w-5 text-gray-400 flex-shrink-0" />
                           <SelectValue placeholder="Choose your role" />
                         </div>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="customer">
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4 text-green-600" />
-                            <span>Customer</span>
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            <Users className="h-4 sm:h-5 w-4 sm:w-5 text-green-600" />
+                            <span className="text-xs sm:text-sm">Customer</span>
                           </div>
                         </SelectItem>
                         <SelectItem value="staff">
-                          <div className="flex items-center gap-2">
-                            <Shield className="h-4 w-4 text-blue-600" />
-                            <span>Store</span>
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            <Shield className="h-4 sm:h-5 w-4 sm:w-5 text-blue-600" />
+                            <span className="text-xs sm:text-sm">Store</span>
                           </div>
                         </SelectItem>
                         <SelectItem value="admin">
-                          <div className="flex items-center gap-2">
-                            <Shield className="h-4 w-4 text-red-600" />
-                            <span>Admin</span>
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            <Shield className="h-4 sm:h-5 w-4 sm:w-5 text-red-600" />
+                            <span className="text-xs sm:text-sm">Admin</span>
                           </div>
                         </SelectItem>
                       </SelectContent>
@@ -269,14 +269,14 @@ const Index = () => {
                       Mobile Number
                     </Label>
                     <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Phone className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 sm:h-5 w-4 sm:w-5 text-gray-400" />
                       <Input
                         id="mobile"
                         type="tel"
                         placeholder="Enter your mobile number"
                         value={formData.mobile}
                         onChange={e => setFormData({ ...formData, mobile: e.target.value })}
-                        className="pl-10 h-10 sm:h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                        className="pl-12 sm:pl-16 h-10 sm:h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500 text-xs sm:text-sm"
                         required
                       />
                     </div>
@@ -287,25 +287,25 @@ const Index = () => {
                       Password
                     </Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 sm:h-5 w-4 sm:w-5 text-gray-400" />
                       <Input
                         id="password"
                         type={showPassword ? 'text' : 'password'}
                         placeholder="Enter your password"
                         value={formData.password}
                         onChange={e => setFormData({ ...formData, password: e.target.value })}
-                        className="pl-10 pr-10 h-10 sm:h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                        className="pl-12 sm:pl-16 pr-10 sm:pr-12 h-10 sm:h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500 text-xs sm:text-sm"
                         required
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                       >
                         {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
+                          <EyeOff className="h-4 sm:h-5 w-4 sm:w-5" />
                         ) : (
-                          <Eye className="h-4 w-4" />
+                          <Eye className="h-4 sm:h-5 w-4 sm:w-5" />
                         )}
                       </button>
                     </div>
