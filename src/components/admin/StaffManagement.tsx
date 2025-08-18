@@ -288,10 +288,34 @@ export const StaffManagement = () => {
       !currentStore.storeName ||
       !currentStore.storeLocation ||
       !currentStore.storeAddress ||
-      !currentStore.storeContactNumber
+      !currentStore.storeContactNumber ||
+      !currentStore.storePrefix
     ) {
       toast.error('Please fill all required fields');
       return false;
+    }
+
+    // Check if storePrefix is unique
+    const prefixQuery = query(
+      collection(db, 'stores'),
+      where('storePrefix', '==', currentStore.storePrefix.trim().toUpperCase())
+    );
+    
+    if (!currentStore.id) {
+      // Only check for uniqueness when creating a new store
+      const prefixSnapshot = await getDocs(prefixQuery);
+      if (!prefixSnapshot.empty) {
+        toast.error('Store prefix already exists. Please use a unique prefix.');
+        return false;
+      }
+    } else {
+      // When updating, check if another store (not this one) has the same prefix
+      const prefixSnapshot = await getDocs(prefixQuery);
+      const hasConflict = prefixSnapshot.docs.some(doc => doc.id !== currentStore.id);
+      if (hasConflict) {
+        toast.error('Store prefix already exists. Please use a unique prefix.');
+        return false;
+      }
     }
 
     try {
@@ -300,6 +324,7 @@ export const StaffManagement = () => {
         storeLocation: currentStore.storeLocation.trim(),
         storeAddress: currentStore.storeAddress.trim(),
         storeContactNumber: currentStore.storeContactNumber.trim(),
+        storePrefix: currentStore.storePrefix.trim().toUpperCase(),
         referralCommission: Number(currentStore.referralCommission) || 0,
         surabhiCommission: Number(currentStore.surabhiCommission) || 0,
         sevaCommission: Number(currentStore.sevaCommission) || 0,
@@ -337,6 +362,7 @@ export const StaffManagement = () => {
         storeLocation: doc.data().storeLocation || '',
         storeAddress: doc.data().storeAddress || '',
         storeContactNumber: doc.data().storeContactNumber || '',
+        storePrefix: doc.data().storePrefix || '',
         storeCurrentBalance: Number(doc.data().storeCurrentBalance) || 0,
         storeSevaBalance: Number(doc.data().storeSevaBalance) || 0,
         referralCommission: Number(doc.data().referralCommission) || 0,
@@ -1037,6 +1063,26 @@ export const StaffManagement = () => {
                   className="h-7 xs:h-8 sm:h-9 text-xs xs:text-sm rounded-[4px] xs:rounded"
                 />
               </div>
+            </div>
+
+            <div className="space-y-1 xs:space-y-1.5 sm:space-y-2">
+              <Label className="text-xs xs:text-sm">Invoice Prefix *</Label>
+              <div className="flex items-center">
+                <Input
+                  value={currentStore?.storePrefix || ''}
+                  onChange={e => {
+                    const prefix = e.target.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 4);
+                    setCurrentStore({
+                      ...currentStore,
+                      storePrefix: prefix,
+                    });
+                  }}
+                  placeholder="Enter 3-4 digit prefix (e.g., ABC)"
+                  className="h-7 xs:h-8 sm:h-9 text-xs xs:text-sm rounded-[4px] xs:rounded uppercase"
+                  maxLength={4}
+                />
+              </div>
+              <p className="text-[10px] xs:text-xs text-muted-foreground">This prefix will be used for invoice ID generation (e.g., ABC001)</p>
             </div>
 
             <div className="space-y-1 xs:space-y-1.5 sm:space-y-2">

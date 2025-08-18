@@ -1,28 +1,27 @@
 import { format } from 'date-fns';
 import {
-  collection,
-  getDocs,
   addDoc,
-  query,
-  where,
+  collection,
   doc,
-  updateDoc,
+  getDoc,
+  getDocs,
+  query,
   serverTimestamp,
   Timestamp,
-  getDoc,
+  updateDoc,
+  where,
 } from 'firebase/firestore';
 import {
-  Heart,
-  TrendingUp,
-  Calendar,
-  Users,
   DollarSign,
   Gift,
+  Heart,
   History,
   Loader2,
   RefreshCw,
+  TrendingUp,
+  Users,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
@@ -413,8 +412,11 @@ export const GoSevaPool = () => {
       // Generate a unique invoice ID (timestamp + random string)
       const generateInvoiceId = () => {
         const timestamp = new Date().getTime();
-        const randomStr = Number(Math.random().toFixed(2)).toString(36).substring(2, 8).toUpperCase();
-        return `INV-${timestamp}-${randomStr}`;
+        const randomStr = Number(Math.random().toFixed(2))
+          .toString(36)
+          .substring(2, 8)
+          .toUpperCase();
+        return `SEVA-${timestamp}-${randomStr}`;
       };
 
       await addDoc(collection(db, 'CustomerTx'), {
@@ -519,7 +521,11 @@ export const GoSevaPool = () => {
     totalContributors: customers.length,
     avgContribution:
       customers.length > 0
-        ? Number((transactions.reduce((sum, tx) => sum + (tx.sevaEarned || 0), 0) / customers.length).toFixed(2))
+        ? Number(
+            (
+              transactions.reduce((sum, tx) => sum + (tx.sevaEarned || 0), 0) / customers.length
+            ).toFixed(2)
+          )
         : 0,
   };
 
@@ -753,12 +759,12 @@ export const GoSevaPool = () => {
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
+              {/* <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-gray-500" />
                 <span className="text-sm text-gray-600">
                   {safeFormatDate(new Date(), 'MMMM yyyy')}
                 </span>
-              </div>
+              </div> */}
 
               <div className="flex items-center gap-2">
                 <select

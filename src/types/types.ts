@@ -134,6 +134,7 @@ export interface StoreType {
   storeName: string;
   storeLocation: string;
   storeAddress: string;
+  storePrefix: string; // Unique 3-4 digit prefix for invoice ID generation
   referralCommission: number;
   surabhiCommission: number;
   sevaCommission: number;

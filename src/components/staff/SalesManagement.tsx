@@ -68,18 +68,18 @@ const fetchCustomerByMobile = async (mobile: string): Promise<CustomerType | nul
 const calculateAdminCut = (saleAmount: number, storeDetails: StoreType) => {
   if (!storeDetails) return 0;
   // const remainingAmount = saleAmount - surabhiCoinsToUse;
-  const surabhiAmount = Number((saleAmount * (storeDetails.surabhiCommission / 100)).toFixed(2));
-  const referralAmount = Number((saleAmount * (storeDetails.referralCommission / 100)).toFixed(2));
-  const sevaAmount = Number((saleAmount * (storeDetails.sevaCommission / 100)).toFixed(2));
+  const surabhiAmount = Math.floor(saleAmount * (storeDetails.surabhiCommission / 100));
+  const referralAmount = Math.floor(saleAmount * (storeDetails.referralCommission / 100));
+  const sevaAmount = Math.floor(saleAmount * (storeDetails.sevaCommission / 100));
   console.log('The line 74 data is', surabhiAmount, referralAmount, sevaAmount);
   return referralAmount + sevaAmount + surabhiAmount;
 };
 
 // Generate a unique invoice ID or use the provided one
-const generateInvoiceId = () => {
+const generateInvoiceId = (storePrefix: string) => {
   const timestamp = new Date().getTime();
   const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
-  return `INV-${timestamp}-${randomStr}`;
+  return `${storePrefix}-${timestamp}-${randomStr}`;
 };
 
 export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
@@ -194,9 +194,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
   // Automatically use all available Surabhi coins if customer is selected
   useEffect(() => {
     if (selectedCustomer && saleAmount && saleAmount > 0) {
-      const maxCoinsToUse = Number(
-        Math.min(selectedCustomer.surabhiBalance, saleAmount).toFixed(2)
-      );
+      const maxCoinsToUse = Math.floor(Math.min(selectedCustomer.surabhiBalance, saleAmount));
       setSurabhiCoinsToUse(maxCoinsToUse);
     } else {
       setSurabhiCoinsToUse(0);
@@ -230,7 +228,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     if (!saleAmount || saleAmount <= 0 || !storeDetails) return null;
 
     const coinsToUse = selectedCustomer
-      ? Number(Math.min(surabhiCoinsToUse, selectedCustomer.surabhiBalance).toFixed(2))
+      ? Math.floor(Math.min(surabhiCoinsToUse, selectedCustomer.surabhiBalance))
       : 0;
     // let totalAmount = saleAmount;
     let walletDeduction = 0;
@@ -260,25 +258,21 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         walletDeduction = walletBalance;
         cashPayment = saleAmount - walletBalance - coinsToUse;
         // Wallet portion gets surabhi commission, cash portion gets cashOnly commission
-        surabhiCoinsEarned = Number(
-          (cashPayment * (storeDetails.cashOnlyCommission / 100)).toFixed(2)
+        surabhiCoinsEarned = Math.floor(cashPayment * (storeDetails.cashOnlyCommission / 100));
+        referrerSurabhiCoinsEarned = Math.floor(
+          cashPayment * (storeDetails.referralCommission / 100)
         );
-        referrerSurabhiCoinsEarned = Number(
-          (cashPayment * (storeDetails.referralCommission / 100)).toFixed(2)
-        );
-        goSevaContribution = Number((cashPayment * (storeDetails.sevaCommission / 100)).toFixed(2));
+        goSevaContribution = Math.floor(cashPayment * (storeDetails.sevaCommission / 100));
       } else {
         return { isValid: false, error: 'Mixed is not needed' };
       }
     } else if (paymentMethod === 'cash') {
       cashPayment = saleAmount - coinsToUse;
-      surabhiCoinsEarned = Number(
-        (cashPayment * (storeDetails.cashOnlyCommission / 100)).toFixed(2)
+      surabhiCoinsEarned = Math.floor(cashPayment * (storeDetails.cashOnlyCommission / 100));
+      referrerSurabhiCoinsEarned += Math.floor(
+        cashPayment * (storeDetails.referralCommission / 100)
       );
-      referrerSurabhiCoinsEarned += Number(
-        (cashPayment * (storeDetails.referralCommission / 100)).toFixed(2)
-      );
-      goSevaContribution = Number((cashPayment * (storeDetails.sevaCommission / 100)).toFixed(2));
+      goSevaContribution = Math.floor(cashPayment * (storeDetails.sevaCommission / 100));
     }
 
     return {
@@ -344,12 +338,18 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           setIsLoading(false);
           return; // Exit the function early
         } else {
-          // Invoice ID doesn't exist, use the provided one
-          txInvoiceId = invoiceId;
+          // Invoice ID doesn't exist, check if it has the store prefix
+          if (!invoiceId.startsWith(storeDetails.storePrefix + '-')) {
+            // Add the store prefix if it's not already there
+            txInvoiceId = `${storeDetails.storePrefix}-${invoiceId}`;
+          } else {
+            // Use the provided one as is since it already has the prefix
+            txInvoiceId = invoiceId;
+          }
         }
       } else {
         // No invoice ID provided, generate a new one
-        txInvoiceId = generateInvoiceId();
+        txInvoiceId = generateInvoiceId(storeDetails.storePrefix);
       }
       const newWalletBalance = selectedCustomer.walletBalance - saleCalculation.walletDeduction;
       const newSurabhiCoins =
@@ -1363,7 +1363,9 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                       />
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
-                      Leave blank to auto-generate an invoice ID
+                      Leave blank to auto-generate an invoice ID. If you enter an ID, the store
+                      prefix ({storeDetails?.storePrefix}) will be automatically added if not
+                      included.
                     </p>
                   </div>
 
@@ -1379,11 +1381,11 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                           value={surabhiCoinsToUse}
                           onChange={e => {
                             const value = Number(e.target.value);
-                            const maxCoins = Number(
-                              Math.min(selectedCustomer.surabhiBalance, saleAmount).toFixed(2)
+                            const maxCoins = Math.floor(
+                              Math.min(selectedCustomer.surabhiBalance, saleAmount)
                             );
                             setSurabhiCoinsToUse(
-                              Number(Math.max(0, Math.min(value, maxCoins)).toFixed(2))
+                              Math.floor(Math.max(0, Math.min(value, maxCoins)))
                             );
                           }}
                           className="pl-10 h-12"
@@ -1454,7 +1456,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                             Surabhi Coins Used
                           </span>
                           <span className="font-bold text-amber-600">
-                            -{saleCalculation.surabhiCoinsUsed}
+                            -{Number(saleCalculation.surabhiCoinsUsed).toFixed(2)}
                           </span>
                         </div>
                       )}

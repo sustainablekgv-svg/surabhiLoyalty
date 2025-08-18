@@ -1,17 +1,17 @@
 import { format } from 'date-fns';
 import {
   collection,
-  query,
-  where,
   getDocs,
-  Timestamp,
-  orderBy,
-  QueryDocumentSnapshot,
   limit,
+  orderBy,
+  query,
+  QueryDocumentSnapshot,
   startAfter,
+  Timestamp,
+  where,
 } from 'firebase/firestore';
-import { CalendarIcon, Search, Filter, ShoppingCart, Loader2, Zap } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { CalendarIcon, Filter, Loader2, Search, ShoppingCart, Zap } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -35,8 +35,7 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { db } from '@/lib/firebase';
-import { TransactionsPageProps } from '@/types/types';
-import { CustomerTxType } from '@/types/types';
+import { CustomerTxType, TransactionsPageProps } from '@/types/types';
 const formatTimestamp = (timestamp: Timestamp): string => {
   return format(timestamp.toDate(), 'dd MMM yyyy, hh:mm a');
 };
@@ -69,8 +68,19 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
 
   // Handle records per page change
   const handleRecordsPerPageChange = (value: string) => {
-    setRecordsPerPage(Number(value));
+    const newRecordsPerPage = Number(value);
+    setRecordsPerPage(newRecordsPerPage);
     setCurrentPage(1);
+
+    // Reset pagination state and fetch new data with updated records per page
+    setTransactions([]);
+    setFilteredTransactions([]);
+    setLastVisible(null);
+    setHasMore(true);
+
+    // Update ITEMS_PER_PAGE to match the new records per page value
+    // and trigger a fresh fetch
+    fetchTransactionsWithLimit(newRecordsPerPage);
   };
 
   // Fetch all transactions for current store
@@ -86,10 +96,10 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
   const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const ITEMS_PER_PAGE = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(recordsPerPage);
 
-  // Replace the existing fetchTransactions function
-  const fetchTransactions = async () => {
+  // Fetch transactions with specified limit
+  const fetchTransactionsWithLimit = async (limitCount: number) => {
     if (!storeLocation) return;
 
     setIsLoading(true);
@@ -102,7 +112,7 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
         where('type', '==', activeTab === 'sales' ? 'sale' : 'recharge'),
         where('amount', '>', 0),
         orderBy('createdAt', 'desc'),
-        limit(ITEMS_PER_PAGE)
+        limit(limitCount)
       );
       const querySnapshot = await getDocs(q);
       const fetchedTransactions: CustomerTxType[] = [];
@@ -119,7 +129,8 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
       setTransactions(fetchedTransactions);
       setFilteredTransactions(fetchedTransactions);
       setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1] || null);
-      setHasMore(querySnapshot.docs.length === ITEMS_PER_PAGE);
+      setHasMore(querySnapshot.docs.length === limitCount);
+      setItemsPerPage(limitCount);
     } catch (err) {
       console.error('Error fetching transactions:', err);
       setError('Failed to load transactions. Please try again.');
@@ -127,6 +138,11 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Main fetch function that uses the current records per page setting
+  const fetchTransactions = async () => {
+    await fetchTransactionsWithLimit(recordsPerPage);
   };
 
   // Add loadMoreTransactions function
@@ -143,7 +159,7 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
         where('amount', '>', 0),
         orderBy('createdAt', 'desc'),
         startAfter(lastVisible),
-        limit(ITEMS_PER_PAGE)
+        limit(itemsPerPage)
       );
 
       const querySnapshot = await getDocs(q);
@@ -161,7 +177,7 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
       setTransactions(prev => [...prev, ...newTransactions]);
       setFilteredTransactions(prev => [...prev, ...newTransactions]);
       setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1] || null);
-      setHasMore(querySnapshot.docs.length === ITEMS_PER_PAGE);
+      setHasMore(querySnapshot.docs.length === itemsPerPage);
     } catch (err) {
       console.error('Error loading more transactions:', err);
       toast.error('Failed to load more transactions');
@@ -176,8 +192,8 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
     setFilteredTransactions([]);
     setLastVisible(null);
     setHasMore(true);
-    fetchTransactions();
-  }, [storeLocation, activeTab]);
+    fetchTransactionsWithLimit(recordsPerPage);
+  }, [storeLocation, activeTab, recordsPerPage]);
 
   // Replace the existing pagination section with this new one
   {
@@ -208,7 +224,7 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
               setFilteredTransactions([]);
               setLastVisible(null);
               setHasMore(true);
-              fetchTransactions();
+              fetchTransactionsWithLimit(recordsPerPage);
             }}
             disabled={isLoading || isLoadingMore}
           >
@@ -480,18 +496,42 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                   <Table className="min-w-[600px]">
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Invoice ID</TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Customer</TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Mobile</TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Amount</TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Payment</TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Wallet</TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Surabhi</TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Seva</TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Cash</TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Store</TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Date</TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Staff</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Invoice ID
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Customer
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Mobile
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Amount
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Payment
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Wallet
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Surabhi
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Seva
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Cash
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Store
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Date
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Staff
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -505,18 +545,32 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                             <TableCell className="font-medium">
                               <span className="font-bold">{tx.customerName}</span>
                             </TableCell>
-                            <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">{tx.customerMobile}</TableCell>
+                            <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                              {tx.customerMobile}
+                            </TableCell>
                             <TableCell className="font-bold">₹{tx.amount?.toFixed(2)}</TableCell>
                             <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                               {tx.paymentMethod === 'mixed' ? 'mixed' : tx.paymentMethod || 'cash'}
                             </TableCell>
-                            <TableCell>{tx.walletDeduction ? Number(tx.walletDeduction).toFixed(2) : '0.00'}</TableCell>
-                            <TableCell>{tx.surabhiUsed ? Number(tx.surabhiUsed).toFixed(2) : '0.00'}</TableCell>
-                            <TableCell>{tx.sevaEarned ? Number(tx.sevaEarned).toFixed(2) : '0.00'}</TableCell>
-                            <TableCell>₹{tx.cashPayment ? Number(tx.cashPayment).toFixed(2) : '0.00'}</TableCell>
+                            <TableCell>
+                              {tx.walletDeduction ? Number(tx.walletDeduction).toFixed(2) : '0.00'}
+                            </TableCell>
+                            <TableCell>
+                              {tx.surabhiUsed ? Number(tx.surabhiUsed).toFixed(2) : '0.00'}
+                            </TableCell>
+                            <TableCell>
+                              {tx.sevaEarned ? Number(tx.sevaEarned).toFixed(2) : '0.00'}
+                            </TableCell>
+                            <TableCell>
+                              ₹{tx.cashPayment ? Number(tx.cashPayment).toFixed(2) : '0.00'}
+                            </TableCell>
                             <TableCell>{tx.storeLocation}</TableCell>
-                            <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">{formatTimestamp(tx.createdAt)}</TableCell>
-                            <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">{tx.processedBy || 'system'}</TableCell>
+                            <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                              {formatTimestamp(tx.createdAt)}
+                            </TableCell>
+                            <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                              {tx.processedBy || 'system'}
+                            </TableCell>
                           </TableRow>
                         ))}
                     </TableBody>
@@ -571,14 +625,30 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                   <Table className="min-w-[600px]">
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Customer</TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Mobile</TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Amount</TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Store</TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Coins Earned</TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Seva Amount</TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Date</TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">Staff</TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Customer
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Mobile
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Amount
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Store
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Coins Earned
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Seva Amount
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Date
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Staff
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -590,12 +660,18 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                               <span className="font-bold">{tx.customerName}</span>
                             </TableCell>
                             <TableCell>{tx.customerMobile}</TableCell>
-                            <TableCell className="font-bold py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">₹{tx.amount.toFixed(2)}</TableCell>
+                            <TableCell className="font-bold py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                              ₹{tx.amount.toFixed(2)}
+                            </TableCell>
                             <TableCell>
                               {tx.storeName ? `${tx.storeName}` : tx.storeLocation}
                             </TableCell>
-                            <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">{tx.surabhiEarned ? Number(tx.surabhiEarned).toFixed(2) : '0.00'}</TableCell>
-                            <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">₹{tx.sevaEarned ? Number(tx.sevaEarned).toFixed(2) : '0.00'}</TableCell>
+                            <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                              {tx.surabhiEarned ? Number(tx.surabhiEarned).toFixed(2) : '0.00'}
+                            </TableCell>
+                            <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                              ₹{tx.sevaEarned ? Number(tx.sevaEarned).toFixed(2) : '0.00'}
+                            </TableCell>
                             <TableCell>{formatTimestamp(tx.createdAt)}</TableCell>
                             <TableCell>{tx.processedBy || 'system'}</TableCell>
                           </TableRow>
@@ -613,7 +689,9 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
       {filteredTransactions.length > 0 && (
         <div className="flex flex-col xs:flex-row items-center justify-between mt-3 xs:mt-4 gap-2 xs:gap-4">
           <div className="flex items-center gap-1 xs:gap-2">
-            <Label htmlFor="recordsPerPage" className="text-xs xs:text-sm">Records per page:</Label>
+            <Label htmlFor="recordsPerPage" className="text-xs xs:text-sm">
+              Records per page:
+            </Label>
             <Select value={recordsPerPage.toString()} onValueChange={handleRecordsPerPageChange}>
               <SelectTrigger className="w-[80px] xs:w-[100px] h-8 xs:h-9 text-xs xs:text-sm">
                 <SelectValue placeholder="Select" />

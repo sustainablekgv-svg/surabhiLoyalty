@@ -9,7 +9,7 @@ import {
   Timestamp,
   where,
 } from 'firebase/firestore';
-import { ChevronLeft, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -46,7 +46,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
-  // Replace the existing fetchTransactions function with this one
+  // Fetch transactions with on-demand pagination
   const fetchTransactions = async (loadMore = false) => {
     try {
       if (!loadMore) {
@@ -59,12 +59,15 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
         console.log('No store location provided');
         return;
       }
-
+      
+      // Use current rowsPerPage value for limit
+      const limitSize = rowsPerPage;
+      
       let txQuery = query(
         collection(db, 'AccountTx'),
         where('storeName', '==', user.storeLocation),
         orderBy('createdAt', 'desc'),
-        limit(rowsPerPage)
+        limit(limitSize)
       );
 
       // If loading more and we have a last visible document, start after it
@@ -74,7 +77,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
           where('storeName', '==', user.storeLocation),
           orderBy('createdAt', 'desc'),
           startAfter(lastVisible),
-          limit(rowsPerPage)
+          limit(limitSize)
         );
       }
 
@@ -134,7 +137,8 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
           setTransactions([]);
           setLastVisible(null);
           setHasMore(true);
-          fetchTransactions();
+          setCurrentPage(1);
+          fetchTransactions(false);
         }}
         disabled={loading || isLoadingMore}
       >
@@ -161,13 +165,24 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
   };
 
   const handleRowsPerPageChange = (value: number) => {
+    // Update rows per page state
     setRowsPerPage(value);
     setCurrentPage(1); // Reset to first page when changing rows per page
-    setTotalPages(Math.ceil(transactions.length / value));
+    
+    // Reset pagination state
+    setTransactions([]);
+    setLastVisible(null);
+    setHasMore(true);
+    setRefreshing(true);
+    
+    // Fetch new data with updated page size
+    fetchTransactions(false);
   };
 
   useEffect(() => {
-    fetchTransactions();
+    // Only fetch transactions when store location changes
+    // rowsPerPage changes are handled in handleRowsPerPageChange
+    fetchTransactions(false);
   }, [storeLocation]);
 
   useEffect(() => {
@@ -186,20 +201,6 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">{user.storeLocation} Transactions</h2>
-        <Button
-          variant="outline"
-          onClick={() => {
-            setRefreshing(true);
-            fetchTransactions();
-          }}
-          disabled={refreshing}
-        >
-          {refreshing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="h-4 w-4" />
-          )}
-        </Button>
       </div>
 
       <Card>

@@ -117,9 +117,10 @@ export const SalesManagement = () => {
     if (tx.type !== 'sale') return false;
 
     const matchesSearch =
-      tx.customerName.toLowerCase().includes(transactionsSearchTerm.toLowerCase()) ||
-      tx.customerMobile.includes(transactionsSearchTerm) ||
-      tx.invoiceId.includes(transactionsSearchTerm);
+      transactionsSearchTerm === '' ||
+      (tx.customerName?.toLowerCase() || '').includes(transactionsSearchTerm.toLowerCase()) ||
+      (tx.customerMobile || '').includes(transactionsSearchTerm) ||
+      (tx.invoiceId || '').includes(transactionsSearchTerm);
     const matchesStore = filterStore === 'all' || tx.storeLocation === filterStore;
     const matchesPayment = filterPayment === 'all' || tx.paymentMethod === filterPayment;
 
@@ -131,8 +132,9 @@ export const SalesManagement = () => {
     if (tx.type !== 'recharge') return false;
 
     return (
-      tx.customerName.toLowerCase().includes(rechargesSearchTerm.toLowerCase()) ||
-      tx.customerMobile.includes(rechargesSearchTerm)
+      rechargesSearchTerm === '' ||
+      (tx.customerName?.toLowerCase() || '').includes(rechargesSearchTerm.toLowerCase()) ||
+      (tx.customerMobile || '').includes(rechargesSearchTerm)
     );
   });
 
@@ -247,7 +249,9 @@ export const SalesManagement = () => {
               <TrendingUp className="h-4 w-4 text-amber-600" />
               <span className="text-xs font-medium text-amber-600">Coins Used</span>
             </div>
-            <p className="text-xl font-bold text-amber-900">{totalStats.totalSurabhiCoinsUsed}</p>
+            <p className="text-xl font-bold text-amber-900">
+              {totalStats.totalSurabhiCoinsUsed.toFixed(2).toLocaleString()}
+            </p>
           </CardContent>
         </Card>
 
