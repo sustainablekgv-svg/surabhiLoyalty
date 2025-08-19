@@ -1,11 +1,11 @@
-import { collection, where, getDocs, query } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 
 import { db } from './firebase';
 
 import { CustomerType, StaffType } from '@/types/types';
 export const getCustomerByMobile = async (mobile: string): Promise<CustomerType | null> => {
   const customersRef = collection(db, 'Customers');
-  const q = query(customersRef, where('mobile', '==', mobile));
+  const q = query(customersRef, where('customerMobile', '==', mobile));
   const querySnapshot = await getDocs(q);
 
   if (querySnapshot.empty) return null;

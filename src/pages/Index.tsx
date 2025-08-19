@@ -114,12 +114,24 @@ const Index = () => {
         return;
       }
 
+      // Only allow forgot password for customers
+      if (formData.role !== 'customer') {
+        toast.error('Password reset is only available for customers');
+        return;
+      }
+
       const customer = await getCustomerByMobile(formData.mobile);
       if (!customer) {
         toast.error('No customer found with this mobile number');
         return;
       }
 
+      if (!customer.customerEmail) {
+        toast.error('No email address registered for this account. Please contact support.');
+        return;
+      }
+
+      setCustomerEmail(customer.customerEmail);
       setForgotPasswordMode(true);
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -184,8 +196,8 @@ const Index = () => {
               </CardTitle>
               <CardDescription className="text-gray-600">
                 {forgotPasswordMode
-                  ? "We'll send a reset link to your registered email"
-                  : 'Sign in to access the application'}
+                  ? "We'll send a reset link to your registered email. Please check your spam folder if you don't see the email."
+                  : 'Sign in to access the application. If you are a new user, please contact the developer for registration.'}
               </CardDescription>
             </CardHeader>
 
@@ -311,16 +323,18 @@ const Index = () => {
                     </div>
                   </div>
 
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={handleForgotPassword}
-                      disabled={isLoadingEmail}
-                      className="text-xs sm:text-sm text-purple-600 hover:text-purple-700 font-medium disabled:opacity-50"
-                    >
-                      {isLoadingEmail ? 'Loading...' : 'Forgot Password?'}
-                    </button>
-                  </div>
+                  {formData.role === 'customer' && (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handleForgotPassword}
+                        disabled={isLoadingEmail}
+                        className="text-xs sm:text-sm text-purple-600 hover:text-purple-700 font-medium disabled:opacity-50"
+                      >
+                        {isLoadingEmail ? 'Loading...' : 'Forgot Password?'}
+                      </button>
+                    </div>
+                  )}
 
                   <Button
                     type="submit"

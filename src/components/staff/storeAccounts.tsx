@@ -29,57 +29,41 @@ import { AccountTxType, StoreAccountsProps } from '@/types/types';
 
 const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userRole: string }) => {
   const { user, logout, isLoading: authLoading } = useAuth();
-  const [transactions, setTransactions] = useState<AccountTxType[]>([]);
+  const [allTransactions, setAllTransactions] = useState<AccountTxType[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [updatingTx, setUpdatingTx] = useState<string | null>(null);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
+  const [recordsPerPage, setRecordsPerPage] = useState(10);
 
   const isAdmin = userRole === 'admin';
 
-  // Add these state variables at the top with other states
-  const [lastVisible, setLastVisible] = useState<any>(null);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
+  // Calculate pagination for all transactions
+  const indexOfLastRecord = currentPage * recordsPerPage;
+  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+  const currentRecords = allTransactions.slice(indexOfFirstRecord, indexOfLastRecord);
+  const totalPages = Math.ceil(allTransactions.length / recordsPerPage);
 
-  // Fetch transactions with on-demand pagination
-  const fetchTransactions = async (loadMore = false) => {
+  // Change page
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
+  // Fetch all transactions for current store
+  const fetchAllTransactions = async () => {
+    if (!user.storeLocation) {
+      console.log('No store location provided');
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      if (!loadMore) {
-        setLoading(true);
-      } else {
-        setIsLoadingMore(true);
-      }
-
-      if (!user.storeLocation) {
-        console.log('No store location provided');
-        return;
-      }
-      
-      // Use current rowsPerPage value for limit
-      const limitSize = rowsPerPage;
-      
-      let txQuery = query(
+      const txQuery = query(
         collection(db, 'AccountTx'),
         where('storeName', '==', user.storeLocation),
-        orderBy('createdAt', 'desc'),
-        limit(limitSize)
+        orderBy('createdAt', 'desc')
       );
-
-      // If loading more and we have a last visible document, start after it
-      if (loadMore && lastVisible) {
-        txQuery = query(
-          collection(db, 'AccountTx'),
-          where('storeName', '==', user.storeLocation),
-          orderBy('createdAt', 'desc'),
-          startAfter(lastVisible),
-          limit(limitSize)
-        );
-      }
 
       const txSnapshot = await getDocs(txQuery);
       const txData: AccountTxType[] = [];
@@ -105,89 +89,32 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
         });
       });
 
-      // Update last visible document for next pagination
-      const lastVisibleDoc = txSnapshot.docs[txSnapshot.docs.length - 1];
-      setLastVisible(lastVisibleDoc);
-
-      // Check if there are more documents to load
-      setHasMore(txSnapshot.docs.length === rowsPerPage);
-
-      if (loadMore) {
-        setTransactions(prev => [...prev, ...txData]);
-      } else {
-        setTransactions(txData);
-      }
+      setAllTransactions(txData);
     } catch (err) {
       console.error('Error fetching transactions:', err);
     } finally {
       setLoading(false);
-      setIsLoadingMore(false);
       setRefreshing(false);
     }
   };
 
-  // Replace the pagination controls with this updated version
-  <div className="flex items-center justify-between mt-4">
-    <div className="text-sm text-gray-600">Showing {transactions.length} transactions</div>
-    <div className="flex space-x-2">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => {
-          setTransactions([]);
-          setLastVisible(null);
-          setHasMore(true);
-          setCurrentPage(1);
-          fetchTransactions(false);
-        }}
-        disabled={loading || isLoadingMore}
-      >
-        Reset
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => fetchTransactions(true)}
-        disabled={!hasMore || loading || isLoadingMore}
-      >
-        {isLoadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Load More'}
-      </Button>
-    </div>
-  </div>;
+
   const formatTimestamp = (timestamp: Timestamp): string => {
     return format(timestamp.toDate(), 'MMM dd, yyyy HH:mm');
   };
 
-  // Calculate paginated transactions
-  const getPaginatedTransactions = () => {
-    const startIndex = (currentPage - 1) * rowsPerPage;
-    return transactions.slice(startIndex, startIndex + rowsPerPage);
+  // Handle records per page change
+  const handleRecordsPerPageChange = (value: string) => {
+    const newRecordsPerPage = Number(value);
+    setRecordsPerPage(newRecordsPerPage);
+    setCurrentPage(1);
   };
 
-  const handleRowsPerPageChange = (value: number) => {
-    // Update rows per page state
-    setRowsPerPage(value);
-    setCurrentPage(1); // Reset to first page when changing rows per page
-    
-    // Reset pagination state
-    setTransactions([]);
-    setLastVisible(null);
-    setHasMore(true);
-    setRefreshing(true);
-    
-    // Fetch new data with updated page size
-    fetchTransactions(false);
-  };
-
+  // Fetch transactions when store location changes
   useEffect(() => {
-    // Only fetch transactions when store location changes
-    // rowsPerPage changes are handled in handleRowsPerPageChange
-    fetchTransactions(false);
+    setCurrentPage(1);
+    fetchAllTransactions();
   }, [storeLocation]);
-
-  useEffect(() => {
-    setTotalPages(Math.ceil(transactions.length / rowsPerPage));
-  }, [transactions, rowsPerPage]);
 
   if (loading) {
     return (
@@ -205,23 +132,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
 
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>Accounts History</CardTitle>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-600">Rows per page:</span>
-              <select
-                value={rowsPerPage}
-                onChange={e => handleRowsPerPageChange(Number(e.target.value))}
-                className="border rounded-md px-2 py-1 text-sm"
-              >
-                {[5, 10, 20, 50, 100].map(size => (
-                  <option key={size} value={size}>
-                    {size}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+          <CardTitle>Accounts History</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -237,7 +148,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
               </TableRow>
             </TableHeader>
             <TableBody>
-              {getPaginatedTransactions().map(tx => (
+              {currentRecords.map(tx => (
                 <TableRow key={tx.id}>
                   <TableCell>{formatTimestamp(tx.createdAt)}</TableCell>
                   <TableCell>
@@ -276,34 +187,84 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
           </Table>
 
           {/* Pagination Controls */}
-          <div className="flex items-center justify-between mt-4">
-            <div className="text-sm text-gray-600">
-              Showing {(currentPage - 1) * rowsPerPage + 1} to{' '}
-              {Math.min(currentPage * rowsPerPage, transactions.length)} of {transactions.length}{' '}
-              transactions
-            </div>
-            <div className="flex space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <div className="flex items-center px-4 text-sm">
-                Page {currentPage} of {totalPages}
+          {allTransactions.length > 0 && (
+            <div className="flex flex-col xs:flex-row items-center justify-between mt-4 gap-4">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-600">Records per page:</span>
+                <select
+                  value={recordsPerPage}
+                  onChange={e => handleRecordsPerPageChange(e.target.value)}
+                  className="border rounded-md px-2 py-1 text-sm"
+                >
+                  {[5, 10, 20, 50].map(size => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages || totalPages === 0}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => paginate(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="h-8 xs:h-9 text-xs xs:text-sm px-2 xs:px-3"
+                >
+                  Prev
+                </Button>
+
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  // Show first, last and nearby pages
+                  if (totalPages <= 5) {
+                    return i + 1;
+                  }
+                  if (currentPage <= 3) {
+                    return i + 1;
+                  }
+                  if (currentPage >= totalPages - 2) {
+                    return totalPages - 4 + i;
+                  }
+                  return currentPage - 2 + i;
+                }).map(number => (
+                  <Button
+                    key={number}
+                    variant={currentPage === number ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => paginate(number)}
+                    className="h-8 xs:h-9 w-8 xs:w-9 p-0 text-xs xs:text-sm"
+                  >
+                    {number}
+                  </Button>
+                ))}
+
+                {totalPages > 5 && currentPage < totalPages - 2 && <span className="px-2">...</span>}
+
+                {totalPages > 5 && currentPage < totalPages - 2 && (
+                  <Button variant="outline" size="sm" onClick={() => paginate(totalPages)}>
+                    {totalPages}
+                  </Button>
+                )}
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => paginate(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="h-8 xs:h-9 text-xs xs:text-sm px-2 xs:px-3"
+                >
+                  Next
+                </Button>
+              </div>
+
+              <div className="text-sm text-gray-600">
+                Showing {indexOfFirstRecord + 1}-
+                {Math.min(indexOfLastRecord, allTransactions.length)} of{' '}
+                {allTransactions.length} records
+              </div>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>

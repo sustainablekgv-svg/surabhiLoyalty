@@ -69,9 +69,9 @@ const StoreDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50 overflow-x-hidden">
       <StoreHeader user={user} onLogout={handleLogout} />
-      <div className="container mx-auto px-2 xs:px-3 sm:px-4 py-3 sm:py-6">
+      <div className="container mx-auto px-2 xs:px-3 sm:px-4 py-3 sm:py-6 overflow-x-hidden">
         <div className="mb-3 sm:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
           <div className="flex items-center gap-3">
             <Store className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
@@ -88,8 +88,8 @@ const StoreDashboard = () => {
         <div className="w-full">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             {/* Tabs Navigation */}
-            <div className="mb-4 sm:mb-6 md:mb-8">
-              <TabsList className="grid w-full grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-1 bg-gray-100 p-1 rounded-lg overflow-x-auto">
+            <div className="mb-4 sm:mb-6 md:mb-8 overflow-x-hidden overflow-y-hidden">
+              <TabsList className="grid w-full grid-cols-6 bg-gray-100 p-0.5 rounded-lg overflow-y-hidden">
                 {[
                   { value: 'overview', icon: TrendingUp, label: 'Overview' },
                   { value: 'register', icon: UserPlus, label: 'Register' },
@@ -101,21 +101,21 @@ const StoreDashboard = () => {
                   <TabsTrigger
                     key={tab.value}
                     value={tab.value}
-                    className={`flex flex-col items-center gap-0.5 xs:gap-1 py-1 xs:py-1.5 sm:py-2 px-0.5 xs:px-1 sm:px-2 rounded-md transition-all text-center ${
+                    className={`flex flex-col items-center gap-0.5 py-1 px-0.5 rounded-md transition-all min-w-0 overflow-y-hidden ${
                       activeTab === tab.value
                         ? 'bg-white shadow-sm text-purple-600 font-medium'
                         : 'text-gray-600 hover:text-purple-500'
                     }`}
                   >
-                    <tab.icon className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
-                    <span className="text-[10px] xs:text-xs sm:text-sm">{tab.label}</span>
+                    <tab.icon className="h-2 w-2 xs:h-2.5 xs:w-2.5 sm:h-4 sm:w-4" />
+                    <span className="text-[6px] xs:text-[7px] sm:text-xs truncate w-full text-center leading-tight">{tab.label}</span>
                   </TabsTrigger>
                 ))}
               </TabsList>
             </div>
 
             {/* Tab Content */}
-            <div className="bg-white rounded-lg shadow-sm p-2 xs:p-3 sm:p-6 mt-1">
+            <div className="bg-white rounded-lg shadow-sm p-2 xs:p-3 sm:p-6 mt-1 overflow-x-hidden">
               <TabsContent value="overview" className="space-y-4 sm:space-y-6 pt-2">
                 <StoreStats storeLocation={user?.storeLocation || ''} />
               </TabsContent>
