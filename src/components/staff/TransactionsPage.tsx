@@ -117,8 +117,6 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
     fetchAllTransactions();
   }, [storeLocation, activeTab]);
 
-
-
   // Apply filters
   useEffect(() => {
     if (!allTransactions.length) return;

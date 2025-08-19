@@ -300,7 +300,7 @@ export const StaffManagement = () => {
       collection(db, 'stores'),
       where('storePrefix', '==', currentStore.storePrefix.trim().toUpperCase())
     );
-    
+
     if (!currentStore.id) {
       // Only check for uniqueness when creating a new store
       const prefixSnapshot = await getDocs(prefixQuery);
@@ -1082,7 +1082,9 @@ export const StaffManagement = () => {
                   maxLength={4}
                 />
               </div>
-              <p className="text-[10px] xs:text-xs text-muted-foreground">This prefix will be used for invoice ID generation (e.g., ABC001)</p>
+              <p className="text-[10px] xs:text-xs text-muted-foreground">
+                This prefix will be used for invoice ID generation (e.g., ABC001)
+              </p>
             </div>
 
             <div className="space-y-1 xs:space-y-1.5 sm:space-y-2">

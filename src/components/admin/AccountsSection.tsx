@@ -620,14 +620,18 @@ const Accounts = () => {
                     <TableHead className="hidden md:table-cell text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
                       Date
                     </TableHead>
-                    <TableHead className="text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">Store</TableHead>
+                    <TableHead className="text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
+                      Store
+                    </TableHead>
                     <TableHead className="hidden md:table-cell text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
                       Customer
                     </TableHead>
                     <TableHead className="hidden md:table-cell text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
                       Mobile
                     </TableHead>
-                    <TableHead className="text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">Type</TableHead>
+                    <TableHead className="text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
+                      Type
+                    </TableHead>
                     <TableHead className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
                       Amount
                     </TableHead>
@@ -640,10 +644,18 @@ const Accounts = () => {
                     <TableHead className="hidden lg:table-cell text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
                       Admin Cut
                     </TableHead>
-                    <TableHead className="hidden xl:table-cell text-right whitespace-nowrap text-xs xs:text-sm py-2 xs:py-3 sm:py-4">Admin Profit</TableHead>
-                    <TableHead className="text-right whitespace-nowrap text-xs xs:text-sm py-2 xs:py-3 sm:py-4">Store Balance</TableHead>
-                    <TableHead className="text-right whitespace-nowrap text-xs xs:text-sm py-2 xs:py-3 sm:py-4">Admin Balance</TableHead>
-                    <TableHead className="hidden md:table-cell whitespace-nowrap text-xs xs:text-sm py-2 xs:py-3 sm:py-4">Remarks</TableHead>
+                    <TableHead className="hidden xl:table-cell text-right whitespace-nowrap text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                      Admin Profit
+                    </TableHead>
+                    <TableHead className="text-right whitespace-nowrap text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                      Store Balance
+                    </TableHead>
+                    <TableHead className="text-right whitespace-nowrap text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                      Admin Balance
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell whitespace-nowrap text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                      Remarks
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

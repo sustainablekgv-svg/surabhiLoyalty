@@ -108,7 +108,9 @@ const StoreDashboard = () => {
                     }`}
                   >
                     <tab.icon className="h-2 w-2 xs:h-2.5 xs:w-2.5 sm:h-4 sm:w-4" />
-                    <span className="text-[6px] xs:text-[7px] sm:text-xs truncate w-full text-center leading-tight">{tab.label}</span>
+                    <span className="text-[6px] xs:text-[7px] sm:text-xs truncate w-full text-center leading-tight">
+                      {tab.label}
+                    </span>
                   </TabsTrigger>
                 ))}
               </TabsList>

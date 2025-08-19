@@ -203,7 +203,9 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                 <h2 className="text-base xs:text-lg sm:text-xl font-bold truncate max-w-[150px] xs:max-w-[200px] sm:max-w-full">
                   {customerData.customerName}
                 </h2>
-                <p className="text-[10px] xs:text-xs sm:text-sm text-gray-600">Member since {memberSince}</p>
+                <p className="text-[10px] xs:text-xs sm:text-sm text-gray-600">
+                  Member since {memberSince}
+                </p>
               </div>
             </div>
 
@@ -212,8 +214,12 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                 <Phone className="h-4 w-4 xs:h-5 xs:w-5 sm:h-6 sm:w-6 text-blue-600" />
               </div>
               <div className="text-left sm:text-right">
-                <p className="text-[10px] xs:text-xs sm:text-sm text-gray-600">Your referral number</p>
-                <p className="text-sm xs:text-base sm:text-lg font-bold">{customerData.customerMobile}</p>
+                <p className="text-[10px] xs:text-xs sm:text-sm text-gray-600">
+                  Your referral number
+                </p>
+                <p className="text-sm xs:text-base sm:text-lg font-bold">
+                  {customerData.customerMobile}
+                </p>
               </div>
             </div>
           </div>
@@ -236,10 +242,14 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
               </div>
             </CardHeader>
             <CardContent className="px-2 xs:px-3 sm:px-6 pb-2 xs:pb-3 sm:pb-6 pt-0">
-              <div className={`text-base xs:text-lg sm:text-2xl font-bold ${stat.color} mb-0.5 xs:mb-0.5 sm:mb-1`}>
+              <div
+                className={`text-base xs:text-lg sm:text-2xl font-bold ${stat.color} mb-0.5 xs:mb-0.5 sm:mb-1`}
+              >
                 {stat.value}
               </div>
-              <p className="text-[8px] xs:text-[10px] sm:text-xs text-gray-600">{stat.description}</p>
+              <p className="text-[8px] xs:text-[10px] sm:text-xs text-gray-600">
+                {stat.description}
+              </p>
             </CardContent>
           </Card>
         ))}

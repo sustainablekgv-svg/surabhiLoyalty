@@ -370,7 +370,9 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
             <UserPlus className="h-4 w-4 xs:h-5 xs:w-5 sm:h-6 sm:w-6 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900">Customer Registration</h1>
+            <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900">
+              Customer Registration
+            </h1>
             <p className="text-gray-600">Register new customers for {storeLocation}</p>
           </div>
         </div>

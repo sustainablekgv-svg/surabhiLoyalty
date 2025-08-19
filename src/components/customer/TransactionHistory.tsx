@@ -226,29 +226,61 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
             <Table className="min-w-[900px]">
               <TableHeader className="bg-gray-50">
                 <TableRow className="hover:bg-gray-50">
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium">Invoice ID</TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium">Date & Time</TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium">Location</TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">Wallet Credit</TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">Wallet Debit</TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">Wallet Balance</TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">Surabhi Credit</TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">Surabhi Debit</TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">Surabhi Balance</TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">Seva Credit</TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">Seva Debit</TableHead>
+                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium">
+                    Invoice ID
+                  </TableHead>
+                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium">
+                    Date & Time
+                  </TableHead>
+                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium">
+                    Location
+                  </TableHead>
+                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">
+                    Wallet Credit
+                  </TableHead>
+                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">
+                    Wallet Debit
+                  </TableHead>
+                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">
+                    Wallet Balance
+                  </TableHead>
+                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">
+                    Surabhi Credit
+                  </TableHead>
+                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">
+                    Surabhi Debit
+                  </TableHead>
+                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">
+                    Surabhi Balance
+                  </TableHead>
+                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">
+                    Seva Credit
+                  </TableHead>
+                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">
+                    Seva Debit
+                  </TableHead>
                   {/* <TableHead className="text-right">Seva Current</TableHead> */}
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">Seva Total</TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium">Remarks</TableHead>
+                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">
+                    Seva Total
+                  </TableHead>
+                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium">
+                    Remarks
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredTransactions.length > 0 ? (
                   filteredTransactions.map(tx => (
                     <TableRow key={tx.id}>
-                      <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm">{tx.invoiceId || 'NA'}</TableCell>
-                      <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm">{formatDate(tx.createdAt)}</TableCell>
-                      <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm">{tx.storeLocation}</TableCell>
+                      <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm">
+                        {tx.invoiceId || 'NA'}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm">
+                        {formatDate(tx.createdAt)}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm">
+                        {tx.storeLocation}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm text-right">
                         {tx.walletCredit ? formatCurrency(tx.walletCredit) : '-'}
                       </TableCell>
@@ -277,12 +309,17 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
                       <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm text-right font-medium">
                         {Number(tx.sevaTotal).toFixed(2)}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm">{tx.remarks || '-'}</TableCell>
+                      <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm">
+                        {tx.remarks || '-'}
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={13} className="text-center py-8 xs:py-10 sm:py-12 text-gray-500 text-xs xs:text-sm">
+                    <TableCell
+                      colSpan={13}
+                      className="text-center py-8 xs:py-10 sm:py-12 text-gray-500 text-xs xs:text-sm"
+                    >
                       No transactions found
                     </TableCell>
                   </TableRow>

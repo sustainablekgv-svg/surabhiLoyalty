@@ -182,7 +182,9 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
               <h1 className="text-sm xs:text-base sm:text-lg md:text-xl font-bold text-gray-900">
                 Loyalty Rewards
               </h1>
-              <p className="text-[8px] xs:text-[10px] sm:text-xs md:text-sm text-gray-600">Admin Portal</p>
+              <p className="text-[8px] xs:text-[10px] sm:text-xs md:text-sm text-gray-600">
+                Admin Portal
+              </p>
             </div>
           </div>
 
@@ -232,7 +234,9 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
         <DialogContent className="w-[95vw] xs:w-[90vw] sm:w-[80vw] md:max-w-[600px] max-h-[85vh] overflow-y-auto p-2 xs:p-3 sm:p-4 md:p-6 rounded-lg">
           <DialogHeader className="pb-1 xs:pb-1.5 sm:pb-2 md:pb-4">
-            <DialogTitle className="text-sm xs:text-base sm:text-lg md:text-xl">Admin Settings</DialogTitle>
+            <DialogTitle className="text-sm xs:text-base sm:text-lg md:text-xl">
+              Admin Settings
+            </DialogTitle>
             <DialogDescription className="text-[9px] xs:text-[10px] sm:text-xs md:text-sm">
               Update your profile information
             </DialogDescription>
@@ -274,7 +278,10 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
                 />
               </div>
               <div>
-                <Label htmlFor="storeLocation" className="text-[9px] xs:text-[10px] sm:text-xs md:text-sm">
+                <Label
+                  htmlFor="storeLocation"
+                  className="text-[9px] xs:text-[10px] sm:text-xs md:text-sm"
+                >
                   Store Location
                 </Label>
                 <Select
@@ -286,7 +293,11 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
                   </SelectTrigger>
                   <SelectContent>
                     {stores.map(store => (
-                      <SelectItem key={store.id} value={store.storeName} className="text-[9px] xs:text-[10px] sm:text-xs md:text-sm">
+                      <SelectItem
+                        key={store.id}
+                        value={store.storeName}
+                        className="text-[9px] xs:text-[10px] sm:text-xs md:text-sm"
+                      >
                         {store.storeName} - {store.storeLocation}
                       </SelectItem>
                     ))}

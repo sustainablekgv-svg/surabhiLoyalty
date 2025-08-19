@@ -98,7 +98,6 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
     }
   };
 
-
   const formatTimestamp = (timestamp: Timestamp): string => {
     return format(timestamp.toDate(), 'MMM dd, yyyy HH:mm');
   };
@@ -239,7 +238,9 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
                   </Button>
                 ))}
 
-                {totalPages > 5 && currentPage < totalPages - 2 && <span className="px-2">...</span>}
+                {totalPages > 5 && currentPage < totalPages - 2 && (
+                  <span className="px-2">...</span>
+                )}
 
                 {totalPages > 5 && currentPage < totalPages - 2 && (
                   <Button variant="outline" size="sm" onClick={() => paginate(totalPages)}>
@@ -260,8 +261,8 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
 
               <div className="text-sm text-gray-600">
                 Showing {indexOfFirstRecord + 1}-
-                {Math.min(indexOfLastRecord, allTransactions.length)} of{' '}
-                {allTransactions.length} records
+                {Math.min(indexOfLastRecord, allTransactions.length)} of {allTransactions.length}{' '}
+                records
               </div>
             </div>
           )}
