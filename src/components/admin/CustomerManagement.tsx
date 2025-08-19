@@ -1,19 +1,18 @@
 // src/components/CustomerManagement.tsx
-import { query, updateDoc, where } from 'firebase/firestore';
-import { collection, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, Timestamp, updateDoc, where } from 'firebase/firestore';
 import {
-  Search,
-  Filter,
-  Users,
-  Phone,
-  MapPin,
-  Wallet,
   Coins,
-  Eye,
-  Loader2,
   Edit,
+  Eye,
+  Filter,
+  Loader2,
+  MapPin,
+  Phone,
+  Search,
+  Users,
+  Wallet,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { Badge } from '@/components/ui/badge';
@@ -22,10 +21,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -121,6 +120,7 @@ export const CustomerManagement = () => {
         const storesData = querySnapshot.docs.map((doc): StoreType => {
           const data = doc.data();
           return {
+            storePrefix: data.storePrefix || '',
             id: doc.id,
             storeName: data.storeName || data.name || '',
             storeLocation: data.storeLocation || data.location || '',
@@ -754,12 +754,12 @@ export const CustomerManagement = () => {
 
             <div className="flex flex-col xs:flex-row gap-2 sm:gap-3 w-full lg:w-auto">
               <div className="relative w-full xs:w-auto">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
                 <Input
                   placeholder="Search by name, mobile or email"
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="pl-10 w-full sm:w-64 h-8 sm:h-10 text-xs sm:text-sm"
+                  className="pl-14 w-full sm:w-64 h-8 sm:h-10 text-xs sm:text-sm"
                 />
               </div>
 

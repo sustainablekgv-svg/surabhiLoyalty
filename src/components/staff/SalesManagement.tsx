@@ -1206,12 +1206,12 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Search by name or mobile number"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="pl-10 h-12"
+                className="pl-12 h-12"
               />
             </div>
             <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -1335,14 +1335,14 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                   <div className="space-y-2">
                     <Label htmlFor="amount">Sale Amount (₹) *</Label>
                     <div className="relative">
-                      <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
                         id="amount"
                         type="number"
                         placeholder="Enter sale amount"
                         value={saleAmount || ''}
                         onChange={e => setSaleAmount(Number(e.target.value))}
-                        className="pl-10 h-12"
+                        className="pl-12 h-12"
                         min="1"
                         required
                       />
@@ -1352,14 +1352,14 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                   <div className="space-y-2">
                     <Label htmlFor="invoiceId">Invoice ID (Optional)</Label>
                     <div className="relative">
-                      <ShoppingCart className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <ShoppingCart className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
                         id="invoiceId"
                         type="text"
                         placeholder="Enter invoice ID or leave blank to auto-generate"
                         value={invoiceId}
                         onChange={e => setInvoiceId(e.target.value)}
-                        className="pl-10 h-12"
+                        className="pl-12 h-12"
                       />
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
@@ -1373,7 +1373,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                     <div className="space-y-2">
                       <Label htmlFor="coins">Use Surabhi Coins</Label>
                       <div className="relative">
-                        <Coins className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                        <Coins className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
                           id="coins"
                           type="number"
@@ -1388,7 +1388,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                               Math.floor(Math.max(0, Math.min(value, maxCoins)))
                             );
                           }}
-                          className="pl-10 h-12"
+                          className="pl-12 h-12"
                           min="0"
                           max={selectedCustomer.surabhiBalance}
                         />

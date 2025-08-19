@@ -548,7 +548,7 @@ const Accounts = () => {
 
             <div className="flex flex-col xs:flex-row gap-2 xs:gap-3 w-full lg:w-auto">
               <div className="relative w-full xs:w-auto">
-                <Search className="absolute left-2 xs:left-3 top-2 xs:top-2.5 sm:top-3 h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4 text-gray-400" />
+                <Search className="absolute left-3 xs:left-5 top-1/2 -translate-y-1/2 h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4 text-gray-400" />
                 <Input
                   placeholder="Search transactions..."
                   value={searchTerm}
@@ -556,7 +556,7 @@ const Accounts = () => {
                     setSearchTerm(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="pl-7 xs:pl-9 sm:pl-10 w-full xs:w-48 sm:w-64 h-8 xs:h-9 sm:h-10 text-xs xs:text-sm"
+                  className="pl-10 xs:pl-16 w-full xs:w-48 sm:w-64 h-8 xs:h-9 sm:h-10 text-xs xs:text-sm"
                 />
               </div>
 

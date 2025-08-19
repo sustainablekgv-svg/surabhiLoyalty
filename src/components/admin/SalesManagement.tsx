@@ -289,7 +289,7 @@ export const SalesManagement = () => {
 
                 <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
                   <div className="relative">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
                       placeholder="Search transactions..."
                       value={transactionsSearchTerm}
@@ -297,7 +297,7 @@ export const SalesManagement = () => {
                         setTransactionsSearchTerm(e.target.value);
                         setTransactionsPage(1);
                       }}
-                      className="pl-10 w-full sm:w-64"
+                      className="pl-14 w-full sm:w-64"
                     />
                   </div>
 

@@ -393,14 +393,14 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                     Full Name <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
                       id="customerName"
                       type="text"
                       placeholder="Enter customer name"
                       value={formData.customerName}
                       onChange={e => setFormData({ ...formData, customerName: e.target.value })}
-                      className="w-full pl-10 pr-3 py-1.5 xs:py-2 h-10 xs:h-11 sm:h-12 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full pl-16 pr-3 py-1.5 xs:py-2 h-10 xs:h-11 sm:h-12 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       required
                     />
                   </div>
@@ -415,14 +415,14 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                     Mobile Number <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
                       id="customerMobile"
                       type="tel"
                       placeholder="Enter 10-digit number"
                       value={formData.customerMobile}
                       onChange={e => setFormData({ ...formData, customerMobile: e.target.value })}
-                      className="w-full pl-10 pr-3 py-1.5 xs:py-2 h-10 xs:h-11 sm:h-12 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full pl-16 pr-3 py-1.5 xs:py-2 h-10 xs:h-11 sm:h-12 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       maxLength={10}
                       required
                     />
@@ -438,14 +438,14 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
                     Email <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
                       id="customerEmail"
                       type="email"
                       placeholder="Enter email address"
                       value={formData.customerEmail}
                       onChange={e => setFormData({ ...formData, customerEmail: e.target.value })}
-                      className="w-full pl-10 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full pl-16 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       required
                     />
                   </div>

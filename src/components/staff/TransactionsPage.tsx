@@ -47,7 +47,7 @@ const formatDate = (timestamp: Timestamp): string => {
 export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
-  const [transactions, setTransactions] = useState<CustomerTxType[]>([]);
+  const [allTransactions, setAllTransactions] = useState<CustomerTxType[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<CustomerTxType[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -57,7 +57,7 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'sales' | 'recharges'>('sales');
 
-  // Calculate pagination
+  // Calculate pagination for filtered results
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
   const currentRecords = filteredTransactions.slice(indexOfFirstRecord, indexOfLastRecord);
@@ -71,35 +71,10 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
     const newRecordsPerPage = Number(value);
     setRecordsPerPage(newRecordsPerPage);
     setCurrentPage(1);
-
-    // Reset pagination state and fetch new data with updated records per page
-    setTransactions([]);
-    setFilteredTransactions([]);
-    setLastVisible(null);
-    setHasMore(true);
-
-    // Update ITEMS_PER_PAGE to match the new records per page value
-    // and trigger a fresh fetch
-    fetchTransactionsWithLimit(newRecordsPerPage);
   };
 
-  // Fetch all transactions for current store
-  useEffect(() => {
-    fetchTransactions();
-    return () => {
-      // Cleanup function if needed
-    };
-  }, [storeLocation]);
-  // Add these imports at the top
-
-  // Add these state variables at the top of the component
-  const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot | null>(null);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [itemsPerPage, setItemsPerPage] = useState(recordsPerPage);
-
-  // Fetch transactions with specified limit
-  const fetchTransactionsWithLimit = async (limitCount: number) => {
+  // Fetch all transactions for current store and tab
+  const fetchAllTransactions = async () => {
     if (!storeLocation) return;
 
     setIsLoading(true);
@@ -111,8 +86,7 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
         where('storeLocation', '==', storeLocation),
         where('type', '==', activeTab === 'sales' ? 'sale' : 'recharge'),
         where('amount', '>', 0),
-        orderBy('createdAt', 'desc'),
-        limit(limitCount)
+        orderBy('createdAt', 'desc')
       );
       const querySnapshot = await getDocs(q);
       const fetchedTransactions: CustomerTxType[] = [];
@@ -126,11 +100,8 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
         } as CustomerTxType);
       });
 
-      setTransactions(fetchedTransactions);
+      setAllTransactions(fetchedTransactions);
       setFilteredTransactions(fetchedTransactions);
-      setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1] || null);
-      setHasMore(querySnapshot.docs.length === limitCount);
-      setItemsPerPage(limitCount);
     } catch (err) {
       console.error('Error fetching transactions:', err);
       setError('Failed to load transactions. Please try again.');
@@ -140,110 +111,20 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
     }
   };
 
-  // Main fetch function that uses the current records per page setting
-  const fetchTransactions = async () => {
-    await fetchTransactionsWithLimit(recordsPerPage);
-  };
-
-  // Add loadMoreTransactions function
-  const loadMoreTransactions = async () => {
-    if (!lastVisible || !hasMore || isLoadingMore) return;
-
-    try {
-      setIsLoadingMore(true);
-
-      const q = query(
-        collection(db, 'CustomerTx'),
-        where('storeLocation', '==', storeLocation),
-        where('type', '==', activeTab === 'sales' ? 'sale' : 'recharge'),
-        where('amount', '>', 0),
-        orderBy('createdAt', 'desc'),
-        startAfter(lastVisible),
-        limit(itemsPerPage)
-      );
-
-      const querySnapshot = await getDocs(q);
-      const newTransactions: CustomerTxType[] = [];
-
-      querySnapshot.forEach(doc => {
-        const data = doc.data();
-        newTransactions.push({
-          id: doc.id,
-          ...data,
-          createdAt: data.createdAt as Timestamp,
-        } as CustomerTxType);
-      });
-
-      setTransactions(prev => [...prev, ...newTransactions]);
-      setFilteredTransactions(prev => [...prev, ...newTransactions]);
-      setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1] || null);
-      setHasMore(querySnapshot.docs.length === itemsPerPage);
-    } catch (err) {
-      console.error('Error loading more transactions:', err);
-      toast.error('Failed to load more transactions');
-    } finally {
-      setIsLoadingMore(false);
-    }
-  };
-  console.log('The transactions are', transactions);
-  // Update the useEffect hook for tab changes
+  // Fetch transactions when store location or active tab changes
   useEffect(() => {
-    setTransactions([]);
-    setFilteredTransactions([]);
-    setLastVisible(null);
-    setHasMore(true);
-    fetchTransactionsWithLimit(recordsPerPage);
-  }, [storeLocation, activeTab, recordsPerPage]);
+    setCurrentPage(1);
+    fetchAllTransactions();
+  }, [storeLocation, activeTab]);
 
-  // Replace the existing pagination section with this new one
-  {
-    filteredTransactions.length > 0 && (
-      <div className="flex flex-col items-center justify-center gap-4 mt-4">
-        <div className="flex items-center gap-2">
-          {hasMore && (
-            <Button
-              variant="outline"
-              onClick={loadMoreTransactions}
-              disabled={isLoadingMore}
-              className="min-w-[120px]"
-            >
-              {isLoadingMore ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Loading...
-                </>
-              ) : (
-                'Load More'
-              )}
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            onClick={() => {
-              setTransactions([]);
-              setFilteredTransactions([]);
-              setLastVisible(null);
-              setHasMore(true);
-              fetchTransactionsWithLimit(recordsPerPage);
-            }}
-            disabled={isLoading || isLoadingMore}
-          >
-            Reset
-          </Button>
-        </div>
-        <div className="text-sm text-gray-600">
-          Showing {filteredTransactions.length} transactions
-        </div>
-      </div>
-    );
-  }
+
 
   // Apply filters
   useEffect(() => {
-    if (!transactions.length) return;
+    if (!allTransactions.length) return;
 
     setIsFiltering(true);
-    let result = [...transactions];
+    let result = [...allTransactions];
     console.log('The data in line 112 is', result);
 
     // Filter by tab
@@ -284,7 +165,7 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
     setFilteredTransactions(result);
     setCurrentPage(1);
     setIsFiltering(false);
-  }, [searchTerm, startDate, endDate, transactions, activeTab]);
+  }, [searchTerm, startDate, endDate, allTransactions, activeTab]);
 
   const handleClearFilters = () => {
     setSearchTerm('');
@@ -293,17 +174,17 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
   };
 
   const calculateTotalAmount = () => {
-    return filteredTransactions.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+    return allTransactions.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
   };
 
   const calculateTotalRecharges = () => {
-    return filteredTransactions
+    return allTransactions
       .filter(tx => tx.type === 'recharge')
       .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
   };
 
   const calculateTotalSales = () => {
-    return filteredTransactions
+    return allTransactions
       .filter(tx => tx.type === 'sale')
       .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
   };
@@ -339,13 +220,13 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
           <div className="space-y-2">
             <Label htmlFor="search">Search Customer</Label>
             <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 id="search"
                 placeholder="Search by name or mobile..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-12"
                 disabled={isLoading}
               />
             </div>
@@ -353,13 +234,13 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
           <div className="space-y-2">
             <Label htmlFor="startDate">Start Date</Label>
             <div className="relative">
-              <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 id="startDate"
                 type="date"
                 value={startDate}
                 onChange={e => setStartDate(e.target.value)}
-                className="pl-10"
+                className="pl-12"
                 disabled={isLoading}
                 max={endDate || undefined}
               />
@@ -368,13 +249,13 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
           <div className="space-y-2">
             <Label htmlFor="endDate">End Date</Label>
             <div className="relative">
-              <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 id="endDate"
                 type="date"
                 value={endDate}
                 onChange={e => setEndDate(e.target.value)}
-                className="pl-10"
+                className="pl-12"
                 disabled={isLoading}
                 min={startDate || undefined}
               />
@@ -403,7 +284,7 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0">
-              <p className="text-2xl font-bold">{filteredTransactions.length}</p>
+              <p className="text-2xl font-bold">{allTransactions.length}</p>
             </CardContent>
           </Card>
           <Card className="bg-green-50">
@@ -481,11 +362,11 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                   <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                   <p className="text-lg font-medium mb-2">No sales transactions found</p>
                   <p className="mb-4">
-                    {transactions.length === 0
+                    {allTransactions.length === 0
                       ? 'No sales recorded for this store yet.'
                       : 'No sales match your current filters.'}
                   </p>
-                  {transactions.length > 0 && (
+                  {allTransactions.length > 0 && (
                     <Button variant="outline" onClick={handleClearFilters}>
                       Clear Filters
                     </Button>
@@ -610,11 +491,11 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                   <Zap className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                   <p className="text-lg font-medium mb-2">No recharge records found</p>
                   <p className="mb-4">
-                    {transactions.length === 0
+                    {allTransactions.length === 0
                       ? 'No recharges recorded for this store yet.'
                       : 'No recharges match your current filters.'}
                   </p>
-                  {transactions.length > 0 && (
+                  {allTransactions.length > 0 && (
                     <Button variant="outline" onClick={handleClearFilters}>
                       Clear Filters
                     </Button>

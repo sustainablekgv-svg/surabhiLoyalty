@@ -190,12 +190,12 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
             <CardTitle className="text-base xs:text-lg sm:text-xl">Transaction History</CardTitle>
             <div className="flex flex-col xs:flex-row gap-2 xs:gap-3 w-full sm:w-auto">
               <div className="relative flex-1">
-                <Search className="absolute left-2 xs:left-3 top-2.5 xs:top-3 h-3.5 xs:h-4 w-3.5 xs:w-4 text-gray-400" />
+                <Search className="absolute left-3 xs:left-5 top-1/2 -translate-y-1/2 h-3.5 xs:h-4 w-3.5 xs:w-4 text-gray-400" />
                 <Input
                   placeholder="Search by location..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="pl-8 xs:pl-10 h-9 xs:h-10 text-xs xs:text-sm"
+                  className="pl-10 xs:pl-16 h-9 xs:h-10 text-xs xs:text-sm"
                 />
               </div>
               <Select
