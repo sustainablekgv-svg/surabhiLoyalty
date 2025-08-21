@@ -38,6 +38,11 @@ export interface CustomerType {
   lastQuarterCheck: Timestamp | null;
   coinsFrozen: boolean;
   currentQuarterStart: Timestamp | null;
+  cumTotal: number;
+  joinedDate: Timestamp;
+  quarterlyTarget: number;
+  targetMet: boolean;
+  carriedForwardTarget: number;
 }
 
 export interface StaffHeaderProps {

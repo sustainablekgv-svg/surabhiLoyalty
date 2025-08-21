@@ -1,11 +1,11 @@
 import { format } from 'date-fns';
-import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
-import { Users, DollarSign, TrendingUp, UserPlus, Wallet, Activity, Coins } from 'lucide-react';
+import { collection, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
+import { Activity, Coins, DollarSign, TrendingUp, UserPlus, Users, Wallet } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { db } from '@/lib/firebase';
-import { CustomerType, ActivityType, StaffStatsProps } from '@/types/types2';
+import { ActivityType, CustomerType, StaffStatsProps } from '@/types/types';
 // import { Timestamp } from 'firebase/firestore';
 
 export const StoreStats = ({ storeLocation }: StaffStatsProps) => {

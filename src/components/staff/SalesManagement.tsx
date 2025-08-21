@@ -49,6 +49,7 @@ import {
   StaffType,
   StoreType,
 } from '@/types/types';
+import { hasMetQuarterlyTarget } from '@/utils/quarterlyTargets';
 
 const fetchCustomerByMobile = async (mobile: string): Promise<CustomerType | null> => {
   try {
@@ -227,9 +228,22 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
   const calculateSale = () => {
     if (!saleAmount || saleAmount <= 0 || !storeDetails) return null;
 
-    const coinsToUse = selectedCustomer
-      ? Math.floor(Math.min(surabhiCoinsToUse, selectedCustomer.surabhiBalance))
-      : 0;
+    // Check if customer has met quarterly target before allowing coin usage
+    let coinsToUse = 0;
+    if (selectedCustomer) {
+      if (hasMetQuarterlyTarget(selectedCustomer)) {
+        coinsToUse = Math.floor(Math.min(surabhiCoinsToUse, selectedCustomer.surabhiBalance));
+      } else {
+        // If target not met, coins are frozen - no coin usage allowed
+        if (surabhiCoinsToUse > 0) {
+          return { 
+            isValid: false, 
+            error: 'Quarterly sales target not met. Surabhi coins are frozen until target is achieved.' 
+          };
+        }
+        coinsToUse = 0;
+      }
+    }
     // let totalAmount = saleAmount;
     let walletDeduction = 0;
     let cashPayment = 0;
@@ -371,13 +385,20 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         (selectedCustomer.sevaBalance || 0) + saleCalculation.goSevaContribution;
       const newSevaTotal = (selectedCustomer.sevaTotal || 0) + saleCalculation.goSevaContribution;
 
-      // Set saleElgibility based on minimum sale amount and student status
+      // Update cumTotal and set saleElgibility based on cumulative total and student status
+      const newCumTotal = (selectedCustomer.cumTotal || 0) + saleAmount;
       const isEligible = selectedCustomer.isStudent
-        ? saleAmount >= 500 // Student minimum is 500
-        : saleAmount >= 2000; // Regular customer minimum is 2000
-
+        ? newCumTotal >= 500 // Student minimum is 500
+        : newCumTotal >= 2000; // Regular customer minimum is 2000
+      console.log(
+        'THe isEligible in line 378 is',
+        isEligible,
+        newCumTotal,
+        selectedCustomer.isStudent
+      );
       await updateDoc(customerRef, {
         saleElgibility: isEligible,
+        cumTotal: newCumTotal,
         walletBalance: newWalletBalance,
         surabhiBalance: newSurabhiCoins,
         sevaBalance: newSevaBalance,
@@ -759,10 +780,11 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           const newSevaTotal =
             (selectedCustomer.sevaTotal || 0) + saleCalculation.goSevaContribution;
 
-          // Set saleElgibility based on minimum sale amount and student status
+          // Update cumTotal and set saleElgibility based on cumulative total and student status
+          const newCumTotal = (selectedCustomer.cumTotal || 0) + saleAmount;
           const isEligible = selectedCustomer.isStudent
-            ? saleAmount >= 500 // Student minimum is 500
-            : saleAmount >= 2000; // Regular customer minimum is 2000
+            ? newCumTotal >= 500 // Student minimum is 500
+            : newCumTotal >= 2000; // Regular customer minimum is 2000
 
           await updateDoc(customerDoc.ref, {
             walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
@@ -772,6 +794,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               saleCalculation.surabhiCoinsEarned,
             sevaBalance: newSevaBalance,
             sevaTotal: newSevaTotal,
+            cumTotal: newCumTotal,
             lastTransactionDate: serverTimestamp(),
             saleElgibility: isEligible,
           });
@@ -911,10 +934,11 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             const newSevaTotal =
               (selectedCustomer.sevaTotal || 0) + saleCalculation.goSevaContribution;
 
-            // Set saleElgibility based on minimum sale amount and student status
+            // Update cumTotal and set saleElgibility based on cumulative total and student status
+            const newCumTotal = (selectedCustomer.cumTotal || 0) + saleAmount;
             const isEligible = selectedCustomer.isStudent
-              ? saleAmount >= 500 // Student minimum is 500
-              : saleAmount >= 2000; // Regular customer minimum is 2000
+              ? newCumTotal >= 500 // Student minimum is 500
+              : newCumTotal >= 2000; // Regular customer minimum is 2000
 
             await updateDoc(customerDoc.ref, {
               walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
@@ -924,6 +948,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                 saleCalculation.surabhiCoinsEarned,
               sevaBalance: newSevaBalance,
               sevaTotal: newSevaTotal,
+              cumTotal: newCumTotal,
               lastTransactionDate: serverTimestamp(),
               saleElgibility: isEligible,
             });
@@ -1113,6 +1138,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         await updateDoc(customerDoc.ref, {
           walletBalance: newWalletBalance,
           surabhiBalance: newSurabhiCoins,
+          cumTotal: (selectedCustomer.cumTotal || 0) + saleAmount,
           lastTransactionDate: serverTimestamp(),
           saleElgibility: true,
         });

@@ -1,4 +1,3 @@
-import { sendPasswordResetEmail } from 'firebase/auth';
 import { Coins, Eye, EyeOff, Lock, Mail, Phone, Shield, UserCircle, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -17,7 +16,6 @@ import {
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/auth-context';
 import { getCustomerByMobile } from '@/lib/db';
-import { auth } from '@/lib/firebase';
 
 const Index = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -144,25 +142,25 @@ const Index = () => {
     }
   };
 
-  const sendResetEmail = async () => {
-    try {
-      if (!customerEmail) {
-        toast.error('No email registered for this account');
-        return;
-      }
+  // const sendResetEmail = async () => {
+  //   try {
+  //     if (!customerEmail) {
+  //       toast.error('No email registered for this account');
+  //       return;
+  //     }
 
-      await sendPasswordResetEmail(auth, customerEmail);
-      toast.success(`Password reset email sent to ${customerEmail}`);
-      setForgotPasswordMode(false);
-      setCustomerEmail('');
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        toast.error(error.message || 'Failed to send reset email. Please try again.');
-      } else {
-        toast.error('Failed to send reset email. Please try again.');
-      }
-    }
-  };
+  //     await sendPasswordResetEmail(auth, customerEmail);
+  //     toast.success(`Password reset email sent to ${customerEmail}`);
+  //     setForgotPasswordMode(false);
+  //     setCustomerEmail('');
+  //   } catch (error: unknown) {
+  //     if (error instanceof Error) {
+  //       toast.error(error.message || 'Failed to send reset email. Please try again.');
+  //     } else {
+  //       toast.error('Failed to send reset email. Please try again.');
+  //     }
+  //   }
+  // };
 
   const cancelForgotPassword = () => {
     setForgotPasswordMode(false);
@@ -196,7 +194,7 @@ const Index = () => {
               </CardTitle>
               <CardDescription className="text-gray-600">
                 {forgotPasswordMode
-                  ? "We'll send a reset link to your registered email. Please check your spam folder if you don't see the email."
+                  ? 'Contact the admin using the provided details to reset your password.'
                   : 'Sign in to access the application. If you are a new user, please contact the developer for registration.'}
               </CardDescription>
             </CardHeader>
@@ -204,34 +202,52 @@ const Index = () => {
             <CardContent>
               {forgotPasswordMode ? (
                 <div className="space-y-4 sm:space-y-5">
-                  <div className="p-3 sm:p-4 bg-purple-50 rounded-lg border border-purple-100">
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
-                      <div>
-                        <p className="text-xs sm:text-sm font-medium text-gray-700">
-                          Registered Email
-                        </p>
-                        <p className="text-xs sm:text-sm text-gray-600">
-                          {isLoadingEmail ? 'Loading...' : customerEmail}
-                        </p>
+                  <div className="p-4 sm:p-6 bg-red-50 rounded-lg border border-red-200">
+                    <div className="text-center space-y-3">
+                      <h3 className="text-lg font-semibold text-red-800">
+                        Contact Admin for Password Reset
+                      </h3>
+                      <p className="text-sm text-red-700 mb-4">
+                        Please contact the admin to reset your password using the details below:
+                      </p>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-center gap-3 p-3 bg-white rounded-lg">
+                          <Phone className="h-5 w-5 text-green-600" />
+                          <div className="text-left">
+                            <p className="text-sm font-medium text-gray-700">Phone</p>
+                            <a
+                              href="tel:9606979530"
+                              className="text-sm text-green-600 hover:text-green-700 font-medium"
+                            >
+                              9606979530
+                            </a>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-center gap-3 p-3 bg-white rounded-lg">
+                          <Mail className="h-5 w-5 text-blue-600" />
+                          <div className="text-left">
+                            <p className="text-sm font-medium text-gray-700">Email</p>
+                            <a
+                              href="mailto:s.sreedhargoud@gmail.com"
+                              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                            >
+                              s.sreedhargoud@gmail.com
+                            </a>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex gap-2 sm:gap-3">
+                  <div className="flex justify-center">
                     <Button
                       onClick={cancelForgotPassword}
                       variant="outline"
-                      className="flex-1 h-10 sm:h-12 text-sm"
+                      className="w-full h-10 sm:h-12 text-sm"
                     >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={sendResetEmail}
-                      disabled={isLoadingEmail || !customerEmail}
-                      className="flex-1 h-10 sm:h-12 text-sm bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white font-medium rounded-lg"
-                    >
-                      Send Reset Link
+                      Back to Login
                     </Button>
                   </div>
                 </div>

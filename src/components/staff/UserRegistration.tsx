@@ -31,7 +31,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 
 import { auth, db } from '@/lib/firebase';
-import { CustomerType, UserRegistrationProps } from '@/types/types2';
+import { CustomerType, UserRegistrationProps } from '@/types/types';
 
 export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -244,10 +244,15 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
         // walletCredit: 0,
         // walletDebit: 0,
         walletBalanceCurrentMonth: 0,
+        cumTotal: 0,
         surabhiBalance: 0,
+        surabhiCredit: 0,
+        surabhiDebit: 0,
         surabhiReferral: 0,
         surabhiBalanceCurrentMonth: 0,
         sevaBalance: 0,
+        sevaCredit: 0,
+        sevaDebit: 0,
         sevaTotal: 0,
         sevaBalanceCurrentMonth: 0,
         lastTransactionDate: null,
@@ -255,6 +260,10 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
         lastQuarterCheck: null,
         coinsFrozen: true,
         currentQuarterStart: null,
+        joinedDate: Timestamp.now(),
+        quarterlyTarget: 0,
+        targetMet: false,
+        carriedForwardTarget: 0,
       };
 
       await setDoc(doc(customersCollection, newUserUid), newUserData);

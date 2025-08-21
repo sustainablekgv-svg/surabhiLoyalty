@@ -17,6 +17,24 @@ function getCurrentQuarterStart(): Date {
   return new Date(year, 9, 1); // Q4 (Oct-Dec)
 }
 
+// Calculate quarters elapsed since joining
+function getQuartersElapsed(joinedDate: Date, currentDate: Date): number {
+  const startYear = joinedDate.getFullYear();
+  const startQuarter = Math.floor(joinedDate.getMonth() / 3);
+  
+  const endYear = currentDate.getFullYear();
+  const endQuarter = Math.floor(currentDate.getMonth() / 3);
+  
+  return (endYear - startYear) * 4 + (endQuarter - startQuarter) + 1;
+}
+
+// Calculate quarterly target based on joined date
+function calculateQuarterlyTarget(joinedDate: Date): number {
+  const now = new Date();
+  const quartersElapsed = getQuartersElapsed(joinedDate, now);
+  return quartersElapsed * 2000;
+}
+
 // Scheduled function to run at the start of each quarter
 export const checkQuarterlyCriteria = onSchedule(
   {
@@ -37,11 +55,29 @@ export const checkQuarterlyCriteria = onSchedule(
 
       for (const doc of snapshot.docs) {
         const customer = doc.data();
-        const quarterlyTotal = customer.quarterlyPurchaseTotal || 0;
+        
+        // Skip if customer doesn't have joinedDate (legacy customers)
+        if (!customer.joinedDate) {
+          continue;
+        }
+        
+        const joinedDate = customer.joinedDate.toDate();
+        const currentTarget = calculateQuarterlyTarget(joinedDate);
+        const totalTarget = currentTarget + (customer.carriedForwardTarget || 0);
+        const cumTotal = customer.cumTotal || 0;
+        const targetMet = cumTotal >= totalTarget;
+        
+        // Calculate carryforward for next quarter if target not met
+        let newCarriedForward = 0;
+        if (!targetMet) {
+          newCarriedForward = Math.max(0, totalTarget - cumTotal);
+        }
 
         batch.update(doc.ref, {
-          coinsFrozen: quarterlyTotal < 2000,
-          quarterlyPurchaseTotal: 0,
+          quarterlyTarget: currentTarget,
+          targetMet: targetMet,
+          coinsFrozen: !targetMet,
+          carriedForwardTarget: newCarriedForward,
           lastQuarterCheck: now,
           currentQuarterStart: admin.firestore.Timestamp.fromDate(getCurrentQuarterStart()),
         });
