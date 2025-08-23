@@ -388,7 +388,7 @@ export const AdminRecentActivity = () => {
                       variant="secondary"
                       className="text-[8px] xs:text-[10px] sm:text-xs px-1 xs:px-1.5 sm:px-2 py-0.5 h-4 xs:h-5 sm:h-6 min-w-[40px] xs:min-w-[50px] text-center"
                     >
-                      ₹{activity.amount}
+                      ₹{activity.amount.toFixed(2)}
                     </Badge>
                   )}
                 </div>
@@ -439,12 +439,12 @@ export const AdminRecentActivity = () => {
                     <p
                       className={`font-bold ${index % 2 === 0 ? 'text-blue-600' : 'text-purple-600'}`}
                     >
-                      ₹{store.sales.toLocaleString('en-IN')}
+                      ₹{store.sales.toFixed(2)}
                     </p>
                     <div className="flex gap-2 text-xs text-gray-600">
                       <span>Coins: {store.surabhiCoinsUsed}</span>
-                      <span>Wallet: ₹{store.walletDeduction}</span>
-                      <span>Cash: ₹{store.cashPayment}</span>
+                      <span>Wallet: ₹{store.walletDeduction.toFixed(2)}</span>
+                      <span>Cash: ₹{store.cashPayment.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>

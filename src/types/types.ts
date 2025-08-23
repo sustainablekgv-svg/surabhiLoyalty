@@ -12,7 +12,7 @@ export interface CustomerType {
   district?: string;
   city?: string;
   referredBy: string | null;
-  referredUsers: { customerMobile: number; customerName: string; createdAt: Timestamp }[] | null;
+  referredUsers: { customerMobile: string; customerName: string; createdAt: Timestamp }[] | null;
   customerPassword: string;
   tpin: string;
   createdAt: Timestamp;

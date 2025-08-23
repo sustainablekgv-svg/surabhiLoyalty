@@ -428,7 +428,7 @@ export const SalesManagement = () => {
                               )}
                             </TableCell>
                             <TableCell>{transaction.customerMobile || 'N/A'}</TableCell>
-                            <TableCell className="font-bold">₹{transaction.amount}</TableCell>
+                            <TableCell className="font-bold">₹{transaction.amount.toFixed(2)}</TableCell>
                             <TableCell>
                               <Badge
                                 variant={
@@ -446,7 +446,7 @@ export const SalesManagement = () => {
                               ₹{(transaction.walletDeduction || 0).toFixed(2)}
                             </TableCell>
                             <TableCell className="text-amber-600">
-                              {(transaction.surabhiUsed || 0).toFixed(2)}
+                              {Math.floor(transaction.surabhiUsed || 0)}
                             </TableCell>
                             <TableCell className="text-gray-600">
                               ₹{(transaction.cashPayment || 0).toFixed(2)}
@@ -637,7 +637,7 @@ export const SalesManagement = () => {
                             <TableCell>
                               {recharge.storeName} ({recharge.storeLocation})
                             </TableCell>
-                            <TableCell>{(recharge.surabhiEarned || 0).toFixed(2)}</TableCell>
+                            <TableCell>{Math.floor(recharge.surabhiEarned || 0)}</TableCell>
                             <TableCell>₹{(recharge.sevaEarned || 0).toFixed(2)}</TableCell>
                             <TableCell>
                               {format(recharge.createdAt.toDate(), 'dd MMM yyyy, hh:mm a')}

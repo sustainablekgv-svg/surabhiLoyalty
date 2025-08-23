@@ -153,7 +153,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
   const stats = [
     {
       title: 'Wallet Balance',
-      value: `₹${customerData.walletBalance.toLocaleString()}`,
+      value: `₹${customerData.walletBalance.toFixed(2)}`,
       description: 'Available for purchases',
       icon: Wallet,
       color: 'text-purple-600',
@@ -162,7 +162,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
     },
     {
       title: 'Surabhi Coins',
-      value: customerData.surabhiBalance.toLocaleString(),
+      value: Math.floor(customerData.surabhiBalance).toString(),
       description: 'Lifetime coins earned',
       icon: Coins,
       color: 'text-amber-600',

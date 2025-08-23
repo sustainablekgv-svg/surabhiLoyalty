@@ -1124,7 +1124,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                           </span>
                         </div>
                         <span className="font-bold text-purple-600 text-xs xs:text-sm">
-                          +₹{rechargeAmountNum.toLocaleString()}
+                          +₹{rechargeAmountNum.toFixed(2)}
                         </span>
                       </div>
 
@@ -1136,7 +1136,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                           </span>
                         </div>
                         <span className="font-bold text-amber-600 text-xs xs:text-sm">
-                          +{surabhiCoinsEarned}
+                          +{Math.floor(surabhiCoinsEarned)}
                         </span>
                       </div>
 
@@ -1240,17 +1240,17 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
               <h4 className="font-medium text-sm xs:text-base">Recharge Details</h4>
               <div className="grid grid-cols-2 gap-1.5 xs:gap-2 text-xs xs:text-sm">
                 <div className="text-gray-500"> Recharge Amount:</div>
-                <div className="font-medium">₹{rechargeAmountNum.toLocaleString()}</div>
+                <div className="font-medium">₹{rechargeAmountNum.toFixed(2)}</div>
                 <div className="text-gray-500">Surabhi Coins Earned:</div>
-                <div className="font-medium">+{surabhiCoinsEarned}</div>
+                <div className="font-medium">+{Math.floor(surabhiCoinsEarned)}</div>
                 {selectedCustomer?.referredBy && referralAmount > 0 && (
                   <>
                     <div className="text-gray-500">Referral Surabhi Coins:</div>
-                    <div className="font-medium">+₹{referralAmount}</div>
+                    <div className="font-medium">+{Math.floor(referralAmount)}</div>
                   </>
                 )}
                 <div className="text-gray-500">Seva Amount:</div>
-                <div className="font-medium">+₹{sevaAmountEarned}</div>
+                <div className="font-medium">+₹{sevaAmountEarned.toFixed(2)}</div>
               </div>
             </div>
           </div>

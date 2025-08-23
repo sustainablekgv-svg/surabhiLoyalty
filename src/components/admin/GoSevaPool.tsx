@@ -690,7 +690,7 @@ export const GoSevaPool = () => {
               <span className="text-sm font-medium text-red-600">Current Pool</span>
             </div>
             <p className="text-2xl font-bold text-red-900">
-              ₹{sevaPool.currentSevaBalance.toLocaleString()}
+              ₹{sevaPool.currentSevaBalance.toFixed(2)}
             </p>
             <p className="text-xs text-red-600 mt-1">Available for allocation</p>
           </CardContent>
@@ -703,7 +703,7 @@ export const GoSevaPool = () => {
               <span className="text-xs font-medium text-green-600">Monthly Contributions</span>
             </div>
             <p className="text-xl font-bold text-green-900">
-              ₹{monthlyStats.totalContributions.toLocaleString()}
+              ₹{monthlyStats.totalContributions.toFixed(2)}
             </p>
           </CardContent>
         </Card>
@@ -739,7 +739,7 @@ export const GoSevaPool = () => {
             <p className="text-xl font-bold text-amber-900">
               ₹
               {typeof monthlyStats.totalAllocations === 'number'
-                ? monthlyStats.totalAllocations.toLocaleString()
+                ? monthlyStats.totalAllocations.toFixed(2)
                 : '0'}
             </p>
           </CardContent>
@@ -840,19 +840,19 @@ export const GoSevaPool = () => {
                         {tx.storeName || tx.storeLocation}
                       </td>
                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
-                        ₹{tx.amount.toLocaleString()}
+                        ₹{tx.amount.toFixed(2)}
                       </td>
                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-green-600">
-                        ₹{tx.sevaEarned?.toLocaleString() || 0}
+                        ₹{(tx.sevaEarned || 0).toFixed(2)}
                       </td>
                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-red-600">
-                        ₹{tx.sevaDebit?.toLocaleString() || 0}
+                        ₹{(tx.sevaDebit || 0).toFixed(2)}
                       </td>
                       {/* <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-500">
-                        ₹{tx.sevaBalance?.toLocaleString() || 0}
+                        ₹{(tx.sevaBalance || 0).toFixed(2)}
                       </td> */}
                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-500">
-                        ₹{tx?.storeSevaBalance?.toLocaleString() || 0}
+                        ₹{(tx?.storeSevaBalance || 0).toFixed(2)}
                       </td>
                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                         <Badge variant="outline" className="text-xs">

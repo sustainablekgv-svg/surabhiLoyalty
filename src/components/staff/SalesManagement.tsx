@@ -51,6 +51,12 @@ import {
 } from '@/types/types';
 import { hasMetQuarterlyTarget } from '@/utils/quarterlyTargets';
 
+// Custom rounding function: floor if decimal < 0.5, ceil if decimal >= 0.5
+const customRound = (value: number): number => {
+  const decimal = value - Math.floor(value);
+  return decimal < 0.5 ? Math.floor(value) : Math.ceil(value);
+};
+
 const fetchCustomerByMobile = async (mobile: string): Promise<CustomerType | null> => {
   try {
     const q = query(collection(db, 'Customers'), where('customerMobile', '==', mobile));
@@ -69,9 +75,9 @@ const fetchCustomerByMobile = async (mobile: string): Promise<CustomerType | nul
 const calculateAdminCut = (saleAmount: number, storeDetails: StoreType) => {
   if (!storeDetails) return 0;
   // const remainingAmount = saleAmount - surabhiCoinsToUse;
-  const surabhiAmount = Math.floor(saleAmount * (storeDetails.surabhiCommission / 100));
-  const referralAmount = Math.floor(saleAmount * (storeDetails.referralCommission / 100));
-  const sevaAmount = Math.floor(saleAmount * (storeDetails.sevaCommission / 100));
+  const surabhiAmount = customRound(saleAmount * (storeDetails.surabhiCommission / 100));
+  const referralAmount = customRound(saleAmount * (storeDetails.referralCommission / 100));
+  const sevaAmount = customRound(saleAmount * (storeDetails.sevaCommission / 100));
   console.log('The line 74 data is', surabhiAmount, referralAmount, sevaAmount);
   return referralAmount + sevaAmount + surabhiAmount;
 };
@@ -84,7 +90,7 @@ const generateInvoiceId = (storePrefix: string) => {
 };
 
 export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
-  const { user, logout, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
   console.log('The user in line 61 is', user);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerType | null>(null);
@@ -101,7 +107,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
   const [enteredTPIN, setEnteredTPIN] = useState('');
   const [invoiceId, setInvoiceId] = useState('');
 
-  const [sevaPool, setSevaPool] = useState<SevaPoolType>({
+  const [_sevaPool] = useState<SevaPoolType>({
     currentSevaBalance: 0,
     totalContributions: 0,
     totalAllocations: 0,
@@ -152,10 +158,20 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         // Then fetch customers
         const customersCollection = collection(db, 'Customers');
         const querySnapshot = await getDocs(customersCollection);
-        const customersData = querySnapshot.docs.map(doc => ({
-          ...(doc.data() as CustomerType),
-          mobile: doc.data().mobile, // Using mobile as identifier
-        }));
+        const customersData = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            ...(data as CustomerType),
+            mobile: data.mobile, // Using mobile as identifier
+            // Ensure required properties exist with defaults
+            quarterlyTarget: data.quarterlyTarget || 0,
+            carriedForwardTarget: data.carriedForwardTarget || 0,
+            cumTotal: data.cumTotal || 0,
+            joinedDate: data.joinedDate || data.createdAt || Timestamp.now(),
+            targetMet: data.targetMet || false,
+            coinsFrozen: data.coinsFrozen || false,
+          };
+        });
         setCustomers(customersData);
       } catch (error) {
         toast.error('Failed to fetch data');
@@ -172,7 +188,18 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         const querySnapshot = await getDocs(q);
         const customersData: CustomerType[] = [];
         querySnapshot.forEach(doc => {
-          customersData.push({ id: doc.id, ...doc.data() } as unknown as CustomerType);
+          const data = doc.data();
+          customersData.push({
+            id: doc.id,
+            ...data,
+            // Ensure required properties exist with defaults
+            quarterlyTarget: data.quarterlyTarget || 0,
+            carriedForwardTarget: data.carriedForwardTarget || 0,
+            cumTotal: data.cumTotal || 0,
+            joinedDate: data.joinedDate || data.createdAt || Timestamp.now(),
+            targetMet: data.targetMet || false,
+            coinsFrozen: data.coinsFrozen || false,
+          } as CustomerType);
         });
         setCustomers(customersData);
       } catch (error) {
@@ -231,17 +258,32 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
     // Check if customer has met quarterly target before allowing coin usage
     let coinsToUse = 0;
     if (selectedCustomer) {
-      if (hasMetQuarterlyTarget(selectedCustomer)) {
-        coinsToUse = Math.floor(Math.min(surabhiCoinsToUse, selectedCustomer.surabhiBalance));
-      } else {
-        // If target not met, coins are frozen - no coin usage allowed
-        if (surabhiCoinsToUse > 0) {
-          return { 
-            isValid: false, 
-            error: 'Quarterly sales target not met. Surabhi coins are frozen until target is achieved.' 
-          };
+      try {
+        // Ensure customer has required properties with defaults
+        const customerWithDefaults = {
+          ...selectedCustomer,
+          quarterlyTarget: selectedCustomer.quarterlyTarget || 0,
+          carriedForwardTarget: selectedCustomer.carriedForwardTarget || 0,
+          cumTotal: selectedCustomer.cumTotal || 0,
+        };
+
+        if (hasMetQuarterlyTarget(customerWithDefaults)) {
+          coinsToUse = customRound(Math.min(surabhiCoinsToUse, selectedCustomer.surabhiBalance));
+        } else {
+          // If target not met, coins are frozen - no coin usage allowed
+          if (surabhiCoinsToUse > 0) {
+            return {
+              isValid: false,
+              error:
+                'Quarterly sales target not met. Surabhi coins are frozen until target is achieved.',
+            };
+          }
+          coinsToUse = 0;
         }
-        coinsToUse = 0;
+      } catch (error) {
+        console.error('Error checking quarterly target:', error);
+        // If there's an error, allow coin usage to prevent blocking sales
+        coinsToUse = customRound(Math.min(surabhiCoinsToUse, selectedCustomer.surabhiBalance));
       }
     }
     // let totalAmount = saleAmount;
@@ -272,31 +314,31 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         walletDeduction = walletBalance;
         cashPayment = saleAmount - walletBalance - coinsToUse;
         // Wallet portion gets surabhi commission, cash portion gets cashOnly commission
-        surabhiCoinsEarned = Math.floor(cashPayment * (storeDetails.cashOnlyCommission / 100));
-        referrerSurabhiCoinsEarned = Math.floor(
+        surabhiCoinsEarned = customRound(cashPayment * (storeDetails.cashOnlyCommission / 100));
+        referrerSurabhiCoinsEarned = customRound(
           cashPayment * (storeDetails.referralCommission / 100)
         );
-        goSevaContribution = Math.floor(cashPayment * (storeDetails.sevaCommission / 100));
+        goSevaContribution = customRound(cashPayment * (storeDetails.sevaCommission / 100));
       } else {
         return { isValid: false, error: 'Mixed is not needed' };
       }
     } else if (paymentMethod === 'cash') {
       cashPayment = saleAmount - coinsToUse;
-      surabhiCoinsEarned = Math.floor(cashPayment * (storeDetails.cashOnlyCommission / 100));
-      referrerSurabhiCoinsEarned += Math.floor(
+      surabhiCoinsEarned = customRound(cashPayment * (storeDetails.cashOnlyCommission / 100));
+      referrerSurabhiCoinsEarned += customRound(
         cashPayment * (storeDetails.referralCommission / 100)
       );
-      goSevaContribution = Math.floor(cashPayment * (storeDetails.sevaCommission / 100));
+      goSevaContribution = customRound(cashPayment * (storeDetails.sevaCommission / 100));
     }
 
     return {
-      totalAmount: saleAmount,
-      surabhiCoinsUsed: coinsToUse,
-      walletDeduction,
-      cashPayment,
-      surabhiCoinsEarned,
-      goSevaContribution,
-      referrerSurabhiCoinsEarned,
+      totalAmount: Number(saleAmount.toFixed(2)),
+      surabhiCoinsUsed: coinsToUse, // Already whole number from customRound
+      walletDeduction: Number(walletDeduction.toFixed(2)),
+      cashPayment: Number(cashPayment.toFixed(2)),
+      surabhiCoinsEarned, // Already whole number from customRound
+      goSevaContribution, // Already whole number from customRound
+      referrerSurabhiCoinsEarned, // Already whole number from customRound
       isValid: true,
     };
   };
@@ -390,21 +432,34 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       const isEligible = selectedCustomer.isStudent
         ? newCumTotal >= 500 // Student minimum is 500
         : newCumTotal >= 2000; // Regular customer minimum is 2000
+
+      // Only update saleElgibility to true if customer becomes eligible and wasn't already eligible
+      const shouldUpdateEligibility = isEligible && selectedCustomer.saleElgibility !== true;
+
       console.log(
         'THe isEligible in line 378 is',
         isEligible,
         newCumTotal,
-        selectedCustomer.isStudent
+        selectedCustomer.isStudent,
+        'shouldUpdateEligibility:',
+        shouldUpdateEligibility
       );
-      await updateDoc(customerRef, {
-        saleElgibility: isEligible,
+
+      const updateData: any = {
         cumTotal: newCumTotal,
         walletBalance: newWalletBalance,
         surabhiBalance: newSurabhiCoins,
         sevaBalance: newSevaBalance,
         sevaTotal: newSevaTotal,
         lastTransactionDate: serverTimestamp(),
-      });
+      };
+
+      // Only update saleElgibility if customer becomes eligible for the first time
+      if (shouldUpdateEligibility) {
+        updateData.saleElgibility = true;
+      }
+
+      await updateDoc(customerRef, updateData);
 
       // Record transaction
       const customerTxData: CustomerTxType = {
@@ -786,7 +841,17 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             ? newCumTotal >= 500 // Student minimum is 500
             : newCumTotal >= 2000; // Regular customer minimum is 2000
 
-          await updateDoc(customerDoc.ref, {
+          console.log(
+            'Cash payment - isEligible:',
+            isEligible,
+            'current saleElgibility:',
+            selectedCustomer.saleElgibility
+          );
+
+          // Only update saleElgibility if customer becomes eligible and wasn't already eligible
+          const shouldUpdateEligibility = isEligible && selectedCustomer.saleElgibility !== true;
+
+          const updateData: any = {
             walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
             surabhiBalance:
               selectedCustomer.surabhiBalance -
@@ -796,8 +861,17 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             sevaTotal: newSevaTotal,
             cumTotal: newCumTotal,
             lastTransactionDate: serverTimestamp(),
-            saleElgibility: isEligible,
-          });
+          };
+
+          if (shouldUpdateEligibility) {
+            updateData.saleElgibility = true;
+            console.log(
+              'Cash payment - Setting saleElgibility to true for customer:',
+              selectedCustomer.customerName
+            );
+          }
+
+          await updateDoc(customerDoc.ref, updateData);
         }
 
         // Update store balance
@@ -940,7 +1014,10 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               ? newCumTotal >= 500 // Student minimum is 500
               : newCumTotal >= 2000; // Regular customer minimum is 2000
 
-            await updateDoc(customerDoc.ref, {
+            // Only update saleElgibility to true if customer becomes eligible and wasn't already eligible
+            const shouldUpdateEligibility = isEligible && selectedCustomer.saleElgibility !== true;
+
+            const updateData: any = {
               walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
               surabhiBalance:
                 selectedCustomer.surabhiBalance -
@@ -950,8 +1027,14 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               sevaTotal: newSevaTotal,
               cumTotal: newCumTotal,
               lastTransactionDate: serverTimestamp(),
-              saleElgibility: isEligible,
-            });
+            };
+
+            // Only update saleElgibility if customer becomes eligible for the first time
+            if (shouldUpdateEligibility) {
+              updateData.saleElgibility = true;
+            }
+
+            await updateDoc(customerDoc.ref, updateData);
           }
 
           // Update store balance
@@ -1135,13 +1218,29 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
       if (!customerSnapshot.empty) {
         const customerDoc = customerSnapshot.docs[0];
-        await updateDoc(customerDoc.ref, {
+
+        // Calculate eligibility based on cumTotal and student status
+        const newCumTotal = (selectedCustomer.cumTotal || 0) + saleAmount;
+        const isEligible = selectedCustomer.isStudent
+          ? newCumTotal >= 500 // Student minimum is 500
+          : newCumTotal >= 2000; // Regular customer minimum is 2000
+
+        // Only update saleElgibility to true if customer becomes eligible and wasn't already eligible
+        const shouldUpdateEligibility = isEligible && selectedCustomer.saleElgibility !== true;
+
+        const updateData: any = {
           walletBalance: newWalletBalance,
           surabhiBalance: newSurabhiCoins,
-          cumTotal: (selectedCustomer.cumTotal || 0) + saleAmount,
+          cumTotal: newCumTotal,
           lastTransactionDate: serverTimestamp(),
-          saleElgibility: true,
-        });
+        };
+
+        // Only update saleElgibility if customer becomes eligible for the first time
+        if (shouldUpdateEligibility) {
+          updateData.saleElgibility = true;
+        }
+
+        await updateDoc(customerDoc.ref, updateData);
       }
 
       // Update local state
@@ -1152,6 +1251,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                 ...c,
                 walletBalance: newWalletBalance,
                 surabhiBalance: newSurabhiCoins,
+                cumTotal: newCumTotal,
                 lastTransactionDate: Timestamp.fromDate(new Date()),
               }
             : c
@@ -1332,11 +1432,11 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                   <div className="grid grid-cols-3 gap-4 text-sm">
                     <div>
                       <p className="text-blue-700">Wallet Balance</p>
-                      <p className="font-bold">₹{selectedCustomer.walletBalance}</p>
+                      <p className="font-bold">₹{selectedCustomer.walletBalance.toFixed(2)}</p>
                     </div>
                     <div>
                       <p className="text-amber-700">Surabhi Coins</p>
-                      <p className="font-bold">{selectedCustomer.surabhiBalance}</p>
+                      <p className="font-bold">{Math.floor(selectedCustomer.surabhiBalance)}</p>
                     </div>
                     <div>
                       <p className="text-purple-700">Last Purchase</p>
@@ -1420,7 +1520,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                         />
                       </div>
                       <p className="text-xs text-gray-600">
-                        Available: {selectedCustomer.surabhiBalance} coins (Using{' '}
+                        Available: {Math.floor(selectedCustomer.surabhiBalance)} coins (Using{' '}
                         {surabhiCoinsToUse})
                       </p>
                     </div>
@@ -1472,7 +1572,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                       <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
                         <span className="text-sm font-medium text-purple-900">Total Amount</span>
                         <span className="font-bold text-purple-600">
-                          ₹{saleCalculation.totalAmount}
+                          ₹{saleCalculation.totalAmount?.toFixed(2)}
                         </span>
                       </div>
 
@@ -1482,7 +1582,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                             Surabhi Coins Used
                           </span>
                           <span className="font-bold text-amber-600">
-                            -{Number(saleCalculation.surabhiCoinsUsed).toFixed(2)}
+                            -{saleCalculation.surabhiCoinsUsed}
                           </span>
                         </div>
                       )}
@@ -1493,7 +1593,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                             Wallet Deduction
                           </span>
                           <span className="font-bold text-blue-600">
-                            ₹{saleCalculation.walletDeduction}
+                            ₹{saleCalculation.walletDeduction.toFixed(2)}
                           </span>
                         </div>
                       )}
@@ -1502,7 +1602,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                         <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                           <span className="text-sm font-medium text-green-900">Cash Payment</span>
                           <span className="font-bold text-green-600">
-                            ₹{saleCalculation.cashPayment}
+                            ₹{saleCalculation.cashPayment.toFixed(2)}
                           </span>
                         </div>
                       )}

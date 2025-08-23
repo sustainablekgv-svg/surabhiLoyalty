@@ -324,11 +324,11 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
                       </div>
                       <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2">
                         <CreditCard className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
-                        <span>₹{customer?.walletBalance.toLocaleString()}</span>
+                        <span>₹{customer?.walletBalance.toFixed(2)}</span>
                       </div>
                       <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2">
                         <Coins className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
-                        <span>{customer?.surabhiBalance?.toLocaleString()} coins</span>
+                        <span>{Math.floor(customer?.surabhiBalance || 0)} coins</span>
                       </div>
                       {/* <div className="flex items-center gap-2">
                         {customer.walletRechargeDone ? (

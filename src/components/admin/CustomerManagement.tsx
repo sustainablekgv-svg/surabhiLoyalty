@@ -13,7 +13,6 @@ import {
   Wallet,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,7 +39,6 @@ import { db } from '@/lib/firebase';
 import { CustomerType, StoreType } from '@/types/types';
 
 export const CustomerManagement = () => {
-  const navigate = useNavigate();
   const [customers, setCustomers] = useState<CustomerType[]>([]);
   const [stores, setStores] = useState<StoreType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,6 +102,11 @@ export const CustomerManagement = () => {
             lastQuarterCheck: data.lastQuarterCheck || null,
             coinsFrozen: data.coinsFrozen || false,
             currentQuarterStart: data.currentQuarterStart || null,
+            cumTotal: data.cumTotal || 0,
+            joinedDate: data.joinedDate || data.createdAt,
+            quarterlyTarget: data.quarterlyTarget || 0,
+            targetMet: data.targetMet || false,
+            carriedForwardTarget: data.carriedForwardTarget || 0,
           });
         });
         setCustomers(customersData);
@@ -227,13 +230,6 @@ export const CustomerManagement = () => {
     setEditedData(prev => ({
       ...prev,
       [name]: value,
-    }));
-  };
-
-  const handleToggleChange = (name: string) => {
-    setEditedData(prev => ({
-      ...prev,
-      [name]: !prev[name],
     }));
   };
 
@@ -689,9 +685,7 @@ export const CustomerManagement = () => {
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Wallet Balance</p>
-                <p className="text-2xl font-bold">
-                  ₹{totalStats.totalWalletBalance.toLocaleString()}
-                </p>
+                <p className="text-2xl font-bold">₹{totalStats.totalWalletBalance.toFixed(2)}</p>
               </div>
               <div className="bg-purple-500/10 p-2 rounded-lg">
                 <Wallet className="h-4 w-4 text-purple-500" />
@@ -710,9 +704,7 @@ export const CustomerManagement = () => {
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Loyalty Coins</p>
-                <p className="text-2xl font-bold">
-                  {totalStats.totalSurabhiCoins.toLocaleString()}
-                </p>
+                <p className="text-2xl font-bold">{Math.floor(totalStats.totalSurabhiCoins)}</p>
               </div>
               <div className="bg-amber-500/10 p-2 rounded-lg">
                 <Coins className="h-4 w-4 text-amber-500" />
@@ -830,7 +822,7 @@ export const CustomerManagement = () => {
                       </div>
                       <div className="flex items-center gap-1 sm:gap-2 text-purple-600">
                         <Wallet className="h-3 w-3" />
-                        <span>₹{customer.walletBalance.toLocaleString()}</span>
+                        <span>₹{customer.walletBalance.toFixed(2)}</span>
                       </div>
                       <div className="flex items-center gap-1 sm:gap-2 text-amber-600">
                         <Coins className="h-3 w-3" />

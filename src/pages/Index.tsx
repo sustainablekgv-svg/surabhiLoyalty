@@ -230,10 +230,10 @@ const Index = () => {
                           <div className="text-left">
                             <p className="text-sm font-medium text-gray-700">Email</p>
                             <a
-                              href="mailto:s.sreedhargoud@gmail.com"
+                              href="mailto:sustainablekgv@gmail.com"
                               className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                             >
-                              s.sreedhargoud@gmail.com
+                              sustainablekgv@gmail.com
                             </a>
                           </div>
                         </div>

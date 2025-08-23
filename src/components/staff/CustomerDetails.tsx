@@ -204,7 +204,7 @@ export const CustomerDetails = () => {
                 <div>
                   <h3 className="text-xs sm:text-sm font-medium text-blue-600">Wallet Balance</h3>
                   <p className="text-xl sm:text-2xl font-bold text-blue-700 mt-0.5 sm:mt-1">
-                    ₹{customer.walletBalance?.toLocaleString() || '0'}
+                    ₹{(customer.walletBalance || 0).toFixed(2)}
                   </p>
                 </div>
                 <div className="bg-blue-100 p-1.5 sm:p-2 rounded-full">
@@ -221,7 +221,7 @@ export const CustomerDetails = () => {
                 <div>
                   <h3 className="text-xs sm:text-sm font-medium text-amber-600">Surabhi Coins</h3>
                   <p className="text-xl sm:text-2xl font-bold text-amber-700 mt-0.5 sm:mt-1">
-                    {customer.surabhiBalance?.toLocaleString() || '0'}
+                    {Math.floor(customer.surabhiBalance || 0)}
                   </p>
                 </div>
                 <div className="bg-amber-100 p-1.5 sm:p-2 rounded-full">
@@ -238,7 +238,7 @@ export const CustomerDetails = () => {
                 <div>
                   <h3 className="text-xs sm:text-sm font-medium text-emerald-600">Seva Coins</h3>
                   <p className="text-xl sm:text-2xl font-bold text-emerald-700 mt-0.5 sm:mt-1">
-                    {customer.sevaBalance?.toLocaleString() || '0'}
+                    ₹{(customer.sevaBalance || 0).toFixed(2)}
                   </p>
                 </div>
                 <div className="bg-emerald-100 p-1.5 sm:p-2 rounded-full">
@@ -260,7 +260,7 @@ export const CustomerDetails = () => {
               <p className="text-xs text-muted-foreground">Wallet Balance</p>
               <div className="flex items-center gap-2">
                 <CreditCard className="h-4 w-4" />
-                <p>₹{customer.walletBalance?.toLocaleString('en-IN') || '0'}</p>
+                <p>₹{(customer.walletBalance || 0).toFixed(2)}</p>
               </div>
             </div>
             <div>
@@ -292,17 +292,17 @@ export const CustomerDetails = () => {
             <div>
               <p className="text-xs text-muted-foreground">Surabhi Coins</p>
               <p className="text-lg font-medium">
-                {customer.surabhiBalance?.toLocaleString() || '0'}
+                {Math.floor(customer.surabhiBalance || 0)}
               </p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Total Seva Coins</p>
-              <p className="text-lg font-medium">{customer.sevaBalance?.toLocaleString() || '0'}</p>
+              <p className="text-lg font-medium">₹{(customer.sevaBalance || 0).toFixed(2)}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Current Month Seva Coins</p>
               <p className="text-lg font-medium">
-                {customer.sevaBalanceCurrentMonth?.toLocaleString() || '0'}
+                ₹{(customer.sevaBalanceCurrentMonth || 0).toFixed(2)}
               </p>
             </div>
           </CardContent>
@@ -331,7 +331,7 @@ export const CustomerDetails = () => {
               {customer.surabhiReferral !== null && (
                 <div>
                   <p className="text-xs text-muted-foreground">Referral Income</p>
-                  <p>₹{customer.surabhiReferral?.toLocaleString('en-IN') || '0'}</p>
+                  <p>₹{(customer.surabhiReferral || 0).toFixed(2)}</p>
                 </div>
               )}
               {customer.referredUsers && customer.referredUsers.length > 0 && (

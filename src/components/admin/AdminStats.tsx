@@ -101,28 +101,28 @@ export const AdminStats = () => {
         setStats([
           {
             title: 'Total Users',
-            value: totalUsers.toLocaleString(),
+            value: totalUsers.toString(),
             icon: Users,
             color: 'text-blue-600',
             bgColor: 'bg-blue-50',
           },
           {
             title: 'Total Recharge',
-            value: `₹${totalRecharge.toLocaleString('en-IN')}`,
+            value: `₹${totalRecharge.toFixed(2)}`,
             icon: DollarSign,
             color: 'text-green-600',
             bgColor: 'bg-green-50',
           },
           {
             title: 'Surabhi Coins',
-            value: totalSurabhiCoins.toLocaleString(),
+            value: Math.floor(totalSurabhiCoins).toString(),
             icon: Coins,
             color: 'text-purple-600',
             bgColor: 'bg-purple-50',
           },
           {
             title: 'Seva Pool',
-            value: `₹${totalSevaPool.toLocaleString('en-IN')}`,
+            value: `₹${totalSevaPool.toFixed(2)}`,
             icon: Heart,
             color: 'text-red-600',
             bgColor: 'bg-red-50',

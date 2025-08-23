@@ -218,7 +218,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
               </span>
             </div>
             <p className="text-base xs:text-lg sm:text-xl font-bold text-purple-900">
-              ₹{stats.totalWallet.toLocaleString()}
+              ₹{stats.totalWallet.toFixed(2)}
             </p>
           </CardContent>
         </Card>
@@ -232,7 +232,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
               </span>
             </div>
             <p className="text-base xs:text-lg sm:text-xl font-bold text-amber-900">
-              {stats.currentMonthCoins.toLocaleString()}
+              {Math.floor(stats.currentMonthCoins)}
             </p>
           </CardContent>
         </Card>
@@ -271,11 +271,11 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                   </div>
                   <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 text-purple-600 text-[10px] xs:text-xs sm:text-sm">
                     <Wallet className="h-2.5 xs:h-3 w-2.5 xs:w-3" />
-                    <span>₹{(customer.walletBalance || 0).toLocaleString()}</span>
+                    <span>₹{(customer.walletBalance || 0).toFixed(2)}</span>
                   </div>
                   <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 text-amber-600 text-[10px] xs:text-xs sm:text-sm mt-0.5 xs:mt-1">
                     <Coins className="h-2.5 xs:h-3 w-2.5 xs:w-3" />
-                    <span>{(customer.surabhiBalance || 0).toLocaleString()} coins</span>
+                    <span>{Math.floor(customer.surabhiBalance || 0)} coins</span>
                   </div>
                   <div className="text-[8px] xs:text-[10px] sm:text-xs text-gray-500 mt-1 xs:mt-1.5 sm:mt-2">
                     Last active: {formatDate(customer.lastTransactionDate)}
@@ -422,16 +422,16 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                     <td className="py-2 xs:py-3 sm:py-4 px-2 xs:px-3 sm:px-4">
                       <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 text-purple-600 text-[10px] xs:text-xs sm:text-sm">
                         <Wallet className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
-                        <span>₹{(customer.walletBalance || 0).toLocaleString()}</span>
+                        <span>₹{(customer.walletBalance || 0).toFixed(2)}</span>
                       </div>
                     </td>
                     <td className="py-2 xs:py-3 sm:py-4 px-2 xs:px-3 sm:px-4">
                       <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 text-amber-600 text-[10px] xs:text-xs sm:text-sm">
                         <Coins className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
-                        <span>{(customer.surabhiBalance || 0).toLocaleString()}</span>
+                        <span>{Math.floor(customer.surabhiBalance || 0)}</span>
                       </div>
                       <div className="text-[8px] xs:text-[10px] sm:text-xs text-green-600 mt-0.5 xs:mt-1">
-                        +{(customer.sevaBalanceCurrentMonth || 0).toLocaleString()} this month
+                        +₹{(customer.sevaBalanceCurrentMonth || 0).toFixed(2)} this month
                       </div>
                     </td>
                     <td className="py-2 xs:py-3 sm:py-4 px-2 xs:px-3 sm:px-4">
