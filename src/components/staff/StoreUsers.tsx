@@ -428,7 +428,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                     <td className="py-2 xs:py-3 sm:py-4 px-2 xs:px-3 sm:px-4">
                       <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 text-amber-600 text-[10px] xs:text-xs sm:text-sm">
                         <Coins className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
-                        <span>{Math.floor(customer.surabhiBalance || 0)}</span>
+                        <span>{(customer.surabhiBalance || 0).toFixed(2)}</span>
                       </div>
                       <div className="text-[8px] xs:text-[10px] sm:text-xs text-green-600 mt-0.5 xs:mt-1">
                         +₹{(customer.sevaBalanceCurrentMonth || 0).toFixed(2)} this month

@@ -644,16 +644,22 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           storeName: storeDetails.storeName,
           customerName: selectedCustomer.customerName,
           customerMobile: selectedCustomer.customerMobile,
-          adminProfit: adminProfitTaken,
+          adminProfit: Number(adminProfitTaken.toFixed(2)),
           type: 'sale',
-          amount: saleAmount,
+          amount: Number(saleAmount.toFixed(2)),
           invoiceId: txInvoiceId, // Add invoice ID for consistency
-          credit: 0,
-          debit: saleCalculation.totalAmount - adminCutTx,
-          adminCut: adminCutTx,
-          adminCurrentBalance: -(storeDetails.storeCurrentBalance || 0) + saleAmount - adminCutTx,
-          currentBalance: (storeDetails.storeCurrentBalance || 0) - saleAmount + adminCutTx,
-          sevaBalance: (storeDetails.storeSevaBalance || 0) + saleCalculation.goSevaContribution,
+          credit: Number((0).toFixed(2)),
+          debit: Number((saleCalculation.totalAmount - adminCutTx).toFixed(2)),
+          adminCut: Number(adminCutTx.toFixed(2)),
+          adminCurrentBalance: Number(
+            (-(storeDetails.storeCurrentBalance || 0) + saleAmount - adminCutTx).toFixed(2)
+          ),
+          currentBalance: Number(
+            ((storeDetails.storeCurrentBalance || 0) - saleAmount + adminCutTx).toFixed(2)
+          ),
+          sevaBalance: Number(
+            ((storeDetails.storeSevaBalance || 0) + saleCalculation.goSevaContribution).toFixed(2)
+          ),
           remarks: `Wallet sale for ${selectedCustomer.customerName} (${selectedCustomer.customerMobile})`,
         };
         await addDoc(collection(db, 'AccountTx'), accountTxData);
@@ -672,36 +678,52 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           remarks: `Sale transaction for ${selectedCustomer.customerName}`,
 
           // Sale-Specific Fields
-          surabhiUsed: saleCalculation.surabhiCoinsUsed,
-          walletDeduction: saleCalculation.walletDeduction,
-          cashPayment: saleCalculation.cashPayment,
+          surabhiUsed: Number(saleCalculation.surabhiCoinsUsed.toFixed(2)),
+          walletDeduction: Number(saleCalculation.walletDeduction.toFixed(2)),
+          cashPayment: Number(saleCalculation.cashPayment.toFixed(2)),
 
           // Balance fields
           previousBalance: {
-            walletBalance: selectedCustomer.walletBalance,
-            surabhiBalance: selectedCustomer.surabhiBalance,
+            walletBalance: Number(selectedCustomer.walletBalance.toFixed(2)),
+            surabhiBalance: Number(selectedCustomer.surabhiBalance.toFixed(2)),
           },
           newBalance: {
-            walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
-            surabhiBalance:
-              selectedCustomer.surabhiBalance -
-              saleCalculation.surabhiCoinsUsed +
-              saleCalculation.surabhiCoinsEarned,
+            walletBalance: Number(
+              (selectedCustomer.walletBalance - saleCalculation.walletDeduction).toFixed(2)
+            ),
+            surabhiBalance: Number(
+              (
+                selectedCustomer.surabhiBalance -
+                saleCalculation.surabhiCoinsUsed +
+                saleCalculation.surabhiCoinsEarned
+              ).toFixed(2)
+            ),
           },
 
           // Transaction amounts
-          walletCredit: 0,
-          walletDebit: saleCalculation.walletDeduction,
-          walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
-          surabhiDebit: saleCalculation.surabhiCoinsUsed,
-          surabhiCredit: saleCalculation.surabhiCoinsEarned,
-          surabhiBalance: selectedCustomer.surabhiBalance + saleCalculation.surabhiCoinsEarned,
-          sevaCredit: saleCalculation.goSevaContribution,
-          sevaDebit: 0,
-          sevaBalance:
-            selectedCustomer.sevaBalanceCurrentMonth + saleCalculation.goSevaContribution,
-          sevaTotal: selectedCustomer.sevaTotal + saleCalculation.goSevaContribution,
-          storeSevaBalance: storeDetails.storeSevaBalance + saleCalculation.goSevaContribution,
+          walletCredit: Number((0).toFixed(2)),
+          walletDebit: Number(saleCalculation.walletDeduction.toFixed(2)),
+          walletBalance: Number(
+            (selectedCustomer.walletBalance - saleCalculation.walletDeduction).toFixed(2)
+          ),
+          surabhiDebit: Number(saleCalculation.surabhiCoinsUsed.toFixed(2)),
+          surabhiCredit: Number(saleCalculation.surabhiCoinsEarned.toFixed(2)),
+          surabhiBalance: Number(
+            (selectedCustomer.surabhiBalance + saleCalculation.surabhiCoinsEarned).toFixed(2)
+          ),
+          sevaCredit: Number(saleCalculation.goSevaContribution.toFixed(2)),
+          sevaDebit: Number((0).toFixed(2)),
+          sevaBalance: Number(
+            (selectedCustomer.sevaBalanceCurrentMonth + saleCalculation.goSevaContribution).toFixed(
+              2
+            )
+          ),
+          sevaTotal: Number(
+            (selectedCustomer.sevaTotal + saleCalculation.goSevaContribution).toFixed(2)
+          ),
+          storeSevaBalance: Number(
+            (storeDetails.storeSevaBalance + saleCalculation.goSevaContribution).toFixed(2)
+          ),
         };
 
         await addDoc(collection(db, 'CustomerTx'), customerTxData);
@@ -739,27 +761,37 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           createdAt: Timestamp.fromDate(new Date()),
           storeName: storeDetails.storeName,
           type: 'sale',
-          amount: saleAmount,
+          amount: Number(saleAmount.toFixed(2)),
           invoiceId: txInvoiceId,
           customerName: selectedCustomer.customerName,
           customerMobile: selectedCustomer.customerMobile,
-          credit: saleCalculation.cashPayment,
-          adminCut: adminCutTx,
-          adminProfit: adminProfitTaken,
-          debit: saleCalculation.totalAmount - adminCutTx,
-          sevaBalance:
-            (Number(storeDetails?.storeSevaBalance) || 0) +
-            (Number(saleCalculation?.goSevaContribution) || 0),
-          currentBalance:
-            (Number(storeDetails?.storeCurrentBalance) || 0) +
-            (Number(saleCalculation?.cashPayment) || 0) -
-            (Number(saleCalculation?.totalAmount) || 0) +
-            (Number(adminCutTx) || 0), // balance + credit + debot
-          adminCurrentBalance:
-            -storeDetails.storeCurrentBalance -
-            saleCalculation.cashPayment +
-            saleCalculation.totalAmount -
-            adminCutTx,
+          credit: Number(saleCalculation.cashPayment.toFixed(2)),
+          adminCut: Number(adminCutTx.toFixed(2)),
+          adminProfit: Number(adminProfitTaken.toFixed(2)),
+          debit: Number((saleCalculation.totalAmount - adminCutTx).toFixed(2)),
+          sevaBalance: Number(
+            (
+              (Number(storeDetails?.storeSevaBalance) || 0) +
+              (Number(saleCalculation?.goSevaContribution) || 0)
+            ).toFixed(2)
+          ),
+          currentBalance: Number(
+            (
+              (Number(storeDetails?.storeCurrentBalance) || 0) +
+              (Number(saleCalculation?.cashPayment) || 0) -
+              (Number(saleCalculation?.totalAmount) || 0) +
+              (Number(adminCutTx) || 0)
+            ) // balance + credit + debot
+              .toFixed(2)
+          ),
+          adminCurrentBalance: Number(
+            (
+              -storeDetails.storeCurrentBalance -
+              saleCalculation.cashPayment +
+              saleCalculation.totalAmount -
+              adminCutTx
+            ).toFixed(2)
+          ),
           remarks: `Cash sale for ${selectedCustomer.customerName} (${selectedCustomer.customerMobile})`,
         };
         await addDoc(collection(db, 'AccountTx'), accountTxData);
@@ -788,37 +820,53 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           processedBy: user.name,
           invoiceId: txInvoiceId,
           // Sale-Specific Fields
-          surabhiUsed: saleCalculation.surabhiCoinsUsed,
-          walletDeduction: saleCalculation.walletDeduction,
-          cashPayment: saleCalculation.cashPayment,
+          surabhiUsed: Number(saleCalculation.surabhiCoinsUsed.toFixed(2)),
+          walletDeduction: Number(saleCalculation.walletDeduction.toFixed(2)),
+          cashPayment: Number(saleCalculation.cashPayment.toFixed(2)),
 
           // Balance fields
           previousBalance: {
-            walletBalance: selectedCustomer.walletBalance,
-            surabhiBalance: selectedCustomer.surabhiBalance,
+            walletBalance: Number(selectedCustomer.walletBalance.toFixed(2)),
+            surabhiBalance: Number(selectedCustomer.surabhiBalance.toFixed(2)),
           },
           newBalance: {
-            walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
-            surabhiBalance:
-              selectedCustomer.surabhiBalance -
-              saleCalculation.surabhiCoinsUsed +
-              saleCalculation.surabhiCoinsEarned,
+            walletBalance: Number(
+              (selectedCustomer.walletBalance - saleCalculation.walletDeduction).toFixed(2)
+            ),
+            surabhiBalance: Number(
+              (
+                selectedCustomer.surabhiBalance -
+                saleCalculation.surabhiCoinsUsed +
+                saleCalculation.surabhiCoinsEarned
+              ).toFixed(2)
+            ),
           },
 
           // Transaction amounts
-          walletCredit: 0,
-          walletDebit: saleCalculation.walletDeduction,
-          walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
-          surabhiDebit: saleCalculation.surabhiCoinsUsed,
-          surabhiCredit: saleCalculation.surabhiCoinsEarned,
-          surabhiBalance: selectedCustomer.surabhiBalance + saleCalculation.surabhiCoinsEarned,
-          sevaCredit: saleCalculation.goSevaContribution,
-          sevaDebit: 0,
-          sevaBalance:
-            selectedCustomer.sevaBalanceCurrentMonth + saleCalculation.goSevaContribution,
-          sevaTotal: selectedCustomer.sevaTotal + saleCalculation.goSevaContribution,
+          walletCredit: Number((0).toFixed(2)),
+          walletDebit: Number(saleCalculation.walletDeduction.toFixed(2)),
+          walletBalance: Number(
+            (selectedCustomer.walletBalance - saleCalculation.walletDeduction).toFixed(2)
+          ),
+          surabhiDebit: Number(saleCalculation.surabhiCoinsUsed.toFixed(2)),
+          surabhiCredit: Number(saleCalculation.surabhiCoinsEarned.toFixed(2)),
+          surabhiBalance: Number(
+            (selectedCustomer.surabhiBalance + saleCalculation.surabhiCoinsEarned).toFixed(2)
+          ),
+          sevaCredit: Number(saleCalculation.goSevaContribution.toFixed(2)),
+          sevaDebit: Number((0).toFixed(2)),
+          sevaBalance: Number(
+            (selectedCustomer.sevaBalanceCurrentMonth + saleCalculation.goSevaContribution).toFixed(
+              2
+            )
+          ),
+          sevaTotal: Number(
+            (selectedCustomer.sevaTotal + saleCalculation.goSevaContribution).toFixed(2)
+          ),
           remarks: `Sale transaction for ${selectedCustomer.customerName}`,
-          storeSevaBalance: storeDetails.storeSevaBalance + saleCalculation.goSevaContribution,
+          storeSevaBalance: Number(
+            (storeDetails.storeSevaBalance + saleCalculation.goSevaContribution).toFixed(2)
+          ),
         };
 
         await addDoc(collection(db, 'CustomerTx'), customerTxData);
@@ -913,27 +961,36 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             createdAt: Timestamp.fromDate(new Date()),
             storeName: storeDetails.storeName,
             type: 'sale',
-            amount: saleAmount,
+            amount: Number(saleAmount.toFixed(2)),
             invoiceId: txInvoiceId, // Add invoice ID for consistency
             customerName: selectedCustomer.customerName,
             customerMobile: selectedCustomer.customerMobile,
-            adminCut: adminCutTx,
-            adminProfit: adminProfitTaken,
-            credit: saleCalculation.cashPayment,
-            debit: saleCalculation.totalAmount - adminCutTx,
-            adminCurrentBalance:
-              -(Number(storeDetails?.storeCurrentBalance) || 0) -
-              (Number(saleCalculation?.cashPayment) || 0) +
-              (Number(saleCalculation?.totalAmount) || 0) -
-              (Number(adminCutTx) || 0),
-            currentBalance:
-              (Number(storeDetails?.storeCurrentBalance) || 0) +
-              (Number(saleCalculation?.cashPayment) || 0) -
-              (Number(saleCalculation?.totalAmount) || 0) +
-              (Number(adminCutTx) || 0),
-            sevaBalance:
-              (Number(storeDetails?.storeSevaBalance) || 0) +
-              (Number(saleCalculation?.goSevaContribution) || 0),
+            adminCut: Number(adminCutTx.toFixed(2)),
+            adminProfit: Number(adminProfitTaken.toFixed(2)),
+            credit: Number(saleCalculation.cashPayment.toFixed(2)),
+            debit: Number((saleCalculation.totalAmount - adminCutTx).toFixed(2)),
+            adminCurrentBalance: Number(
+              (
+                -(Number(storeDetails?.storeCurrentBalance) || 0) -
+                (Number(saleCalculation?.cashPayment) || 0) +
+                (Number(saleCalculation?.totalAmount) || 0) -
+                (Number(adminCutTx) || 0)
+              ).toFixed(2)
+            ),
+            currentBalance: Number(
+              (
+                (Number(storeDetails?.storeCurrentBalance) || 0) +
+                (Number(saleCalculation?.cashPayment) || 0) -
+                (Number(saleCalculation?.totalAmount) || 0) +
+                (Number(adminCutTx) || 0)
+              ).toFixed(2)
+            ),
+            sevaBalance: Number(
+              (
+                (Number(storeDetails?.storeSevaBalance) || 0) +
+                (Number(saleCalculation?.goSevaContribution) || 0)
+              ).toFixed(2)
+            ),
             remarks: `Mixed sale ₹${saleCalculation.totalAmount} with cash of ₹${saleCalculation.cashPayment} and wallet of ₹${saleCalculation.walletDeduction} by ${selectedCustomer.customerName}`,
           };
 
@@ -962,36 +1019,52 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             processedBy: user.name,
             invoiceId: txInvoiceId,
             // Sale-Specific Fields
-            surabhiUsed: saleCalculation.surabhiCoinsUsed,
-            walletDeduction: saleCalculation.walletDeduction,
-            cashPayment: saleCalculation.cashPayment,
+            surabhiUsed: Number(saleCalculation.surabhiCoinsUsed.toFixed(2)),
+            walletDeduction: Number(saleCalculation.walletDeduction.toFixed(2)),
+            cashPayment: Number(saleCalculation.cashPayment.toFixed(2)),
             // Balance fields
             previousBalance: {
-              walletBalance: selectedCustomer.walletBalance,
-              surabhiBalance: selectedCustomer.surabhiBalance,
+              walletBalance: Number(selectedCustomer.walletBalance.toFixed(2)),
+              surabhiBalance: Number(selectedCustomer.surabhiBalance.toFixed(2)),
             },
             newBalance: {
-              walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
-              surabhiBalance:
-                selectedCustomer.surabhiBalance -
-                saleCalculation.surabhiCoinsUsed +
-                saleCalculation.surabhiCoinsEarned,
+              walletBalance: Number(
+                (selectedCustomer.walletBalance - saleCalculation.walletDeduction).toFixed(2)
+              ),
+              surabhiBalance: Number(
+                (
+                  selectedCustomer.surabhiBalance -
+                  saleCalculation.surabhiCoinsUsed +
+                  saleCalculation.surabhiCoinsEarned
+                ).toFixed(2)
+              ),
             },
 
             // Transaction amounts
-            walletCredit: 0,
-            walletDebit: saleCalculation.walletDeduction,
-            walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
-            surabhiDebit: saleCalculation.surabhiCoinsUsed,
-            surabhiCredit: saleCalculation.surabhiCoinsEarned,
-            surabhiBalance: selectedCustomer.surabhiBalance + saleCalculation.surabhiCoinsEarned,
-            sevaCredit: saleCalculation.goSevaContribution,
-            sevaDebit: 0,
-            sevaBalance:
-              selectedCustomer.sevaBalanceCurrentMonth + saleCalculation.goSevaContribution,
-            sevaTotal: selectedCustomer.sevaTotal + saleCalculation.goSevaContribution,
+            walletCredit: Number((0).toFixed(2)),
+            walletDebit: Number(saleCalculation.walletDeduction.toFixed(2)),
+            walletBalance: Number(
+              (selectedCustomer.walletBalance - saleCalculation.walletDeduction).toFixed(2)
+            ),
+            surabhiDebit: Number(saleCalculation.surabhiCoinsUsed.toFixed(2)),
+            surabhiCredit: Number(saleCalculation.surabhiCoinsEarned.toFixed(2)),
+            surabhiBalance: Number(
+              (selectedCustomer.surabhiBalance + saleCalculation.surabhiCoinsEarned).toFixed(2)
+            ),
+            sevaCredit: Number(saleCalculation.goSevaContribution.toFixed(2)),
+            sevaDebit: Number((0).toFixed(2)),
+            sevaBalance: Number(
+              (
+                selectedCustomer.sevaBalanceCurrentMonth + saleCalculation.goSevaContribution
+              ).toFixed(2)
+            ),
+            sevaTotal: Number(
+              (selectedCustomer.sevaTotal + saleCalculation.goSevaContribution).toFixed(2)
+            ),
             remarks: `Mixed payment sale transaction for ${selectedCustomer.customerName}`,
-            storeSevaBalance: storeDetails.storeSevaBalance + saleCalculation.goSevaContribution,
+            storeSevaBalance: Number(
+              (storeDetails.storeSevaBalance + saleCalculation.goSevaContribution).toFixed(2)
+            ),
           };
 
           await addDoc(collection(db, 'CustomerTx'), customerTxData);
@@ -1439,7 +1512,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                     </div>
                     <div>
                       <p className="text-amber-700">Surabhi Coins</p>
-                      <p className="font-bold">{Math.floor(selectedCustomer.surabhiBalance)}</p>
+                      <p className="font-bold">{selectedCustomer.surabhiBalance.toFixed(2)}</p>
                     </div>
                     <div>
                       <p className="text-purple-700">Last Purchase</p>
