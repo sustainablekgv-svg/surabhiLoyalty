@@ -275,7 +275,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                   </div>
                   <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 text-amber-600 text-[10px] xs:text-xs sm:text-sm mt-0.5 xs:mt-1">
                     <Coins className="h-2.5 xs:h-3 w-2.5 xs:w-3" />
-                    <span>{Math.floor(customer.surabhiBalance || 0)} coins</span>
+                    <span>{(customer.surabhiBalance || 0).toFixed(2)} coins</span>
                   </div>
                   <div className="text-[8px] xs:text-[10px] sm:text-xs text-gray-500 mt-1 xs:mt-1.5 sm:mt-2">
                     Last active: {formatDate(customer.lastTransactionDate)}

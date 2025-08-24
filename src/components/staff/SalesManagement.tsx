@@ -53,8 +53,7 @@ import { hasMetQuarterlyTarget } from '@/utils/quarterlyTargets';
 
 // Custom rounding function: floor if decimal < 0.5, ceil if decimal >= 0.5
 const customRound = (value: number): number => {
-  const decimal = value - Math.floor(value);
-  return decimal < 0.5 ? Math.floor(value) : Math.ceil(value);
+  return Math.round(value * 100) / 100;
 };
 
 const fetchCustomerByMobile = async (mobile: string): Promise<CustomerType | null> => {
@@ -323,7 +322,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         return { isValid: false, error: 'Mixed is not needed' };
       }
     } else if (paymentMethod === 'cash') {
-      cashPayment = saleAmount - coinsToUse;
+      cashPayment = Number((saleAmount - coinsToUse).toFixed(2));
       surabhiCoinsEarned = customRound(cashPayment * (storeDetails.cashOnlyCommission / 100));
       referrerSurabhiCoinsEarned += customRound(
         cashPayment * (storeDetails.referralCommission / 100)
@@ -333,12 +332,12 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
     return {
       totalAmount: Number(saleAmount.toFixed(2)),
-      surabhiCoinsUsed: coinsToUse, // Already whole number from customRound
+      surabhiCoinsUsed: coinsToUse, // Already rounded to 2 decimal places from customRound
       walletDeduction: Number(walletDeduction.toFixed(2)),
       cashPayment: Number(cashPayment.toFixed(2)),
-      surabhiCoinsEarned, // Already whole number from customRound
-      goSevaContribution, // Already whole number from customRound
-      referrerSurabhiCoinsEarned, // Already whole number from customRound
+      surabhiCoinsEarned: Number(surabhiCoinsEarned.toFixed(2)), // Already rounded to 2 decimal places from customRound
+      goSevaContribution: Number(goSevaContribution.toFixed(2)), // Already rounded to 2 decimal places from customRound
+      referrerSurabhiCoinsEarned: Number(referrerSurabhiCoinsEarned.toFixed(2)), // Already rounded to 2 decimal places from customRound
       isValid: true,
     };
   };
@@ -407,11 +406,14 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         // No invoice ID provided, generate a new one
         txInvoiceId = generateInvoiceId(storeDetails.storePrefix);
       }
-      const newWalletBalance = selectedCustomer.walletBalance - saleCalculation.walletDeduction;
-      const newSurabhiCoins =
+      const newWalletBalance = customRound(
+        selectedCustomer.walletBalance - saleCalculation.walletDeduction
+      );
+      const newSurabhiCoins = customRound(
         selectedCustomer.surabhiBalance -
-        saleCalculation.surabhiCoinsUsed +
-        saleCalculation.surabhiCoinsEarned;
+          saleCalculation.surabhiCoinsUsed +
+          saleCalculation.surabhiCoinsEarned
+      );
       console.log('Is it comig here in line 261', newWalletBalance, newSurabhiCoins);
       // Update customer balances
       const customerDoc = querySnapshot.docs[0];
@@ -428,7 +430,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       const newSevaTotal = (selectedCustomer.sevaTotal || 0) + saleCalculation.goSevaContribution;
 
       // Update cumTotal and set saleElgibility based on cumulative total and student status
-      const newCumTotal = (selectedCustomer.cumTotal || 0) + saleAmount;
+      const newCumTotal = customRound((selectedCustomer.cumTotal || 0) + saleAmount);
       const isEligible = selectedCustomer.isStudent
         ? newCumTotal >= 500 // Student minimum is 500
         : newCumTotal >= 2000; // Regular customer minimum is 2000
@@ -484,15 +486,16 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         surabhiUsed: saleCalculation.surabhiCoinsUsed,
         walletDeduction: saleCalculation.walletDeduction,
         cashPayment: saleCalculation.cashPayment,
-        adminProft:
+        adminProft: customRound(
           (saleCalculation.cashPayment *
             (storeDetails.surabhiCommission - storeDetails.cashOnlyCommission)) /
             100 +
-          (saleCalculation.surabhiCoinsUsed *
-            (storeDetails.referralCommission +
-              storeDetails.cashOnlyCommission +
-              storeDetails.sevaCommission)) /
-            100,
+            (saleCalculation.surabhiCoinsUsed *
+              (storeDetails.referralCommission +
+                storeDetails.cashOnlyCommission +
+                storeDetails.sevaCommission)) /
+              100
+        ),
 
         // Balance information
         previousBalance: {
@@ -836,7 +839,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             (selectedCustomer.sevaTotal || 0) + saleCalculation.goSevaContribution;
 
           // Update cumTotal and set saleElgibility based on cumulative total and student status
-          const newCumTotal = (selectedCustomer.cumTotal || 0) + saleAmount;
+          const newCumTotal = customRound((selectedCustomer.cumTotal || 0) + saleAmount);
           const isEligible = selectedCustomer.isStudent
             ? newCumTotal >= 500 // Student minimum is 500
             : newCumTotal >= 2000; // Regular customer minimum is 2000
@@ -1009,7 +1012,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               (selectedCustomer.sevaTotal || 0) + saleCalculation.goSevaContribution;
 
             // Update cumTotal and set saleElgibility based on cumulative total and student status
-            const newCumTotal = (selectedCustomer.cumTotal || 0) + saleAmount;
+            const newCumTotal = customRound((selectedCustomer.cumTotal || 0) + saleAmount);
             const isEligible = selectedCustomer.isStudent
               ? newCumTotal >= 500 // Student minimum is 500
               : newCumTotal >= 2000; // Regular customer minimum is 2000
@@ -1220,7 +1223,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         const customerDoc = customerSnapshot.docs[0];
 
         // Calculate eligibility based on cumTotal and student status
-        const newCumTotal = (selectedCustomer.cumTotal || 0) + saleAmount;
+        const newCumTotal = customRound((selectedCustomer.cumTotal || 0) + saleAmount);
         const isEligible = selectedCustomer.isStudent
           ? newCumTotal >= 500 // Student minimum is 500
           : newCumTotal >= 2000; // Regular customer minimum is 2000
@@ -1520,8 +1523,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                         />
                       </div>
                       <p className="text-xs text-gray-600">
-                        Available: {Math.floor(selectedCustomer.surabhiBalance)} coins (Using{' '}
-                        {surabhiCoinsToUse})
+                        Available: {selectedCustomer.surabhiBalance.toFixed(2)} coins (Using{' '}
+                        {surabhiCoinsToUse.toFixed(2)})
                       </p>
                     </div>
                   )}
@@ -1582,7 +1585,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                             Surabhi Coins Used
                           </span>
                           <span className="font-bold text-amber-600">
-                            -{saleCalculation.surabhiCoinsUsed}
+                            -{saleCalculation.surabhiCoinsUsed.toFixed(2)}
                           </span>
                         </div>
                       )}
@@ -1618,7 +1621,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                               %
                             </span>
                             <span className="font-bold text-indigo-600">
-                              +{saleCalculation.surabhiCoinsEarned}{' '}
+                              +{saleCalculation.surabhiCoinsEarned.toFixed(2)}{' '}
                             </span>
                           </div>
                         )}
@@ -1643,7 +1646,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                               Referral Bonus {storeDetails.referralCommission}%
                             </span>
                             <span className="font-bold text-yellow-600">
-                              +{saleCalculation.referrerSurabhiCoinsEarned} Referral to{' '}
+                              +{saleCalculation.referrerSurabhiCoinsEarned.toFixed(2)} Referral to{' '}
                               {selectedCustomer.referredBy}{' '}
                             </span>
                           </div>

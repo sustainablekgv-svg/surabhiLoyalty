@@ -442,7 +442,7 @@ export const AdminRecentActivity = () => {
                       ₹{store.sales.toFixed(2)}
                     </p>
                     <div className="flex gap-2 text-xs text-gray-600">
-                      <span>Coins: {store.surabhiCoinsUsed}</span>
+                      <span>Coins: {store.surabhiCoinsUsed.toFixed(2)}</span>
                       <span>Wallet: ₹{store.walletDeduction.toFixed(2)}</span>
                       <span>Cash: ₹{store.cashPayment.toFixed(2)}</span>
                     </div>

@@ -371,19 +371,19 @@ export const CustomerManagement = () => {
                     </p>
                     <p>
                       <span className="text-muted-foreground">Surabhi Balance:</span>{' '}
-                      {selectedCustomer.surabhiBalance}
+                      {selectedCustomer.surabhiBalance.toFixed(2)}
                     </p>
                     <p>
                       <span className="text-muted-foreground">This Month:</span>{' '}
-                      {selectedCustomer.surabhiBalanceCurrentMonth}
+                      {selectedCustomer.surabhiBalanceCurrentMonth.toFixed(2)}
                     </p>
                     <p>
                       <span className="text-muted-foreground">Seva Balance:</span>{' '}
-                      {selectedCustomer.sevaTotal}
+                      {selectedCustomer.sevaTotal.toFixed(2)}
                     </p>
                     <p>
                       <span className="text-muted-foreground">This Month:</span>{' '}
-                      {selectedCustomer.sevaBalanceCurrentMonth}
+                      {selectedCustomer.sevaBalanceCurrentMonth.toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -704,7 +704,7 @@ export const CustomerManagement = () => {
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Loyalty Coins</p>
-                <p className="text-2xl font-bold">{Math.floor(totalStats.totalSurabhiCoins)}</p>
+                <p className="text-2xl font-bold">{totalStats.totalSurabhiCoins.toFixed(2)}</p>
               </div>
               <div className="bg-amber-500/10 p-2 rounded-lg">
                 <Coins className="h-4 w-4 text-amber-500" />
@@ -712,7 +712,7 @@ export const CustomerManagement = () => {
             </div>
             <div className="flex items-center gap-1 mt-2">
               <span className="text-sm text-muted-foreground">
-                {totalStats.totalSevaCoins} Seva Coins
+                {totalStats.totalSevaCoins.toFixed(2)} Seva Coins
               </span>
             </div>
           </CardContent>
@@ -826,7 +826,7 @@ export const CustomerManagement = () => {
                       </div>
                       <div className="flex items-center gap-1 sm:gap-2 text-amber-600">
                         <Coins className="h-3 w-3" />
-                        <span>{customer.surabhiBalance} coins</span>
+                        <span>{customer.surabhiBalance.toFixed(2)} coins</span>
                       </div>
                     </div>
                   </div>

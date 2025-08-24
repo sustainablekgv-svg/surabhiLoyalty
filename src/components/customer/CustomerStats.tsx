@@ -162,7 +162,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
     },
     {
       title: 'Surabhi Coins',
-      value: Math.floor(customerData.surabhiBalance).toString(),
+      value: customerData.surabhiBalance.toFixed(2),
       description: 'Lifetime coins earned',
       icon: Coins,
       color: 'text-amber-600',
@@ -171,7 +171,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
     },
     {
       title: 'Seva Contribution',
-      value: `₹${customerData.sevaTotal}`,
+      value: `₹${customerData.sevaTotal.toFixed(2)}`,
       description: 'Community welfare fund',
       icon: Heart,
       color: 'text-red-600',

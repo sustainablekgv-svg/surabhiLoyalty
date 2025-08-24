@@ -328,7 +328,7 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
                       </div>
                       <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2">
                         <Coins className="h-3 xs:h-3.5 sm:h-4 w-3 xs:w-3.5 sm:w-4" />
-                        <span>{Math.floor(customer?.surabhiBalance || 0)} coins</span>
+                        <span>{(customer?.surabhiBalance || 0).toFixed(2)} coins</span>
                       </div>
                       {/* <div className="flex items-center gap-2">
                         {customer.walletRechargeDone ? (

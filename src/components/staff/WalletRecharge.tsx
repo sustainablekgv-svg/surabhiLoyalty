@@ -1136,7 +1136,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                           </span>
                         </div>
                         <span className="font-bold text-amber-600 text-xs xs:text-sm">
-                          +{Math.floor(surabhiCoinsEarned)}
+                          +{surabhiCoinsEarned.toFixed(2)}
                         </span>
                       </div>
 
@@ -1242,11 +1242,11 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                 <div className="text-gray-500"> Recharge Amount:</div>
                 <div className="font-medium">₹{rechargeAmountNum.toFixed(2)}</div>
                 <div className="text-gray-500">Surabhi Coins Earned:</div>
-                <div className="font-medium">+{Math.floor(surabhiCoinsEarned)}</div>
+                <div className="font-medium">+{surabhiCoinsEarned.toFixed(2)}</div>
                 {selectedCustomer?.referredBy && referralAmount > 0 && (
                   <>
                     <div className="text-gray-500">Referral Surabhi Coins:</div>
-                    <div className="font-medium">+{Math.floor(referralAmount)}</div>
+                    <div className="font-medium">+{referralAmount.toFixed(2)}</div>
                   </>
                 )}
                 <div className="text-gray-500">Seva Amount:</div>

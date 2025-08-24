@@ -115,7 +115,7 @@ export const AdminStats = () => {
           },
           {
             title: 'Surabhi Coins',
-            value: Math.floor(totalSurabhiCoins).toString(),
+            value: totalSurabhiCoins.toFixed(2),
             icon: Coins,
             color: 'text-purple-600',
             bgColor: 'bg-purple-50',
