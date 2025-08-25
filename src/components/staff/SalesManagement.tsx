@@ -425,9 +425,12 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         newSurabhiCoins
       );
 
-      const newSevaBalance =
-        (selectedCustomer.sevaBalance || 0) + saleCalculation.goSevaContribution;
-      const newSevaTotal = (selectedCustomer.sevaTotal || 0) + saleCalculation.goSevaContribution;
+      const newSevaBalance = Number(
+        ((selectedCustomer.sevaBalance || 0) + saleCalculation.goSevaContribution).toFixed(2)
+      );
+      const newSevaTotal = Number(
+        ((selectedCustomer.sevaTotal || 0) + saleCalculation.goSevaContribution).toFixed(2)
+      );
 
       // Update cumTotal and set saleElgibility based on cumulative total and student status
       const newCumTotal = customRound((selectedCustomer.cumTotal || 0) + saleAmount);
@@ -516,9 +519,15 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         surabhiBalance: newSurabhiCoins,
         sevaCredit: saleCalculation.goSevaContribution,
         sevaDebit: 0,
-        sevaBalance: selectedCustomer.sevaBalance + saleCalculation.goSevaContribution,
-        sevaTotal: selectedCustomer.sevaTotal + saleCalculation.goSevaContribution,
-        storeSevaBalance: storeDetails.storeSevaBalance + saleCalculation.goSevaContribution,
+        sevaBalance: Number(
+          (selectedCustomer.sevaBalance + saleCalculation.goSevaContribution).toFixed(2)
+        ),
+        sevaTotal: Number(
+          (selectedCustomer.sevaTotal + saleCalculation.goSevaContribution).toFixed(2)
+        ),
+        storeSevaBalance: Number(
+          (storeDetails.storeSevaBalance + saleCalculation.goSevaContribution).toFixed(2)
+        ),
       };
       await addDoc(collection(db, 'CustomerTx'), customerTxData);
 
@@ -802,7 +811,9 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         const sevaPool = poolDoc.data();
 
         await updateDoc(poolRef, {
-          currentSevaBalance: sevaPool.currentSevaBalance + saleCalculation.goSevaContribution,
+          currentSevaBalance: Number(
+            (sevaPool.currentSevaBalance + saleCalculation.goSevaContribution).toFixed(2)
+          ),
           contributionsCurrentMonth: increment(1),
           totalContributions: increment(1),
           totalAllocations: sevaPool.totalAllocations,
@@ -881,10 +892,12 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
         if (!customerSnapshot.empty) {
           const customerDoc = customerSnapshot.docs[0];
-          const newSevaBalance =
-            (selectedCustomer.sevaBalance || 0) + saleCalculation.goSevaContribution;
-          const newSevaTotal =
-            (selectedCustomer.sevaTotal || 0) + saleCalculation.goSevaContribution;
+          const newSevaBalance = Number(
+            ((selectedCustomer.sevaBalance || 0) + saleCalculation.goSevaContribution).toFixed(2)
+          );
+          const newSevaTotal = Number(
+            ((selectedCustomer.sevaTotal || 0) + saleCalculation.goSevaContribution).toFixed(2)
+          );
 
           // Update cumTotal and set saleElgibility based on cumulative total and student status
           const newCumTotal = customRound((selectedCustomer.cumTotal || 0) + saleAmount);
@@ -903,11 +916,16 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           const shouldUpdateEligibility = isEligible && selectedCustomer.saleElgibility !== true;
 
           const updateData: any = {
-            walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
-            surabhiBalance:
-              selectedCustomer.surabhiBalance -
-              saleCalculation.surabhiCoinsUsed +
-              saleCalculation.surabhiCoinsEarned,
+            walletBalance: Number(
+              (selectedCustomer.walletBalance - saleCalculation.walletDeduction).toFixed(2)
+            ),
+            surabhiBalance: Number(
+              (
+                selectedCustomer.surabhiBalance -
+                saleCalculation.surabhiCoinsUsed +
+                saleCalculation.surabhiCoinsEarned
+              ).toFixed(2)
+            ),
             sevaBalance: newSevaBalance,
             sevaTotal: newSevaTotal,
             cumTotal: newCumTotal,
@@ -1000,7 +1018,9 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           const sevaPool = poolDoc.data();
 
           await updateDoc(poolRef, {
-            currentSevaBalance: sevaPool.currentSevaBalance + saleCalculation.goSevaContribution,
+            currentSevaBalance: Number(
+              (sevaPool.currentSevaBalance + saleCalculation.goSevaContribution).toFixed(2)
+            ),
             contributionsCurrentMonth: increment(1),
             totalContributions: increment(1),
             totalAllocations: sevaPool.totalAllocations,
@@ -1079,10 +1099,12 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
           if (!customerSnapshot.empty) {
             const customerDoc = customerSnapshot.docs[0];
-            const newSevaBalance =
-              (selectedCustomer.sevaBalance || 0) + saleCalculation.goSevaContribution;
-            const newSevaTotal =
-              (selectedCustomer.sevaTotal || 0) + saleCalculation.goSevaContribution;
+            const newSevaBalance = Number(
+              ((selectedCustomer.sevaBalance || 0) + saleCalculation.goSevaContribution).toFixed(2)
+            );
+            const newSevaTotal = Number(
+              ((selectedCustomer.sevaTotal || 0) + saleCalculation.goSevaContribution).toFixed(2)
+            );
 
             // Update cumTotal and set saleElgibility based on cumulative total and student status
             const newCumTotal = customRound((selectedCustomer.cumTotal || 0) + saleAmount);
@@ -1094,11 +1116,16 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             const shouldUpdateEligibility = isEligible && selectedCustomer.saleElgibility !== true;
 
             const updateData: any = {
-              walletBalance: selectedCustomer.walletBalance - saleCalculation.walletDeduction,
-              surabhiBalance:
-                selectedCustomer.surabhiBalance -
-                saleCalculation.surabhiCoinsUsed +
-                saleCalculation.surabhiCoinsEarned,
+              walletBalance: Number(
+                (selectedCustomer.walletBalance - saleCalculation.walletDeduction).toFixed(2)
+              ),
+              surabhiBalance: Number(
+                (
+                  selectedCustomer.surabhiBalance -
+                  saleCalculation.surabhiCoinsUsed +
+                  saleCalculation.surabhiCoinsEarned
+                ).toFixed(2)
+              ),
               sevaBalance: newSevaBalance,
               sevaTotal: newSevaTotal,
               cumTotal: newCumTotal,
@@ -1540,12 +1567,11 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                       <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
                         id="amount"
-                        type="number"
+                        type="text"
                         placeholder="Enter sale amount"
                         value={saleAmount || ''}
                         onChange={e => setSaleAmount(Number(e.target.value))}
                         className="pl-12 h-12"
-                        min="1"
                         required
                       />
                     </div>
@@ -1578,7 +1604,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                         <Coins className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
                           id="coins"
-                          type="number"
+                          type="text"
                           placeholder="Enter coins to use"
                           value={surabhiCoinsToUse}
                           onChange={e => {
@@ -1591,8 +1617,6 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                             );
                           }}
                           className="pl-12 h-12"
-                          min="0"
-                          max={selectedCustomer.surabhiBalance}
                         />
                       </div>
                       <p className="text-xs text-gray-600">

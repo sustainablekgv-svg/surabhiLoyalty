@@ -1081,14 +1081,11 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
                     <DollarSign className="absolute left-2 xs:left-3 top-2.5 xs:top-3 h-3.5 w-3.5 xs:h-4 xs:w-4 text-gray-400" />
                     <Input
                       id="amount"
-                      type="number"
+                      type="text"
                       placeholder={`Enter amount (₹2,000 - ₹50,000)`}
                       value={rechargeAmount}
                       onChange={e => setRechargeAmount(e.target.value)}
                       className="pl-8 xs:pl-10 h-9 xs:h-10 md:h-12 text-xs xs:text-sm md:text-base rounded-md"
-                      min="2000"
-                      max="50000"
-                      step="100"
                     />
                   </div>
                   {rechargeAmountNum > 0 && rechargeAmountNum < 2000 && (

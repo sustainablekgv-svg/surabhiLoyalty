@@ -697,13 +697,13 @@ const Accounts = () => {
                         {/* </span> */}
                       </TableCell>
                       <TableCell className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
-                        <span className={tx.debit >= 0 ? 'text-red-600' : 'text-green-600'}>
-                          {tx.debit >= 0 ? '' : '+'}₹{Math.abs(tx.debit).toFixed(2)}
+                        <span className={tx.debit >= 0 ? 'text-green-600' : 'text-red-600'}>
+                          {tx.debit >= 0 ? '+' : ''}₹{Math.abs(tx.debit).toFixed(2)}
                         </span>
                       </TableCell>
                       <TableCell className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
-                        <span className={tx.credit >= 0 ? 'text-green-600' : 'text-red-600'}>
-                          {tx.credit >= 0 ? '+' : ''}₹{Math.abs(tx.credit).toFixed(2)}
+                        <span className={tx.credit >= 0 ? 'text-red-600' : 'text-green-600'}>
+                          {tx.credit >= 0 ? '' : '+'}₹{Math.abs(tx.credit).toFixed(2)}
                         </span>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
