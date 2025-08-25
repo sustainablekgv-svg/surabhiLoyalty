@@ -185,17 +185,17 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
   return (
     <div className="space-y-4 xs:space-y-5 sm:space-y-6">
       <Card>
-        <CardHeader className="px-3 xs:px-4 sm:px-6 py-3 xs:py-4 sm:py-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 xs:gap-4">
-            <CardTitle className="text-base xs:text-lg sm:text-xl">Transaction History</CardTitle>
-            <div className="flex flex-col xs:flex-row gap-2 xs:gap-3 w-full sm:w-auto">
+        <CardHeader className="px-2 xs:px-3 sm:px-4 py-2 xs:py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 xs:gap-3">
+            <CardTitle className="text-sm xs:text-base sm:text-lg">Transaction History</CardTitle>
+            <div className="flex flex-col xs:flex-row gap-1.5 xs:gap-2 w-full sm:w-auto">
               <div className="relative flex-1">
-                <Search className="absolute left-3 xs:left-5 top-1/2 -translate-y-1/2 h-3.5 xs:h-4 w-3.5 xs:w-4 text-gray-400" />
+                <Search className="absolute left-2 xs:left-3 top-1/2 -translate-y-1/2 h-3 xs:h-3.5 w-3 xs:w-3.5 text-gray-400" />
                 <Input
                   placeholder="Search by location..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="pl-10 xs:pl-16 h-9 xs:h-10 text-xs xs:text-sm"
+                  className="pl-8 xs:pl-10 h-8 xs:h-9 text-[10px] xs:text-xs"
                 />
               </div>
               <Select
@@ -206,7 +206,7 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
                   setHasMore(true);
                 }}
               >
-                <SelectTrigger className="w-full xs:w-[110px] sm:w-[120px] h-9 xs:h-10 text-xs xs:text-sm">
+                <SelectTrigger className="w-full xs:w-[100px] sm:w-[110px] h-8 xs:h-9 text-[10px] xs:text-xs">
                   <SelectValue placeholder="Records" />
                 </SelectTrigger>
                 <SelectContent>
@@ -226,44 +226,44 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
             <Table className="min-w-[900px]">
               <TableHeader className="bg-gray-50">
                 <TableRow className="hover:bg-gray-50">
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium">
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium">
                     Invoice ID
                   </TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium">
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium">
                     Date & Time
                   </TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium">
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium">
                     Location
                   </TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Wallet Credit
                   </TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Wallet Debit
                   </TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Wallet Balance
                   </TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Surabhi Credit
                   </TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Surabhi Debit
                   </TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Surabhi Balance
                   </TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Seva Credit
                   </TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Seva Debit
                   </TableHead>
                   {/* <TableHead className="text-right">Seva Current</TableHead> */}
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium text-right">
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Seva Total
                   </TableHead>
-                  <TableHead className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm font-medium">
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium">
                     Remarks
                   </TableHead>
                 </TableRow>
@@ -272,44 +272,44 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
                 {filteredTransactions.length > 0 ? (
                   filteredTransactions.map(tx => (
                     <TableRow key={tx.id}>
-                      <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm">
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs">
                         {tx.invoiceId || 'NA'}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm">
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs">
                         {formatDate(tx.createdAt)}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm">
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs">
                         {tx.storeLocation}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm text-right">
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
                         {tx.walletCredit ? formatCurrency(tx.walletCredit) : '-'}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm text-right">
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
                         {tx.walletDebit ? formatCurrency(tx.walletDebit) : '-'}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm text-right font-medium">
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right font-medium">
                         {formatCurrency(tx.walletBalance)}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm text-right">
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
                         {tx.surabhiCredit ? Number(tx.surabhiCredit).toFixed(2) : '-'}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm text-right">
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
                         {tx.surabhiDebit ? Number(tx.surabhiDebit).toFixed(2) : '-'}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm text-right font-medium">
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right font-medium">
                         {Number(tx.surabhiBalance).toFixed(2)}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm text-right">
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
                         {tx.sevaCredit ? Number(tx.sevaCredit).toFixed(2) : '-'}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm text-right">
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
                         {tx.sevaDebit ? Number(tx.sevaDebit).toFixed(2) : '-'}
                       </TableCell>
                       {/* <TableCell className="text-right font-medium">{tx.sevaBalance}</TableCell> */}
-                      <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm text-right font-medium">
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right font-medium">
                         {Number(tx.sevaTotal).toFixed(2)}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap py-2 xs:py-3 px-2 xs:px-3 text-xs xs:text-sm">
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs">
                         {tx.remarks || '-'}
                       </TableCell>
                     </TableRow>
@@ -318,7 +318,7 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
                   <TableRow>
                     <TableCell
                       colSpan={13}
-                      className="text-center py-8 xs:py-10 sm:py-12 text-gray-500 text-xs xs:text-sm"
+                      className="text-center py-6 xs:py-8 sm:py-10 text-gray-500 text-[10px] xs:text-xs"
                     >
                       No transactions found
                     </TableCell>
@@ -336,11 +336,11 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
                   onClick={handleLoadMore}
                   disabled={loadingMore}
                   variant="outline"
-                  className="w-full max-w-xs h-9 xs:h-10 text-xs xs:text-sm"
+                  className="w-full max-w-xs h-8 xs:h-9 text-[10px] xs:text-xs"
                 >
                   {loadingMore ? (
                     <>
-                      <div className="mr-2 h-3.5 xs:h-4 w-3.5 xs:w-4 animate-spin rounded-full border-2 border-gray-500 border-t-transparent"></div>
+                      <div className="mr-1.5 h-3 xs:h-3.5 w-3 xs:w-3.5 animate-spin rounded-full border-2 border-gray-500 border-t-transparent"></div>
                       Loading...
                     </>
                   ) : (

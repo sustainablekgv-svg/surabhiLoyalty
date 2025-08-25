@@ -1531,7 +1531,20 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             {selectedCustomer ? (
               <>
                 <div className="p-4 bg-blue-50 rounded-lg">
-                  <h3 className="font-medium text-blue-900 mb-2">Customer Details</h3>
+                  <h3 className="font-medium text-blue-900 mb-2">Selected Customer</h3>
+                  <div className="mb-3">
+                    <p className="font-medium text-base text-blue-900">
+                      {selectedCustomer.customerName}
+                    </p>
+                    <p className="text-sm text-blue-700">
+                      {selectedCustomer.customerMobile}
+                    </p>
+                    {selectedCustomer.customerEmail && (
+                      <p className="text-sm text-blue-700">
+                        {selectedCustomer.customerEmail}
+                      </p>
+                    )}
+                  </div>
                   <div className="grid grid-cols-3 gap-4 text-sm">
                     <div>
                       <p className="text-blue-700">Wallet Balance</p>

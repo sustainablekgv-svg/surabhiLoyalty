@@ -1,21 +1,21 @@
 import {
+  collection,
   doc,
   getDoc,
-  Timestamp,
-  collection,
-  query,
-  where,
-  orderBy,
-  limit,
   getDocs,
+  limit,
+  orderBy,
+  query,
+  Timestamp,
+  where,
 } from 'firebase/firestore';
-import { Wallet, Coins, Heart, TrendingUp, Gift, Target, Phone, User } from 'lucide-react';
+import { Coins, Gift, Heart, Phone, Target, TrendingUp, User, Wallet } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/auth-context';
 import { db } from '@/lib/firebase';
-import { CustomerType, ActivityType } from '@/types/types';
+import { ActivityType, CustomerType } from '@/types/types';
 
 interface CustomerStatsProps {
   userId: string;
@@ -163,7 +163,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
     {
       title: 'Surabhi Coins',
       value: customerData.surabhiBalance.toFixed(2),
-      description: 'Lifetime coins earned',
+      description: 'Available for purchases',
       icon: Coins,
       color: 'text-amber-600',
       bgColor: 'bg-amber-50',
@@ -190,34 +190,34 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
   ];
 
   return (
-    <div className="space-y-3 xs:space-y-4 sm:space-y-6">
+    <div className="space-y-2 xs:space-y-3 sm:space-y-4">
       {/* Customer Info Card */}
       <Card className="shadow-lg border-0 bg-white">
-        <CardContent className="p-3 xs:p-4 sm:p-6">
-          <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 xs:gap-3 sm:gap-4">
-            <div className="flex items-center gap-2 xs:gap-3 sm:gap-4">
-              <div className="bg-purple-100 p-1.5 xs:p-2 sm:p-3 rounded-full">
-                <User className="h-4 w-4 xs:h-5 xs:w-5 sm:h-6 sm:w-6 text-purple-600" />
+        <CardContent className="p-2 xs:p-3 sm:p-4">
+          <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-1.5 xs:gap-2 sm:gap-3">
+            <div className="flex items-center gap-1 xs:gap-2 sm:gap-3">
+              <div className="bg-purple-100 p-1 xs:p-1.5 sm:p-2 rounded-full">
+                <User className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-purple-600" />
               </div>
               <div>
-                <h2 className="text-base xs:text-lg sm:text-xl font-bold truncate max-w-[150px] xs:max-w-[200px] sm:max-w-full">
+                <h2 className="text-sm xs:text-base sm:text-lg font-bold truncate max-w-[150px] xs:max-w-[200px] sm:max-w-full">
                   {customerData.customerName}
                 </h2>
-                <p className="text-[10px] xs:text-xs sm:text-sm text-gray-600">
+                <p className="text-[9px] xs:text-[10px] sm:text-xs text-gray-600">
                   Member since {memberSince}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 xs:gap-3 sm:gap-4 mt-2 xs:mt-0">
-              <div className="bg-blue-100 p-1.5 xs:p-2 sm:p-3 rounded-full">
-                <Phone className="h-4 w-4 xs:h-5 xs:w-5 sm:h-6 sm:w-6 text-blue-600" />
+            <div className="flex items-center gap-1 xs:gap-2 sm:gap-3 mt-1 xs:mt-0">
+              <div className="bg-blue-100 p-1 xs:p-1.5 sm:p-2 rounded-full">
+                <Phone className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-blue-600" />
               </div>
               <div className="text-left sm:text-right">
-                <p className="text-[10px] xs:text-xs sm:text-sm text-gray-600">
+                <p className="text-[9px] xs:text-[10px] sm:text-xs text-gray-600">
                   Your referral number
                 </p>
-                <p className="text-sm xs:text-base sm:text-lg font-bold">
+                <p className="text-xs xs:text-sm sm:text-base font-bold">
                   {customerData.customerMobile}
                 </p>
               </div>
@@ -227,27 +227,27 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       </Card>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 xs:gap-3 sm:gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-1.5 xs:gap-2 sm:gap-3">
         {stats.map((stat, index) => (
           <Card
             key={index}
             className={`shadow-lg border-0 ${stat.bgColor} ${stat.borderColor} hover:shadow-xl transition-shadow duration-200`}
           >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 xs:pb-1 sm:pb-2 px-2 xs:px-3 sm:px-6 pt-2 xs:pt-3 sm:pt-6">
-              <CardTitle className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-700">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0.5 xs:pb-1 sm:pb-1.5 px-1.5 xs:px-2 sm:px-4 pt-1.5 xs:pt-2 sm:pt-4">
+              <CardTitle className="text-[9px] xs:text-[10px] sm:text-xs font-medium text-gray-700">
                 {stat.title}
               </CardTitle>
-              <div className="bg-white p-1 xs:p-1.5 sm:p-2 rounded-full">
-                <stat.icon className={`h-2.5 w-2.5 xs:h-3 xs:w-3 sm:h-4 sm:w-4 ${stat.color}`} />
+              <div className="bg-white p-0.5 xs:p-1 sm:p-1.5 rounded-full">
+                <stat.icon className={`h-2 w-2 xs:h-2.5 xs:w-2.5 sm:h-3 sm:w-3 ${stat.color}`} />
               </div>
             </CardHeader>
-            <CardContent className="px-2 xs:px-3 sm:px-6 pb-2 xs:pb-3 sm:pb-6 pt-0">
+            <CardContent className="px-1.5 xs:px-2 sm:px-4 pb-1.5 xs:pb-2 sm:pb-4 pt-0">
               <div
-                className={`text-base xs:text-lg sm:text-2xl font-bold ${stat.color} mb-0.5 xs:mb-0.5 sm:mb-1`}
+                className={`text-sm xs:text-base sm:text-lg font-bold ${stat.color} mb-0.5 xs:mb-0.5 sm:mb-1`}
               >
                 {stat.value}
               </div>
-              <p className="text-[8px] xs:text-[10px] sm:text-xs text-gray-600">
+              <p className="text-[7px] xs:text-[8px] sm:text-[10px] text-gray-600">
                 {stat.description}
               </p>
             </CardContent>
@@ -258,26 +258,26 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       {/* Recent Activity & Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 xs:gap-4 sm:gap-6">
         <Card className="shadow-lg border-0 bg-white">
-          <CardHeader className="px-3 xs:px-4 sm:px-6 py-2 xs:py-3 sm:py-4">
-            <CardTitle className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 text-sm xs:text-base sm:text-lg">
-              <TrendingUp className="h-3.5 w-3.5 xs:h-4 xs:w-4 sm:h-5 sm:w-5 text-blue-600" />
+          <CardHeader className="px-2 xs:px-3 sm:px-4 py-1.5 xs:py-2 sm:py-3">
+            <CardTitle className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 text-xs xs:text-sm sm:text-base">
+              <TrendingUp className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-blue-600" />
               Recent Activity
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-3 xs:px-4 sm:px-6 pb-3 xs:pb-4 sm:pb-6 pt-0">
-            <div className="space-y-2 xs:space-y-3 sm:space-y-4">
+          <CardContent className="px-2 xs:px-3 sm:px-4 pb-2 xs:pb-3 sm:pb-4 pt-0">
+            <div className="space-y-1 xs:space-y-2 sm:space-y-3">
               {activities.length > 0 ? (
                 activities.map(activity => (
                   <div
                     key={activity.id}
-                    className="flex items-center justify-between p-2 sm:p-3 bg-gray-50 rounded-lg"
+                    className="flex items-center justify-between p-1.5 sm:p-2 bg-gray-50 rounded-lg"
                   >
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="bg-white p-1.5 sm:p-2 rounded-full border">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <div className="bg-white p-1 sm:p-1.5 rounded-full border">
                         {getActivityIcon(activity.type)}
                       </div>
                       <div>
-                        <p className="font-medium text-xs sm:text-sm truncate max-w-[120px] sm:max-w-full">
+                        <p className="font-medium text-[10px] sm:text-xs truncate max-w-[120px] sm:max-w-full">
                           {activity.type === 'recharge'
                             ? 'Wallet Recharge'
                             : activity.type === 'sale'
@@ -292,7 +292,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                                       ? 'Surabhi Coins Earned'
                                       : 'Account Activity'}
                         </p>
-                        <p className="text-[10px] sm:text-xs text-gray-600 truncate max-w-[150px] sm:max-w-full">
+                        <p className="text-[9px] sm:text-[10px] text-gray-600 truncate max-w-[150px] sm:max-w-full">
                           {activity.createdAt && formatActivityDate(activity.createdAt)} •{' '}
                           {activity.storeLocation}
                         </p>
@@ -300,7 +300,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                     </div>
                     {activity.amount && (
                       <span
-                        className={`text-xs sm:text-sm font-bold ${
+                        className={`text-[10px] sm:text-xs font-bold ${
                           activity.type === 'recharge' ||
                           activity.type === 'referral' ||
                           activity.type === 'surabhi_earn'
@@ -314,7 +314,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                   </div>
                 ))
               ) : (
-                <div className="text-center py-3 sm:py-4 text-gray-500 text-sm">
+                <div className="text-center py-2 sm:py-3 text-gray-500 text-xs">
                   No recent activities found
                 </div>
               )}
@@ -323,75 +323,75 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
         </Card>
 
         <Card className="shadow-lg border-0 bg-white">
-          <CardHeader className="px-4 sm:px-6 py-3 sm:py-4">
-            <CardTitle className="flex items-center gap-1.5 sm:gap-2 text-base sm:text-lg">
-              <Target className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
+          <CardHeader className="px-2 xs:px-3 sm:px-4 py-1.5 xs:py-2 sm:py-3">
+            <CardTitle className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 text-xs xs:text-sm sm:text-base">
+              <Target className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-purple-600" />
               Earning Opportunities
             </CardTitle>
-            <CardDescription className="text-xs sm:text-sm">
+            <CardDescription className="text-[10px] xs:text-xs">
               Ways to earn more rewards
             </CardDescription>
           </CardHeader>
-          <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6 pt-0">
-            <div className="space-y-3 sm:space-y-4">
-              <div className="p-3 sm:p-4 bg-gradient-to-r from-purple-50 to-amber-50 rounded-lg border border-purple-200">
-                <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
-                  <div className="bg-purple-100 p-1.5 sm:p-2 rounded-full">
-                    <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-600" />
+          <CardContent className="px-2 xs:px-3 sm:px-4 pb-2 xs:pb-3 sm:pb-4 pt-0">
+            <div className="space-y-1.5 xs:space-y-2 sm:space-y-3">
+              <div className="p-2 sm:p-3 bg-gradient-to-r from-purple-50 to-amber-50 rounded-lg border border-purple-200">
+                <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5">
+                  <div className="bg-purple-100 p-1 sm:p-1.5 rounded-full">
+                    <Wallet className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-purple-600" />
                   </div>
-                  <h3 className="font-medium text-sm sm:text-base text-purple-900">
+                  <h3 className="font-medium text-xs sm:text-sm text-purple-900">
                     Recharge Wallet
                   </h3>
                 </div>
-                <p className="text-xs sm:text-sm text-purple-700 mb-1.5 sm:mb-2">
+                <p className="text-[10px] sm:text-xs text-purple-700 mb-1 sm:mb-1.5">
                   Earn Surabhi Coins on every recharge
                 </p>
-                <div className="text-[10px] sm:text-xs text-purple-600">
+                <div className="text-[9px] sm:text-[10px] text-purple-600">
                   Visit store to recharge
                 </div>
               </div>
 
-              <div className="p-3 sm:p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-purple-200">
-                <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
-                  <div className="bg-purple-100 p-1.5 sm:p-2 rounded-full">
-                    <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-600" />
+              <div className="p-2 sm:p-3 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-purple-200">
+                <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5">
+                  <div className="bg-purple-100 p-1 sm:p-1.5 rounded-full">
+                    <Wallet className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-red-600" />
                   </div>
-                  <h3 className="font-medium text-sm sm:text-base text-red-900">Amount Spent</h3>
+                  <h3 className="font-medium text-xs sm:text-sm text-red-900">Amount Spent</h3>
                 </div>
-                <p className="text-xs sm:text-sm text-blue-700 mb-1.5 sm:mb-2">
+                <p className="text-[10px] sm:text-xs text-blue-700 mb-1 sm:mb-1.5">
                   Earn Surabhi coins on amount spent during sales
                 </p>
-                <div className="text-[10px] sm:text-xs text-blue-600">Shop at the Store</div>
+                <div className="text-[9px] sm:text-[10px] text-blue-600">Shop at the Store</div>
               </div>
 
-              <div className="p-3 sm:p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
-                <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
-                  <div className="bg-green-100 p-1.5 sm:p-2 rounded-full">
-                    <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-600" />
+              <div className="p-2 sm:p-3 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
+                <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5">
+                  <div className="bg-green-100 p-1 sm:p-1.5 rounded-full">
+                    <Phone className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-green-600" />
                   </div>
-                  <h3 className="font-medium text-sm sm:text-base text-green-900">Refer Friends</h3>
+                  <h3 className="font-medium text-xs sm:text-sm text-green-900">Refer Friends</h3>
                 </div>
-                <p className="text-xs sm:text-sm text-green-700 mb-1.5 sm:mb-2">
-                  Earn Referral coins on friend's purchases
+                <p className="text-[10px] sm:text-xs text-green-700 mb-1 sm:mb-1.5">
+                  Earn surabhi coins on referral recharge and amount spent by referral during sales.
                 </p>
-                <div className="text-[10px] sm:text-xs text-green-600">
+                <div className="text-[9px] sm:text-[10px] text-green-600">
                   Ask friends to use your number when signing up
                 </div>
               </div>
 
-              <div className="p-3 sm:p-4 bg-gradient-to-r from-purple-50 to-amber-50 rounded-lg border border-purple-200">
-                <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
-                  <div className="bg-purple-100 p-1.5 sm:p-2 rounded-full">
-                    <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-600" />
+              <div className="p-2 sm:p-3 bg-gradient-to-r from-purple-50 to-amber-50 rounded-lg border border-purple-200">
+                <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5">
+                  <div className="bg-purple-100 p-1 sm:p-1.5 rounded-full">
+                    <Wallet className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-purple-600" />
                   </div>
-                  <h3 className="font-medium text-sm sm:text-base text-purple-900">
+                  <h3 className="font-medium text-xs sm:text-sm text-purple-900">
                     Seva Contribution
                   </h3>
                 </div>
-                <p className="text-xs sm:text-sm text-purple-700 mb-1.5 sm:mb-2">
+                <p className="text-[10px] sm:text-xs text-purple-700 mb-1 sm:mb-1.5">
                   Earn Seva Coins on every recharge and amount spent during sales
                 </p>
-                <div className="text-[10px] sm:text-xs text-purple-600">Help the Community</div>
+                <div className="text-[9px] sm:text-[10px] text-purple-600">Help the Community</div>
               </div>
             </div>
           </CardContent>
