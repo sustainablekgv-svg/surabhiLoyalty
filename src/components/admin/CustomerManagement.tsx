@@ -111,7 +111,7 @@ export const CustomerManagement = () => {
         });
         setCustomers(customersData);
       } catch (error) {
-        console.error('Error fetching customers:', error);
+        // console.error('Error fetching customers:', error);
       } finally {
         setLoading(false);
       }
@@ -138,6 +138,7 @@ export const CustomerManagement = () => {
             storeContactNumber: data.storeContactNumber || data.contactNumber || '',
             storeStatus: data.storeStatus === 'active' ? 'active' : 'inactive',
             storeCurrentBalance: data.storeCurrentBalance || data.currentBalance || 0,
+            walletEnabled: data.walletEnabled || false,
             storeCreatedAt:
               data.storeCreatedAt instanceof Timestamp
                 ? data.storeCreatedAt

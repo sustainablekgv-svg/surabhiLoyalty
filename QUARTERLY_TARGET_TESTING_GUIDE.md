@@ -15,6 +15,7 @@ This guide will help you test the newly implemented quarterly sales target funct
 ### 1. Test Customer Registration with joinedDate
 
 **Steps:**
+
 1. Navigate to the Staff dashboard
 2. Go to "User Registration" section
 3. Register a new customer with these details:
@@ -32,6 +33,7 @@ This guide will help you test the newly implemented quarterly sales target funct
 ### 2. Test Quarterly Target Calculation
 
 **Steps:**
+
 1. In Firestore, manually check the `quarterlyTargets.ts` logic:
    - For a customer joined today: target should be 2000 (1 quarter × 2000)
    - For a customer joined 6 months ago: target should be 4000 (2 quarters × 2000)
@@ -42,6 +44,7 @@ This guide will help you test the newly implemented quarterly sales target funct
 ### 3. Test Coin Usage Restriction (Target Not Met)
 
 **Steps:**
+
 1. Create a test customer or use existing one
 2. Ensure their `cumTotal` is less than their `quarterlyTarget`
 3. Add some `surabhiCredit` to their wallet (e.g., 500 coins)
@@ -49,7 +52,8 @@ This guide will help you test the newly implemented quarterly sales target funct
 5. Try to create a sale using `surabhiCoins`
 6. Attempt to use coins in the payment
 
-**Expected Result:** 
+**Expected Result:**
+
 - Should show error message preventing coin usage
 - Sale should not allow `surabhiCoins` to be deducted
 - Error message should indicate quarterly target not met
@@ -57,6 +61,7 @@ This guide will help you test the newly implemented quarterly sales target funct
 ### 4. Test Coin Usage Allowance (Target Met)
 
 **Steps:**
+
 1. Create a test customer or modify existing one
 2. Set their `cumTotal` to be greater than or equal to their `quarterlyTarget`
 3. Set `targetMet` to `true` in Firestore
@@ -65,6 +70,7 @@ This guide will help you test the newly implemented quarterly sales target funct
 6. Create a sale and try to use `surabhiCoins`
 
 **Expected Result:**
+
 - Should allow coin usage without restrictions
 - Coins should be deducted normally from wallet
 - Sale should process successfully
@@ -72,6 +78,7 @@ This guide will help you test the newly implemented quarterly sales target funct
 ### 5. Test Firebase Function Deployment
 
 **Steps:**
+
 1. Deploy Firebase functions:
    ```bash
    cd functions
@@ -86,6 +93,7 @@ This guide will help you test the newly implemented quarterly sales target funct
 ### 6. Test Target Carryforward Logic
 
 **Steps:**
+
 1. Create a test scenario in Firestore:
    - Customer with `quarterlyTarget`: 4000
    - Customer with `cumTotal`: 3000 (target not met)
@@ -94,6 +102,7 @@ This guide will help you test the newly implemented quarterly sales target funct
 3. Check the updated customer data
 
 **Expected Result:**
+
 - `targetMet` should be `false`
 - `carriedForwardTarget` should be 1000 (4000 - 3000)
 - `coinsFrozen` should be `true`
@@ -101,18 +110,21 @@ This guide will help you test the newly implemented quarterly sales target funct
 ## Manual Testing Scenarios
 
 ### Scenario A: New Customer Journey
+
 1. Register new customer → Check joinedDate stored
 2. Customer makes purchases → Check cumTotal increases
 3. Customer tries to use coins before meeting target → Should be blocked
 4. Customer reaches target → Should be able to use coins
 
 ### Scenario B: Quarterly Transition
+
 1. Customer with unmet target at quarter end
 2. Run quarterly check function
 3. Verify carryforward calculation
 4. Next quarter: target should include carryforward amount
 
 ### Scenario C: Legacy Customer Handling
+
 1. Existing customer without `joinedDate`
 2. Quarterly function should skip them gracefully
 3. No errors should occur
@@ -127,7 +139,7 @@ Check these fields in Firestore for each test customer:
   customerName: "Test Customer",
   cumTotal: 0,
   surabhiCredit: 0,
-  
+
   // New quarterly target fields
   joinedDate: Timestamp,
   quarterlyTarget: number,
@@ -142,16 +154,19 @@ Check these fields in Firestore for each test customer:
 ## Troubleshooting
 
 **If coin usage is not being blocked:**
+
 - Check if `hasMetQuarterlyTarget` function is being called in SalesManagement
 - Verify customer's `targetMet` field in database
 - Check browser console for any JavaScript errors
 
 **If quarterly function fails:**
+
 - Check Firebase Functions logs
 - Verify all customers have required fields
 - Check for any Firestore permission issues
 
 **If target calculation seems wrong:**
+
 - Verify `joinedDate` is stored correctly
 - Check `getQuartersElapsed` function logic
 - Ensure timezone handling is correct

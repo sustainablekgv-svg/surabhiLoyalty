@@ -21,10 +21,10 @@ function getCurrentQuarterStart(): Date {
 function getQuartersElapsed(joinedDate: Date, currentDate: Date): number {
   const startYear = joinedDate.getFullYear();
   const startQuarter = Math.floor(joinedDate.getMonth() / 3);
-  
+
   const endYear = currentDate.getFullYear();
   const endQuarter = Math.floor(currentDate.getMonth() / 3);
-  
+
   return (endYear - startYear) * 4 + (endQuarter - startQuarter) + 1;
 }
 
@@ -55,18 +55,18 @@ export const checkQuarterlyCriteria = onSchedule(
 
       for (const doc of snapshot.docs) {
         const customer = doc.data();
-        
+
         // Skip if customer doesn't have joinedDate (legacy customers)
         if (!customer.joinedDate) {
           continue;
         }
-        
+
         const joinedDate = customer.joinedDate.toDate();
         const currentTarget = calculateQuarterlyTarget(joinedDate);
         const totalTarget = currentTarget + (customer.carriedForwardTarget || 0);
         const cumTotal = customer.cumTotal || 0;
         const targetMet = cumTotal >= totalTarget;
-        
+
         // Calculate carryforward for next quarter if target not met
         let newCarriedForward = 0;
         if (!targetMet) {

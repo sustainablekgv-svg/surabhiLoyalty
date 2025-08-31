@@ -47,8 +47,8 @@ const StoreDashboard = () => {
 
     const fetchStoreData = async () => {
       try {
-        console.log('User object:', user);
-        console.log('User storeLocation:', user.storeLocation);
+        // console.log('User object:', user);
+        // console.log('User storeLocation:', user.storeLocation);
 
         if (user.storeLocation) {
           // Query stores collection for matching location
@@ -57,34 +57,34 @@ const StoreDashboard = () => {
             where('storeName', '==', user.storeLocation)
           );
 
-          console.log('Querying stores with location:', user.storeLocation);
+          // console.log('Querying stores with location:', user.storeLocation);
 
           const querySnapshot = await getDocs(storesQuery);
-          console.log('Number of stores found:', querySnapshot.size);
+          // console.log('Number of stores found:', querySnapshot.size);
 
           if (!querySnapshot.empty) {
             // If multiple stores match, you can handle them here
-            querySnapshot.forEach(doc => {
-              console.log(`Store ${doc.id}:`, doc.data());
-            });
+            // querySnapshot.forEach(doc => {
+            // console.log(`Store ${doc.id}:`, doc.data());
+            // });
 
             // Use the first store found (or implement your logic for multiple stores)
             const firstStore = querySnapshot.docs[0];
             const storeData = firstStore.data() as StoreType;
 
-            console.log('Using store:', firstStore.id);
-            console.log('Wallet enabled status:', storeData.walletEnabled);
+            // console.log('Using store:', firstStore.id);
+            // console.log('Wallet enabled status:', storeData.walletEnabled);
             setWalletEnabled(storeData.walletEnabled || false);
           } else {
-            console.log('No stores found with location:', user.storeLocation);
+            // console.log('No stores found with location:', user.storeLocation);
             setWalletEnabled(false);
           }
         } else {
-          console.log('No storeLocation found in user object');
+          // console.log('No storeLocation found in user object');
           setWalletEnabled(false);
         }
       } catch (error) {
-        console.error('Error fetching store data:', error);
+        // console.error('Error fetching store data:', error);
         setWalletEnabled(false);
       }
       setIsLoading(false);
@@ -99,7 +99,7 @@ const StoreDashboard = () => {
       navigate('/');
       toast.success('Logged out successfully');
     } catch (error) {
-      console.error('Logout error:', error);
+      // console.error('Logout error:', error);
       toast.error('Logout failed. Please try again.');
     }
   };

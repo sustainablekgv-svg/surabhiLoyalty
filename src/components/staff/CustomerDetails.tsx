@@ -291,9 +291,7 @@ export const CustomerDetails = () => {
           <CardContent className="space-y-4">
             <div>
               <p className="text-xs text-muted-foreground">Surabhi Coins</p>
-              <p className="text-lg font-medium">
-                {Math.floor(customer.surabhiBalance || 0)}
-              </p>
+              <p className="text-lg font-medium">{Math.floor(customer.surabhiBalance || 0)}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Total Seva Coins</p>

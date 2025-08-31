@@ -428,7 +428,9 @@ export const SalesManagement = () => {
                               )}
                             </TableCell>
                             <TableCell>{transaction.customerMobile || 'N/A'}</TableCell>
-                            <TableCell className="font-bold">₹{transaction.amount.toFixed(2)}</TableCell>
+                            <TableCell className="font-bold">
+                              ₹{transaction.amount.toFixed(2)}
+                            </TableCell>
                             <TableCell>
                               <Badge
                                 variant={

@@ -21,65 +21,75 @@ export const TermsAndConditions = () => {
                 Each recharge transaction must have a minimum value of ₹2,000
               </p>
             </div>
-            
+
             <div className="flex items-start gap-3">
               <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
                 2
               </span>
               <p className="text-sm xs:text-base text-gray-700 leading-relaxed">
-                You may refer others only if you have either recharged a minimum of ₹2,000 or purchased products worth at least ₹2,000. For students, the minimum recharge requirement remains ₹2,000, while the minimum product purchase requirement is reduced to ₹500.
+                You may refer others only if you have either recharged a minimum of ₹2,000 or
+                purchased products worth at least ₹2,000. For students, the minimum recharge
+                requirement remains ₹2,000, while the minimum product purchase requirement is
+                reduced to ₹500.
               </p>
             </div>
-            
+
             <div className="flex items-start gap-3">
               <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
                 3
               </span>
               <p className="text-sm xs:text-base text-gray-700 leading-relaxed">
-                Coins can be redeemed from the quarter of joining without any target. From the following quarter onwards, coins will remain frozen until the cumulative purchase target is achieved, with ₹2,000 added to the target value each quarter.
+                Coins can be redeemed from the quarter of joining without any target. From the
+                following quarter onwards, coins will remain frozen until the cumulative purchase
+                target is achieved, with ₹2,000 added to the target value each quarter.
               </p>
             </div>
-            
+
             <div className="flex items-start gap-3">
               <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
                 4
               </span>
               <p className="text-sm xs:text-base text-gray-700 leading-relaxed">
-                The company reserves the right to utilize Seva Coins, in full or in part, for social or charitable causes at its discretion.
+                The company reserves the right to utilize Seva Coins, in full or in part, for social
+                or charitable causes at its discretion.
               </p>
             </div>
-            
+
             <div className="flex items-start gap-3">
               <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
                 5
               </span>
               <p className="text-sm xs:text-base text-gray-700 leading-relaxed">
-                The company reserves the right to modify the Surabhi Loyalty Program at its discretion.
+                The company reserves the right to modify the Surabhi Loyalty Program at its
+                discretion.
               </p>
             </div>
-            
+
             <div className="flex items-start gap-3">
               <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
                 6
               </span>
               <p className="text-sm xs:text-base text-gray-700 leading-relaxed">
-                Misuse of the program or violation of these terms may result in suspension of coin benefits.
+                Misuse of the program or violation of these terms may result in suspension of coin
+                benefits.
               </p>
             </div>
-            
+
             <div className="flex items-start gap-3">
               <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
                 7
               </span>
               <p className="text-sm xs:text-base text-gray-700 leading-relaxed">
-                Decisions made by the company regarding eligibility, redemption, or disputes shall be final and binding.
+                Decisions made by the company regarding eligibility, redemption, or disputes shall
+                be final and binding.
               </p>
             </div>
           </div>
-          
+
           <div className="mt-6 xs:mt-7 sm:mt-8 p-3 xs:p-4 bg-amber-50 border border-amber-200 rounded-lg">
             <p className="text-xs xs:text-sm text-amber-800 font-medium">
-              <strong>Note:</strong> These terms and conditions are subject to change. Please review them periodically for updates.
+              <strong>Note:</strong> These terms and conditions are subject to change. Please review
+              them periodically for updates.
             </p>
           </div>
         </div>

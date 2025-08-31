@@ -8,10 +8,10 @@ import { CustomerType } from '@/types/types';
 export function calculateQuarterlyTarget(joinedDate: Timestamp): number {
   const now = new Date();
   const joined = joinedDate.toDate();
-  
+
   // Calculate quarters elapsed since joining
   const quartersElapsed = getQuartersElapsed(joined, now);
-  
+
   // Target is 2000 per quarter
   return quartersElapsed * 2000;
 }
@@ -22,10 +22,10 @@ export function calculateQuarterlyTarget(joinedDate: Timestamp): number {
 export function getQuartersElapsed(startDate: Date, endDate: Date): number {
   const startYear = startDate.getFullYear();
   const startQuarter = Math.floor(startDate.getMonth() / 3);
-  
+
   const endYear = endDate.getFullYear();
   const endQuarter = Math.floor(endDate.getMonth() / 3);
-  
+
   return (endYear - startYear) * 4 + (endQuarter - startQuarter) + 1;
 }
 
@@ -45,7 +45,7 @@ export function getNextQuarterStart(): Date {
   const now = new Date();
   const currentQuarter = Math.floor(now.getMonth() / 3);
   const nextQuarter = currentQuarter + 1;
-  
+
   if (nextQuarter > 3) {
     // Next year, first quarter
     return new Date(now.getFullYear() + 1, 0, 1);
@@ -68,7 +68,7 @@ export function hasMetQuarterlyTarget(customer: CustomerType): boolean {
 export function updateCustomerQuarterlyTarget(customer: CustomerType): Partial<CustomerType> {
   const newTarget = calculateQuarterlyTarget(customer.joinedDate);
   const targetMet = hasMetQuarterlyTarget({ ...customer, quarterlyTarget: newTarget });
-  
+
   return {
     quarterlyTarget: newTarget,
     targetMet,
@@ -83,9 +83,9 @@ export function calculateCarriedForwardTarget(customer: CustomerType): number {
   if (customer.targetMet) {
     return 0; // No carryforward if target was met
   }
-  
+
   const totalTarget = customer.quarterlyTarget + customer.carriedForwardTarget;
   const shortfall = Math.max(0, totalTarget - customer.cumTotal);
-  
+
   return shortfall;
 }
