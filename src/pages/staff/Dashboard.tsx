@@ -23,7 +23,7 @@ import { useAuth } from '@/hooks/auth-context';
 
 import { db } from '@/lib/firebase';
 import { StoreType } from '@/types/types';
-import { doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 
 const StoreDashboard = () => {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -46,13 +46,46 @@ const StoreDashboard = () => {
     }
 
     const fetchStoreData = async () => {
-      if (user.storeLocation) {
-        const storeDocRef = doc(db, 'stores', user.storeLocation);
-        const storeDocSnap = await getDoc(storeDocRef);
-        if (storeDocSnap.exists()) {
-          const storeData = storeDocSnap.data() as StoreType;
-          setWalletEnabled(storeData.walletEnabled || false);
+      try {
+        console.log('User object:', user);
+        console.log('User storeLocation:', user.storeLocation);
+
+        if (user.storeLocation) {
+          // Query stores collection for matching location
+          const storesQuery = query(
+            collection(db, 'stores'),
+            where('storeName', '==', user.storeLocation)
+          );
+
+          console.log('Querying stores with location:', user.storeLocation);
+
+          const querySnapshot = await getDocs(storesQuery);
+          console.log('Number of stores found:', querySnapshot.size);
+
+          if (!querySnapshot.empty) {
+            // If multiple stores match, you can handle them here
+            querySnapshot.forEach(doc => {
+              console.log(`Store ${doc.id}:`, doc.data());
+            });
+
+            // Use the first store found (or implement your logic for multiple stores)
+            const firstStore = querySnapshot.docs[0];
+            const storeData = firstStore.data() as StoreType;
+
+            console.log('Using store:', firstStore.id);
+            console.log('Wallet enabled status:', storeData.walletEnabled);
+            setWalletEnabled(storeData.walletEnabled || false);
+          } else {
+            console.log('No stores found with location:', user.storeLocation);
+            setWalletEnabled(false);
+          }
+        } else {
+          console.log('No storeLocation found in user object');
+          setWalletEnabled(false);
         }
+      } catch (error) {
+        console.error('Error fetching store data:', error);
+        setWalletEnabled(false);
       }
       setIsLoading(false);
     };
@@ -115,22 +148,24 @@ const StoreDashboard = () => {
                   { value: 'sales', icon: ShoppingCart, label: 'Sales' },
                   { value: 'transactions', icon: History, label: 'Transactions' },
                   { value: 'accounts', icon: WalletCards, label: 'Accounts' },
-                ].filter(tab => walletEnabled ? true : tab.value !== 'recharge').map(tab => (
-                  <TabsTrigger
-                    key={tab.value}
-                    value={tab.value}
-                    className={`flex flex-col items-center gap-0.5 py-1 px-0.5 rounded-md transition-all min-w-0 overflow-y-hidden ${
-                      activeTab === tab.value
-                        ? 'bg-white shadow-sm text-purple-600 font-medium'
-                        : 'text-gray-600 hover:text-purple-500'
-                    }`}
-                  >
-                    <tab.icon className="h-2 w-2 xs:h-2.5 xs:w-2.5 sm:h-4 sm:w-4" />
-                    <span className="text-[6px] xs:text-[7px] sm:text-xs truncate w-full text-center leading-tight">
-                      {tab.label}
-                    </span>
-                  </TabsTrigger>
-                ))}
+                ]
+                  .filter(tab => (walletEnabled ? true : tab.value !== 'recharge'))
+                  .map(tab => (
+                    <TabsTrigger
+                      key={tab.value}
+                      value={tab.value}
+                      className={`flex flex-col items-center gap-0.5 py-1 px-0.5 rounded-md transition-all min-w-0 overflow-y-hidden ${
+                        activeTab === tab.value
+                          ? 'bg-white shadow-sm text-purple-600 font-medium'
+                          : 'text-gray-600 hover:text-purple-500'
+                      }`}
+                    >
+                      <tab.icon className="h-2 w-2 xs:h-2.5 xs:w-2.5 sm:h-4 sm:w-4" />
+                      <span className="text-[6px] xs:text-[7px] sm:text-xs truncate w-full text-center leading-tight">
+                        {tab.label}
+                      </span>
+                    </TabsTrigger>
+                  ))}
               </TabsList>
             </div>
 
