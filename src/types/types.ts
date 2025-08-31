@@ -152,6 +152,7 @@ export interface StoreType {
   storeUpdatedAt: Timestamp;
   adminCurrentBalance: number;
   adminStoreProfit: number;
+  walletEnabled: boolean;
 }
 
 export interface AdminHeaderProps {

@@ -21,11 +21,16 @@ import { WalletRecharge } from '@/components/staff/WalletRecharge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/auth-context';
 
+import { db } from '@/lib/firebase';
+import { StoreType } from '@/types/types';
+import { doc, getDoc } from 'firebase/firestore';
+
 const StoreDashboard = () => {
   const { user, logout, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [isLoading, setIsLoading] = useState(true);
+  const [walletEnabled, setWalletEnabled] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -39,7 +44,20 @@ const StoreDashboard = () => {
       toast.error('Access restricted to staff only');
       return;
     }
-    setIsLoading(false);
+
+    const fetchStoreData = async () => {
+      if (user.storeLocation) {
+        const storeDocRef = doc(db, 'stores', user.storeLocation);
+        const storeDocSnap = await getDoc(storeDocRef);
+        if (storeDocSnap.exists()) {
+          const storeData = storeDocSnap.data() as StoreType;
+          setWalletEnabled(storeData.walletEnabled || false);
+        }
+      }
+      setIsLoading(false);
+    };
+
+    fetchStoreData();
   }, [user, authLoading, navigate]);
 
   const handleLogout = async () => {
@@ -97,7 +115,7 @@ const StoreDashboard = () => {
                   { value: 'sales', icon: ShoppingCart, label: 'Sales' },
                   { value: 'transactions', icon: History, label: 'Transactions' },
                   { value: 'accounts', icon: WalletCards, label: 'Accounts' },
-                ].map(tab => (
+                ].filter(tab => walletEnabled ? true : tab.value !== 'recharge').map(tab => (
                   <TabsTrigger
                     key={tab.value}
                     value={tab.value}

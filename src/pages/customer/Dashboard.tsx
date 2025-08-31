@@ -70,9 +70,9 @@ const CustomerDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50 overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50">
       <CustomerHeader user={user} onLogout={handleLogout} />
-      <div className="container mx-auto px-2 xs:px-3 sm:px-4 lg:px-6 py-2 xs:py-3 sm:py-4 overflow-x-hidden">
+      <div className="container mx-auto px-2 xs:px-3 sm:px-4 lg:px-6 py-2 xs:py-3 sm:py-4">
         <div className="mb-2 xs:mb-3 sm:mb-4">
           <h1 className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900 mb-0.5 xs:mb-1">
             My Rewards Dashboard
@@ -86,48 +86,52 @@ const CustomerDashboard = () => {
           onValueChange={setActiveTab}
           className="w-full space-y-2 xs:space-y-3 sm:space-y-4"
         >
-          <TabsList className="grid w-full grid-cols-4 mb-2 xs:mb-3 sm:mb-4">
-            <TabsTrigger value="overview" className="flex flex-col items-center gap-0.5 py-1.5 sm:py-2">
-              <TrendingUp className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-              <span className="text-[9px] sm:text-[10px]">Overview</span>
+          <TabsList className="grid w-full grid-cols-4 mb-2 xs:mb-3 sm:mb-4 h-10">
+            <TabsTrigger
+              value="overview"
+              className="flex items-center justify-center p-2"
+              title="Overview"
+            >
+              <TrendingUp className="h-4 w-4" />
             </TabsTrigger>
             <TabsTrigger
               value="referrals"
-              className="flex flex-col items-center gap-0.5 py-1.5 sm:py-2"
+              className="flex items-center justify-center p-2"
+              title="Referrals"
             >
-              <Share2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-              <span className="text-[9px] sm:text-[10px]">Referrals</span>
+              <Share2 className="h-4 w-4" />
             </TabsTrigger>
-            <TabsTrigger value="history" className="flex flex-col items-center gap-0.5 py-1.5 sm:py-2">
-              <History className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-              <span className="text-[9px] sm:text-[10px]">History</span>
+            <TabsTrigger
+              value="history"
+              className="flex items-center justify-center p-2"
+              title="History"
+            >
+              <History className="h-4 w-4" />
             </TabsTrigger>
-            <TabsTrigger value="terms" className="flex flex-col items-center gap-0.5 py-1.5 sm:py-2">
-              <FileText className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-              <span className="text-[9px] sm:text-[10px]">Terms</span>
+            <TabsTrigger
+              value="terms"
+              className="flex items-center justify-center p-2"
+              title="Terms"
+            >
+              <FileText className="h-4 w-4" />
             </TabsTrigger>
           </TabsList>
 
-          <div className="bg-white rounded-lg shadow-sm p-2 xs:p-3 sm:p-4 mt-2 xs:mt-3 sm:mt-4 overflow-x-hidden">
-            <TabsContent
-              value="overview"
-              className="space-y-2 xs:space-y-3 sm:space-y-4 mt-0"
-            >
-              <CustomerStats userId={user.id} />
-            </TabsContent>
+          <TabsContent value="overview" className="space-y-2 xs:space-y-3 sm:space-y-4 mt-0">
+            <CustomerStats userId={user.id} />
+          </TabsContent>
 
-            <TabsContent value="referrals" className="mt-0">
-              <ReferralSystem userId={user.id} userName={user.name || ''} userMobile={user.mobile} />
-            </TabsContent>
+          <TabsContent value="referrals" className="mt-0">
+            <ReferralSystem userId={user.id} userName={user.name || ''} userMobile={user.mobile} />
+          </TabsContent>
 
-            <TabsContent value="history" className="mt-0">
-              <TransactionHistory userId={user.id} />
-            </TabsContent>
+          <TabsContent value="history" className="mt-0">
+            <TransactionHistory userId={user.id} />
+          </TabsContent>
 
-            <TabsContent value="terms" className="mt-0">
-              <TermsAndConditions />
-            </TabsContent>
-          </div>
+          <TabsContent value="terms" className="mt-0">
+            <TermsAndConditions />
+          </TabsContent>
         </Tabs>
       </div>
     </div>

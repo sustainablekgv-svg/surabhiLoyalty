@@ -73,8 +73,9 @@ const fetchCustomerByMobile = async (mobile: string): Promise<CustomerType | nul
 
 const calculateAdminCut = (saleAmount: number, storeDetails: StoreType) => {
   if (!storeDetails) return 0;
-  // const remainingAmount = saleAmount - surabhiCoinsToUse;
-  const surabhiAmount = customRound(saleAmount * (storeDetails.surabhiCommission / 100));
+  // Use the maximum of surabhiCommission and cashOnlyCommission for surabhiAmount
+  const maxCommission = Math.max(storeDetails.surabhiCommission, storeDetails.cashOnlyCommission);
+  const surabhiAmount = customRound(saleAmount * (maxCommission / 100));
   const referralAmount = customRound(saleAmount * (storeDetails.referralCommission / 100));
   const sevaAmount = customRound(saleAmount * (storeDetails.sevaCommission / 100));
   console.log('The line 74 data is', surabhiAmount, referralAmount, sevaAmount);
@@ -874,7 +875,6 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           sevaTotal: Number(
             (selectedCustomer.sevaTotal + saleCalculation.goSevaContribution).toFixed(2)
           ),
-          remarks: `Sale transaction for ${selectedCustomer.customerName}`,
           storeSevaBalance: Number(
             (storeDetails.storeSevaBalance + saleCalculation.goSevaContribution).toFixed(2)
           ),
@@ -1081,7 +1081,6 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             sevaTotal: Number(
               (selectedCustomer.sevaTotal + saleCalculation.goSevaContribution).toFixed(2)
             ),
-            remarks: `Mixed payment sale transaction for ${selectedCustomer.customerName}`,
             storeSevaBalance: Number(
               (storeDetails.storeSevaBalance + saleCalculation.goSevaContribution).toFixed(2)
             ),
@@ -1391,7 +1390,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         return;
       }
     }
-    console.log('Is it comign here in line 770');
+    console.log('Is it comig here in line 770');
     await handleRegisteredCustomerSale();
   };
 
@@ -1536,13 +1535,9 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
                     <p className="font-medium text-base text-blue-900">
                       {selectedCustomer.customerName}
                     </p>
-                    <p className="text-sm text-blue-700">
-                      {selectedCustomer.customerMobile}
-                    </p>
+                    <p className="text-sm text-blue-700">{selectedCustomer.customerMobile}</p>
                     {selectedCustomer.customerEmail && (
-                      <p className="text-sm text-blue-700">
-                        {selectedCustomer.customerEmail}
-                      </p>
+                      <p className="text-sm text-blue-700">{selectedCustomer.customerEmail}</p>
                     )}
                   </div>
                   <div className="grid grid-cols-3 gap-4 text-sm">

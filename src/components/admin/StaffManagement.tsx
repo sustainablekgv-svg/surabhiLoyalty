@@ -1256,25 +1256,48 @@ export const StaffManagement = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Status *</Label>
-              <Select
-                value={currentStore?.storeStatus || 'active'}
-                onValueChange={value =>
-                  setCurrentStore({
-                    ...currentStore,
-                    storeStatus: value as 'active' | 'inactive',
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Status *</Label>
+                <Select
+                  value={currentStore?.storeStatus || 'active'}
+                  onValueChange={value =>
+                    setCurrentStore({
+                      ...currentStore,
+                      storeStatus: value as 'active' | 'inactive',
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Wallet Enabled</Label>
+                <Select
+                  value={currentStore?.walletEnabled ? 'true' : 'false'}
+                  onValueChange={value =>
+                    setCurrentStore({
+                      ...currentStore,
+                      walletEnabled: value === 'true',
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select wallet status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Enabled</SelectItem>
+                    <SelectItem value="false">Disabled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
