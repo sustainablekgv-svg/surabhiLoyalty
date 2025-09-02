@@ -139,7 +139,7 @@ export const GoSevaPool = () => {
         } as StaffType);
       }
     } catch (error) {
-      console.error('Error fetching admin details:', error);
+      // console.error('Error fetching admin details:', error);
     }
   };
 
@@ -334,7 +334,7 @@ export const GoSevaPool = () => {
 
       setCustomers(topCustomers as Customer[]);
     } catch (error) {
-      console.error('Error fetching data:', error);
+      // console.error('Error fetching data:', error);
       toast.error('Failed to load data');
     } finally {
       setLoading(false);
@@ -488,7 +488,7 @@ export const GoSevaPool = () => {
       // Refresh data to show the new transaction
       fetchData();
     } catch (error) {
-      console.error('Error allocating funds:', error);
+      // console.error('Error allocating funds:', error);
       toast.error('Failed to allocate funds');
     }
   };

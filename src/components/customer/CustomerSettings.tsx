@@ -53,7 +53,7 @@ export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSetting
           });
         }
       } catch (error) {
-        console.error('Error fetching customer data:', error);
+        // console.error('Error fetching customer data:', error);
         toast.error('Failed to load your profile information');
       }
     };
@@ -106,12 +106,12 @@ export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSetting
       const customerRef = doc(db, 'Customers', user.id);
       await updateDoc(customerRef, updateData);
 
-      console.log('Customer record updated for ID:', user.id);
+      // console.log('Customer record updated for ID:', user.id);
       toast.success('Profile updated successfully');
 
       onOpenChange(false);
     } catch (error) {
-      console.error('Error updating customer profile:', error);
+      // console.error('Error updating customer profile:', error);
       toast.error('Update failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setIsUpdating(false);

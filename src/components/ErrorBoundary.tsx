@@ -34,7 +34,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       errorInfo: errorInfo.toString(),
     });
 
-    console.error('Error caught by ErrorBoundary:', error, errorInfo);
+    // console.error('Error caught by ErrorBoundary:', error, errorInfo);
   }
 
   render(): ReactNode {

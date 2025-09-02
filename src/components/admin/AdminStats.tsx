@@ -70,7 +70,7 @@ export const AdminStats = () => {
         }
       },
       error => {
-        console.error('Error listening to SevaPool updates:', error);
+        // console.error('Error listening to SevaPool updates:', error);
         toast.error('Failed to load Seva Pool data');
       }
     );
@@ -130,7 +130,7 @@ export const AdminStats = () => {
         ]);
       },
       error => {
-        console.error('Error listening to customer updates:', error);
+        // console.error('Error listening to customer updates:', error);
         setLoading(false);
       }
     );
@@ -178,7 +178,7 @@ export const AdminStats = () => {
         setStoreLoading(false);
       },
       error => {
-        console.error('Error listening to sales updates:', error);
+        // console.error('Error listening to sales updates:', error);
         setLoading(false);
         setStoreLoading(false);
       }

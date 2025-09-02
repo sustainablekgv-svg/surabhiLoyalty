@@ -103,7 +103,7 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
       setAllTransactions(fetchedTransactions);
       setFilteredTransactions(fetchedTransactions);
     } catch (err) {
-      console.error('Error fetching transactions:', err);
+      // console.error('Error fetching transactions:', err);
       setError('Failed to load transactions. Please try again.');
       toast.error('Failed to load transactions');
     } finally {
@@ -123,14 +123,14 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
 
     setIsFiltering(true);
     let result = [...allTransactions];
-    console.log('The data in line 112 is', result);
+    // console.log('The data in line 112 is', result);
 
     // Filter by tab
     if (activeTab === 'sales') {
       result = result.filter(tx => tx.type === 'sale');
     } else if (activeTab === 'recharges') {
       result = result.filter(tx => tx.type === 'recharge');
-      console.log('the resulrs in line 118 is', result);
+      // console.log('the resulrs in line 118 is', result);
     }
 
     // Search filter (customer name or mobile)

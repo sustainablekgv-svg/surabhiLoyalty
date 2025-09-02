@@ -15,7 +15,7 @@ import { useAuth } from '@/hooks/auth-context';
 
 const AdminDashboard = () => {
   const { user, logout, isLoading: authLoading } = useAuth();
-  console.log('THe user data is', user);
+  // console.log('THe user data is', user);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [isLoading, setIsLoading] = useState(true);

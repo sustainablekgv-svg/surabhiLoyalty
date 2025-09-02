@@ -53,7 +53,7 @@ export const StoreSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
           });
         }
       } catch (error) {
-        console.error('Error fetching staff data:', error);
+        // console.error('Error fetching staff data:', error);
         toast.error('Failed to load your profile information');
       }
     };
@@ -96,12 +96,12 @@ export const StoreSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
         staffPin: formData.staffPin,
       });
 
-      console.log('Staff record updated for ID:', user.id);
+      // console.log('Staff record updated for ID:', user.id);
       toast.success('Profile updated successfully');
 
       onOpenChange(false);
     } catch (error) {
-      console.error('Error updating staff profile:', error);
+      // console.error('Error updating staff profile:', error);
       toast.error('Update failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setIsUpdating(false);

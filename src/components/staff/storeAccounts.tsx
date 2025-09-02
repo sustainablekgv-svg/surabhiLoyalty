@@ -52,7 +52,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
   // Fetch all transactions for current store
   const fetchAllTransactions = async () => {
     if (!user.storeLocation) {
-      console.log('No store location provided');
+      // console.log('No store location provided');
       return;
     }
 
@@ -91,7 +91,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
 
       setAllTransactions(txData);
     } catch (err) {
-      console.error('Error fetching transactions:', err);
+      // console.error('Error fetching transactions:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);

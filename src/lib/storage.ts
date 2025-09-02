@@ -9,7 +9,7 @@ export const storageUtils = {
       const user = localStorage.getItem(STORAGE_KEYS.USER);
       return user ? JSON.parse(user) : null;
     } catch (error) {
-      console.error('Error parsing stored user:', error);
+      // console.error('Error parsing stored user:', error);
       return null;
     }
   },
@@ -18,7 +18,7 @@ export const storageUtils = {
     try {
       localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
     } catch (error) {
-      console.error('Error storing user:', error);
+      // console.error('Error storing user:', error);
     }
   },
 
@@ -31,7 +31,7 @@ export const storageUtils = {
       const lastActive = localStorage.getItem(STORAGE_KEYS.LAST_ACTIVE);
       return lastActive ? parseInt(lastActive, 10) : null;
     } catch (error) {
-      console.error('Error parsing last active time:', error);
+      // console.error('Error parsing last active time:', error);
       return null;
     }
   },
@@ -40,7 +40,7 @@ export const storageUtils = {
     try {
       localStorage.setItem(STORAGE_KEYS.LAST_ACTIVE, Date.now().toString());
     } catch (error) {
-      console.error('Error storing last active time:', error);
+      // console.error('Error storing last active time:', error);
     }
   },
 

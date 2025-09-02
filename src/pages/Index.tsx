@@ -30,7 +30,7 @@ const Index = () => {
     password: '',
     role: 'customer',
   });
-  console.log('The role selected is', formData.role);
+  // console.log('The role selected is', formData.role);
   const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
   const [customerEmail, setCustomerEmail] = useState('');
   const [isLoadingEmail, setIsLoadingEmail] = useState(false);

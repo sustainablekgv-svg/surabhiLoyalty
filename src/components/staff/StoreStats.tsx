@@ -35,7 +35,7 @@ export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
         setLoading(false);
       },
       err => {
-        console.error('Error fetching customers:', err);
+        // console.error('Error fetching customers:', err);
         setError('Failed to load customer data');
         setLoading(false);
       }
@@ -59,7 +59,7 @@ export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
         setActivities(activitiesData);
       },
       err => {
-        console.error('Error fetching activities:', err);
+        // console.error('Error fetching activities:', err);
         setError('Failed to load activity data');
       }
     );

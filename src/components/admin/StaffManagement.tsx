@@ -99,6 +99,7 @@ export const StaffManagement = () => {
           storeLocation: doc.data().storeLocation || '',
           storeAddress: doc.data().storeAddress || '',
           storeContactNumber: doc.data().storeContactNumber || '',
+          storePrefix: doc.data().storePrefix || '',
           storeCurrentBalance: Number(doc.data().storeCurrentBalance) || 0,
           storeSevaBalance: Number(doc.data().storeSevaBalance) || 0,
           referralCommission: Number(doc.data().referralCommission) || 0,
@@ -106,6 +107,7 @@ export const StaffManagement = () => {
           sevaCommission: Number(doc.data().sevaCommission) || 0,
           cashOnlyCommission: Number(doc.data().cashOnlyCommission) || 0,
           storeStatus: doc.data().storeStatus || 'active',
+          walletEnabled: doc.data().walletEnabled || false,
           adminCurrentBalance: Number(doc.data().adminCurrentBalance) || 0,
           adminStoreProfit: Number(doc.data().adminStoreProfit) || 0,
           storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
@@ -133,7 +135,7 @@ export const StaffManagement = () => {
         setStaff(staffData);
       } catch (error) {
         toast.error('Error fetching data');
-        console.error('Error fetching data:', error);
+        // console.error('Error fetching data:', error);
       } finally {
         setIsLoading(false);
       }
@@ -248,7 +250,7 @@ export const StaffManagement = () => {
       })) as StaffType[];
       setStaff(refreshedStaffData);
     } catch (error) {
-      console.error('Error saving staff:', error);
+      // console.error('Error saving staff:', error);
       toast.error('Failed to save staff');
     } finally {
       setIsLoading(false);
@@ -276,7 +278,7 @@ export const StaffManagement = () => {
       setCurrentStaff(null);
     } catch (error) {
       toast.error('Error deleting staff');
-      console.error('Error deleting staff:', error);
+      // console.error('Error deleting staff:', error);
     }
   };
 
@@ -332,6 +334,7 @@ export const StaffManagement = () => {
         storeSevaBalance: Number(currentStore.storeSevaBalance) || 0,
         cashOnlyCommission: Number(currentStore.cashOnlyCommission) || 0,
         storeStatus: currentStore.storeStatus || 'active',
+        walletEnabled: currentStore.walletEnabled || false,
         adminCurrentBalance: Number(currentStore.adminCurrentBalance) || 0,
         adminStoreProfit: Number(currentStore.adminStoreProfit) || 0,
         storeUpdatedAt: serverTimestamp(),
@@ -370,6 +373,7 @@ export const StaffManagement = () => {
         sevaCommission: Number(doc.data().sevaCommission) || 0,
         cashOnlyCommission: Number(doc.data().cashOnlyCommission) || 0,
         storeStatus: doc.data().storeStatus || 'active',
+        walletEnabled: doc.data().walletEnabled || false,
         adminCurrentBalance: Number(doc.data().adminCurrentBalance) || 0,
         adminStoreProfit: Number(doc.data().adminStoreProfit) || 0,
         storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
@@ -381,7 +385,7 @@ export const StaffManagement = () => {
       setCurrentStore(null);
       return true;
     } catch (error) {
-      console.error('Error saving store:', error);
+      // console.error('Error saving store:', error);
       toast.error(
         `Error saving store: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -406,7 +410,7 @@ export const StaffManagement = () => {
       toast.success('Store deleted successfully');
       return true;
     } catch (error) {
-      console.error('Error deleting store:', error);
+      // console.error('Error deleting store:', error);
       toast.error(
         `Error deleting store: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -1333,6 +1337,7 @@ export const StaffManagement = () => {
                     storeLocation: doc.data().storeLocation || '',
                     storeAddress: doc.data().storeAddress || '',
                     storeContactNumber: doc.data().storeContactNumber || '',
+                    storePrefix: doc.data().storePrefix || '',
                     storeCurrentBalance: Number(doc.data().storeCurrentBalance) || 0,
                     storeSevaBalance: Number(doc.data().storeSevaBalance) || 0,
                     referralCommission: Number(doc.data().referralCommission) || 0,
@@ -1340,6 +1345,7 @@ export const StaffManagement = () => {
                     sevaCommission: Number(doc.data().sevaCommission) || 0,
                     cashOnlyCommission: Number(doc.data().cashOnlyCommission) || 0,
                     storeStatus: doc.data().storeStatus || 'active',
+                    walletEnabled: doc.data().walletEnabled || false,
                     adminCurrentBalance: Number(doc.data().adminCurrentBalance) || 0,
                     adminStoreProfit: Number(doc.data().adminStoreProfit) || 0,
                     storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),

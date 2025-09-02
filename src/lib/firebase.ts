@@ -53,7 +53,7 @@ export const startPerformanceTrace = (traceName: string) => {
 // Helper function for error logging
 export const logError = (error: Error, additionalData: Record<string, any> = {}) => {
   // Log to console in development
-  console.error('Error logged:', error, additionalData);
+  // console.error('Error logged:', error, additionalData);
 
   // In production, we would log to Firebase Crashlytics
   // This is a placeholder for actual Crashlytics implementation

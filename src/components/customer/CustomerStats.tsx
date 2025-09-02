@@ -63,7 +63,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
           setError('No customer data found');
         }
       } catch (err) {
-        console.error('Error fetching customer data:', err);
+        // console.error('Error fetching customer data:', err);
         setError('Failed to fetch customer data');
       } finally {
         setLoading(false);

@@ -66,7 +66,7 @@ const fetchCustomerByMobile = async (mobile: string): Promise<CustomerType | nul
     }
     return null;
   } catch (error) {
-    console.error('Error fetching referrer:', error);
+    // console.error('Error fetching referrer:', error);
     return null;
   }
 };
@@ -78,7 +78,7 @@ const calculateAdminCut = (saleAmount: number, storeDetails: StoreType) => {
   const surabhiAmount = customRound(saleAmount * (maxCommission / 100));
   const referralAmount = customRound(saleAmount * (storeDetails.referralCommission / 100));
   const sevaAmount = customRound(saleAmount * (storeDetails.sevaCommission / 100));
-  console.log('The line 74 data is', surabhiAmount, referralAmount, sevaAmount);
+  // console.log('The line 74 data is', surabhiAmount, referralAmount, sevaAmount);
   return referralAmount + sevaAmount + surabhiAmount;
 };
 
@@ -91,7 +91,7 @@ const generateInvoiceId = (storePrefix: string) => {
 
 export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
   const { user } = useAuth();
-  console.log('The user in line 61 is', user);
+  // console.log('The user in line 61 is', user);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerType | null>(null);
   const [isRegisteredAtSameStore, setIsRegisteredAtSameStore] = useState<boolean>(false);
@@ -175,7 +175,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         setCustomers(customersData);
       } catch (error) {
         toast.error('Failed to fetch data');
-        console.error('Error fetching data:', error);
+        // console.error('Error fetching data:', error);
       } finally {
         setIsFetchingCustomers(false);
       }
@@ -203,7 +203,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         });
         setCustomers(customersData);
       } catch (error) {
-        console.error('Error fetching customers:', error);
+        // console.error('Error fetching customers:', error);
         toast.error('Failed to load customers');
       } finally {
         setIsFetchingCustomers(false);
@@ -236,7 +236,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       (saleCalculation.cashPayment *
         (storeDetails.surabhiCommission - storeDetails.cashOnlyCommission)) /
       100;
-    console.log('THe line 211 data is', cashPaymentPart);
+    // console.log('THe line 211 data is', cashPaymentPart);
     const surabhiCoinsPart =
       (saleCalculation.surabhiCoinsUsed *
         (storeDetails.referralCommission +
@@ -245,7 +245,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       100;
 
     const totalProfit = cashPaymentPart + surabhiCoinsPart;
-    console.log('The line 219 data is', totalProfit);
+    // console.log('The line 219 data is', totalProfit);
 
     // Round to 2 decimal places (for currency)
     return Number(totalProfit.toFixed(2));
@@ -281,7 +281,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           coinsToUse = 0;
         }
       } catch (error) {
-        console.error('Error checking quarterly target:', error);
+        // console.error('Error checking quarterly target:', error);
         // If there's an error, allow coin usage to prevent blocking sales
         coinsToUse = customRound(Math.min(surabhiCoinsToUse, selectedCustomer.surabhiBalance));
       }
@@ -345,7 +345,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
   const saleCalculation = saleAmount ? calculateSale() : null;
   const adminProfitTaken = calculateAdminProfit();
-  console.log('THe adminProfit taken is', adminProfitTaken);
+  // console.log('THe adminProfit taken is', adminProfitTaken);
 
   // console.log("The line 253 is", saleCalculation?.totalAmount)
 
@@ -356,14 +356,14 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         date: new Date(),
       });
     } catch (error) {
-      console.error('Error adding activity record:', error);
+      // console.error('Error adding activity record:', error);
       toast.error('Failed to log activity');
     }
   };
 
   const handleRegisteredCustomerSale = async () => {
-    console.log('Searching for customer with mobile:', selectedCustomer.customerMobile);
-    console.log('Selected customer object:', selectedCustomer);
+    // console.log('Searching for customer with mobile:', selectedCustomer.customerMobile);
+    // console.log('Selected customer object:', selectedCustomer);
     if (!selectedCustomer || !saleAmount || !saleCalculation || !saleCalculation.isValid) {
       toast.error('Invalid sale calculation');
       return;
@@ -376,8 +376,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       const customersRef = collection(db, 'Customers');
       const q = query(customersRef, where('customerMobile', '==', selectedCustomer.customerMobile));
       const querySnapshot = await getDocs(q);
-      console.log('Query snapshot empty:', querySnapshot.empty);
-      console.log('Query snapshot size:', querySnapshot.size);
+      // console.log('Query snapshot empty:', querySnapshot.empty);
+      // console.log('Query snapshot size:', querySnapshot.size);
       if (querySnapshot.empty) {
         throw new Error('Customer not found in database');
       }
@@ -415,16 +415,16 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           saleCalculation.surabhiCoinsUsed +
           saleCalculation.surabhiCoinsEarned
       );
-      console.log('Is it comig here in line 261', newWalletBalance, newSurabhiCoins);
+      // console.log('Is it comig here in line 261', newWalletBalance, newSurabhiCoins);
       // Update customer balances
       const customerDoc = querySnapshot.docs[0];
       const customerRef = customerDoc.ref;
-      console.log(
-        'Customer document in line 266 is',
-        customerRef,
-        newSurabhiCoins,
-        newSurabhiCoins
-      );
+      // console.log(
+      //   'Customer document in line 266 is',
+      //   customerRef,
+      //   newSurabhiCoins,
+      //   newSurabhiCoins
+      // );
 
       const newSevaBalance = Number(
         ((selectedCustomer.sevaBalance || 0) + saleCalculation.goSevaContribution).toFixed(2)
@@ -442,14 +442,14 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       // Only update saleElgibility to true if customer becomes eligible and wasn't already eligible
       const shouldUpdateEligibility = isEligible && selectedCustomer.saleElgibility !== true;
 
-      console.log(
-        'THe isEligible in line 378 is',
-        isEligible,
-        newCumTotal,
-        selectedCustomer.isStudent,
-        'shouldUpdateEligibility:',
-        shouldUpdateEligibility
-      );
+      // console.log(
+      //   'THe isEligible in line 378 is',
+      //   isEligible,
+      //   newCumTotal,
+      //   selectedCustomer.isStudent,
+      //   'shouldUpdateEligibility:',
+      //   shouldUpdateEligibility
+      // );
 
       const updateData: any = {
         cumTotal: newCumTotal,
@@ -554,9 +554,9 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             const referrerData = referrerDoc.data() as CustomerType;
             const referralAmount = saleCalculation.referrerSurabhiCoinsEarned;
 
-            console.log('Referrer Data:', referrerData);
-            console.log('New Referred User:', selectedCustomer.customerName);
-            console.log('Referral Amount:', referralAmount);
+            // console.log('Referrer Data:', referrerData);
+            // console.log('New Referred User:', selectedCustomer.customerName);
+            // console.log('Referral Amount:', referralAmount);
 
             // Safely increment referral amount (handle null/NaN)
             const incrementAmount =
@@ -758,12 +758,12 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             updatedAt: serverTimestamp(),
           });
 
-          console.log(
-            `Updated store balances: Current ${currentBalanceIncrement > 0 ? '+' : ''}${currentBalanceIncrement}, Seva ${sevaBalanceIncrement > 0 ? '+' : ''}${sevaBalanceIncrement}`
-          );
-          console.log(
-            `New store balances: Current ${storeData.storeCurrentBalance + currentBalanceIncrement}, Seva ${storeData.storeSevaBalance + sevaBalanceIncrement}`
-          );
+          // console.log(
+          //   `Updated store balances: Current ${currentBalanceIncrement > 0 ? '+' : ''}${currentBalanceIncrement}, Seva ${sevaBalanceIncrement > 0 ? '+' : ''}${sevaBalanceIncrement}`
+          // );
+          // console.log(
+          //   `New store balances: Current ${storeData.storeCurrentBalance + currentBalanceIncrement}, Seva ${storeData.storeSevaBalance + sevaBalanceIncrement}`
+          // );
         }
       } else if (paymentMethod === 'cash') {
         const adminCutTx = calculateAdminCut(saleCalculation.totalAmount, storeDetails);
@@ -905,12 +905,12 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             ? newCumTotal >= 500 // Student minimum is 500
             : newCumTotal >= 2000; // Regular customer minimum is 2000
 
-          console.log(
-            'Cash payment - isEligible:',
-            isEligible,
-            'current saleElgibility:',
-            selectedCustomer.saleElgibility
-          );
+          // console.log(
+          //   'Cash payment - isEligible:',
+          //   isEligible,
+          //   'current saleElgibility:',
+          //   selectedCustomer.saleElgibility
+          // );
 
           // Only update saleElgibility if customer becomes eligible and wasn't already eligible
           const shouldUpdateEligibility = isEligible && selectedCustomer.saleElgibility !== true;
@@ -934,10 +934,10 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
 
           if (shouldUpdateEligibility) {
             updateData.saleElgibility = true;
-            console.log(
-              'Cash payment - Setting saleElgibility to true for customer:',
-              selectedCustomer.customerName
-            );
+            // console.log(
+            //   'Cash payment - Setting saleElgibility to true for customer:',
+            //   selectedCustomer.customerName
+            // );
           }
 
           await updateDoc(customerDoc.ref, updateData);
@@ -964,12 +964,12 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             updatedAt: serverTimestamp(),
           });
 
-          console.log(
-            `Updated store balances (cash sale): Current ${currentBalanceIncrement > 0 ? '+' : ''}${currentBalanceIncrement}, Seva ${sevaBalanceIncrement > 0 ? '+' : ''}${sevaBalanceIncrement}`
-          );
-          console.log(
-            `New store balances: Current ${storeData.storeCurrentBalance + currentBalanceIncrement}, Seva ${storeData.storeSevaBalance + sevaBalanceIncrement}`
-          );
+          // console.log(
+          //   `Updated store balances (cash sale): Current ${currentBalanceIncrement > 0 ? '+' : ''}${currentBalanceIncrement}, Seva ${sevaBalanceIncrement > 0 ? '+' : ''}${sevaBalanceIncrement}`
+          // );
+          // console.log(
+          //   `New store balances: Current ${storeData.storeCurrentBalance + currentBalanceIncrement}, Seva ${storeData.storeSevaBalance + sevaBalanceIncrement}`
+          // );
         }
       } else {
         if (saleCalculation.cashPayment > 0) {
@@ -1160,12 +1160,12 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               updatedAt: serverTimestamp(),
             });
 
-            console.log(
-              `Updated store balances (cash payment): Current ${currentBalanceIncrement > 0 ? '+' : ''}${currentBalanceIncrement}, Seva ${sevaBalanceIncrement > 0 ? '+' : ''}${sevaBalanceIncrement}`
-            );
-            console.log(
-              `New store balances: Current ${storeData.storeCurrentBalance + currentBalanceIncrement}, Seva ${storeData.storeSevaBalance + sevaBalanceIncrement}`
-            );
+            // console.log(
+            //   `Updated store balances (cash payment): Current ${currentBalanceIncrement > 0 ? '+' : ''}${currentBalanceIncrement}, Seva ${sevaBalanceIncrement > 0 ? '+' : ''}${sevaBalanceIncrement}`
+            // );
+            // console.log(
+            //   `New store balances: Current ${storeData.storeCurrentBalance + currentBalanceIncrement}, Seva ${storeData.storeSevaBalance + sevaBalanceIncrement}`
+            // );
           }
         }
       }
@@ -1206,7 +1206,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           if (referrer) {
             const referralAmount = saleCalculation.referrerSurabhiCoinsEarned;
             const referrerRef = doc(db, 'Customers', referrer.id); // Assuming you have id field
-            console.log('The referrer id is', referrerRef);
+            // console.log('The referrer id is', referrerRef);
             // Update referrer's balances - only update Surabhi balance without modifying referredUsers
             await updateDoc(referrerRef, {
               surabhiBalance: increment(referralAmount),
@@ -1226,7 +1226,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             if (!referrerStoreSnapshot.empty) {
               referrerStoreDetails = referrerStoreSnapshot.docs[0].data() as StoreType;
             } else {
-              console.error('No store found for referrer location:', referrer.storeLocation);
+              // console.error('No store found for referrer location:', referrer.storeLocation);
             }
 
             // Add CustomerTx record for the referral Surabhi Coins earned by referrer
@@ -1288,11 +1288,11 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               `Referral bonus of ₹${referralAmount} credited to ${referrer.customerName}`
             );
           } else {
-            console.warn(`Referrer with mobile ${selectedCustomer.referredBy} not found`);
+            // console.warn(`Referrer with mobile ${selectedCustomer.referredBy} not found`);
             toast.warning(`Referrer not found - bonus not credited`);
           }
         } catch (error) {
-          console.error('Error processing referral:', error);
+          // console.error('Error processing referral:', error);
           toast.error('Failed to process referral bonus');
         }
       }
@@ -1370,7 +1370,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       setSearchTerm('');
       setInvoiceId(''); // Reset invoice ID for next transaction
     } catch (error) {
-      console.error('Error processing sale:', error);
+      // console.error('Error processing sale:', error);
       toast.error('Sale failed. Please try again.');
     } finally {
       setIsLoading(false);
@@ -1390,7 +1390,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         return;
       }
     }
-    console.log('Is it comig here in line 770');
+    // console.log('Is it comig here in line 770');
     await handleRegisteredCustomerSale();
   };
 
@@ -1408,9 +1408,11 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               <Badge variant="outline" className="border-blue-200 text-blue-800">
                 Referral: {storeDetails.referralCommission}%
               </Badge>
-              <Badge variant="outline" className="border-green-200 text-green-800">
-                Surabhi: {storeDetails.surabhiCommission}%
-              </Badge>
+              {storeDetails.walletEnabled && (
+                <Badge variant="outline" className="border-green-200 text-green-800">
+                  Surabhi: {storeDetails.surabhiCommission}%
+                </Badge>
+              )}
               <Badge variant="outline" className="border-red-200 text-red-800">
                 Cash Only: {storeDetails.cashOnlyCommission}%
               </Badge>

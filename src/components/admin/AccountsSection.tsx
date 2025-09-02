@@ -89,7 +89,7 @@ const Accounts = () => {
       setStores(storesData);
       return storesData;
     } catch (err) {
-      console.error('Error fetching stores:', err);
+      // console.error('Error fetching stores:', err);
       throw err;
     }
   };
@@ -143,7 +143,7 @@ const Accounts = () => {
 
       setAccountData(adminDeck);
     } catch (err) {
-      console.error('Error fetching account data:', err);
+      // console.error('Error fetching account data:', err);
       setError('Failed to load account data');
     } finally {
       setLoading(false);
@@ -248,7 +248,7 @@ const Accounts = () => {
       setIsSettlementDialogOpen(false);
       resetSettlementForm();
     } catch (err) {
-      console.error('Error adding settlement:', err);
+      // console.error('Error adding settlement:', err);
       toast.error('Failed to add settlement transaction');
     } finally {
       setIsSubmittingSettlement(false);

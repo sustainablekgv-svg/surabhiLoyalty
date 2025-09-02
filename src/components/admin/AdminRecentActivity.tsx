@@ -86,7 +86,7 @@ export const AdminRecentActivity = () => {
         // Process initial activities
         await processActivities();
       } catch (error) {
-        console.error('Error fetching initial data:', error);
+        // console.error('Error fetching initial data:', error);
       } finally {
         setIsLoading(false);
       }
@@ -160,7 +160,7 @@ export const AdminRecentActivity = () => {
 
         setStorePerformance(Object.values(newPerformanceMap));
       } catch (error) {
-        console.error('Error processing activities:', error);
+        // console.error('Error processing activities:', error);
       }
     };
 

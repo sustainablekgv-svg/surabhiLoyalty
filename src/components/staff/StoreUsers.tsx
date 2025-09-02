@@ -31,7 +31,7 @@ import { db } from '@/lib/firebase';
 import { CustomerType, StoreUsersProps } from '@/types/types';
 
 export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
-  console.log('THe store location is', storeLocation);
+  // console.log('THe store location is', storeLocation);
   const [searchTerm, setSearchTerm] = useState('');
   const [registrationFilter, setRegistrationFilter] = useState<
     'all' | 'registered' | 'unregistered'
@@ -78,7 +78,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
           .slice(0, 5);
         setTopCustomers(topByWallet);
       } catch (err) {
-        console.error('Error fetching customers:', err);
+        // console.error('Error fetching customers:', err);
         setError(
           `Failed to load customers. ${err instanceof Error ? err.message : 'Please try again.'}`
         );
@@ -151,7 +151,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
 
       return format(date, 'MMM dd, yyyy');
     } catch (error) {
-      console.error('Error formatting date:', error);
+      // console.error('Error formatting date:', error);
       return 'Invalid date';
     }
   };

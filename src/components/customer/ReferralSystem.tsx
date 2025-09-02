@@ -75,7 +75,7 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
           setReferredCustomers(customersData);
         }
       } catch (error) {
-        console.error('Error fetching referral data:', error);
+        // console.error('Error fetching referral data:', error);
         toast.error('Failed to load referral data');
       } finally {
         setLoading(false);
@@ -90,7 +90,7 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
   // const totalReferralEarnings = referredCustomers.reduce((sum, customer) => {
   //   return sum + (customer.sevaCoinsTotal);
   // }, 0);
-  console.log('The referaals are', referredCustomers);
+  // console.log('The referaals are', referredCustomers);
 
   const copyReferralNumber = async () => {
     try {

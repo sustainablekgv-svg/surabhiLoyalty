@@ -151,7 +151,7 @@ export const CustomerManagement = () => {
         });
         setStores(storesData);
       } catch (error) {
-        console.error('Error fetching stores:', error);
+        // console.error('Error fetching stores:', error);
       } finally {
         setLoading(false);
       }
@@ -294,7 +294,7 @@ export const CustomerManagement = () => {
       });
       setIsEditDialogOpen(false);
     } catch (error) {
-      console.error('Error updating customer:', error);
+      // console.error('Error updating customer:', error);
       toast({
         title: 'Error',
         description: 'Failed to update customer details',

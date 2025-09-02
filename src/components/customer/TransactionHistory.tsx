@@ -116,7 +116,7 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
       }
     } catch (err) {
       setError('Failed to fetch transactions');
-      console.error('Error fetching transactions:', err);
+      // console.error('Error fetching transactions:', err);
     } finally {
       setLoading(false);
       setLoadingMore(false);

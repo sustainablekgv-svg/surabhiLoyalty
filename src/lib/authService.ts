@@ -40,7 +40,7 @@ export const getCustomerByMobile = async (
     }
     return null;
   } catch (error) {
-    console.error('Error fetching customer:', error);
+    // console.error('Error fetching customer:', error);
     throw new Error('Failed to authenticate customer');
   }
 };
@@ -87,7 +87,7 @@ export const getStaffByMobile = async (
 
     return user;
   } catch (error) {
-    console.error('Error fetching staff:', error);
+    // console.error('Error fetching staff:', error);
     return null;
   }
 };
@@ -102,7 +102,7 @@ export const verifyUserExists = async (user: User): Promise<boolean> => {
     }
     return userDoc.exists();
   } catch (error) {
-    console.error('Error verifying user existence:', error);
+    // console.error('Error verifying user existence:', error);
     return false;
   }
 };
@@ -111,7 +111,7 @@ export const signInWithFirebase = async (email: string, password: string): Promi
   try {
     await signInWithEmailAndPassword(auth, email, password);
   } catch (error) {
-    console.warn('Firebase auth login failed:', error);
+    // console.warn('Firebase auth login failed:', error);
     throw error;
   }
 };

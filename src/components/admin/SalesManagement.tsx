@@ -89,6 +89,7 @@ export const SalesManagement = () => {
         ...doc.data(),
         storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
         storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date(),
+        walletEnabled: doc.data().walletEnabled || false,
       })) as StoreType[];
       setStores(storesData.filter(store => store.storeStatus === 'active'));
     } catch (err) {
@@ -171,6 +172,12 @@ export const SalesManagement = () => {
     totalRecharges: filteredRecharges.reduce((sum, r) => sum + r.amount, 0),
   };
 
+  // Check if wallet is enabled for the selected store
+  const selectedStore = stores.find(store => store.storeLocation === filterStore);
+  const isWalletEnabled = filterStore === 'all' 
+    ? stores.some(store => store.walletEnabled) 
+    : selectedStore?.walletEnabled || false;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -231,17 +238,19 @@ export const SalesManagement = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-purple-50 border-purple-200">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Wallet className="h-4 w-4 text-purple-600" />
-              <span className="text-xs font-medium text-purple-600">Wallet Used</span>
-            </div>
-            <p className="text-xl font-bold text-purple-900">
-              ₹{totalStats.totalWalletDeductions.toFixed(2).toLocaleString()}
-            </p>
-          </CardContent>
-        </Card>
+        {isWalletEnabled && (
+          <Card className="bg-purple-50 border-purple-200">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Wallet className="h-4 w-4 text-purple-600" />
+                <span className="text-xs font-medium text-purple-600">Wallet Used</span>
+              </div>
+              <p className="text-xl font-bold text-purple-900">
+                ₹{totalStats.totalWalletDeductions.toFixed(2).toLocaleString()}
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="bg-amber-50 border-amber-200">
           <CardContent className="p-4">

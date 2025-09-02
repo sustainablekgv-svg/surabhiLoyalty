@@ -43,7 +43,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Check if session is expired
       if (sessionManager.isSessionExpired()) {
-        console.log('Session expired, clearing storage');
+        // console.log('Session expired, clearing storage');
         storageUtils.clearAll();
         setIsInitialized(true);
         setIsLoading(false);
@@ -60,7 +60,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         storageUtils.clearAll();
       }
     } catch (error) {
-      console.error('Auth initialization error:', error);
+      // console.error('Auth initialization error:', error);
       storageUtils.clearAll();
     } finally {
       setIsInitialized(true);
@@ -84,7 +84,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           await initializeAuth();
         }
       } catch (error) {
-        console.error('Auth initialization error:', error);
+        // console.error('Auth initialization error:', error);
         setIsInitialized(true);
         setIsLoading(false);
       }
@@ -115,7 +115,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         userData = await getCustomerByMobile(mobile, password);
       } else if (role === 'staff' || role === 'admin') {
         userData = await getStaffByMobile(mobile, password, role);
-        console.log('TView and manage all customer accounts', userData);
+        // console.log('TView and manage all customer accounts', userData);
       } else {
         throw new Error('Invalid role specified');
       }
@@ -129,7 +129,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
           await signInWithFirebase(userData.email, password);
         } catch (error) {
-          console.warn('Firebase auth failed, continuing with custom auth');
+          // console.warn('Firebase auth failed, continuing with custom auth');
         }
       }
 
@@ -140,7 +140,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       return userData;
     } catch (error) {
-      console.error('Login error:', error);
+      // console.error('Login error:', error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -153,7 +153,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Sign out from Firebase
       await signOut(auth);
     } catch (error) {
-      console.error('Firebase logout error:', error);
+      // console.error('Firebase logout error:', error);
     } finally {
       // Clear local state and storage
       setUser(null);
@@ -194,7 +194,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  console.log('The line 190 is', context);
+  // console.log('The line 190 is', context);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }

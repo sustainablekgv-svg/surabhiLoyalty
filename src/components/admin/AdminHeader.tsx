@@ -73,7 +73,7 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
         })) as StoreType[];
         setStores(storesData);
       } catch (error) {
-        console.error('Error fetching stores:', error);
+        // console.error('Error fetching stores:', error);
       }
     };
 
@@ -137,7 +137,7 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
       const querySnapshot = await getDocs(staffQuery);
 
       if (querySnapshot.empty) {
-        console.error('No staff found with mobile:', user.staffMobile);
+        // console.error('No staff found with mobile:', user.staffMobile);
         toast({
           title: 'Update failed',
           description: 'No staff record found for your account.',
@@ -149,7 +149,7 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
       const staffRef = doc(db, 'staff', querySnapshot.docs[0].id);
       await updateDoc(staffRef, updateData);
 
-      console.log('Staff record updated for:', user.staffMobile);
+      // console.log('Staff record updated for:', user.staffMobile);
       toast({
         title: 'Profile updated',
         description: 'Your changes have been saved successfully.',
@@ -158,7 +158,7 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
 
       setIsSettingsOpen(false);
     } catch (error) {
-      console.error('Error updating staff profile:', error);
+      // console.error('Error updating staff profile:', error);
       toast({
         title: 'Update failed',
         description:

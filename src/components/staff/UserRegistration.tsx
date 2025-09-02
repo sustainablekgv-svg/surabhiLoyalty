@@ -114,7 +114,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
             toast.error('No customer found with this mobile number');
           }
         } catch (error) {
-          console.error('Error fetching referral:', error);
+          // console.error('Error fetching referral:', error);
           toast.error('Failed to check referral');
           setReferralName(null);
           setIsElgibleForReferral(false);
@@ -310,7 +310,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
       setReferralName(null);
       setIsElgibleForReferral(false);
     } catch (error: any) {
-      console.error('Registration error:', error);
+      // console.error('Registration error:', error);
       let errorMessage = 'Registration failed. Please try again.';
 
       switch (error.code) {
