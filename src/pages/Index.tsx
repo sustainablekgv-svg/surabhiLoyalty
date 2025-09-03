@@ -80,7 +80,6 @@ const Index = () => {
         toast.error(`Access denied. You are not registered as ${formData.role}`);
         return;
       }
-
       // Don't navigate here - let the useEffect handle it
       toast.success('Login successful!');
     } catch (error) {

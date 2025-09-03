@@ -391,6 +391,7 @@ export const GoSevaPool = () => {
 
       if (!storeSnapshot.empty) {
         const storeDoc = storeSnapshot.docs[0];
+        const storeData = storeDoc.data();
         await updateDoc(storeDoc.ref, {
           storeSevaBalance: storeSevaBalance - amount,
           storeUpdatedAt: serverTimestamp(),
@@ -401,6 +402,9 @@ export const GoSevaPool = () => {
           ...storeSevaBalances,
           [selectedStoreForAllocation]: storeSevaBalance - amount,
         });
+        
+        // Store the demoStore value for later use
+        var storeDemoStore = storeData.demoStore || false;
       } else {
         toast.error(`Store ${selectedStoreForAllocation} not found`);
         return;
@@ -456,6 +460,7 @@ export const GoSevaPool = () => {
         sevaBalance: Number((storeSevaBalances[selectedStoreForAllocation] - amount).toFixed(2)),
         sevaTotal: currentSevaPool?.totalContributions || 0,
         remarks: `${allocationDescription} (from ${selectedStoreForAllocation})`,
+        demoStore: storeDemoStore,
       });
 
       // Also add to Activity log

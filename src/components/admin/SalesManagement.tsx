@@ -115,7 +115,7 @@ export const SalesManagement = () => {
 
   // Filter transactions (sales)
   const filteredTransactions = transactions.filter(tx => {
-    if (tx.type !== 'sale') return false;
+    if (tx.type !== 'sale' || tx.demoStore) return false;
 
     const matchesSearch =
       transactionsSearchTerm === '' ||
@@ -130,7 +130,7 @@ export const SalesManagement = () => {
 
   // Filter recharges
   const filteredRecharges = transactions.filter(tx => {
-    if (tx.type !== 'recharge') return false;
+    if (tx.type !== 'recharge' || tx.demoStore) return false;
 
     return (
       rechargesSearchTerm === '' ||
@@ -174,9 +174,10 @@ export const SalesManagement = () => {
 
   // Check if wallet is enabled for the selected store
   const selectedStore = stores.find(store => store.storeLocation === filterStore);
-  const isWalletEnabled = filterStore === 'all' 
-    ? stores.some(store => store.walletEnabled) 
-    : selectedStore?.walletEnabled || false;
+  const isWalletEnabled =
+    filterStore === 'all'
+      ? stores.some(store => store.walletEnabled)
+      : selectedStore?.walletEnabled || false;
 
   if (loading) {
     return (
@@ -417,6 +418,9 @@ export const SalesManagement = () => {
                             Store
                           </TableHead>
                           <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Type
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                             Date
                           </TableHead>
                           <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
@@ -463,6 +467,17 @@ export const SalesManagement = () => {
                               ₹{(transaction.cashPayment || 0).toFixed(2)}
                             </TableCell>
                             <TableCell>{transaction.storeLocation}</TableCell>
+                            <TableCell>
+                              {transaction.demoStore ? (
+                                <Badge variant="destructive" className="text-xs">
+                                  Demo
+                                </Badge>
+                              ) : (
+                                <Badge variant="default" className="text-xs">
+                                  Live
+                                </Badge>
+                              )}
+                            </TableCell>
                             <TableCell>
                               {format(transaction.createdAt.toDate(), 'dd MMM yyyy, hh:mm a')}
                             </TableCell>
@@ -629,6 +644,9 @@ export const SalesManagement = () => {
                             Seva Amount
                           </TableHead>
                           <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Type
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                             Date
                           </TableHead>
                           <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
@@ -650,6 +668,17 @@ export const SalesManagement = () => {
                             </TableCell>
                             <TableCell>{(recharge.surabhiEarned || 0).toFixed(2)}</TableCell>
                             <TableCell>₹{(recharge.sevaEarned || 0).toFixed(2)}</TableCell>
+                            <TableCell>
+                              {recharge.demoStore ? (
+                                <Badge variant="destructive" className="text-xs">
+                                  Demo
+                                </Badge>
+                              ) : (
+                                <Badge variant="default" className="text-xs">
+                                  Live
+                                </Badge>
+                              )}
+                            </TableCell>
                             <TableCell>
                               {format(recharge.createdAt.toDate(), 'dd MMM yyyy, hh:mm a')}
                             </TableCell>

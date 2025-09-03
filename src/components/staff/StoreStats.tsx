@@ -5,17 +5,38 @@ import { useEffect, useState } from 'react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { db } from '@/lib/firebase';
-import { CustomerType, ActivityType, StaffStatsProps } from '@/types/types';
+import { CustomerType, ActivityType, StaffStatsProps, StoreType } from '@/types/types';
 // import { Timestamp } from 'firebase/firestore';
 
 export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
   const [customers, setCustomers] = useState<CustomerType[]>([]);
   const [activities, setActivities] = useState<ActivityType[]>([]);
+  const [currentStore, setCurrentStore] = useState<StoreType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
+
+    // Set up real-time listener for store data
+    const storeQuery = query(
+      collection(db, 'stores'),
+      where('storeName', '==', storeLocation)
+    );
+
+    const unsubscribeStore = onSnapshot(
+      storeQuery,
+      snapshot => {
+        if (!snapshot.empty) {
+          const storeData = snapshot.docs[0].data() as StoreType;
+          setCurrentStore(storeData);
+        }
+      },
+      err => {
+        // console.error('Error fetching store data:', err);
+        setError('Failed to load store data');
+      }
+    );
 
     // Set up real-time listener for customers
     const customersQuery = query(
@@ -66,6 +87,7 @@ export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
 
     // Cleanup function to unsubscribe listeners
     return () => {
+      unsubscribeStore();
       unsubscribeCustomers();
       unsubscribeActivities();
     };
@@ -97,10 +119,10 @@ export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
   }).length;
 
   const totalSurabhiCoins = customers.reduce((sum, c) => sum + (c.surabhiBalance || 0), 0);
-  const sevaCoinsThisMonth = customers.reduce(
-    (sum, c) => sum + (c.sevaBalanceCurrentMonth || 0),
-    0
-  );
+  // Exclude Seva balance calculations for demo stores
+  const sevaCoinsThisMonth = currentStore?.demoStore 
+    ? 0 
+    : customers.reduce((sum, c) => sum + (c.sevaBalanceCurrentMonth || 0), 0);
 
   const topCustomers = [...customers]
     .sort((a, b) => (b.walletBalance || 0) - (a.walletBalance || 0))

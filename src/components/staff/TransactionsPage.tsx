@@ -1,15 +1,5 @@
 import { format } from 'date-fns';
-import {
-  collection,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  QueryDocumentSnapshot,
-  startAfter,
-  Timestamp,
-  where,
-} from 'firebase/firestore';
+import { collection, getDocs, orderBy, query, Timestamp, where } from 'firebase/firestore';
 import { CalendarIcon, Filter, Loader2, Search, ShoppingCart, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -36,6 +26,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { db } from '@/lib/firebase';
 import { CustomerTxType, TransactionsPageProps } from '@/types/types';
+import { Badge } from '../ui/badge';
 const formatTimestamp = (timestamp: Timestamp): string => {
   return format(timestamp.toDate(), 'dd MMM yyyy, hh:mm a');
 };
@@ -172,18 +163,20 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
   };
 
   const calculateTotalAmount = () => {
-    return allTransactions.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+    return allTransactions
+      .filter(tx => !tx.demoStore)
+      .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
   };
 
   const calculateTotalRecharges = () => {
     return allTransactions
-      .filter(tx => tx.type === 'recharge')
+      .filter(tx => tx.type === 'recharge' && !tx.demoStore)
       .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
   };
 
   const calculateTotalSales = () => {
     return allTransactions
-      .filter(tx => tx.type === 'sale')
+      .filter(tx => tx.type === 'sale' && !tx.demoStore)
       .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
   };
 
@@ -405,6 +398,9 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                         <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                           Store
                         </TableHead>
+                        {/* <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Type
+                        </TableHead> */}
                         <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                           Date
                         </TableHead>
@@ -444,6 +440,17 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                               ₹{tx.cashPayment ? Number(tx.cashPayment).toFixed(2) : '0.00'}
                             </TableCell>
                             <TableCell>{tx.storeLocation}</TableCell>
+                            {/* <TableCell>
+                              {tx.demoStore ? (
+                                <Badge variant="destructive" className="text-xs">
+                                  Demo
+                                </Badge>
+                              ) : (
+                                <span className="inline-flex items-center rounded-full bg-primary px-2.5 py-0.5 text-xs font-medium text-primary-foreground">
+                                  Live
+                                </span>
+                              )}
+                            </TableCell> */}
                             <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                               {formatTimestamp(tx.createdAt)}
                             </TableCell>
@@ -523,6 +530,9 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                           Seva Amount
                         </TableHead>
                         <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Type
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                           Date
                         </TableHead>
                         <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
@@ -550,6 +560,17 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                             </TableCell>
                             <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                               ₹{tx.sevaEarned ? Number(tx.sevaEarned).toFixed(2) : '0.00'}
+                            </TableCell>
+                            <TableCell>
+                              {tx.demoStore ? (
+                                <Badge variant="destructive" className="text-xs">
+                                  Demo
+                                </Badge>
+                              ) : (
+                                <Badge variant="default" className="text-xs">
+                                  Live
+                                </Badge>
+                              )}
                             </TableCell>
                             <TableCell>{formatTimestamp(tx.createdAt)}</TableCell>
                             <TableCell>{tx.processedBy || 'system'}</TableCell>

@@ -125,6 +125,7 @@ export const CustomerManagement = () => {
           return {
             storePrefix: data.storePrefix || '',
             id: doc.id,
+            demoStore: data.demoStore,
             storeName: data.storeName || data.name || '',
             storeLocation: data.storeLocation || data.location || '',
             storeAddress: data.storeAddress || data.address || '',
@@ -161,6 +162,11 @@ export const CustomerManagement = () => {
     fetchStores();
   }, []);
 
+  // Get demo store locations to exclude from analytics
+  const demoStoreLocations = stores
+    .filter(store => store.demoStore === true)
+    .map(store => store.storeName);
+
   const filteredCustomers = customers.filter(customer => {
     const matchesSearch =
       customer.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -169,19 +175,27 @@ export const CustomerManagement = () => {
 
     const matchesStore = filterStore === 'all' || customer.storeLocation === filterStore;
 
-    return matchesSearch && matchesStore;
+    // Exclude customers from demo stores
+    const isNotFromDemoStore = !demoStoreLocations.includes(customer.storeLocation);
+
+    return matchesSearch && matchesStore && isNotFromDemoStore;
   });
 
-  // Calculate analytics
+  // Filter out customers from demo stores for analytics calculations
+  const nonDemoCustomers = customers.filter(
+    customer => !demoStoreLocations.includes(customer.storeLocation)
+  );
+
+  // Calculate analytics excluding demo store customers
   const totalStats = {
-    totalCustomers: customers.length,
-    registeredCustomers: customers.filter(c => c.walletRechargeDone).length,
-    guestCustomers: customers.filter(c => !c.walletRechargeDone).length,
-    totalWalletBalance: customers.reduce((sum, c) => sum + c.walletBalance, 0),
-    totalSurabhiCoins: customers.reduce((sum, c) => sum + c.surabhiBalance, 0),
-    totalSevaCoins: customers.reduce((sum, c) => sum + c.sevaTotal, 0),
-    totalReferrals: customers.reduce((sum, c) => sum + (c.referredUsers?.length || 0), 0),
-    activeThisMonth: customers.filter(c => {
+    totalCustomers: nonDemoCustomers.length,
+    registeredCustomers: nonDemoCustomers.filter(c => c.walletRechargeDone).length,
+    guestCustomers: nonDemoCustomers.filter(c => !c.walletRechargeDone).length,
+    totalWalletBalance: nonDemoCustomers.reduce((sum, c) => sum + c.walletBalance, 0),
+    totalSurabhiCoins: nonDemoCustomers.reduce((sum, c) => sum + c.surabhiBalance, 0),
+    totalSevaCoins: nonDemoCustomers.reduce((sum, c) => sum + c.sevaTotal, 0),
+    totalReferrals: nonDemoCustomers.reduce((sum, c) => sum + (c.referredUsers?.length || 0), 0),
+    activeThisMonth: nonDemoCustomers.filter(c => {
       if (!c.lastTransactionDate) return false;
       const monthAgo = new Date();
       monthAgo.setMonth(monthAgo.getMonth() - 1);
@@ -711,11 +725,11 @@ export const CustomerManagement = () => {
                 <Coins className="h-4 w-4 text-amber-500" />
               </div>
             </div>
-            <div className="flex items-center gap-1 mt-2">
+            {/* <div className="flex items-center gap-1 mt-2">
               <span className="text-sm text-muted-foreground">
                 {totalStats.totalSevaCoins.toFixed(2)} Seva Coins
               </span>
-            </div>
+            </div> */}
           </CardContent>
         </Card>
 
@@ -767,15 +781,17 @@ export const CustomerManagement = () => {
                   <SelectItem value="all" className="text-xs sm:text-sm">
                     All Stores
                   </SelectItem>
-                  {stores.map(store => (
-                    <SelectItem
-                      key={store.id}
-                      value={store.storeName}
-                      className="text-xs sm:text-sm"
-                    >
-                      {store.storeName}
-                    </SelectItem>
-                  ))}
+                  {stores
+                    .filter(store => !store.demoStore)
+                    .map(store => (
+                      <SelectItem
+                        key={store.id}
+                        value={store.storeName}
+                        className="text-xs sm:text-sm"
+                      >
+                        {store.storeName}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

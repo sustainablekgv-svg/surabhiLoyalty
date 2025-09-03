@@ -1,9 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
 import { AnalyticsProvider } from './components/AnalyticsProvider';
+// import CreateAdmin from './components/CreateAdmin';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { CustomerDetails } from './components/staff/CustomerDetails';
 import AdminDashboard from './pages/admin/Dashboard';
 import CustomerDashboard from './pages/customer/Dashboard';
 import Index from './pages/Index';
@@ -29,6 +29,7 @@ const App = () => (
             <AnalyticsProvider>
               <Routes>
                 <Route path="/" element={<Index />} />
+                {/* <Route path="/create-admin" element={<CreateAdmin />} /> */}
                 <Route
                   path="/admin/dashboard"
                   element={
@@ -53,14 +54,14 @@ const App = () => (
                     </ProtectedRoute>
                   }
                 />
-                <Route
+                {/* <Route
                   path="/customer/:mobile"
                   element={
                     <ProtectedRoute requiredRole="admin">
                       <CustomerDetails />
                     </ProtectedRoute>
                   }
-                />
+                /> */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AnalyticsProvider>

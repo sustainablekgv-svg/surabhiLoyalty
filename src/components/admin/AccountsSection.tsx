@@ -118,6 +118,7 @@ const Accounts = () => {
         const tx: AccountTxType = {
           id: doc.id,
           createdAt: txData.createdAt as Timestamp,
+          demoStore: txData.demoStore || false,
           storeName: txData.storeName || '',
           customerName: txData.customerName || '',
           customerMobile: txData.customerMobile || '',
@@ -211,6 +212,7 @@ const Accounts = () => {
         remarks:
           settlementDescription ||
           `Settlement adjustment ${amount >= 0 ? 'from store to admin' : 'from admin to store'} for ${selectedStoreForSettlement.storeName}`,
+        demoStore: selectedStoreForSettlement.demoStore || false,
       };
 
       // Query for the store by name

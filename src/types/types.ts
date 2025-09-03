@@ -153,6 +153,7 @@ export interface StoreType {
   adminCurrentBalance: number;
   adminStoreProfit: number;
   walletEnabled: boolean;
+  demoStore: boolean; // Demo stores for client demonstrations, excluded from KPIs
 }
 
 export interface AdminHeaderProps {
@@ -171,6 +172,7 @@ export interface CustomerTxType {
   storeLocation: string;
   storeName: string; // Only for recharge
   createdAt: Timestamp;
+  demoStore: boolean; // Indicates if transaction is from a demo store
   paymentMethod?: 'cash' | 'wallet' | 'mixed';
   processedBy: string; // Used in sale
   remarks: string; // Description of the transaction
@@ -269,6 +271,7 @@ export interface AccountTxType {
   sevaBalance: number;
   adminCurrentBalance: number;
   remarks: string;
+  demoStore: boolean; // Indicates if transaction is from a demo store
 }
 
 // export interface StoreSummary {

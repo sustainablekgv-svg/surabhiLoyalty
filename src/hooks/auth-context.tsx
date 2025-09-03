@@ -1,12 +1,12 @@
-import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { createContext, useContext, useMemo, useState, useEffect, useCallback } from 'react';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import {
   User,
   getCustomerByMobile,
   getStaffByMobile,
-  verifyUserExists,
   signInWithFirebase,
+  verifyUserExists,
 } from '@/lib/authService';
 import { auth } from '@/lib/firebase';
 import { sessionManager } from '@/lib/sessionManager';

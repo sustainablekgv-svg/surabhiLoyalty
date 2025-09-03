@@ -154,7 +154,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
     {
       title: 'Wallet Balance',
       value: `₹${customerData.walletBalance.toFixed(2)}`,
-      description: 'Available for purchases',
+      description: 'Available for purchases at registered store only',
       icon: Wallet,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',

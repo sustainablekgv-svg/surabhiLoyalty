@@ -512,35 +512,37 @@ export const StaffManagement = () => {
                   </TableRow>
                 </TableHeader>
                 {isLoading ? (
-                  Array.from({ length: 5 }).map((_, index) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[150px]" />
-                        <Skeleton className="h-3 w-[100px] mt-2" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[120px]" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[80px]" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[120px]" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[70px]" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-[50px]" />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Skeleton className="h-8 w-[60px]" />
-                          <Skeleton className="h-8 w-[80px]" />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  <TableBody>
+                    {Array.from({ length: 5 }).map((_, index) => (
+                      <TableRow key={index}>
+                        <TableCell>
+                          <Skeleton className="h-4 w-[150px]" />
+                          <Skeleton className="h-3 w-[100px] mt-2" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-[120px]" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-[80px]" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-[120px]" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-[70px]" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-[50px]" />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Skeleton className="h-8 w-[60px]" />
+                            <Skeleton className="h-8 w-[80px]" />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
                 ) : (
                   <TableBody>
                     {staff.map(member => (

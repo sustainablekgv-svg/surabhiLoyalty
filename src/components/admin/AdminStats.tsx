@@ -1,5 +1,5 @@
 import { collection, doc, onSnapshot, query } from 'firebase/firestore';
-import { Users, Coins, Heart, TrendingUp, Store, DollarSign, Loader2 } from 'lucide-react';
+import { Coins, DollarSign, Heart, Loader2, Store, TrendingUp, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -7,10 +7,11 @@ import { AdminRecentActivity } from './AdminRecentActivity';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { db } from '@/lib/firebase';
-import { CustomerType } from '@/types/types';
+import { CustomerType, StoreType } from '@/types/types';
 
 export const AdminStats = () => {
   const [sevaPoolAmount, setSevaPoolAmount] = useState<number>(0);
+  const [stores, setStores] = useState<StoreType[]>([]);
   const [stats, setStats] = useState([
     {
       title: 'Total Users',
@@ -56,7 +57,33 @@ export const AdminStats = () => {
   ]);
   const [storeLoading, setStoreLoading] = useState(true);
 
+  // Separate effect for stores to ensure it loads first
   useEffect(() => {
+    const storesQuery = query(collection(db, 'stores'));
+    const unsubscribeStores = onSnapshot(
+      storesQuery,
+      snapshot => {
+        const storesData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as StoreType[];
+        setStores(storesData);
+      },
+      error => {
+        // console.error('Error listening to stores updates:', error);
+        toast.error('Failed to load stores data');
+      }
+    );
+
+    return () => {
+      unsubscribeStores();
+    };
+  }, []);
+
+  // Effect for other data that depends on stores
+  useEffect(() => {
+    if (stores.length === 0) return; // Wait for stores to load
+
     setLoading(true);
 
     // Real-time listener for Seva Pool data
@@ -85,13 +112,23 @@ export const AdminStats = () => {
           customers.push(doc.data() as CustomerType);
         });
 
-        // Calculate statistics
-        const totalUsers = customers.length;
-        const totalRecharge = customers.reduce(
+        // Get demo store locations to exclude from KPIs
+        const demoStoreLocations = stores
+          .filter(store => store.demoStore === true)
+          .map(store => store.storeName);
+        console.log('The demo store locations are', demoStoreLocations);
+        // Filter out customers from demo stores for KPI calculations
+        const nonDemoCustomers = customers.filter(
+          customer => !demoStoreLocations.includes(customer.storeLocation)
+        );
+        console.log('The non Demo Customers are', nonDemoCustomers);
+        // Calculate statistics excluding demo store customers
+        const totalUsers = nonDemoCustomers.length;
+        const totalRecharge = nonDemoCustomers.reduce(
           (sum, customer) => sum + (customer.walletBalance || 0),
           0
         );
-        const totalSurabhiCoins = customers.reduce(
+        const totalSurabhiCoins = nonDemoCustomers.reduce(
           (sum, customer) => sum + (customer.surabhiBalance || 0),
           0
         );
@@ -128,6 +165,7 @@ export const AdminStats = () => {
             bgColor: 'bg-red-50',
           },
         ]);
+        setLoading(false);
       },
       error => {
         // console.error('Error listening to customer updates:', error);
@@ -174,12 +212,10 @@ export const AdminStats = () => {
           },
         ]);
 
-        setLoading(false);
         setStoreLoading(false);
       },
       error => {
         // console.error('Error listening to sales updates:', error);
-        setLoading(false);
         setStoreLoading(false);
       }
     );
@@ -188,9 +224,9 @@ export const AdminStats = () => {
     return () => {
       unsubscribeSevaPool();
       unsubscribeCustomers();
-      // unsubscribeSales();
+      unsubscribeSales();
     };
-  }, [sevaPoolAmount]); // Add sevaPoolAmount as dependency to update stats when it changes
+  }, [stores, sevaPoolAmount]);
 
   if (loading) {
     return (

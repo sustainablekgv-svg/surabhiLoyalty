@@ -232,7 +232,10 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
     if (!storeDetails) return { surabhiCoins: 0, sevaAmount: 0, referralAmount: 0 };
 
     const surabhiCoins = Number((amount * (storeDetails.surabhiCommission / 100)).toFixed(2));
-    const sevaAmount = Number((amount * (storeDetails.sevaCommission / 100)).toFixed(2));
+    // Exclude seva calculations for demo stores
+    const sevaAmount = storeDetails.demoStore
+      ? 0
+      : Number((amount * (storeDetails.sevaCommission / 100)).toFixed(2));
     const referralAmount = Number((amount * (storeDetails.referralCommission / 100)).toFixed(2));
     return { surabhiCoins, sevaAmount, referralAmount };
   };
@@ -465,6 +468,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         storeLocation: user.storeLocation,
         storeName: storeDetails.storeName,
         createdAt: Timestamp.fromDate(new Date()),
+        demoStore: storeDetails.demoStore || false,
         // staffName: user.name,
         // invoiceId: generateInvoiceId(), // Add unique invoice ID
         amount: rechargeAmountNum,
@@ -494,6 +498,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         type: 'recharge',
         amount: rechargeAmountNum,
         credit: rechargeAmountNum,
+        demoStore: storeDetails.demoStore || false,
         adminCut: 0,
         debit: 0,
         adminProfit: 0,
@@ -559,14 +564,17 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
       const poolDoc = await getDoc(poolRef);
       const sevaPool = poolDoc.data();
 
-      await updateDoc(poolRef, {
-        currentSevaBalance: increment(sevaAmountEarned),
-        contributionsCurrentMonth: increment(1),
-        totalContributions: increment(1),
-        totalAllocations: sevaPool.totalAllocations,
-        allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
-        lastAllocatedDate: serverTimestamp(),
-      });
+      // Only update SevaPool for non-demo stores
+      if (!storeDetails?.demoStore && sevaAmountEarned > 0) {
+        await updateDoc(poolRef, {
+          currentSevaBalance: increment(sevaAmountEarned),
+          contributionsCurrentMonth: increment(1),
+          totalContributions: increment(1),
+          totalAllocations: sevaPool.totalAllocations,
+          allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
+          lastAllocatedDate: serverTimestamp(),
+        });
+      }
 
       // Handle referral Surabhi Coins if customer has a referrer
       if (currentData.referredBy && referralAmount > 0) {
@@ -619,6 +627,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
             storeLocation: referrerData.storeLocation,
             storeName: referrerData.storeLocation,
             createdAt: Timestamp.fromDate(new Date()),
+            demoStore: storeDetails.demoStore || false,
             processedBy: user.name,
             // invoiceId: generateInvoiceId(), // Add unique invoice ID
             amount: referralAmount,
@@ -718,15 +727,18 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         });
       }
 
-      await addActivityRecord({
-        type: 'seva_contribution',
-        remarks: `${selectedCustomer.customerName} contributed ₹${sevaAmountEarned} to Seva Pool from recharge`,
-        amount: sevaAmountEarned,
-        customerMobile: selectedCustomer.customerMobile,
-        customerName: selectedCustomer.customerName,
-        createdAt: Timestamp.fromDate(new Date()),
-        storeLocation: storeLocation,
-      });
+      // Only add seva contribution activity for non-demo stores
+      if (!storeDetails?.demoStore && sevaAmountEarned > 0) {
+        await addActivityRecord({
+          type: 'seva_contribution',
+          remarks: `${selectedCustomer.customerName} contributed ₹${sevaAmountEarned} to Seva Pool from recharge`,
+          amount: sevaAmountEarned,
+          customerMobile: selectedCustomer.customerMobile,
+          customerName: selectedCustomer.customerName,
+          createdAt: Timestamp.fromDate(new Date()),
+          storeLocation: storeLocation,
+        });
+      }
 
       // Update local state for selected customer
       const updatedCustomers = customers.map(c => {

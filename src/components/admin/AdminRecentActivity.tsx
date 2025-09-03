@@ -1,24 +1,24 @@
 import {
   collection,
   getDocs,
-  query,
-  orderBy,
   limit,
   onSnapshot,
+  orderBy,
+  query,
   Timestamp,
 } from 'firebase/firestore';
 import {
+  DollarSign,
+  Filter,
+  Gift,
+  Loader2,
+  ShoppingCart,
+  Store,
   TrendingUp,
   UserPlus,
-  DollarSign,
-  Gift,
-  ShoppingCart,
   Wallet,
-  Filter,
-  Loader2,
-  Store,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { db } from '@/lib/firebase';
-import { StorePerformance, ActivityType, StoreType } from '@/types/types';
+import { ActivityType, StorePerformance, StoreType } from '@/types/types';
 
 export const AdminRecentActivity = () => {
   const [filter, setFilter] = useState('all');
@@ -63,23 +63,26 @@ export const AdminRecentActivity = () => {
           adminStoreProfit: Number(doc.data().adminStoreProfit) || 0,
           storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
           storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date(),
+          demoStore: doc.data().demoStore || false,
         })) as StoreType[];
         setStores(storesData);
 
-        // Initialize store performance data
+        // Initialize store performance data for non-demo stores only
         const performanceMap: Record<string, StorePerformance> = {};
 
-        storesData.forEach(store => {
-          performanceMap[store.storeName] = {
-            storeName: store.storeName,
-            transactions: 0,
-            sales: 0,
-            surabhiCoinsUsed: 0,
-            walletDeduction: 0,
-            cashPayment: 0,
-            lastUpdated: Timestamp.fromDate(new Date()),
-          };
-        });
+        storesData
+          .filter(store => !store.demoStore)
+          .forEach(store => {
+            performanceMap[store.storeName] = {
+              storeName: store.storeName,
+              transactions: 0,
+              sales: 0,
+              surabhiCoinsUsed: 0,
+              walletDeduction: 0,
+              cashPayment: 0,
+              lastUpdated: Timestamp.fromDate(new Date()),
+            };
+          });
 
         setStorePerformance(Object.values(performanceMap));
 
@@ -122,25 +125,33 @@ export const AdminRecentActivity = () => {
         // Calculate store performance
         const newPerformanceMap: Record<string, StorePerformance> = {};
 
-        // Initialize performance map with all stores
-        stores.forEach(store => {
-          newPerformanceMap[store.storeName] = {
-            storeName: store.storeName,
-            transactions: 0,
-            sales: 0,
-            surabhiCoinsUsed: 0,
-            walletDeduction: 0,
-            cashPayment: 0,
-            lastUpdated: Timestamp.fromDate(new Date()),
-          };
-        });
+        // Initialize performance map with non-demo stores only
+        stores
+          .filter(store => !store.demoStore)
+          .forEach(store => {
+            newPerformanceMap[store.storeName] = {
+              storeName: store.storeName,
+              transactions: 0,
+              sales: 0,
+              surabhiCoinsUsed: 0,
+              walletDeduction: 0,
+              cashPayment: 0,
+              lastUpdated: Timestamp.fromDate(new Date()),
+            };
+          });
 
-        // Update performance based on activities
+        // Get demo store locations to exclude from performance calculations
+        const demoStoreLocations = stores
+          .filter(store => store.demoStore)
+          .map(store => store.storeLocation || store.storeName);
+
+        // Update performance based on activities, excluding demo stores
         activitiesData.forEach(activity => {
           if (
             (activity.type === 'sale' || activity.type === 'recharge') &&
             activity.storeLocation &&
-            activity.amount
+            activity.amount &&
+            !demoStoreLocations.includes(activity.storeLocation)
           ) {
             if (!newPerformanceMap[activity.storeLocation]) {
               newPerformanceMap[activity.storeLocation] = {

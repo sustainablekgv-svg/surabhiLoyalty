@@ -1,8 +1,7 @@
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 
-import { db } from '@/lib/firebase';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 export interface User {
   id: string;
   mobile: string;
@@ -74,6 +73,27 @@ export const getStaffByMobile = async (
       return null;
     }
 
+    // Check if staff status is active
+    if (staffData.role !== 'admin' && staffData.staffStatus !== 'active') {
+      throw new Error('Staff account is disabled. Please contact administrator.');
+    }
+
+    // For staff role, check if the store is active
+    if (role === 'staff' && staffData.storeLocation) {
+      const storesRef = collection(db, 'stores');
+      const storeQuery = query(storesRef, where('storeName', '==', staffData.storeLocation));
+      const storeSnapshot = await getDocs(storeQuery);
+
+      if (!storeSnapshot.empty) {
+        const storeData = storeSnapshot.docs[0].data();
+        if (storeData.storeStatus !== 'active') {
+          throw new Error('Store is currently disabled. Please contact administrator.');
+        }
+      } else {
+        throw new Error('Store not found. Please contact administrator.');
+      }
+    }
+
     // Map to User interface
     const user: User = {
       id: doc.id,
@@ -88,7 +108,7 @@ export const getStaffByMobile = async (
     return user;
   } catch (error) {
     // console.error('Error fetching staff:', error);
-    return null;
+    throw error; // Re-throw to preserve error message
   }
 };
 

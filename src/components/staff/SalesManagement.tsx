@@ -426,11 +426,13 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
       //   newSurabhiCoins
       // );
 
+      // Exclude seva balance calculations for demo stores
+      const sevaContribution = storeDetails?.demoStore ? 0 : saleCalculation.goSevaContribution;
       const newSevaBalance = Number(
-        ((selectedCustomer.sevaBalance || 0) + saleCalculation.goSevaContribution).toFixed(2)
+        ((selectedCustomer.sevaBalance || 0) + sevaContribution).toFixed(2)
       );
       const newSevaTotal = Number(
-        ((selectedCustomer.sevaTotal || 0) + saleCalculation.goSevaContribution).toFixed(2)
+        ((selectedCustomer.sevaTotal || 0) + sevaContribution).toFixed(2)
       );
 
       // Update cumTotal and set saleElgibility based on cumulative total and student status
@@ -472,6 +474,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         type: 'sale',
         customerName: selectedCustomer.customerName,
         customerMobile: selectedCustomer.customerMobile,
+        demoStore: storeDetails.demoStore || false,
         storeLocation: storeLocation,
         storeName: user.storeLocation,
         createdAt: Timestamp.fromDate(new Date()),
@@ -518,17 +521,11 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         surabhiDebit: saleCalculation.surabhiCoinsUsed,
         surabhiCredit: saleCalculation.surabhiCoinsEarned,
         surabhiBalance: newSurabhiCoins,
-        sevaCredit: saleCalculation.goSevaContribution,
+        sevaCredit: sevaContribution,
         sevaDebit: 0,
-        sevaBalance: Number(
-          (selectedCustomer.sevaBalance + saleCalculation.goSevaContribution).toFixed(2)
-        ),
-        sevaTotal: Number(
-          (selectedCustomer.sevaTotal + saleCalculation.goSevaContribution).toFixed(2)
-        ),
-        storeSevaBalance: Number(
-          (storeDetails.storeSevaBalance + saleCalculation.goSevaContribution).toFixed(2)
-        ),
+        sevaBalance: Number((selectedCustomer.sevaBalance + sevaContribution).toFixed(2)),
+        sevaTotal: Number((selectedCustomer.sevaTotal + sevaContribution).toFixed(2)),
+        storeSevaBalance: Number((storeDetails.storeSevaBalance + sevaContribution).toFixed(2)),
       };
       await addDoc(collection(db, 'CustomerTx'), customerTxData);
 
@@ -671,6 +668,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             ((storeDetails.storeSevaBalance || 0) + saleCalculation.goSevaContribution).toFixed(2)
           ),
           remarks: `Wallet sale for ${selectedCustomer.customerName} (${selectedCustomer.customerMobile})`,
+          demoStore: storeDetails.demoStore || false,
         };
         await addDoc(collection(db, 'AccountTx'), accountTxData);
 
@@ -679,6 +677,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           type: 'sale', // Added the required type field
           customerMobile: selectedCustomer.customerMobile,
           customerName: selectedCustomer.customerName, // Added customerName
+          demoStore: storeDetails.demoStore || false,
           // storeLocation: storeLocation,
           storeName: user.storeLocation,
           createdAt: Timestamp.fromDate(new Date()),
@@ -709,7 +708,6 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               ).toFixed(2)
             ),
           },
-
           // Transaction amounts
           walletCredit: Number((0).toFixed(2)),
           walletDebit: Number(saleCalculation.walletDeduction.toFixed(2)),
@@ -721,19 +719,13 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           surabhiBalance: Number(
             (selectedCustomer.surabhiBalance + saleCalculation.surabhiCoinsEarned).toFixed(2)
           ),
-          sevaCredit: Number(saleCalculation.goSevaContribution.toFixed(2)),
+          sevaCredit: Number(sevaContribution.toFixed(2)),
           sevaDebit: Number((0).toFixed(2)),
           sevaBalance: Number(
-            (selectedCustomer.sevaBalanceCurrentMonth + saleCalculation.goSevaContribution).toFixed(
-              2
-            )
+            (selectedCustomer.sevaBalanceCurrentMonth + sevaContribution).toFixed(2)
           ),
-          sevaTotal: Number(
-            (selectedCustomer.sevaTotal + saleCalculation.goSevaContribution).toFixed(2)
-          ),
-          storeSevaBalance: Number(
-            (storeDetails.storeSevaBalance + saleCalculation.goSevaContribution).toFixed(2)
-          ),
+          sevaTotal: Number((selectedCustomer.sevaTotal + sevaContribution).toFixed(2)),
+          storeSevaBalance: Number((storeDetails.storeSevaBalance + sevaContribution).toFixed(2)),
         };
 
         await addDoc(collection(db, 'CustomerTx'), customerTxData);
@@ -773,6 +765,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           type: 'sale',
           amount: Number(saleAmount.toFixed(2)),
           invoiceId: txInvoiceId,
+          demoStore: storeDetails.demoStore || false,
           customerName: selectedCustomer.customerName,
           customerMobile: selectedCustomer.customerMobile,
           credit: Number(saleCalculation.cashPayment.toFixed(2)),
@@ -781,8 +774,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           debit: Number((saleCalculation.totalAmount - adminCutTx).toFixed(2)),
           sevaBalance: Number(
             (
-              (Number(storeDetails?.storeSevaBalance) || 0) +
-              (Number(saleCalculation?.goSevaContribution) || 0)
+              (Number(storeDetails?.storeSevaBalance) || 0) + (Number(sevaContribution) || 0)
             ).toFixed(2)
           ),
           currentBalance: Number(
@@ -811,16 +803,17 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         const poolDoc = await getDoc(poolRef);
         const sevaPool = poolDoc.data();
 
-        await updateDoc(poolRef, {
-          currentSevaBalance: Number(
-            (sevaPool.currentSevaBalance + saleCalculation.goSevaContribution).toFixed(2)
-          ),
-          contributionsCurrentMonth: increment(1),
-          totalContributions: increment(1),
-          totalAllocations: sevaPool.totalAllocations,
-          allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
-          lastAllocatedDate: serverTimestamp(),
-        });
+        // Only update SevaPool for non-demo stores
+        if (!storeDetails?.demoStore) {
+          await updateDoc(poolRef, {
+            currentSevaBalance: Number((sevaPool.currentSevaBalance + sevaContribution).toFixed(2)),
+            contributionsCurrentMonth: increment(1),
+            totalContributions: increment(1),
+            totalAllocations: sevaPool.totalAllocations,
+            allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
+            lastAllocatedDate: serverTimestamp(),
+          });
+        }
 
         const customerTxData: Omit<Partial<CustomerTxType>, 'id'> = {
           type: 'sale',
@@ -865,19 +858,13 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           surabhiBalance: Number(
             (selectedCustomer.surabhiBalance + saleCalculation.surabhiCoinsEarned).toFixed(2)
           ),
-          sevaCredit: Number(saleCalculation.goSevaContribution.toFixed(2)),
+          sevaCredit: Number(sevaContribution.toFixed(2)),
           sevaDebit: Number((0).toFixed(2)),
           sevaBalance: Number(
-            (selectedCustomer.sevaBalanceCurrentMonth + saleCalculation.goSevaContribution).toFixed(
-              2
-            )
+            (selectedCustomer.sevaBalanceCurrentMonth + sevaContribution).toFixed(2)
           ),
-          sevaTotal: Number(
-            (selectedCustomer.sevaTotal + saleCalculation.goSevaContribution).toFixed(2)
-          ),
-          storeSevaBalance: Number(
-            (storeDetails.storeSevaBalance + saleCalculation.goSevaContribution).toFixed(2)
-          ),
+          sevaTotal: Number((selectedCustomer.sevaTotal + sevaContribution).toFixed(2)),
+          storeSevaBalance: Number((storeDetails.storeSevaBalance + sevaContribution).toFixed(2)),
         };
 
         await addDoc(collection(db, 'CustomerTx'), customerTxData);
@@ -893,10 +880,10 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         if (!customerSnapshot.empty) {
           const customerDoc = customerSnapshot.docs[0];
           const newSevaBalance = Number(
-            ((selectedCustomer.sevaBalance || 0) + saleCalculation.goSevaContribution).toFixed(2)
+            ((selectedCustomer.sevaBalance || 0) + sevaContribution).toFixed(2)
           );
           const newSevaTotal = Number(
-            ((selectedCustomer.sevaTotal || 0) + saleCalculation.goSevaContribution).toFixed(2)
+            ((selectedCustomer.sevaTotal || 0) + sevaContribution).toFixed(2)
           );
 
           // Update cumTotal and set saleElgibility based on cumulative total and student status
@@ -982,6 +969,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             amount: Number(saleAmount.toFixed(2)),
             invoiceId: txInvoiceId, // Add invoice ID for consistency
             customerName: selectedCustomer.customerName,
+            demoStore: storeDetails.demoStore || false,
             customerMobile: selectedCustomer.customerMobile,
             adminCut: Number(adminCutTx.toFixed(2)),
             adminProfit: Number(adminProfitTaken.toFixed(2)),
@@ -1005,8 +993,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             ),
             sevaBalance: Number(
               (
-                (Number(storeDetails?.storeSevaBalance) || 0) +
-                (Number(saleCalculation?.goSevaContribution) || 0)
+                (Number(storeDetails?.storeSevaBalance) || 0) + (Number(sevaContribution) || 0)
               ).toFixed(2)
             ),
             remarks: `Mixed sale ₹${saleCalculation.totalAmount} with cash of ₹${saleCalculation.cashPayment} and wallet of ₹${saleCalculation.walletDeduction} by ${selectedCustomer.customerName}`,
@@ -1017,16 +1004,19 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           const poolDoc = await getDoc(poolRef);
           const sevaPool = poolDoc.data();
 
-          await updateDoc(poolRef, {
-            currentSevaBalance: Number(
-              (sevaPool.currentSevaBalance + saleCalculation.goSevaContribution).toFixed(2)
-            ),
-            contributionsCurrentMonth: increment(1),
-            totalContributions: increment(1),
-            totalAllocations: sevaPool.totalAllocations,
-            allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
-            lastAllocatedDate: serverTimestamp(),
-          });
+          // Only update SevaPool for non-demo stores
+          if (!storeDetails?.demoStore) {
+            await updateDoc(poolRef, {
+              currentSevaBalance: Number(
+                (sevaPool.currentSevaBalance + sevaContribution).toFixed(2)
+              ),
+              contributionsCurrentMonth: increment(1),
+              totalContributions: increment(1),
+              totalAllocations: sevaPool.totalAllocations,
+              allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
+              lastAllocatedDate: serverTimestamp(),
+            });
+          }
 
           const customerTxData: Omit<Partial<CustomerTxType>, 'id'> = {
             type: 'sale', // Added the required type field
@@ -1071,19 +1061,13 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             surabhiBalance: Number(
               (selectedCustomer.surabhiBalance + saleCalculation.surabhiCoinsEarned).toFixed(2)
             ),
-            sevaCredit: Number(saleCalculation.goSevaContribution.toFixed(2)),
+            sevaCredit: Number(sevaContribution.toFixed(2)),
             sevaDebit: Number((0).toFixed(2)),
             sevaBalance: Number(
-              (
-                selectedCustomer.sevaBalanceCurrentMonth + saleCalculation.goSevaContribution
-              ).toFixed(2)
+              (selectedCustomer.sevaBalanceCurrentMonth + sevaContribution).toFixed(2)
             ),
-            sevaTotal: Number(
-              (selectedCustomer.sevaTotal + saleCalculation.goSevaContribution).toFixed(2)
-            ),
-            storeSevaBalance: Number(
-              (storeDetails.storeSevaBalance + saleCalculation.goSevaContribution).toFixed(2)
-            ),
+            sevaTotal: Number((selectedCustomer.sevaTotal + sevaContribution).toFixed(2)),
+            storeSevaBalance: Number((storeDetails.storeSevaBalance + sevaContribution).toFixed(2)),
           };
 
           await addDoc(collection(db, 'CustomerTx'), customerTxData);
@@ -1099,10 +1083,10 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           if (!customerSnapshot.empty) {
             const customerDoc = customerSnapshot.docs[0];
             const newSevaBalance = Number(
-              ((selectedCustomer.sevaBalance || 0) + saleCalculation.goSevaContribution).toFixed(2)
+              ((selectedCustomer.sevaBalance || 0) + sevaContribution).toFixed(2)
             );
             const newSevaTotal = Number(
-              ((selectedCustomer.sevaTotal || 0) + saleCalculation.goSevaContribution).toFixed(2)
+              ((selectedCustomer.sevaTotal || 0) + sevaContribution).toFixed(2)
             );
 
             // Update cumTotal and set saleElgibility based on cumulative total and student status
@@ -1233,6 +1217,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
             const referrerTxData: CustomerTxType = {
               type: 'referral',
               customerMobile: referrer.customerMobile,
+              demoStore: referrerStoreDetails?.demoStore || false,
               customerName: referrer.customerName,
               storeLocation: referrer.storeLocation,
               storeName: referrer.storeLocation,

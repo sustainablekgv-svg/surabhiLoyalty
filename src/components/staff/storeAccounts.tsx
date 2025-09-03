@@ -86,6 +86,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
           remarks: data.remarks || '',
           adminCurrentBalance: data.adminCurrentBalance || 0,
           adminCut: data.adminCut || 0,
+          demoStore: data.demoStore || false,
         });
       });
 
@@ -139,6 +140,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Store Type</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead className="text-right">Credit</TableHead>
                 <TableHead className="text-right">Debit</TableHead>
@@ -161,6 +163,11 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
                       }
                     >
                       {tx.type}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={tx.demoStore ? 'destructive' : 'default'}>
+                      {tx.demoStore ? 'Demo' : 'Live'}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
