@@ -13,10 +13,18 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "20"
+          node-version: '20'
 
-      - name: Install dependencies
+      - name: Install root dependencies
         run: npm install
+
+      - name: Install Functions dependencies
+        run: npm install
+        working-directory: functions
+
+      - name: Build Functions
+        run: npm run build
+        working-directory: functions
 
       - name: Create .env file
         run: |
@@ -32,7 +40,7 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
-      - name: Build
+      - name: Build App
         run: npm run build
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
