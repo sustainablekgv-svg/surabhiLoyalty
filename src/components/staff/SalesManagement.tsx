@@ -89,7 +89,7 @@ const generateInvoiceId = (storePrefix: string) => {
   return `${storePrefix}-${timestamp}-${randomStr}`;
 };
 
-export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
+export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementProps) => {
   const { user } = useAuth();
   // console.log('The user in line 61 is', user);
   const [searchTerm, setSearchTerm] = useState('');
@@ -574,6 +574,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               storeLocation: selectedCustomer.storeLocation,
               customerName: referrerData.customerName,
               createdAt: Timestamp.fromDate(new Date()),
+              demoStore: demoStore,
             });
 
             // Add CustomerTx record for the referral Surabhi Coins earned by referrer
@@ -640,6 +641,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           customerName: selectedCustomer.customerName,
           storeLocation: storeLocation,
           createdAt: Timestamp.fromDate(new Date()),
+          demoStore: demoStore,
         });
       }
 
@@ -732,7 +734,8 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         // Update store balance
         const storeQueryWallet = query(
           collection(db, 'stores'),
-          where('storeName', '==', user.storeLocation)
+          where('storeName', '==', user.storeLocation),
+          where('demoStore', '==', demoStore)
         );
         const storeSnapshotWallet = await getDocs(storeQueryWallet);
         if (!storeSnapshotWallet.empty) {
@@ -1267,6 +1270,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
               storeLocation: referrer.storeLocation,
               customerName: referrer.customerName,
               createdAt: Timestamp.fromDate(new Date()),
+              demoStore: demoStore,
             });
 
             toast.success(
@@ -1291,6 +1295,7 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
         customerMobile: selectedCustomer.customerMobile,
         storeLocation: storeLocation,
         createdAt: Timestamp.fromDate(new Date()),
+        demoStore: demoStore,
       };
 
       await addDoc(collection(db, 'Activity'), activity);
@@ -1386,7 +1391,9 @@ export const SalesManagement = ({ storeLocation }: SalesManagementProps) => {
           <ShoppingCart className="h-6 w-6 text-green-600" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Sales Management</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Sales Management {demoStore === true && <Badge>Demo Store</Badge>}
+          </h2>
           <p className="text-gray-600">Process customer purchases at {storeLocation}</p>
           {storeDetails && (
             <div className="flex gap-4 mt-2 text-sm flex-wrap">

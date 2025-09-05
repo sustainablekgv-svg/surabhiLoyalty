@@ -112,6 +112,7 @@ export const StaffManagement = () => {
           adminStoreProfit: Number(doc.data().adminStoreProfit) || 0,
           storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
           storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date(),
+          demoStore: doc.data().demoStore || false,
         })) as StoreType[];
         setStores(storesData);
 
@@ -123,6 +124,7 @@ export const StaffManagement = () => {
           staffMobile: doc.data().staffMobile || '',
           staffEmail: doc.data().staffEmail || '',
           storeLocation: doc.data().storeLocation || '',
+          demoStore: doc.data().demoStore || false,
           role: doc.data().role || 'staff',
           staffStatus: doc.data().staffStatus || 'active',
           staffSalesCount: Number(doc.data().staffSalesCount) || 0,
@@ -442,6 +444,9 @@ export const StaffManagement = () => {
           <p className="text-sm xs:text-base text-muted-foreground">
             Manage staff accounts and store locations
           </p>
+          <p className="text-sm xs:text-base text-muted-foreground">
+            This tab shows both details of both live and demo stores
+          </p>
         </div>
 
         <div className="flex flex-col xs:flex-row gap-2 w-full xs:w-auto">
@@ -552,6 +557,11 @@ export const StaffManagement = () => {
                             {member.staffName}
                             {member.role === 'admin' && (
                               <Shield className="h-3 w-3 xs:h-4 xs:w-4 text-primary" />
+                            )}
+                            {member.demoStore && (
+                              <Badge variant={'default'} className="text-[10px] xs:text-xs">
+                                Demo
+                              </Badge>
                             )}
                           </div>
                           <div className="text-[10px] xs:text-xs sm:text-sm text-muted-foreground">
@@ -684,6 +694,14 @@ export const StaffManagement = () => {
                     </TableCell> */}
                       <TableCell className="font-medium text-xs xs:text-sm">
                         {store.storeName}
+                        {store.demoStore === true && (
+                          <Badge
+                            variant={store.storeStatus === 'active' ? 'default' : 'secondary'}
+                            className="text-[10px] xs:text-xs"
+                          >
+                            Demo
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-xs xs:text-sm">
                         <div className="flex items-center gap-1">
@@ -863,7 +881,7 @@ export const StaffManagement = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Status *</Label>
+                <Label>Status</Label>
                 <Select
                   value={currentStaff?.staffStatus || 'active'}
                   onValueChange={value =>
@@ -906,6 +924,33 @@ export const StaffManagement = () => {
                         {store.storeName}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Demo Staff?</Label>
+                <Select
+                  value={
+                    currentStaff?.demoStore === true
+                      ? 'true'
+                      : currentStaff?.demoStore === false
+                        ? 'false'
+                        : undefined
+                  }
+                  onValueChange={value =>
+                    setCurrentStaff({
+                      ...(currentStaff || {}),
+                      demoStore: value === 'true',
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Yes</SelectItem>
+                    <SelectItem value="false">No</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1264,7 +1309,7 @@ export const StaffManagement = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Status *</Label>
+                <Label>Status</Label>
                 <Select
                   value={currentStore?.storeStatus || 'active'}
                   onValueChange={value =>
@@ -1280,6 +1325,27 @@ export const StaffManagement = () => {
                   <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Demo Store?</Label>
+                <Select
+                  value={currentStore?.demoStore ? 'true' : 'false'}
+                  onValueChange={value =>
+                    setCurrentStore({
+                      ...currentStore,
+                      demoStore: value === 'true',
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Yes</SelectItem>
+                    <SelectItem value="false">No</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

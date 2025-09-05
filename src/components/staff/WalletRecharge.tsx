@@ -88,7 +88,7 @@ function safeConvertToTimestamp(date: any): Timestamp {
   return Timestamp.now();
 }
 
-export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
+export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps) => {
   const { user, logout, isLoading: authLoading } = useAuth();
   // console.log('The storeLocation is', user.storeLocation);
   const [searchTerm, setSearchTerm] = useState('');
@@ -199,7 +199,8 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         // console.log('THe sote Lcoation in line 163 is', user.storeLocation);
         const customersq = query(
           customersCollection,
-          where('storeLocation', '==', user.storeLocation)
+          where('storeLocation', '==', user.storeLocation),
+          where('demoStore', '==', demoStore)
         );
         const querySnapshot = await getDocs(customersq);
         const customersData = querySnapshot.docs.map(doc => ({
@@ -233,9 +234,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
 
     const surabhiCoins = Number((amount * (storeDetails.surabhiCommission / 100)).toFixed(2));
     // Exclude seva calculations for demo stores
-    const sevaAmount = storeDetails.demoStore
-      ? 0
-      : Number((amount * (storeDetails.sevaCommission / 100)).toFixed(2));
+    const sevaAmount = Number((amount * (storeDetails.sevaCommission / 100)).toFixed(2));
     const referralAmount = Number((amount * (storeDetails.referralCommission / 100)).toFixed(2));
     return { surabhiCoins, sevaAmount, referralAmount };
   };
@@ -616,6 +615,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
             customerMobile: currentData.referredBy,
             storeLocation: referrerData.storeLocation,
             createdAt: Timestamp.fromDate(new Date()),
+            demoStore: demoStore,
           });
 
           // Add CustomerTx record for the referral Surabhi Coins earned by referrer
@@ -679,6 +679,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
           customerName: selectedCustomer.customerName,
           createdAt: Timestamp.fromDate(new Date()),
           storeLocation: storeLocation,
+          demoStore: demoStore,
         });
 
         await addActivityRecord({
@@ -689,6 +690,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
           customerName: selectedCustomer.customerName,
           createdAt: Timestamp.fromDate(new Date()),
           storeLocation: storeLocation,
+          demoStore: demoStore,
         });
       }
 
@@ -701,6 +703,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         customerName: selectedCustomer.customerName,
         createdAt: Timestamp.fromDate(new Date()),
         storeLocation: storeLocation,
+        demoStore: demoStore,
       });
 
       await addActivityRecord({
@@ -711,6 +714,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
         customerName: selectedCustomer.customerName,
         createdAt: Timestamp.fromDate(new Date()),
         storeLocation: storeLocation,
+        demoStore: demoStore,
       });
 
       // Add activity records for the recharge and commissions
@@ -724,6 +728,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
           customerMobile: selectedCustomer.referredBy,
           storeLocation: storeLocation,
           createdAt: Timestamp.fromDate(new Date()),
+          demoStore: demoStore,
         });
       }
 
@@ -737,6 +742,7 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
           customerName: selectedCustomer.customerName,
           createdAt: Timestamp.fromDate(new Date()),
           storeLocation: storeLocation,
+          demoStore: demoStore,
         });
       }
 
@@ -826,7 +832,9 @@ export const WalletRecharge = ({ storeLocation }: WalletRechargeProps) => {
           <Wallet className="h-5 w-5 xs:h-6 xs:w-6 text-green-600" />
         </div>
         <div>
-          <h2 className="text-xl xs:text-2xl font-bold text-gray-900">Wallet Recharge</h2>
+          <h2 className="text-xl xs:text-2xl font-bold text-gray-900">
+            Wallet Recharge {demoStore === true && <Badge>Demo Store</Badge>}
+          </h2>
           <p className="text-sm xs:text-base text-gray-600">
             Recharge customer wallets at {storeLocation}
           </p>

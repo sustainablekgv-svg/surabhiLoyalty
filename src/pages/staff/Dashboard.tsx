@@ -172,27 +172,42 @@ const StoreDashboard = () => {
             {/* Tab Content */}
             <div className="bg-white rounded-lg shadow-sm p-2 xs:p-3 sm:p-6 mt-1 overflow-x-hidden">
               <TabsContent value="overview" className="space-y-4 sm:space-y-6 pt-2">
-                <StoreStats storeLocation={user?.storeLocation || ''} />
+                <StoreStats
+                  storeLocation={user?.storeLocation || ''}
+                  demoStore={user?.demoStore || false}
+                />
               </TabsContent>
 
               <TabsContent value="register" className="pt-2">
-                <UserRegistration storeLocation={user?.storeLocation || ''} />
+                <UserRegistration
+                  storeLocation={user?.storeLocation || ''}
+                  demoStore={user?.demoStore || false}
+                />
               </TabsContent>
 
               <TabsContent value="recharge" className="pt-2">
-                <WalletRecharge storeLocation={user?.storeLocation || ''} />
+                <WalletRecharge
+                  storeLocation={user?.storeLocation || ''}
+                  demoStore={user?.demoStore || false}
+                />
               </TabsContent>
 
               <TabsContent value="sales" className="pt-2">
-                <SalesManagement storeLocation={user?.storeLocation || ''} />
+                <SalesManagement
+                  storeLocation={user?.storeLocation || ''}
+                  demoStore={user?.demoStore || false}
+                />
               </TabsContent>
 
               <TabsContent value="transactions" className="pt-2">
-                <TransactionsPage storeLocation={user?.storeLocation || ''} />
+                <TransactionsPage
+                  storeLocation={user?.storeLocation || ''}
+                  demoStore={user?.demoStore || false}
+                />
               </TabsContent>
 
               <TabsContent value="accounts" className="pt-2">
-                <StoreAccounts storeLocation={user?.storeLocation || ''} userRole={''} />
+                <StoreAccounts storeLocation={user?.storeLocation || ''} userRole={''} demoStore />
               </TabsContent>
             </div>
           </Tabs>

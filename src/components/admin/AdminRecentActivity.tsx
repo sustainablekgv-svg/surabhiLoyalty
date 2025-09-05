@@ -71,7 +71,7 @@ export const AdminRecentActivity = () => {
         const performanceMap: Record<string, StorePerformance> = {};
 
         storesData
-          .filter(store => !store.demoStore)
+          .filter(store => store.demoStore === false)
           .forEach(store => {
             performanceMap[store.storeName] = {
               storeName: store.storeName,
@@ -117,10 +117,11 @@ export const AdminRecentActivity = () => {
             customerMobile: data.customerMobile,
             storeLocation: data.storeLocation,
             createdAt: data.createdAt,
+            demoStore: data.demoStore,
           } as ActivityType;
         });
 
-        setActivities(activitiesData);
+        setActivities(activitiesData.filter(activity => activity.demoStore === false));
 
         // Calculate store performance
         const newPerformanceMap: Record<string, StorePerformance> = {};
@@ -151,7 +152,7 @@ export const AdminRecentActivity = () => {
             (activity.type === 'sale' || activity.type === 'recharge') &&
             activity.storeLocation &&
             activity.amount &&
-            !demoStoreLocations.includes(activity.storeLocation)
+            activity.demoStore === false
           ) {
             if (!newPerformanceMap[activity.storeLocation]) {
               newPerformanceMap[activity.storeLocation] = {
@@ -196,6 +197,7 @@ export const AdminRecentActivity = () => {
               customerMobile: data.customerMobile,
               storeLocation: data.storeLocation,
               createdAt: data.createdAt,
+              demoStore: data.demoStore,
             };
 
             // Update activities
@@ -342,11 +344,13 @@ export const AdminRecentActivity = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Stores</SelectItem>
-                  {stores.map(store => (
-                    <SelectItem key={store.id} value={store.storeName}>
-                      {store.storeName}
-                    </SelectItem>
-                  ))}
+                  {stores
+                    .filter(store => store.demoStore === false)
+                    .map(store => (
+                      <SelectItem key={store.id} value={store.storeName}>
+                        {store.storeName}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

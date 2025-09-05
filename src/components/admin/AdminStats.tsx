@@ -21,14 +21,14 @@ export const AdminStats = () => {
       bgColor: 'bg-blue-50',
     },
     {
-      title: 'Total Recharge',
+      title: 'Total Wallet Balance ATM',
       value: '₹0',
       icon: DollarSign,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
     },
     {
-      title: 'Surabhi Coins',
+      title: 'Total Surabhi Coins ATM',
       value: '0',
       icon: Coins,
       color: 'text-purple-600',
@@ -118,20 +118,16 @@ export const AdminStats = () => {
           .map(store => store.storeName);
         console.log('The demo store locations are', demoStoreLocations);
         // Filter out customers from demo stores for KPI calculations
-        const nonDemoCustomers = customers.filter(
-          customer => !demoStoreLocations.includes(customer.storeLocation)
-        );
-        console.log('The non Demo Customers are', nonDemoCustomers);
+        // const nonDemoCustomers = customers.filter(customer => customer.demoStore === false);
+        // console.log('The non Demo Customers are', nonDemoCustomers);
         // Calculate statistics excluding demo store customers
-        const totalUsers = nonDemoCustomers.length;
-        const totalRecharge = nonDemoCustomers.reduce(
-          (sum, customer) => sum + (customer.walletBalance || 0),
-          0
-        );
-        const totalSurabhiCoins = nonDemoCustomers.reduce(
-          (sum, customer) => sum + (customer.surabhiBalance || 0),
-          0
-        );
+        const totalUsers = customers.filter(customer => customer.demoStore === false).length;
+        const totalWallet = customers
+          .filter(customer => customer.demoStore === false)
+          .reduce((sum, customer) => sum + (customer.walletBalance || 0), 0);
+        const totalSurabhiCoins = customers
+          .filter(customer => customer.demoStore === false)
+          .reduce((sum, customer) => sum + (customer.surabhiBalance || 0), 0);
         const totalSevaPool = sevaPoolAmount;
 
         // Update stats cards
@@ -144,14 +140,14 @@ export const AdminStats = () => {
             bgColor: 'bg-blue-50',
           },
           {
-            title: 'Total Recharge',
-            value: `₹${totalRecharge.toFixed(2)}`,
+            title: 'Total Wallet Balance ATM',
+            value: `₹${totalWallet.toFixed(2)}`,
             icon: DollarSign,
             color: 'text-green-600',
             bgColor: 'bg-green-50',
           },
           {
-            title: 'Surabhi Coins',
+            title: 'Total Surabhi Coins ATM',
             value: totalSurabhiCoins.toFixed(2),
             icon: Coins,
             color: 'text-purple-600',
@@ -317,12 +313,12 @@ export const AdminStats = () => {
       <div className="space-y-3 xs:space-y-4 sm:space-y-6">
         {/* Recent Activity - Full width */}
         <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm w-full">
-          <CardHeader className="px-2 xs:px-3 sm:px-6 py-2 xs:py-3 sm:py-4">
+          {/* <CardHeader className="px-2 xs:px-3 sm:px-6 py-2 xs:py-3 sm:py-4">
             <CardTitle className="flex items-center gap-0.5 xs:gap-1 sm:gap-2 text-sm xs:text-base sm:text-lg">
               <TrendingUp className="h-3 w-3 xs:h-4 xs:w-4 sm:h-5 sm:w-5 text-purple-600" />
               Recent Activity
             </CardTitle>
-          </CardHeader>
+          </CardHeader> */}
           <CardContent className="px-2 xs:px-3 sm:px-6 pb-2 xs:pb-3 sm:pb-6">
             <AdminRecentActivity />
           </CardContent>

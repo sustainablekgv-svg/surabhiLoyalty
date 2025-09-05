@@ -69,6 +69,7 @@ export const CustomerManagement = () => {
             customerMobile: data.customerMobile || data.mobile || '',
             customerEmail: data.customerEmail || data.email || '',
             storeLocation: data.storeLocation || 'Unassigned',
+            demoStore: data.demoStore || false,
             city: data.city || 'N/A',
             district: data.district || 'N/A',
             referredBy: data.referredBy || null,
@@ -176,26 +177,26 @@ export const CustomerManagement = () => {
     const matchesStore = filterStore === 'all' || customer.storeLocation === filterStore;
 
     // Exclude customers from demo stores
-    const isNotFromDemoStore = !demoStoreLocations.includes(customer.storeLocation);
+    // const isNotFromDemoStore = !demoStoreLocations.includes(customer.storeLocation);
 
-    return matchesSearch && matchesStore && isNotFromDemoStore;
+    return matchesSearch && matchesStore;
   });
 
   // Filter out customers from demo stores for analytics calculations
-  const nonDemoCustomers = customers.filter(
-    customer => !demoStoreLocations.includes(customer.storeLocation)
-  );
+  // const nonDemoCustomers = customers.filter(
+  //   customer => !demoStoreLocations.includes(customer.storeLocation)
+  // );
 
   // Calculate analytics excluding demo store customers
   const totalStats = {
-    totalCustomers: nonDemoCustomers.length,
-    registeredCustomers: nonDemoCustomers.filter(c => c.walletRechargeDone).length,
-    guestCustomers: nonDemoCustomers.filter(c => !c.walletRechargeDone).length,
-    totalWalletBalance: nonDemoCustomers.reduce((sum, c) => sum + c.walletBalance, 0),
-    totalSurabhiCoins: nonDemoCustomers.reduce((sum, c) => sum + c.surabhiBalance, 0),
-    totalSevaCoins: nonDemoCustomers.reduce((sum, c) => sum + c.sevaTotal, 0),
-    totalReferrals: nonDemoCustomers.reduce((sum, c) => sum + (c.referredUsers?.length || 0), 0),
-    activeThisMonth: nonDemoCustomers.filter(c => {
+    totalCustomers: filteredCustomers.length,
+    registeredCustomers: filteredCustomers.filter(c => c.walletRechargeDone).length,
+    guestCustomers: filteredCustomers.filter(c => !c.walletRechargeDone).length,
+    totalWalletBalance: filteredCustomers.reduce((sum, c) => sum + c.walletBalance, 0),
+    totalSurabhiCoins: filteredCustomers.reduce((sum, c) => sum + c.surabhiBalance, 0),
+    totalSevaCoins: filteredCustomers.reduce((sum, c) => sum + c.sevaTotal, 0),
+    totalReferrals: filteredCustomers.reduce((sum, c) => sum + (c.referredUsers?.length || 0), 0),
+    activeThisMonth: filteredCustomers.filter(c => {
       if (!c.lastTransactionDate) return false;
       const monthAgo = new Date();
       monthAgo.setMonth(monthAgo.getMonth() - 1);
@@ -671,6 +672,9 @@ export const CustomerManagement = () => {
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Customer Management</h2>
           <p className="text-xs sm:text-sm text-gray-600">View and manage all customer accounts</p>
+          <p className="text-xs sm:text-sm text-gray-600">
+            This tab shows customers of both live and demo stores
+          </p>
         </div>
       </div>
 
@@ -816,12 +820,14 @@ export const CustomerManagement = () => {
                         {customer.customerName}
                       </h3>
                       <div className="flex gap-1 sm:gap-2">
-                        <Badge
-                          variant={customer.walletRechargeDone ? 'default' : 'secondary'}
-                          className="text-[10px] sm:text-xs py-0 sm:py-0.5"
-                        >
-                          {customer.walletRechargeDone ? 'Registered' : 'Guest'}
-                        </Badge>
+                        {customer.demoStore && (
+                          <Badge
+                            variant="default"
+                            className="text-[10px] sm:text-xs py-0 sm:py-0.5"
+                          >
+                            Demo
+                          </Badge>
+                        )}
                         <Badge variant="outline" className="text-[10px] sm:text-xs py-0 sm:py-0.5">
                           {customer.referredUsers?.length || 0} referrals
                         </Badge>

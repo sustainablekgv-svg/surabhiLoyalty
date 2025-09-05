@@ -49,6 +49,7 @@ interface Customer {
   storeLocation: string;
   sevaCoinsCurrentMonth: number;
   sevaCoinsTotal: number;
+  demoStore: boolean;
 }
 
 // Safe timestamp conversion utility
@@ -195,7 +196,11 @@ export const GoSevaPool = () => {
       );
 
       // Additional query for transactions with sevaDebit > 0
-      const sevaDebitQuery = query(collection(db, 'CustomerTx'), where('sevaDebit', '>', 0));
+      const sevaDebitQuery = query(
+        collection(db, 'CustomerTx'),
+        where('sevaDebit', '>', 0)
+        // where('demoStore', '==', false)
+      );
       // Fetch transactions with sevaEarned > 0
       const transactionsSnapshot = await getDocs(transactionsQuery);
 
@@ -239,6 +244,7 @@ export const GoSevaPool = () => {
           sevaBalance: data.sevaBalance,
           sevaTotal: data.sevaTotal,
           storeSevaBalance: data.storeSevaBalance,
+          demoStore: data.demoStore,
         } as CustomerTxType);
       });
 
@@ -279,18 +285,22 @@ export const GoSevaPool = () => {
           sevaBalance: data.sevaBalance,
           sevaTotal: data.sevaTotal,
           storeSevaBalance: data.storeSevaBalance,
+          demoStore: data.demoStore,
         } as CustomerTxType);
       });
 
       // Convert map to array and sort by most recent date first
-      const transactionsData = Array.from(transactionsMap.values()).sort(
-        (a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()
-      );
+      const transactionsData = Array.from(transactionsMap.values())
+        .filter(tx => tx.demoStore === false)
+        .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
 
       // Extract unique store locations
       const uniqueStoreLocations = Array.from(
         new Set(
-          transactionsData.map(tx => tx.storeLocation).filter(location => location) // Filter out undefined/null values
+          transactionsData
+            .filter(tx => tx.demoStore === false)
+            .map(tx => tx.storeLocation)
+            .filter(location => location) // Filter out undefined/null values
         )
       ).sort();
 
@@ -315,6 +325,7 @@ export const GoSevaPool = () => {
             storeLocation: tx.storeLocation,
             sevaCoinsCurrentMonth: 0,
             sevaCoinsTotal: tx.sevaTotal || 0,
+            demoStore: tx.demoStore || false,
           };
         }
         // Add sevaEarned if it exists
@@ -329,6 +340,7 @@ export const GoSevaPool = () => {
       }, {});
 
       const topCustomers = Object.values(customerContributions)
+        // .filter((customer): customer is Customer => customer?.demoStore === false)
         .sort((a: Customer, b: Customer) => b.sevaCoinsCurrentMonth - a.sevaCoinsCurrentMonth)
         .slice(0, 10); // Get top 10 customers
 
@@ -402,7 +414,7 @@ export const GoSevaPool = () => {
           ...storeSevaBalances,
           [selectedStoreForAllocation]: storeSevaBalance - amount,
         });
-        
+
         // Store the demoStore value for later use
         var storeDemoStore = storeData.demoStore || false;
       } else {
@@ -521,14 +533,20 @@ export const GoSevaPool = () => {
   }, [selectedStoreLocation, transactions]);
 
   const monthlyStats = {
-    totalContributions: transactions.reduce((sum, tx) => sum + (tx.sevaEarned || 0), 0),
+    totalContributions: transactions.reduce(
+      (sum, tx) => sum + ((tx.demoStore === false && tx.sevaEarned) || 0),
+      0
+    ),
     totalAllocations: Number(sevaPool.allocationsCurrentMonth || 0),
-    totalContributors: customers.length,
+    totalContributors: customers.filter(cust => cust.demoStore === false).length,
     avgContribution:
-      customers.length > 0
+      customers.filter(cust => cust.demoStore === false).length > 0
         ? Number(
             (
-              transactions.reduce((sum, tx) => sum + (tx.sevaEarned || 0), 0) / customers.length
+              transactions
+                .filter(tx => tx.demoStore === false)
+                .reduce((sum, tx) => sum + ((tx.demoStore === false && tx.sevaEarned) || 0), 0) /
+              customers.filter(cust => cust.demoStore === false).length
             ).toFixed(2)
           )
         : 0,
@@ -609,7 +627,7 @@ export const GoSevaPool = () => {
                   </p>
                 </div>
 
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label htmlFor="store">Select Store</Label>
                   <select
                     id="store"
@@ -624,14 +642,14 @@ export const GoSevaPool = () => {
                       </option>
                     ))}
                   </select>
-                  {/* {selectedStoreForAllocation && (
+                  {selectedStoreForAllocation && (
                     <div className="mt-2 p-2 bg-blue-50 rounded-md">
                       <p className="text-sm text-blue-800">
                         <strong>Store Seva Balance: ₹{storeSevaBalances[selectedStoreForAllocation]?.toLocaleString() || 0}</strong>
                       </p>
                     </div>
-                  )} */}
-                </div>
+                  )}
+                </div> */}
 
                 <div className="space-y-2">
                   <Label htmlFor="amount">Allocation Amount</Label>

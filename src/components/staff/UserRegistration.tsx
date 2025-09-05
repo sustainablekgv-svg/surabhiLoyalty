@@ -1,39 +1,40 @@
 import {
   createUserWithEmailAndPassword,
-  onAuthStateChanged,
   User as FirebaseUser,
+  onAuthStateChanged,
 } from 'firebase/auth';
 import {
-  doc,
-  setDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  updateDoc,
   arrayUnion,
+  collection,
+  doc,
+  getDocs,
+  query,
+  setDoc,
   Timestamp,
+  updateDoc,
+  where,
 } from 'firebase/firestore';
 import {
-  UserPlus,
-  Phone,
-  Mail,
-  User,
-  Lock,
+  CheckCircle,
   Eye,
   EyeOff,
-  CheckCircle,
   Link2,
   Loader2,
+  Lock,
+  Mail,
+  Phone,
+  User,
+  UserPlus,
   X,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { auth, db } from '@/lib/firebase';
 import { CustomerType, UserRegistrationProps } from '@/types/types';
+import { Badge } from '../ui/badge';
 
-export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
+export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   // const [isAuthReady, setIsAuthReady] = useState(false);
@@ -230,6 +231,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
         customerMobile: formData.customerMobile,
         customerEmail: formData.customerEmail,
         storeLocation,
+        demoStore: demoStore || false,
         district: formData.district || null,
         city: formData.city || null,
         referredBy: formData.referredBy || null,
@@ -380,7 +382,7 @@ export const UserRegistration = ({ storeLocation }: UserRegistrationProps) => {
           </div>
           <div>
             <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900">
-              Customer Registration
+              Customer Registration {demoStore === true && <Badge>Demo Store</Badge>}
             </h1>
             <p className="text-gray-600">Register new customers for {storeLocation}</p>
           </div>

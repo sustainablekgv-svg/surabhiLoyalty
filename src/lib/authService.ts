@@ -5,6 +5,7 @@ import { auth, db } from '@/lib/firebase';
 export interface User {
   id: string;
   mobile: string;
+  demoStore?: boolean;
   role: 'admin' | 'staff' | 'customer';
   name?: string;
   email?: string;
@@ -34,6 +35,7 @@ export const getCustomerByMobile = async (
           name: customerData.name,
           email: customerData.email,
           createdAt: customerData.createdAt,
+          demoStore: customerData.demoStore,
         };
       }
     }
@@ -62,7 +64,7 @@ export const getStaffByMobile = async (
     // Get the first matching document (assuming mobile is unique)
     const doc = querySnapshot.docs[0];
     const staffData = doc.data();
-
+    // console.log('The line 36 is', staffData);
     // Verify password
     if (staffData.staffPassword !== password) {
       return null;
@@ -98,6 +100,7 @@ export const getStaffByMobile = async (
     const user: User = {
       id: doc.id,
       mobile: staffData.staffMobile,
+      demoStore: staffData.demoStore,
       role: staffData.role,
       name: staffData.staffName,
       email: staffData.staffEmail,

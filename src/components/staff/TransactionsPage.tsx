@@ -35,7 +35,7 @@ const formatDate = (timestamp: Timestamp): string => {
   return format(timestamp.toDate(), 'dd MMM yyyy');
 };
 
-export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
+export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
   const [allTransactions, setAllTransactions] = useState<CustomerTxType[]>([]);
@@ -164,19 +164,19 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
 
   const calculateTotalAmount = () => {
     return allTransactions
-      .filter(tx => !tx.demoStore)
+      .filter(tx => tx.demoStore === demoStore)
       .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
   };
 
   const calculateTotalRecharges = () => {
     return allTransactions
-      .filter(tx => tx.type === 'recharge' && !tx.demoStore)
+      .filter(tx => tx.type === 'recharge' && tx.demoStore === demoStore)
       .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
   };
 
   const calculateTotalSales = () => {
     return allTransactions
-      .filter(tx => tx.type === 'sale' && !tx.demoStore)
+      .filter(tx => tx.type === 'sale' && tx.demoStore === demoStore)
       .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
   };
 
@@ -187,7 +187,9 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
           <ShoppingCart className="h-6 w-6 text-blue-600" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Transaction History</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Transaction History {demoStore === true && <Badge>Demo Store</Badge>}
+          </h2>
           <p className="text-gray-600">View transactions and recharges at {storeLocation}</p>
         </div>
       </div>
@@ -561,7 +563,7 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                             <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                               ₹{tx.sevaEarned ? Number(tx.sevaEarned).toFixed(2) : '0.00'}
                             </TableCell>
-                            <TableCell>
+                            {/* <TableCell>
                               {tx.demoStore ? (
                                 <Badge variant="destructive" className="text-xs">
                                   Demo
@@ -571,7 +573,7 @@ export const TransactionsPage = ({ storeLocation }: TransactionsPageProps) => {
                                   Live
                                 </Badge>
                               )}
-                            </TableCell>
+                            </TableCell> */}
                             <TableCell>{formatTimestamp(tx.createdAt)}</TableCell>
                             <TableCell>{tx.processedBy || 'system'}</TableCell>
                           </TableRow>

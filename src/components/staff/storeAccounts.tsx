@@ -1,15 +1,6 @@
 import { format } from 'date-fns';
-import {
-  collection,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  startAfter,
-  Timestamp,
-  where,
-} from 'firebase/firestore';
-import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { collection, getDocs, orderBy, query, Timestamp, where } from 'firebase/firestore';
+import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +18,11 @@ import { useAuth } from '@/hooks/auth-context';
 import { db } from '@/lib/firebase';
 import { AccountTxType, StoreAccountsProps } from '@/types/types';
 
-const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userRole: string }) => {
+const StoreAccounts = ({
+  storeLocation,
+  userRole,
+  demoStore,
+}: StoreAccountsProps & { userRole: string; demoStore: boolean }) => {
   const { user, logout, isLoading: authLoading } = useAuth();
   const [allTransactions, setAllTransactions] = useState<AccountTxType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,6 +123,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">{user.storeLocation} Transactions</h2>
+        {demoStore === true && <Badge>Demo Store</Badge>}
       </div>
 
       <Card>
@@ -140,7 +136,7 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead>Store Type</TableHead>
+                {/* <TableHead>Store Type</TableHead> */}
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead className="text-right">Credit</TableHead>
                 <TableHead className="text-right">Debit</TableHead>
@@ -165,11 +161,11 @@ const StoreAccounts = ({ storeLocation, userRole }: StoreAccountsProps & { userR
                       {tx.type}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  {/* <TableCell>
                     <Badge variant={tx.demoStore ? 'destructive' : 'default'}>
                       {tx.demoStore ? 'Demo' : 'Live'}
                     </Badge>
-                  </TableCell>
+                  </TableCell> */}
                   <TableCell className="text-right">
                     {tx.amount >= 0 ? '+' : ''}₹{tx.amount.toFixed(2)}
                   </TableCell>

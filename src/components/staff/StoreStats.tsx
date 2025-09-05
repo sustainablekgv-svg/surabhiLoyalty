@@ -19,10 +19,7 @@ export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
     setLoading(true);
 
     // Set up real-time listener for store data
-    const storeQuery = query(
-      collection(db, 'stores'),
-      where('storeName', '==', storeLocation)
-    );
+    const storeQuery = query(collection(db, 'stores'), where('storeName', '==', storeLocation));
 
     const unsubscribeStore = onSnapshot(
       storeQuery,
@@ -120,8 +117,8 @@ export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
 
   const totalSurabhiCoins = customers.reduce((sum, c) => sum + (c.surabhiBalance || 0), 0);
   // Exclude Seva balance calculations for demo stores
-  const sevaCoinsThisMonth = currentStore?.demoStore 
-    ? 0 
+  const sevaCoinsThisMonth = currentStore?.demoStore
+    ? 0
     : customers.reduce((sum, c) => sum + (c.sevaBalanceCurrentMonth || 0), 0);
 
   const topCustomers = [...customers]

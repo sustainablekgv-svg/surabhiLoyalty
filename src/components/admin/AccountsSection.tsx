@@ -86,7 +86,7 @@ const Accounts = () => {
         id: doc.id,
         ...doc.data(),
       })) as StoreType[];
-      setStores(storesData);
+      setStores(storesData.filter(store => store.demoStore === false));
       return storesData;
     } catch (err) {
       // console.error('Error fetching stores:', err);
@@ -270,6 +270,9 @@ const Accounts = () => {
 
   const filteredTransactions =
     accountData?.recentTransactions.filter(tx => {
+      if (tx.demoStore) {
+        return false;
+      }
       const matchesSearch =
         tx.remarks.toLowerCase().includes(searchTerm.toLowerCase()) ||
         tx.storeName.toLowerCase().includes(searchTerm.toLowerCase()) ||

@@ -9,6 +9,7 @@ export interface CustomerType {
   customerMobile: string;
   customerEmail: string;
   storeLocation: string;
+  demoStore: boolean;
   district?: string;
   city?: string;
   referredBy: string | null;
@@ -58,18 +59,22 @@ export interface StaffHeaderProps {
 
 export interface StaffStatsProps {
   storeLocation: string;
+  demoStore: boolean;
 }
 
 export interface TransactionsPageProps {
   storeLocation: string;
+  demoStore: boolean;
 }
 
 export interface UserRegistrationProps {
   storeLocation: string;
+  demoStore: boolean;
 }
 
 export interface WalletRechargeProps {
   storeLocation: string;
+  demoStore: boolean;
 }
 
 // export interface CustomerTx {
@@ -102,10 +107,12 @@ export interface AuthContextType {
 
 export interface SalesManagementProps {
   storeLocation: string;
+  demoStore: boolean;
 }
 
 export interface StoreUsersProps {
   storeLocation: string;
+  demoStore: boolean;
 }
 
 export interface StaffType {
@@ -113,6 +120,7 @@ export interface StaffType {
   staffName: string;
   staffMobile: string;
   staffEmail: string;
+  demoStore: boolean;
   storeLocation: string;
   staffPassword: string;
   role: 'admin' | 'staff';
@@ -173,7 +181,7 @@ export interface CustomerTxType {
   storeName: string; // Only for recharge
   createdAt: Timestamp;
   demoStore: boolean; // Indicates if transaction is from a demo store
-  paymentMethod?: 'cash' | 'wallet' | 'mixed';
+  paymentMethod?: 'cash' | 'wallet' | 'mixed' | 'admin';
   processedBy: string; // Used in sale
   remarks: string; // Description of the transaction
 
@@ -252,6 +260,7 @@ export interface ActivityType {
   customerMobile: string;
   storeLocation: string;
   createdAt: Timestamp;
+  demoStore: boolean;
 }
 
 export interface AccountTxType {

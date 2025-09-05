@@ -91,7 +91,9 @@ export const SalesManagement = () => {
         storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date(),
         walletEnabled: doc.data().walletEnabled || false,
       })) as StoreType[];
-      setStores(storesData.filter(store => store.storeStatus === 'active'));
+      setStores(
+        storesData.filter(store => store.storeStatus === 'active' && store.demoStore === false)
+      );
     } catch (err) {
       console.error('Error fetching stores:', err);
       setError('Failed to load store locations');
@@ -417,9 +419,9 @@ export const SalesManagement = () => {
                           <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                             Store
                           </TableHead>
-                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          {/* <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                             Type
-                          </TableHead>
+                          </TableHead> */}
                           <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                             Date
                           </TableHead>
@@ -467,7 +469,7 @@ export const SalesManagement = () => {
                               ₹{(transaction.cashPayment || 0).toFixed(2)}
                             </TableCell>
                             <TableCell>{transaction.storeLocation}</TableCell>
-                            <TableCell>
+                            {/* <TableCell>
                               {transaction.demoStore ? (
                                 <Badge variant="destructive" className="text-xs">
                                   Demo
@@ -477,7 +479,7 @@ export const SalesManagement = () => {
                                   Live
                                 </Badge>
                               )}
-                            </TableCell>
+                            </TableCell> */}
                             <TableCell>
                               {format(transaction.createdAt.toDate(), 'dd MMM yyyy, hh:mm a')}
                             </TableCell>
