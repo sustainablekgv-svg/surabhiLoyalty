@@ -206,6 +206,7 @@ export const SalesManagement = () => {
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Sales Management</h2>
           <p className="text-gray-600">View and manage all sales transactions</p>
+          <p className="text-gray-600">This tab shows only Live Stores Details</p>
         </div>
         <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
           {refreshing ? (

@@ -325,6 +325,9 @@ const Accounts = () => {
             Accounts Dashboard
           </h2>
           <p className="text-xs xs:text-sm text-gray-600">Store balances and transaction history</p>
+          <p className="text-xs xs:text-sm text-gray-600">
+            This tab shows only Live Stores Details
+          </p>
         </div>
         <Button
           variant="outline"

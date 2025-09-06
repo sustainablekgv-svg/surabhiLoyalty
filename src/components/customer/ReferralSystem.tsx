@@ -1,12 +1,13 @@
-import { collection, query, where, getDocs, Timestamp, doc, getDoc } from 'firebase/firestore';
-import { Share2, Copy, Users, Phone, Calendar, Coins, CreditCard, Store } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { collection, doc, getDoc, getDocs, query, Timestamp, where } from 'firebase/firestore';
+import { Calendar, Coins, Copy, CreditCard, Phone, Share2, Store, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/auth-context';
 import { db } from '@/lib/firebase';
+import { Badge } from '../ui/badge';
 
 interface ReferralSystemProps {
   userMobile: string;
@@ -149,6 +150,11 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
           </h2>
           <p className="text-[10px] xs:text-xs text-gray-600">
             Invite friends and earn on their spendings
+            {userData.demoStore && (
+              <Badge className="bg-black text-white text-[6px] ml-2  xs:text-[7px] sm:text-[8px] rounded-full px-1 xs:px-1.5 sm:px-2">
+                Demo Customer
+              </Badge>
+            )}
           </p>
         </div>
       </div>

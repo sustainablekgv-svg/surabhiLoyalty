@@ -16,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/hooks/auth-context';
 import { db } from '@/lib/firebase';
 import { ActivityType, CustomerType } from '@/types/types';
+import { Badge } from '../ui/badge';
 
 interface CustomerStatsProps {
   userId: string;
@@ -205,6 +206,11 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                 </h2>
                 <p className="text-[9px] xs:text-[10px] sm:text-xs text-gray-600">
                   Member since {memberSince}
+                  {customerData.demoStore && (
+                    <Badge className="bg-black text-white text-[6px] ml-2  xs:text-[7px] sm:text-[8px] rounded-full px-1 xs:px-1.5 sm:px-2">
+                      Demo Customer
+                    </Badge>
+                  )}
                 </p>
               </div>
             </div>

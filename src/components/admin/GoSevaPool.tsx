@@ -341,8 +341,8 @@ export const GoSevaPool = () => {
 
       const topCustomers = Object.values(customerContributions)
         // .filter((customer): customer is Customer => customer?.demoStore === false)
-        .sort((a: Customer, b: Customer) => b.sevaCoinsCurrentMonth - a.sevaCoinsCurrentMonth)
-        .slice(0, 10); // Get top 10 customers
+        .sort((a: Customer, b: Customer) => b.sevaCoinsCurrentMonth - a.sevaCoinsCurrentMonth);
+      // .slice(0, 10); // Get top 10 customers
 
       setCustomers(topCustomers as Customer[]);
     } catch (error) {
@@ -567,6 +567,9 @@ export const GoSevaPool = () => {
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Seva Pool Management</h2>
           <p className="text-sm sm:text-base text-gray-600">
             Manage community contribution pool and allocations
+          </p>
+          <p className="text-sm sm:text-base text-gray-600">
+            This tab shows only Live Stores Details
           </p>
         </div>
 

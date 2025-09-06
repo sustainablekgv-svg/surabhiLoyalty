@@ -34,12 +34,14 @@ import {
 import { useAuth } from '@/hooks/auth-context';
 import { db } from '@/lib/firebase';
 import { CustomerTxType } from '@/types/types';
+import { Badge } from '../ui/badge';
 
 interface TransactionHistoryProps {
   userId: string;
+  demoStore: boolean;
 }
 
-export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
+export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProps) => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [transactions, setTransactions] = useState<CustomerTxType[]>([]);
@@ -187,7 +189,14 @@ export const TransactionHistory = ({ userId }: TransactionHistoryProps) => {
       <Card>
         <CardHeader className="px-2 xs:px-3 sm:px-4 py-2 xs:py-3 sm:py-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 xs:gap-3">
-            <CardTitle className="text-sm xs:text-base sm:text-lg">Transaction History</CardTitle>
+            <CardTitle className="text-sm xs:text-base sm:text-lg">
+              Transaction History{' '}
+              {demoStore && (
+                <Badge className="bg-black text-white text-[6px] ml-2  xs:text-[7px] sm:text-[8px] rounded-full px-1 xs:px-1.5 sm:px-2">
+                  Demo Customer
+                </Badge>
+              )}
+            </CardTitle>
             <div className="flex flex-col xs:flex-row gap-1.5 xs:gap-2 w-full sm:w-auto">
               <div className="relative flex-1">
                 <Search className="absolute left-2 xs:left-3 top-1/2 -translate-y-1/2 h-3 xs:h-3.5 w-3 xs:w-3.5 text-gray-400" />

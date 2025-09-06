@@ -157,7 +157,8 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
 
         // Then fetch customers
         const customersCollection = collection(db, 'Customers');
-        const querySnapshot = await getDocs(customersCollection);
+        const custQuery = query(customersCollection, where('demoStore', '==', demoStore));
+        const querySnapshot = await getDocs(custQuery);
         const customersData = querySnapshot.docs.map(doc => {
           const data = doc.data();
           return {
