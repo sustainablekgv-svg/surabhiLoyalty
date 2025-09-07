@@ -1,106 +1,55 @@
-import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as admin from 'firebase-admin';
-import { getFirestore } from 'firebase-admin/firestore';
+import * as functions from 'firebase-functions/v2';
 
 admin.initializeApp();
-const db = getFirestore();
+const db = admin.firestore();
 
-// Helper function to get current quarter start date
-function getCurrentQuarterStart(): Date {
-  const now = new Date();
-  const month = now.getMonth();
-  const year = now.getFullYear();
-
-  if (month < 3) return new Date(year, 0, 1); // Q1 (Jan-Mar)
-  if (month < 6) return new Date(year, 3, 1); // Q2 (Apr-Jun)
-  if (month < 9) return new Date(year, 6, 1); // Q3 (Jul-Sep)
-  return new Date(year, 9, 1); // Q4 (Oct-Dec)
-}
-
-// Calculate quarters elapsed since joining
-function getQuartersElapsed(joinedDate: Date, currentDate: Date): number {
-  const startYear = joinedDate.getFullYear();
-  const startQuarter = Math.floor(joinedDate.getMonth() / 3);
-
-  const endYear = currentDate.getFullYear();
-  const endQuarter = Math.floor(currentDate.getMonth() / 3);
-
-  return (endYear - startYear) * 4 + (endQuarter - startQuarter) + 1;
-}
-
-// Calculate quarterly target based on joined date
-function calculateQuarterlyTarget(joinedDate: Date): number {
-  const now = new Date();
-  const quartersElapsed = getQuartersElapsed(joinedDate, now);
-  return quartersElapsed * 2000;
-}
-
-// Scheduled function to run at the start of each quarter
-export const checkQuarterlyCriteria = onSchedule(
+export const checkQuarterlyCriteria = functions.scheduler.onSchedule(
   {
-    schedule: '0 0 1 1,4,7,10 *', // Runs at 00:00 on Jan 1, Apr 1, Jul 1, Oct 1
-    timeZone: 'Asia/Kolkata', // Adjust to your timezone
+    schedule: '0 0 1 1,4,7,10 *',
+    // schedule: '*/10 * * * *',
+    timeZone: 'Asia/Kolkata',
   },
-  async () => {
-    // Removed the unused event parameter
-    const customersRef = db.collection('Customers');
-    let batch = db.batch();
-    const batchSize = 500; // Firestore batch limit
+  async event => {
+    const customersSnapshot = await db.collection('Customers').get();
 
-    try {
-      // Get all customers
-      const snapshot = await customersRef.get();
-      const now = admin.firestore.Timestamp.now();
-      let operationCount = 0;
+    const updates: Promise<any>[] = [];
 
-      for (const doc of snapshot.docs) {
-        const customer = doc.data();
+    customersSnapshot.forEach(doc => {
+      const data = doc.data() as any;
 
-        // Skip if customer doesn't have joinedDate (legacy customers)
-        if (!customer.joinedDate) {
-          continue;
-        }
+      const joinedDate = data.joinedDate?.toDate();
+      if (!joinedDate) return;
 
-        const joinedDate = customer.joinedDate.toDate();
-        const currentTarget = calculateQuarterlyTarget(joinedDate);
-        const totalTarget = currentTarget + (customer.carriedForwardTarget || 0);
-        const cumTotal = customer.cumTotal || 0;
-        const targetMet = cumTotal >= totalTarget;
+      // Calculate how many quarters passed since joining
+      const now = new Date();
+      const quartersSinceJoining =
+        Math.floor(
+          ((now.getFullYear() - joinedDate.getFullYear()) * 12 +
+            (now.getMonth() - joinedDate.getMonth())) /
+            3
+        ) + 1;
 
-        // Calculate carryforward for next quarter if target not met
-        let newCarriedForward = 0;
-        if (!targetMet) {
-          newCarriedForward = Math.max(0, totalTarget - cumTotal);
-        }
+      const expectedSpend = 2000 * quartersSinceJoining;
+      const cumTotal = data.cumTotal || 0;
 
-        batch.update(doc.ref, {
-          quarterlyTarget: currentTarget,
-          targetMet: targetMet,
-          coinsFrozen: !targetMet,
-          carriedForwardTarget: newCarriedForward,
-          lastQuarterCheck: now,
-          currentQuarterStart: admin.firestore.Timestamp.fromDate(getCurrentQuarterStart()),
-        });
+      const carriedForwardTarget = expectedSpend > cumTotal ? expectedSpend - cumTotal : 0;
 
-        operationCount++;
+      const targetMet = cumTotal >= expectedSpend;
 
-        // Commit batch if we reach the limit
-        if (operationCount % batchSize === 0) {
-          await batch.commit();
-          batch = db.batch(); // Start a new batch
-        }
-      }
+      updates.push(
+        doc.ref.update({
+          quarterlyTarget: expectedSpend,
+          carriedForwardTarget,
+          targetMet,
+          saleElgibility: targetMet,
+          lastQuarterCheck: admin.firestore.Timestamp.now(),
+          currentQuarterStart: new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1),
+        })
+      );
+    });
 
-      // Commit any remaining operations
-      if (operationCount % batchSize !== 0) {
-        await batch.commit();
-      }
-
-      console.log(`Successfully processed ${operationCount} customers`);
-      return; // Changed from return null to just return
-    } catch (error) {
-      console.error('Error processing quarterly check:', error);
-      throw error;
-    }
+    await Promise.all(updates);
+    console.log('Quarterly eligibility check completed');
   }
 );

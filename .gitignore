@@ -9,6 +9,7 @@ lerna-debug.log*
 # .env*
 
 functions/node_modules/
+.firebase
 
 node_modules
 dist
