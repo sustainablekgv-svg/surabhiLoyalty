@@ -107,12 +107,12 @@ export const StaffManagement = () => {
           sevaCommission: Number(doc.data().sevaCommission) || 0,
           cashOnlyCommission: Number(doc.data().cashOnlyCommission) || 0,
           storeStatus: doc.data().storeStatus || 'active',
-          walletEnabled: doc.data().walletEnabled || false,
+          walletEnabled: doc.data().walletEnabled !== false,
+          demoStore: doc.data().demoStore || false,
           adminCurrentBalance: Number(doc.data().adminCurrentBalance) || 0,
           adminStoreProfit: Number(doc.data().adminStoreProfit) || 0,
           storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
           storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date(),
-          demoStore: doc.data().demoStore || false,
         })) as StoreType[];
         setStores(storesData);
 
@@ -128,7 +128,6 @@ export const StaffManagement = () => {
           role: doc.data().role || 'staff',
           staffStatus: doc.data().staffStatus || 'active',
           staffSalesCount: Number(doc.data().staffSalesCount) || 0,
-          staffPin: doc.data().staffPin || '',
           staffPassword: doc.data().staffPassword || '',
           staffRechargesCount: Number(doc.data().staffRechargesCount) || 0,
           lastActive: doc.data().lastActive?.toDate(),
@@ -209,7 +208,6 @@ export const StaffManagement = () => {
         storeLocation: currentStaff.storeLocation,
         staffSalesCount: currentStaff.staffSalesCount || 0,
         staffRechargesCount: currentStaff.staffRechargesCount || 0,
-        staffPin: currentStaff.staffPin || '',
         staffPassword: currentStaff.staffPassword || '',
         lastActive: currentStaff.lastActive || null,
         createdAt: currentStaff.id
@@ -244,7 +242,6 @@ export const StaffManagement = () => {
         role: doc.data().role || 'staff',
         staffStatus: doc.data().staffStatus || 'active',
         staffSalesCount: Number(doc.data().staffSalesCount) || 0,
-        staffPin: doc.data().staffPin || '',
         staffRechargesCount: doc.data().staffRechargesCount || 0,
         staffPassword: doc.data().staffPassword || '',
         lastActive: doc.data().lastActive?.toDate(),
@@ -336,7 +333,8 @@ export const StaffManagement = () => {
         storeSevaBalance: Number(currentStore.storeSevaBalance) || 0,
         cashOnlyCommission: Number(currentStore.cashOnlyCommission) || 0,
         storeStatus: currentStore.storeStatus || 'active',
-        walletEnabled: currentStore.walletEnabled || false,
+        walletEnabled: currentStore.walletEnabled !== false,
+        demoStore: currentStore.demoStore || false,
         adminCurrentBalance: Number(currentStore.adminCurrentBalance) || 0,
         adminStoreProfit: Number(currentStore.adminStoreProfit) || 0,
         storeUpdatedAt: serverTimestamp(),
@@ -375,7 +373,8 @@ export const StaffManagement = () => {
         sevaCommission: Number(doc.data().sevaCommission) || 0,
         cashOnlyCommission: Number(doc.data().cashOnlyCommission) || 0,
         storeStatus: doc.data().storeStatus || 'active',
-        walletEnabled: doc.data().walletEnabled || false,
+        walletEnabled: doc.data().walletEnabled !== false,
+        demoStore: doc.data().demoStore || false,
         adminCurrentBalance: Number(doc.data().adminCurrentBalance) || 0,
         adminStoreProfit: Number(doc.data().adminStoreProfit) || 0,
         storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
@@ -486,7 +485,6 @@ export const StaffManagement = () => {
                     staffStatus: 'active',
                     staffSalesCount: 0,
                     staffRechargesCount: 0,
-                    staffPin: '',
                     staffPassword: '',
                     createdAt: Timestamp.now(),
                   });
@@ -595,7 +593,6 @@ export const StaffManagement = () => {
                         <TableCell className="text-xs xs:text-sm">
                           {member.staffRechargesCount || 0}
                         </TableCell>
-                        <TableCell className="text-xs xs:text-sm">{member.staffPin}</TableCell>
                         <TableCell className="text-xs xs:text-sm">{member.staffPassword}</TableCell>
                         <TableCell>
                           <div className="flex flex-col xs:flex-row gap-1 xs:gap-2">
@@ -694,7 +691,7 @@ export const StaffManagement = () => {
                     </TableCell> */}
                       <TableCell className="font-medium text-xs xs:text-sm">
                         {store.storeName}
-                        {store.demoStore === true && (
+                        {store.demoStore && (
                           <Badge
                             variant={store.storeStatus === 'active' ? 'default' : 'secondary'}
                             className="text-[10px] xs:text-xs"
@@ -953,21 +950,6 @@ export const StaffManagement = () => {
                     <SelectItem value="false">No</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Staff PIN</Label>
-                <Input
-                  type="text"
-                  value={currentStaff?.staffPin || ''}
-                  onChange={e =>
-                    setCurrentStaff({
-                      ...(currentStaff || {}),
-                      staffPin: e.target.value,
-                    })
-                  }
-                  placeholder="Enter staff PIN"
-                />
               </div>
             </div>
 
@@ -1353,7 +1335,7 @@ export const StaffManagement = () => {
               <div className="space-y-2">
                 <Label>Wallet Enabled</Label>
                 <Select
-                  value={currentStore?.walletEnabled ? 'true' : 'false'}
+                  value={currentStore?.walletEnabled !== false ? 'true' : 'false'}
                   onValueChange={value =>
                     setCurrentStore({
                       ...currentStore,

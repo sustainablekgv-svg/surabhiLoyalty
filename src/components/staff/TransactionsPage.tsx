@@ -188,7 +188,7 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
         </div>
         <div>
           <h2 className="text-2xl font-bold text-gray-900">
-            Transaction History {demoStore === true && <Badge>Demo Store</Badge>}
+            Transaction History {demoStore && <Badge>Demo Store</Badge>}
           </h2>
           <p className="text-gray-600">View transactions and recharges at {storeLocation}</p>
         </div>

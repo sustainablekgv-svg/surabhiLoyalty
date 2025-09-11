@@ -382,7 +382,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
           </div>
           <div>
             <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900">
-              Customer Registration {demoStore === true && <Badge>Demo Store</Badge>}
+              Customer Registration {demoStore && <Badge>Demo Store</Badge>}
             </h1>
             <p className="text-gray-600">Register new customers for {storeLocation}</p>
           </div>

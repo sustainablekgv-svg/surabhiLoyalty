@@ -1,5 +1,5 @@
-import { Timestamp } from 'firebase/firestore';
 import { CustomerType } from '@/types/types';
+import { Timestamp } from 'firebase/firestore';
 
 /**
  * Calculate the quarterly sales target for a customer based on their joined date

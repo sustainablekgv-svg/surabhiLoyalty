@@ -790,6 +790,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
       // setInvoiceId('');
       setShowConfirmation(false);
     } catch (error) {
+      console.log('THe errr is', error);
       toast.error('Recharge failed. Please try again.');
       // console.error('Recharge error:', error);
     } finally {
@@ -833,7 +834,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
         </div>
         <div>
           <h2 className="text-xl xs:text-2xl font-bold text-gray-900">
-            Wallet Recharge {demoStore === true && <Badge>Demo Store</Badge>}
+            Wallet Recharge {demoStore && <Badge>Demo Store</Badge>}
           </h2>
           <p className="text-sm xs:text-base text-gray-600">
             Recharge customer wallets at {storeLocation}

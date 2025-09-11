@@ -1,11 +1,11 @@
 import { format } from 'date-fns';
-import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
-import { Users, DollarSign, TrendingUp, UserPlus, Wallet, Activity, Coins } from 'lucide-react';
+import { collection, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
+import { Activity, Coins, DollarSign, TrendingUp, UserPlus, Users, Wallet } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { db } from '@/lib/firebase';
-import { CustomerType, ActivityType, StaffStatsProps, StoreType } from '@/types/types';
+import { ActivityType, CustomerType, StaffStatsProps, StoreType } from '@/types/types';
 // import { Timestamp } from 'firebase/firestore';
 
 export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
@@ -117,9 +117,11 @@ export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
 
   const totalSurabhiCoins = customers.reduce((sum, c) => sum + (c.surabhiBalance || 0), 0);
   // Exclude Seva balance calculations for demo stores
-  const sevaCoinsThisMonth = currentStore?.demoStore
+  const rawSevaCoins = currentStore?.demoStore
     ? 0
     : customers.reduce((sum, c) => sum + (c.sevaBalanceCurrentMonth || 0), 0);
+
+  const sevaCoinsThisMonth = Number(rawSevaCoins.toFixed(2));
 
   const topCustomers = [...customers]
     .sort((a, b) => (b.walletBalance || 0) - (a.walletBalance || 0))

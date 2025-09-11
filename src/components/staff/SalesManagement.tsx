@@ -49,7 +49,7 @@ import {
   StaffType,
   StoreType,
 } from '@/types/types';
-import { hasMetQuarterlyTarget } from '@/utils/quarterlyTargets';
+import { hasMetQuarterlyTarget, calculateQuarterlyTarget, updateCustomerQuarterlyTarget } from '@/utils/quarterlyTargets';
 
 // Custom rounding function: floor if decimal < 0.5, ceil if decimal >= 0.5
 const customRound = (value: number): number => {
@@ -1333,6 +1333,13 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           updateData.saleElgibility = true;
         }
 
+        // Update quarterly target data locally
+        const updatedCustomer = { ...selectedCustomer, cumTotal: newCumTotal };
+        const quarterlyTargetUpdate = updateCustomerQuarterlyTarget(updatedCustomer);
+        
+        // Add quarterly target fields to the update
+        Object.assign(updateData, quarterlyTargetUpdate);
+        
         await updateDoc(customerDoc.ref, updateData);
       }
 
@@ -1393,7 +1400,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         </div>
         <div>
           <h2 className="text-2xl font-bold text-gray-900">
-            Sales Management {demoStore === true && <Badge>Demo Store</Badge>}
+            Sales Management {demoStore && <Badge>Demo Store</Badge>}
           </h2>
           <p className="text-gray-600">Process customer purchases at {storeLocation}</p>
           {storeDetails && (
@@ -1497,6 +1504,14 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                               Student
                             </Badge>
                           )}
+                          {!hasMetQuarterlyTarget(customer) && (
+                            <Badge
+                              variant="outline"
+                              className="border-red-200 text-red-800 text-xs"
+                            >
+                              Coins Frozen
+                            </Badge>
+                          )}
                         </div>
                         <p className="font-medium text-green-600">₹{customer.walletBalance}</p>
                         <p className="text-amber-600">{customer.surabhiBalance} Surabhi Balance</p>
@@ -1527,9 +1542,21 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                 <div className="p-4 bg-blue-50 rounded-lg">
                   <h3 className="font-medium text-blue-900 mb-2">Selected Customer</h3>
                   <div className="mb-3">
-                    <p className="font-medium text-base text-blue-900">
-                      {selectedCustomer.customerName}
-                    </p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-medium text-base text-blue-900">
+                        {selectedCustomer.customerName}
+                      </p>
+                      {selectedCustomer.isStudent && (
+                        <Badge variant="outline" className="border-blue-200 text-blue-800 text-xs">
+                          Student
+                        </Badge>
+                      )}
+                      {!hasMetQuarterlyTarget(selectedCustomer) && (
+                        <Badge variant="outline" className="border-red-200 text-red-800 text-xs">
+                          Coins Frozen
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-sm text-blue-700">{selectedCustomer.customerMobile}</p>
                     {selectedCustomer.customerEmail && (
                       <p className="text-sm text-blue-700">{selectedCustomer.customerEmail}</p>

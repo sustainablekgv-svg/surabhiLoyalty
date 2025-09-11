@@ -126,7 +126,7 @@ const CustomerDashboard = () => {
           </TabsContent>
 
           <TabsContent value="history" className="mt-0">
-            <TransactionHistory userId={user.id} />
+            <TransactionHistory userId={user.id} demoStore={user.demoStore} />
           </TabsContent>
 
           <TabsContent value="terms" className="mt-0">
