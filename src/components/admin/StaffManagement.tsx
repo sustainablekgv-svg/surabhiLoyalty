@@ -54,7 +54,7 @@ async function checkContactNumberExists(
 ): Promise<boolean> {
   if (!contactNumber) return false;
 
-  const storesRef = collection(db, 'tores');
+  const storesRef = collection(db, 'stores');
   const q = query(storesRef, where('storeContactNumber', '==', contactNumber));
 
   const querySnapshot = await getDocs(q);
@@ -65,6 +65,22 @@ async function checkContactNumberExists(
   }
 
   return !querySnapshot.empty;
+}
+
+async function fetchDemoStoreStatus(storeLocation: string): Promise<boolean> {
+  if (!storeLocation) return false;
+
+  const storesRef = collection(db, 'stores');
+  const q = query(storesRef, where('storeLocation', '==', storeLocation));
+
+  const querySnapshot = await getDocs(q);
+
+  if (querySnapshot.empty) {
+    return false;
+  }
+
+  const demoStore = querySnapshot.docs[0].data().demoStore;
+  return Boolean(demoStore); // Ensure boolean return
 }
 
 export const StaffManagement = () => {
@@ -204,6 +220,7 @@ export const StaffManagement = () => {
         staffMobile: currentStaff.staffMobile,
         staffEmail: currentStaff.staffEmail,
         role: currentStaff.role,
+        demoStore: await fetchDemoStoreStatus(currentStaff.storeLocation),
         staffStatus: currentStaff.staffStatus,
         storeLocation: currentStaff.storeLocation,
         staffSalesCount: currentStaff.staffSalesCount || 0,
@@ -556,7 +573,7 @@ export const StaffManagement = () => {
                             {member.role === 'admin' && (
                               <Shield className="h-3 w-3 xs:h-4 xs:w-4 text-primary" />
                             )}
-                            {member.demoStore && (
+                            {member.demoStore === true && (
                               <Badge variant={'default'} className="text-[10px] xs:text-xs">
                                 Demo
                               </Badge>
@@ -910,7 +927,7 @@ export const StaffManagement = () => {
                       storeLocation: value,
                     })
                   }
-                  disabled={currentStaff?.role === 'admin'}
+                  disabled={currentStaff?.demoStore === true}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select store" />
@@ -925,32 +942,30 @@ export const StaffManagement = () => {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>Demo Staff?</Label>
-                <Select
-                  value={
-                    currentStaff?.demoStore === true
-                      ? 'true'
-                      : currentStaff?.demoStore === false
-                        ? 'false'
-                        : undefined
-                  }
-                  onValueChange={value =>
-                    setCurrentStaff({
-                      ...(currentStaff || {}),
-                      demoStore: value === 'true',
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">Yes</SelectItem>
-                    <SelectItem value="false">No</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {currentStaff?.id && (
+                <div className="space-y-2">
+                  <Label>Demo Store</Label>
+                  <Select
+                    value={
+                      currentStaff?.demoStore === true
+                        ? 'true'
+                        : currentStaff?.demoStore === false
+                          ? 'false'
+                          : 'undefined'
+                    }
+                    disabled={true}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Yes</SelectItem>
+                      <SelectItem value="false">No</SelectItem>
+                      <SelectItem value="undefined">Not specified</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -1311,26 +1326,28 @@ export const StaffManagement = () => {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>Demo Store?</Label>
-                <Select
-                  value={currentStore?.demoStore ? 'true' : 'false'}
-                  onValueChange={value =>
-                    setCurrentStore({
-                      ...currentStore,
-                      demoStore: value === 'true',
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">Yes</SelectItem>
-                    <SelectItem value="false">No</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {currentStore?.demoStore == false && (
+                <div className="space-y-2">
+                  <Label>Demo Store?</Label>
+                  <Select
+                    value={currentStore?.demoStore ? 'true' : 'false'}
+                    onValueChange={value =>
+                      setCurrentStore({
+                        ...currentStore,
+                        demoStore: value === 'true',
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Yes</SelectItem>
+                      <SelectItem value="false">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Wallet Enabled</Label>

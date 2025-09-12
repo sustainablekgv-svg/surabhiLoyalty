@@ -49,7 +49,7 @@ import {
   StaffType,
   StoreType,
 } from '@/types/types';
-import { hasMetQuarterlyTarget, calculateQuarterlyTarget, updateCustomerQuarterlyTarget } from '@/utils/quarterlyTargets';
+import { hasMetQuarterlyTarget, updateCustomerQuarterlyTarget } from '@/utils/quarterlyTargets';
 
 // Custom rounding function: floor if decimal < 0.5, ceil if decimal >= 0.5
 const customRound = (value: number): number => {
@@ -91,7 +91,7 @@ const generateInvoiceId = (storePrefix: string) => {
 
 export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementProps) => {
   const { user } = useAuth();
-  // console.log('The user in line 61 is', user);
+  console.log('The user in line 61 is', demoStore);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerType | null>(null);
   const [isRegisteredAtSameStore, setIsRegisteredAtSameStore] = useState<boolean>(false);
@@ -157,6 +157,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
 
         // Then fetch customers
         const customersCollection = collection(db, 'Customers');
+        console.log('The line 120 data is', demoStore);
         const custQuery = query(customersCollection, where('demoStore', '==', demoStore));
         const querySnapshot = await getDocs(custQuery);
         const customersData = querySnapshot.docs.map(doc => {
@@ -1336,10 +1337,10 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         // Update quarterly target data locally
         const updatedCustomer = { ...selectedCustomer, cumTotal: newCumTotal };
         const quarterlyTargetUpdate = updateCustomerQuarterlyTarget(updatedCustomer);
-        
+
         // Add quarterly target fields to the update
         Object.assign(updateData, quarterlyTargetUpdate);
-        
+
         await updateDoc(customerDoc.ref, updateData);
       }
 

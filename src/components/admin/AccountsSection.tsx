@@ -86,6 +86,7 @@ const Accounts = () => {
         id: doc.id,
         ...doc.data(),
       })) as StoreType[];
+      console.log('The stores data is', storesData);
       setStores(storesData.filter(store => store.demoStore === false));
       return storesData;
     } catch (err) {
