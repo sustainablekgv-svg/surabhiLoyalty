@@ -69,9 +69,8 @@ async function checkContactNumberExists(
 
 async function fetchDemoStoreStatus(storeLocation: string): Promise<boolean> {
   if (!storeLocation) return false;
-
   const storesRef = collection(db, 'stores');
-  const q = query(storesRef, where('storeLocation', '==', storeLocation));
+  const q = query(storesRef, where('storeName', '==', storeLocation));
 
   const querySnapshot = await getDocs(q);
 
@@ -80,8 +79,11 @@ async function fetchDemoStoreStatus(storeLocation: string): Promise<boolean> {
   }
 
   const demoStore = querySnapshot.docs[0].data().demoStore;
+  console.log('The lin 72 location is', storeLocation, demoStore);
   return Boolean(demoStore); // Ensure boolean return
 }
+
+console.log('THe location is', fetchDemoStoreStatus('Frappe'));
 
 export const StaffManagement = () => {
   const [emailError, setEmailError] = useState<string>('');
@@ -565,83 +567,93 @@ export const StaffManagement = () => {
                   </TableBody>
                 ) : (
                   <TableBody>
-                    {staff.map(member => (
-                      <TableRow key={member.id}>
-                        <TableCell className="font-medium text-xs xs:text-sm">
-                          <div className="flex items-center gap-1 xs:gap-2">
-                            {member.staffName}
-                            {member.role === 'admin' && (
-                              <Shield className="h-3 w-3 xs:h-4 xs:w-4 text-primary" />
-                            )}
-                            {member.demoStore === true && (
-                              <Badge variant={'default'} className="text-[10px] xs:text-xs">
-                                Demo
+                    {staff.map(
+                      member => (
+                        console.log('demoStore value:', member.demoStore),
+                        (
+                          <TableRow key={member.id}>
+                            <TableCell className="font-medium text-xs xs:text-sm">
+                              <div className="flex items-center gap-1 xs:gap-2">
+                                {member.staffName}
+                                {member.role === 'admin' && (
+                                  <Shield className="h-3 w-3 xs:h-4 xs:w-4 text-primary" />
+                                )}
+
+                                {member.demoStore === true && (
+                                  <Badge variant={'default'} className="text-[10px] xs:text-xs">
+                                    Demo
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-[10px] xs:text-xs sm:text-sm text-muted-foreground">
+                                {member.staffEmail}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs xs:text-sm">
+                              {member.staffMobile}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={member.role === 'admin' ? 'default' : 'outline'}
+                                className="text-[10px] xs:text-xs"
+                              >
+                                {member.role}
                               </Badge>
-                            )}
-                          </div>
-                          <div className="text-[10px] xs:text-xs sm:text-sm text-muted-foreground">
-                            {member.staffEmail}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs xs:text-sm">{member.staffMobile}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={member.role === 'admin' ? 'default' : 'outline'}
-                            className="text-[10px] xs:text-xs"
-                          >
-                            {member.role}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-xs xs:text-sm">
-                          {stores.find(s => s.storeName === member.storeLocation)?.storeName ||
-                            'Unassigned'}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={member.staffStatus === 'active' ? 'default' : 'secondary'}
-                            className="text-[10px] xs:text-xs"
-                          >
-                            {member.staffStatus}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-xs xs:text-sm">
-                          {member.staffSalesCount || 0}
-                        </TableCell>
-                        <TableCell className="text-xs xs:text-sm">
-                          {member.staffRechargesCount || 0}
-                        </TableCell>
-                        <TableCell className="text-xs xs:text-sm">{member.staffPassword}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-col xs:flex-row gap-1 xs:gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-[10px] xs:text-xs h-7 xs:h-8 px-1.5 xs:px-2"
-                              onClick={() => {
-                                setCurrentStaff(member);
-                                setIsStaffDialogOpen(true);
-                              }}
-                            >
-                              <Edit className="h-3 w-3 xs:h-4 xs:w-4 mr-0.5 xs:mr-1" />
-                              Edit
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700 text-[10px] xs:text-xs h-7 xs:h-8 px-1.5 xs:px-2"
-                              onClick={() => {
-                                setCurrentStaff(member);
-                                setIsDeleteStaffDialogOpen(true);
-                              }}
-                              disabled={member.role === 'admin'}
-                            >
-                              <Trash2 className="h-3 w-3 xs:h-4 xs:w-4 mr-0.5 xs:mr-1" />
-                              Remove
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                            </TableCell>
+                            <TableCell className="text-xs xs:text-sm">
+                              {stores.find(s => s.storeName === member.storeLocation)?.storeName ||
+                                'Unassigned'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={member.staffStatus === 'active' ? 'default' : 'secondary'}
+                                className="text-[10px] xs:text-xs"
+                              >
+                                {member.staffStatus}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-xs xs:text-sm">
+                              {member.staffSalesCount || 0}
+                            </TableCell>
+                            <TableCell className="text-xs xs:text-sm">
+                              {member.staffRechargesCount || 0}
+                            </TableCell>
+                            <TableCell className="text-xs xs:text-sm">
+                              {member.staffPassword}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col xs:flex-row gap-1 xs:gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-[10px] xs:text-xs h-7 xs:h-8 px-1.5 xs:px-2"
+                                  onClick={() => {
+                                    setCurrentStaff(member);
+                                    setIsStaffDialogOpen(true);
+                                  }}
+                                >
+                                  <Edit className="h-3 w-3 xs:h-4 xs:w-4 mr-0.5 xs:mr-1" />
+                                  Edit
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-700 text-[10px] xs:text-xs h-7 xs:h-8 px-1.5 xs:px-2"
+                                  onClick={() => {
+                                    setCurrentStaff(member);
+                                    setIsDeleteStaffDialogOpen(true);
+                                  }}
+                                  disabled={member.role === 'admin'}
+                                >
+                                  <Trash2 className="h-3 w-3 xs:h-4 xs:w-4 mr-0.5 xs:mr-1" />
+                                  Remove
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      )
+                    )}
                   </TableBody>
                 )}
               </Table>
@@ -1326,28 +1338,27 @@ export const StaffManagement = () => {
                 </Select>
               </div>
 
-              {currentStore?.demoStore == false && (
-                <div className="space-y-2">
-                  <Label>Demo Store?</Label>
-                  <Select
-                    value={currentStore?.demoStore ? 'true' : 'false'}
-                    onValueChange={value =>
-                      setCurrentStore({
-                        ...currentStore,
-                        demoStore: value === 'true',
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="true">Yes</SelectItem>
-                      <SelectItem value="false">No</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label>Demo Store?</Label>
+                <Select
+                  disabled={currentStore?.id ? true : false}
+                  value={currentStore?.demoStore ? 'true' : 'false'}
+                  onValueChange={value =>
+                    setCurrentStore({
+                      ...currentStore,
+                      demoStore: value === 'true',
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Yes</SelectItem>
+                    <SelectItem value="false">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
               <div className="space-y-2">
                 <Label>Wallet Enabled</Label>

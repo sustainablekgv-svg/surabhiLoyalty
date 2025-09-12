@@ -189,23 +189,36 @@ export const CustomerManagement = () => {
 
   // Calculate analytics excluding demo store customers
   const totalStats = {
-    totalCustomers: filteredCustomers.length,
-    registeredCustomers: filteredCustomers.filter(c => c.walletRechargeDone).length,
-    guestCustomers: filteredCustomers.filter(c => !c.walletRechargeDone).length,
-    totalWalletBalance: filteredCustomers.reduce((sum, c) => sum + c.walletBalance, 0),
-    totalSurabhiCoins: filteredCustomers.reduce((sum, c) => sum + c.surabhiBalance, 0),
-    totalSevaCoins: filteredCustomers.reduce((sum, c) => sum + c.sevaTotal, 0),
-    totalReferrals: filteredCustomers.reduce((sum, c) => sum + (c.referredUsers?.length || 0), 0),
-    activeThisMonth: filteredCustomers.filter(c => {
-      if (!c.lastTransactionDate) return false;
-      const monthAgo = new Date();
-      monthAgo.setMonth(monthAgo.getMonth() - 1);
-      const lastTxDate =
-        c.lastTransactionDate instanceof Timestamp
-          ? c.lastTransactionDate.toDate()
-          : new Date(c.lastTransactionDate);
-      return lastTxDate > monthAgo;
-    }).length,
+    totalCustomers: filteredCustomers.filter(customer => customer.demoStore === false).length,
+    registeredCustomers: filteredCustomers.filter(
+      c => c.walletRechargeDone && c.demoStore === false
+    ).length,
+    guestCustomers: filteredCustomers.filter(c => !c.walletRechargeDone && c.demoStore === false)
+      .length,
+    totalWalletBalance: filteredCustomers
+      .filter(cust => cust.demoStore === false)
+      .reduce((sum, c) => sum + c.walletBalance, 0),
+    totalSurabhiCoins: filteredCustomers
+      .filter(cust => cust.demoStore === false)
+      .reduce((sum, c) => sum + c.surabhiBalance, 0),
+    totalSevaCoins: filteredCustomers
+      .filter(cust => cust.demoStore === false)
+      .reduce((sum, c) => sum + c.sevaTotal, 0),
+    totalReferrals: filteredCustomers
+      .filter(cust => cust.demoStore === false)
+      .reduce((sum, c) => sum + (c.referredUsers?.length || 0), 0),
+    activeThisMonth: filteredCustomers
+      .filter(cust => cust.demoStore === false)
+      .filter(c => {
+        if (!c.lastTransactionDate) return false;
+        const monthAgo = new Date();
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        const lastTxDate =
+          c.lastTransactionDate instanceof Timestamp
+            ? c.lastTransactionDate.toDate()
+            : new Date(c.lastTransactionDate);
+        return lastTxDate > monthAgo;
+      }).length,
   };
 
   const viewCustomerDetails = (customer: CustomerType) => {
