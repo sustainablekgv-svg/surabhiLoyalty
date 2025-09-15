@@ -14,8 +14,6 @@ import {
 import {
   Calculator,
   CheckCircle,
-  Coins,
-  DollarSign,
   HandCoins,
   Loader2,
   Phone,
@@ -91,7 +89,7 @@ const generateInvoiceId = (storePrefix: string) => {
 
 export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementProps) => {
   const { user } = useAuth();
-  console.log('The user in line 61 is', demoStore);
+  // console.log('The user in line 61 is', demoStore);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerType | null>(null);
   const [isRegisteredAtSameStore, setIsRegisteredAtSameStore] = useState<boolean>(false);
@@ -143,21 +141,25 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         // Fetch store details first
         const q = query(
           collection(db, 'stores'),
-          where('storeName', '==', storeLocation) // exact match
+          where('storeStatus', '==', 'active'),
+          where('storeName', '==', storeLocation),
+          where('demoStore', '==', demoStore)
         );
 
         const querySnapshotStores = await getDocs(q);
         if (!querySnapshotStores.empty) {
-          querySnapshotStores.forEach(doc => {
-            setStoreDetails(doc.data() as StoreType);
-          });
+          const storeData = {
+            ...(querySnapshotStores.docs[0].data() as StoreType),
+            id: querySnapshotStores.docs[0].id,
+          };
+          setStoreDetails(storeData);
         } else {
           toast.error('No stores found with that name');
         }
 
         // Then fetch customers
         const customersCollection = collection(db, 'Customers');
-        console.log('The line 120 data is', demoStore);
+        // console.log('The line 120 data is', demoStore);
         const custQuery = query(customersCollection, where('demoStore', '==', demoStore));
         const querySnapshot = await getDocs(custQuery);
         const customersData = querySnapshot.docs.map(doc => {
@@ -184,12 +186,12 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
     };
 
     fetchData();
-  }, [storeLocation]);
+  }, [storeLocation, demoStore]);
 
   const filteredCustomers = customers.filter(
     customer =>
       (customer.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.customerMobile.includes(searchTerm)) &&
+        customer.customerMobile.includes(searchTerm)) &&
       customer.demoStore === demoStore
   );
 
@@ -236,8 +238,6 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         // Ensure customer has required properties with defaults
         const customerWithDefaults = {
           ...selectedCustomer,
-          quarterlyTarget: selectedCustomer.quarterlyTarget || 0,
-          carriedForwardTarget: selectedCustomer.carriedForwardTarget || 0,
           cumTotal: selectedCustomer.cumTotal || 0,
         };
 
@@ -1381,7 +1381,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
               <Badge variant="outline" className="border-blue-200 text-blue-800">
                 Referral: {storeDetails.referralCommission}%
               </Badge>
-              {storeDetails.walletEnabled && (
+              {storeDetails && storeDetails.walletEnabled === true && (
                 <Badge variant="outline" className="border-green-200 text-green-800">
                   Surabhi: {storeDetails.surabhiCommission}%
                 </Badge>
@@ -1409,7 +1409,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              {/* <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
               <Input
                 placeholder="Search by name or mobile number"
                 value={searchTerm}
@@ -1567,7 +1567,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                   <div className="space-y-2">
                     <Label htmlFor="amount">Sale Amount (₹) *</Label>
                     <div className="relative">
-                      <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      {/* <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
                       <Input
                         id="amount"
                         type="text"
@@ -1583,7 +1583,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                   <div className="space-y-2">
                     <Label htmlFor="invoiceId">Invoice ID (Optional)</Label>
                     <div className="relative">
-                      <ShoppingCart className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      {/* <ShoppingCart className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
                       <Input
                         id="invoiceId"
                         type="text"
@@ -1604,7 +1604,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                     <div className="space-y-2">
                       <Label htmlFor="coins">Use Surabhi Coins</Label>
                       <div className="relative">
-                        <Coins className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        {/* <Coins className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
                         <Input
                           id="coins"
                           type="text"
@@ -1725,6 +1725,18 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                             </span>
                           </div>
                         )}
+
+                      {storeDetails && (
+                        <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                          <span className="text-sm font-medium text-orange-900">
+                            Surabh Percentage (Wallet{' '}
+                            {storeDetails.walletEnabled ? 'Enabled' : 'Disabled'})
+                          </span>
+                          <span className="font-bold text-orange-600">
+                            {storeDetails.surabhiCommission}%
+                          </span>
+                        </div>
+                      )}
 
                       {(paymentMethod === 'cash' || paymentMethod === 'mixed') &&
                         saleCalculation.goSevaContribution > 0 && (

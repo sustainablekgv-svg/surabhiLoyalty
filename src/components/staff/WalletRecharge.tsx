@@ -37,13 +37,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useAuth } from '@/hooks/auth-context';
 import { db } from '@/lib/firebase';
 import {
@@ -196,7 +189,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
             id: storesSnapshot.docs[0].id,
           };
           setStoreDetails(storeData);
-          
+
           // Check if wallet is disabled for this store
           if (!storeData.walletEnabled) {
             toast.error('Wallet recharge is disabled for this store');
@@ -328,7 +321,9 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
 
     const storeQuery = query(
       collection(db, 'stores'),
-      where('storeName', '==', user.storeLocation)
+      where('storeStatus', '==', 'active'),
+      where('storeName', '==', user.storeLocation),
+      where('demoStore', '==', demoStore)
     );
 
     const unsubscribe = onSnapshot(
@@ -336,7 +331,11 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
       querySnapshot => {
         if (!querySnapshot.empty) {
           const storeDoc = querySnapshot.docs[0];
-          setStoreDetails(storeDoc.data() as StoreType);
+          const storeData = {
+            ...(storeDoc.data() as StoreType),
+            id: storeDoc.id,
+          };
+          setStoreDetails(storeData);
         }
       },
       error => {
@@ -345,7 +344,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
     );
 
     return () => unsubscribe();
-  }, [user?.storeLocation]);
+  }, [user?.storeLocation, demoStore]);
 
   // Real-time listener for Seva Pool
   useEffect(() => {
@@ -440,7 +439,6 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
         sevaTotal: currentData.sevaTotal + sevaAmountEarned,
         lastTransactionDate: Timestamp.fromDate(new Date()),
         saleElgibility: true,
-        quarterlyPurchaseTotal: currentData.quarterlyPurchaseTotal + rechargeAmountNum,
       };
 
       // if (updateData.quarterlyPurchaseTotal >= 2000 && currentData.coinsFrozen) {
@@ -804,7 +802,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
       // setInvoiceId('');
       setShowConfirmation(false);
     } catch (error) {
-      console.log('THe errr is', error);
+      // console.log('THe errr is', error);
       toast.error('Recharge failed. Please try again.');
       // console.error('Recharge error:', error);
     } finally {

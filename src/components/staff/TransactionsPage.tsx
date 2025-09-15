@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { Timestamp } from 'firebase/firestore';
-import { CalendarIcon, Filter, Loader2, Search, ShoppingCart, Zap } from 'lucide-react';
+import { Filter, Loader2, ShoppingCart, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -191,7 +191,7 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
           <div className="space-y-2">
             <Label htmlFor="search">Search Customer</Label>
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              {/* <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
               <Input
                 id="search"
                 placeholder="Search by name or mobile..."
@@ -205,7 +205,7 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
           <div className="space-y-2">
             <Label htmlFor="startDate">Start Date</Label>
             <div className="relative">
-              <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              {/* <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
               <Input
                 id="startDate"
                 type="date"
@@ -220,7 +220,7 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
           <div className="space-y-2">
             <Label htmlFor="endDate">End Date</Label>
             <div className="relative">
-              <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              {/* <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
               <Input
                 id="endDate"
                 type="date"
