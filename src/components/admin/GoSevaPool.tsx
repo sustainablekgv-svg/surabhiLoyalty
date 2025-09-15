@@ -41,7 +41,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/auth-context'; // Import useAuth hook
 import { db } from '@/lib/firebase';
 import { CustomerTxType, SevaPoolType, StaffType } from '@/types/types';
-import { useCustomers, useSevaPool, useTransactions, useInvalidateQueries } from '@/hooks/useFirebaseQueries';
+import {
+  useCustomers,
+  useSevaPool,
+  useTransactions,
+  useInvalidateQueries,
+} from '@/hooks/useFirebaseQueries';
 import { useDebouncedSearch } from '@/hooks/useDebounce';
 
 interface Customer {
@@ -96,17 +101,18 @@ function safeFormatDate(date: any, dateFormat: string = 'dd MMM yyyy'): string {
 
 export const GoSevaPool = () => {
   const { user } = useAuth(); // Get current user from auth context
-  
+
   // Use caching hooks
   const { data: sevaPoolData, isLoading: sevaPoolLoading } = useSevaPool();
   const { data: customersData, isLoading: customersLoading } = useCustomers();
   const { data: transactionsData, isLoading: transactionsLoading } = useTransactions();
-  const { invalidateSevaPool, invalidateCustomers, invalidateTransactions } = useInvalidateQueries();
-  
+  const { invalidateSevaPool, invalidateCustomers, invalidateTransactions } =
+    useInvalidateQueries();
+
   const [adminDetails, setAdminDetails] = useState<StaffType | null>(null);
 
   const [selectedStoreLocation, setSelectedStoreLocation] = useState<string>('All Locations');
-  
+
   // Derived state from cached data
   const sevaPool = sevaPoolData || {
     currentSevaBalance: 0,
@@ -117,18 +123,22 @@ export const GoSevaPool = () => {
     lastResetDate: Timestamp.now(),
     lastAllocatedDate: Timestamp.now(),
   };
-  
+
   const customers = customersData || [];
   const transactions = transactionsData || [];
   const loading = sevaPoolLoading || customersLoading || transactionsLoading;
-  
+
   // Get unique store locations
-  const storeLocations = ['All Locations', ...new Set(customers.map(c => c.storeLocation).filter(Boolean))];
-  
+  const storeLocations = [
+    'All Locations',
+    ...new Set(customers.map(c => c.storeLocation).filter(Boolean)),
+  ];
+
   // Filter transactions by store location
-  const filteredTransactions = selectedStoreLocation === 'All Locations' 
-    ? transactions 
-    : transactions.filter(tx => tx.storeLocation === selectedStoreLocation);
+  const filteredTransactions =
+    selectedStoreLocation === 'All Locations'
+      ? transactions
+      : transactions.filter(tx => tx.storeLocation === selectedStoreLocation);
 
   const [allocationAmount, setAllocationAmount] = useState('');
   const [allocationDescription, setAllocationDescription] = useState('');
@@ -163,11 +173,7 @@ export const GoSevaPool = () => {
   // Refresh data by invalidating caches
   const handleRefresh = async () => {
     try {
-      await Promise.all([
-        invalidateSevaPool(),
-        invalidateCustomers(),
-        invalidateTransactions()
-      ]);
+      await Promise.all([invalidateSevaPool(), invalidateCustomers(), invalidateTransactions()]);
       toast.success('Data refreshed successfully');
     } catch (error) {
       toast.error('Failed to refresh data');
@@ -176,11 +182,11 @@ export const GoSevaPool = () => {
 
   // Store seva balances state
   const [storeSevaBalances, setStoreSevaBalances] = useState<{ [key: string]: number }>({});
-  
+
   // Calculate top customers from cached transactions data
   const topCustomers = React.useMemo(() => {
     if (!transactions.length) return [];
-    
+
     const customerContributions = transactions
       .filter(tx => tx.paymentMethod !== 'admin')
       .reduce((acc: Record<string, Customer>, tx) => {
@@ -206,10 +212,11 @@ export const GoSevaPool = () => {
         return acc;
       }, {});
 
-    return Object.values(customerContributions)
-      .sort((a: Customer, b: Customer) => b.sevaCoinsCurrentMonth - a.sevaCoinsCurrentMonth);
+    return Object.values(customerContributions).sort(
+      (a: Customer, b: Customer) => b.sevaCoinsCurrentMonth - a.sevaCoinsCurrentMonth
+    );
   }, [transactions]);
-  
+
   // Fetch store seva balances
   const fetchStoreSevaBalances = async () => {
     try {
@@ -228,7 +235,7 @@ export const GoSevaPool = () => {
       console.error('Error fetching store balances:', error);
     }
   };
-  
+
   // Fetch admin details and store balances on mount
   useEffect(() => {
     if (user && user.role === 'admin') {
@@ -771,7 +778,10 @@ export const GoSevaPool = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {customers.map(customer => (
-                <div key={customer.customerMobile} className="flex flex-col p-4 border rounded-lg gap-3">
+                <div
+                  key={customer.customerMobile}
+                  className="flex flex-col p-4 border rounded-lg gap-3"
+                >
                   <div className="flex items-center gap-4">
                     <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
                       <span className="font-medium text-gray-700">
@@ -779,8 +789,12 @@ export const GoSevaPool = () => {
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{customer.customerName || ''}</p>
-                      <p className="text-xs sm:text-sm text-gray-600">{customer.customerMobile || ''}</p>
+                      <p className="font-medium text-gray-900 truncate">
+                        {customer.customerName || ''}
+                      </p>
+                      <p className="text-xs sm:text-sm text-gray-600">
+                        {customer.customerMobile || ''}
+                      </p>
                       {customer.storeLocation && (
                         <p className="text-xs text-gray-500">{customer.storeLocation}</p>
                       )}
@@ -791,7 +805,7 @@ export const GoSevaPool = () => {
                     <div className="space-y-1">
                       <p className="text-gray-500">Current Month Seva Contribution</p>
                       <p className="font-bold text-green-600">
-                        ₹{((customer.sevaBalanceCurrentMonth || 0)).toFixed(2)}
+                        ₹{(customer.sevaBalanceCurrentMonth || 0).toFixed(2)}
                       </p>
                     </div>
                     {/* <div className="space-y-1">

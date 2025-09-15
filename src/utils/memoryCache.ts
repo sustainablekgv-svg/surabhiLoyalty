@@ -16,7 +16,8 @@ class MemoryCache<T> {
   private maxSize: number;
   private defaultTTL: number;
 
-  constructor(maxSize = 100, defaultTTL = 5 * 60 * 1000) { // 5 minutes default TTL
+  constructor(maxSize = 100, defaultTTL = 5 * 60 * 1000) {
+    // 5 minutes default TTL
     this.maxSize = maxSize;
     this.defaultTTL = defaultTTL;
   }
@@ -44,13 +45,13 @@ class MemoryCache<T> {
 
   get(key: string): T | null {
     const item = this.cache.get(key);
-    
+
     if (!item) {
       return null;
     }
 
     const now = Date.now();
-    
+
     // Check if item has expired
     if (now - item.timestamp > item.ttl) {
       this.cache.delete(key);
@@ -97,9 +98,10 @@ class MemoryCache<T> {
       size: this.cache.size,
       maxSize: this.maxSize,
       totalAccessCount: items.reduce((sum, item) => sum + item.accessCount, 0),
-      averageAge: items.length > 0 
-        ? items.reduce((sum, item) => sum + (Date.now() - item.timestamp), 0) / items.length
-        : 0,
+      averageAge:
+        items.length > 0
+          ? items.reduce((sum, item) => sum + (Date.now() - item.timestamp), 0) / items.length
+          : 0,
     };
   }
 
@@ -149,17 +151,18 @@ export const cacheUtils = {
 
   // Product-related caching
   getProduct: (productId: string) => productCache.get(`product_${productId}`),
-  setProduct: (productId: string, product: any) => productCache.set(`product_${productId}`, product),
+  setProduct: (productId: string, product: any) =>
+    productCache.set(`product_${productId}`, product),
   getProductsByStore: (storeId: string) => productCache.get(`products_store_${storeId}`),
-  setProductsByStore: (storeId: string, products: any[]) => 
+  setProductsByStore: (storeId: string, products: any[]) =>
     productCache.set(`products_store_${storeId}`, products),
 
   // Customer-related caching
   getCustomer: (customerId: string) => customerCache.get(`customer_${customerId}`),
-  setCustomer: (customerId: string, customer: any) => 
+  setCustomer: (customerId: string, customer: any) =>
     customerCache.set(`customer_${customerId}`, customer),
   getCustomerByMobile: (mobile: string) => customerCache.get(`customer_mobile_${mobile}`),
-  setCustomerByMobile: (mobile: string, customer: any) => 
+  setCustomerByMobile: (mobile: string, customer: any) =>
     customerCache.set(`customer_mobile_${mobile}`, customer),
 
   // Configuration caching

@@ -40,7 +40,11 @@ import { CustomerTxType, StoreType } from '@/types/types';
 
 export const SalesManagement = () => {
   // Use cached data with React Query
-  const { data: transactions = [], isLoading: transactionsLoading, error: transactionsError } = useTransactions();
+  const {
+    data: transactions = [],
+    isLoading: transactionsLoading,
+    error: transactionsError,
+  } = useTransactions();
   const { data: stores = [], isLoading: storesLoading } = useActiveStores();
   const { invalidateTransactions, invalidateAll } = useInvalidateQueries();
 
@@ -52,7 +56,8 @@ export const SalesManagement = () => {
   const [rechargesSearchTerm, setRechargesSearchTerm] = useState('');
 
   // Use debounced search to reduce API calls
-  const { debouncedSearchTerm: debouncedTransactionsSearch } = useDebouncedSearch(transactionsSearchTerm);
+  const { debouncedSearchTerm: debouncedTransactionsSearch } =
+    useDebouncedSearch(transactionsSearchTerm);
   const { debouncedSearchTerm: debouncedRechargesSearch } = useDebouncedSearch(rechargesSearchTerm);
 
   const [filterStore, setFilterStore] = useState(filterPreferences.storeFilter || 'all');
@@ -112,7 +117,8 @@ export const SalesManagement = () => {
       debouncedRechargesSearch === '' ||
       (tx.customerName?.toLowerCase() || '').includes(debouncedRechargesSearch.toLowerCase()) ||
       (tx.customerMobile || '').includes(debouncedRechargesSearch);
-    const matchesStore = rechargesFilterStore === 'all' || tx.storeLocation === rechargesFilterStore;
+    const matchesStore =
+      rechargesFilterStore === 'all' || tx.storeLocation === rechargesFilterStore;
 
     return matchesSearch && matchesStore;
   });
@@ -267,7 +273,9 @@ export const SalesManagement = () => {
                   <CardTitle>Sales Transactions</CardTitle>
                   <CardDescription>
                     {filteredTransactions.length} transactions found
-                    {(debouncedTransactionsSearch || filterStore !== 'all' || filterPayment !== 'all') &&
+                    {(debouncedTransactionsSearch ||
+                      filterStore !== 'all' ||
+                      filterPayment !== 'all') &&
                       ' (filtered)'}
                   </CardDescription>
                 </div>
@@ -287,10 +295,7 @@ export const SalesManagement = () => {
                     />
                   </div>
 
-                  <Select
-                    value={filterStore}
-                    onValueChange={updateFilterStore}
-                  >
+                  <Select value={filterStore} onValueChange={updateFilterStore}>
                     <SelectTrigger className="w-full sm:w-36 md:w-40 lg:w-48 h-7 xs:h-8 sm:h-9 text-[10px] xs:text-xs sm:text-sm">
                       <SelectValue placeholder="Filter by store" />
                     </SelectTrigger>
@@ -310,10 +315,7 @@ export const SalesManagement = () => {
                     </SelectContent>
                   </Select>
 
-                  <Select
-                    value={filterPayment}
-                    onValueChange={updateFilterPayment}
-                  >
+                  <Select value={filterPayment} onValueChange={updateFilterPayment}>
                     <SelectTrigger className="w-full sm:w-32 md:w-36 lg:w-40 h-7 xs:h-8 sm:h-9 text-[10px] xs:text-xs sm:text-sm">
                       <SelectValue placeholder="Payment" />
                     </SelectTrigger>
@@ -341,7 +343,9 @@ export const SalesManagement = () => {
                 <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-500">
                   <Search className="h-8 w-8" />
                   <p>No transactions found</p>
-                  {(debouncedTransactionsSearch || filterStore !== 'all' || filterPayment !== 'all') && (
+                  {(debouncedTransactionsSearch ||
+                    filterStore !== 'all' ||
+                    filterPayment !== 'all') && (
                     <Button
                       variant="ghost"
                       onClick={() => {

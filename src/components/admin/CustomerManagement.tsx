@@ -32,7 +32,11 @@ import { CustomerType, StoreType } from '@/types/types';
 
 export const CustomerManagement = () => {
   // Use cached data with React Query
-  const { data: customers = [], isLoading: customersLoading, error: customersError } = useCustomers();
+  const {
+    data: customers = [],
+    isLoading: customersLoading,
+    error: customersError,
+  } = useCustomers();
   const { data: stores = [], isLoading: storesLoading } = useActiveStores();
   const { invalidateCustomers } = useInvalidateQueries();
 
@@ -57,7 +61,6 @@ export const CustomerManagement = () => {
     setFilterStore(value);
     setFilterPreferences(prev => ({ ...prev, storeFilter: value }));
   };
-
 
   // Get demo store locations to exclude from analytics
   const demoStoreLocations = stores

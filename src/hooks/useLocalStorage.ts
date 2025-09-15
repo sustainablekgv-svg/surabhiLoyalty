@@ -126,7 +126,11 @@ export const useUserPreferences = () => {
   });
 };
 
-export const useFilterPreferences = (p0: { startDate: string; endDate: string; activeTab: "sales" | "recharges"; }) => {
+export const useFilterPreferences = (p0: {
+  startDate: string;
+  endDate: string;
+  activeTab: 'sales' | 'recharges';
+}) => {
   return useLocalStorage<FilterPreferences>(STORAGE_KEYS.FILTER_PREFERENCES, {
     storeFilter: 'all',
     paymentFilter: 'all',

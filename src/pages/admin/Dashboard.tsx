@@ -128,7 +128,7 @@ const AdminDashboard = () => {
             {/* Tab Content */}
             <div className="bg-white rounded-lg shadow-sm p-2 xs:p-3 sm:p-4 md:p-6 mt-2 xs:mt-3 sm:mt-4 overflow-x-hidden">
               <TabsContent value="overview" className="space-y-4 xs:space-y-5 sm:space-y-6 mt-0">
-                <AdminStats  />
+                <AdminStats />
               </TabsContent>
 
               <TabsContent value="staff" className="mt-0">

@@ -30,7 +30,7 @@ export const getCustomerByMobile = async (
       // Compare password with stored password (encrypted or plain)
       if (customerData.customerPassword) {
         let passwordMatch = false;
-        
+
         if (isEncrypted(customerData.customerPassword)) {
           // Try to decrypt the stored password
           const decryptedStoredPassword = safeDecryptText(customerData.customerPassword);
@@ -39,7 +39,7 @@ export const getCustomerByMobile = async (
           // Direct comparison for unencrypted passwords (backward compatibility)
           passwordMatch = customerData.customerPassword === password;
         }
-        
+
         if (passwordMatch) {
           return {
             id: customerDoc.id,
@@ -82,7 +82,7 @@ export const getStaffByMobile = async (
     // Compare password with stored password (encrypted or plain)
     if (staffData.staffPassword) {
       let passwordMatch = false;
-      
+
       if (isEncrypted(staffData.staffPassword)) {
         // Try to decrypt the stored password
         const decryptedStoredPassword = safeDecryptText(staffData.staffPassword);
@@ -91,7 +91,7 @@ export const getStaffByMobile = async (
         // Direct comparison for unencrypted passwords (backward compatibility)
         passwordMatch = staffData.staffPassword === password;
       }
-      
+
       if (!passwordMatch) {
         return null;
       }
