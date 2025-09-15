@@ -35,15 +35,12 @@ export interface CustomerType {
   sevaTotal: number;
   sevaBalanceCurrentMonth: number;
   lastTransactionDate: Timestamp | null;
-  quarterlyPurchaseTotal: number;
   lastQuarterCheck: Timestamp | null;
   coinsFrozen: boolean;
   currentQuarterStart: Timestamp | null;
   cumTotal: number;
   joinedDate: Timestamp;
-  quarterlyTarget: number;
-  targetMet: boolean;
-  carriedForwardTarget: number;
+  quartersPast: number;
 }
 
 export interface StaffHeaderProps {
@@ -127,7 +124,7 @@ export interface StaffType {
   createdAt: Timestamp;
   staffStatus: 'active' | 'inactive';
   staffSalesCount: number;
-  staffPin: string;
+  // staffPin: string;
   staffRechargesCount: number;
   lastActive?: Timestamp;
 }
@@ -161,7 +158,7 @@ export interface StoreType {
   adminCurrentBalance: number;
   adminStoreProfit: number;
   walletEnabled: boolean;
-  demoStore: boolean; // Demo stores for client demonstrations, excluded from KPIs
+  demoStore: boolean;
 }
 
 export interface AdminHeaderProps {

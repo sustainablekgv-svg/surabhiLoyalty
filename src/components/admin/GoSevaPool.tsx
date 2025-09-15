@@ -21,7 +21,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +41,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/auth-context'; // Import useAuth hook
 import { db } from '@/lib/firebase';
 import { CustomerTxType, SevaPoolType, StaffType } from '@/types/types';
+import { useCustomers, useSevaPool, useTransactions, useInvalidateQueries } from '@/hooks/useFirebaseQueries';
+import { useDebouncedSearch } from '@/hooks/useDebounce';
 
 interface Customer {
   id?: string;
@@ -94,8 +96,19 @@ function safeFormatDate(date: any, dateFormat: string = 'dd MMM yyyy'): string {
 
 export const GoSevaPool = () => {
   const { user } = useAuth(); // Get current user from auth context
+  
+  // Use caching hooks
+  const { data: sevaPoolData, isLoading: sevaPoolLoading } = useSevaPool();
+  const { data: customersData, isLoading: customersLoading } = useCustomers();
+  const { data: transactionsData, isLoading: transactionsLoading } = useTransactions();
+  const { invalidateSevaPool, invalidateCustomers, invalidateTransactions } = useInvalidateQueries();
+  
   const [adminDetails, setAdminDetails] = useState<StaffType | null>(null);
-  const [sevaPool, setSevaPool] = useState<SevaPoolType>({
+
+  const [selectedStoreLocation, setSelectedStoreLocation] = useState<string>('All Locations');
+  
+  // Derived state from cached data
+  const sevaPool = sevaPoolData || {
     currentSevaBalance: 0,
     totalContributions: 0,
     totalAllocations: 0,
@@ -103,20 +116,23 @@ export const GoSevaPool = () => {
     allocationsCurrentMonth: 0,
     lastResetDate: Timestamp.now(),
     lastAllocatedDate: Timestamp.now(),
-  });
-
-  const [transactions, setTransactions] = useState<CustomerTxType[]>([]);
-  const [filteredTransactions, setFilteredTransactions] = useState<CustomerTxType[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [storeLocations, setStoreLocations] = useState<string[]>([]);
-  const [selectedStoreLocation, setSelectedStoreLocation] = useState<string>('All Locations');
+  };
+  
+  const customers = customersData || [];
+  const transactions = transactionsData || [];
+  const loading = sevaPoolLoading || customersLoading || transactionsLoading;
+  
+  // Get unique store locations
+  const storeLocations = ['All Locations', ...new Set(customers.map(c => c.storeLocation).filter(Boolean))];
+  
+  // Filter transactions by store location
+  const filteredTransactions = selectedStoreLocation === 'All Locations' 
+    ? transactions 
+    : transactions.filter(tx => tx.storeLocation === selectedStoreLocation);
 
   const [allocationAmount, setAllocationAmount] = useState('');
   const [allocationDescription, setAllocationDescription] = useState('');
   const [isAllocationDialogOpen, setIsAllocationDialogOpen] = useState(false);
-  const [storeSevaBalances, setStoreSevaBalances] = useState<{ [key: string]: number }>({});
   const [selectedStoreForAllocation, setSelectedStoreForAllocation] = useState<string>('');
 
   // Fetch admin details
@@ -144,179 +160,30 @@ export const GoSevaPool = () => {
     }
   };
 
-  const fetchData = async () => {
+  // Refresh data by invalidating caches
+  const handleRefresh = async () => {
     try {
-      setLoading(true);
+      await Promise.all([
+        invalidateSevaPool(),
+        invalidateCustomers(),
+        invalidateTransactions()
+      ]);
+      toast.success('Data refreshed successfully');
+    } catch (error) {
+      toast.error('Failed to refresh data');
+    }
+  };
 
-      // Fetch admin details if not already fetched
-      if (!adminDetails && user) {
-        await fetchAdminDetails();
-      }
-
-      // Fetch Seva Pool data
-      const poolRef = doc(db, 'SevaPool', 'main');
-      const poolSnapshot = await getDoc(poolRef);
-      if (poolSnapshot.exists()) {
-        const data = poolSnapshot.data();
-        const poolData: SevaPoolType = {
-          currentSevaBalance: data.currentSevaBalance ?? 0,
-          totalContributions: data.totalContributions ?? 0,
-          totalAllocations: data.totalAllocations ?? 0,
-          contributionsCurrentMonth: data.contributionsCurrentMonth ?? 0,
-          allocationsCurrentMonth: data.allocationsCurrentMonth ?? 0,
-          lastResetDate: safeConvertToTimestamp(data.lastResetDate),
-          lastAllocatedDate: safeConvertToTimestamp(data.lastAllocatedDate),
-        };
-        setSevaPool(poolData);
-      } else {
-        toast.error('Seva Pool document not found');
-      }
-
-      // Fetch store-specific Seva balances
-      const storesSnapshot = await getDocs(collection(db, 'stores'));
-      const storeBalances: { [key: string]: number } = {};
-
-      storesSnapshot.forEach(doc => {
-        const data = doc.data();
-        if (data.storeName && data.storeSevaBalance !== undefined) {
-          storeBalances[data.storeName] = data.storeSevaBalance;
-        }
-      });
-
-      setStoreSevaBalances(storeBalances);
-
-      // Fetch transactions with seva_contribution type and sevaEarned > 0
-      const transactionsQuery = query(
-        collection(db, 'CustomerTx'),
-        // where('createdAt', '>=', startOfMonth(new Date())),
-        // where('type', '==', 'seva_contribution'),
-        where('sevaEarned', '>', 0)
-        // Note: Firestore doesn't support OR queries directly
-        // We'll need to perform a second query for sevaDebit > 0 and merge results
-      );
-
-      // Additional query for transactions with sevaDebit > 0
-      const sevaDebitQuery = query(
-        collection(db, 'CustomerTx'),
-        where('sevaDebit', '>', 0)
-        // where('demoStore', '==', false)
-      );
-      // Fetch transactions with sevaEarned > 0
-      const transactionsSnapshot = await getDocs(transactionsQuery);
-
-      // Fetch transactions with sevaDebit > 0
-      const sevaDebitSnapshot = await getDocs(sevaDebitQuery);
-
-      // Create a map to deduplicate transactions by ID
-      const transactionsMap = new Map();
-
-      // Process transactions with sevaEarned > 0
-      transactionsSnapshot.docs.forEach(doc => {
-        const data = doc.data();
-        transactionsMap.set(doc.id, {
-          id: doc.id,
-          type: data.type,
-          customerMobile: data.customerMobile,
-          customerName: data.customerName,
-          storeLocation: data.storeLocation,
-          storeName: data.storeName,
-          createdAt: safeConvertToTimestamp(data.createdAt),
-          paymentMethod: data.paymentMethod,
-          processedBy: data.processedBy,
-          amount: data.amount,
-          surabhiEarned: data.surabhiEarned,
-          sevaEarned: data.sevaEarned,
-          referralEarned: data.referralEarned,
-          referredBy: data.referredBy,
-          surabhiUsed: data.surabhiUsed,
-          walletDeduction: data.walletDeduction,
-          cashPayment: data.cashPayment,
-          previousBalance: data.previousBalance,
-          newBalance: data.newBalance,
-          walletCredit: data.walletCredit,
-          walletDebit: data.walletDebit,
-          walletBalance: data.walletBalance,
-          surabhiDebit: data.surabhiDebit,
-          surabhiCredit: data.surabhiCredit,
-          surabhiBalance: data.surabhiBalance,
-          sevaCredit: data.sevaCredit,
-          sevaDebit: data.sevaDebit,
-          sevaBalance: data.sevaBalance,
-          sevaTotal: data.sevaTotal,
-          storeSevaBalance: data.storeSevaBalance,
-          demoStore: data.demoStore,
-        } as CustomerTxType);
-      });
-
-      // Process transactions with sevaDebit > 0
-      sevaDebitSnapshot.docs.forEach(doc => {
-        // Skip if we already have this transaction
-        if (transactionsMap.has(doc.id)) return;
-
-        const data = doc.data();
-        transactionsMap.set(doc.id, {
-          id: doc.id,
-          type: data.type,
-          customerMobile: data.customerMobile,
-          customerName: data.customerName,
-          storeLocation: data.storeLocation,
-          storeName: data.storeName,
-          createdAt: safeConvertToTimestamp(data.createdAt),
-          paymentMethod: data.paymentMethod,
-          processedBy: data.processedBy,
-          amount: data.amount,
-          surabhiEarned: data.surabhiEarned,
-          sevaEarned: data.sevaEarned,
-          referralEarned: data.referralEarned,
-          referredBy: data.referredBy,
-          surabhiUsed: data.surabhiUsed,
-          walletDeduction: data.walletDeduction,
-          cashPayment: data.cashPayment,
-          previousBalance: data.previousBalance,
-          newBalance: data.newBalance,
-          walletCredit: data.walletCredit,
-          walletDebit: data.walletDebit,
-          walletBalance: data.walletBalance,
-          surabhiDebit: data.surabhiDebit,
-          surabhiCredit: data.surabhiCredit,
-          surabhiBalance: data.surabhiBalance,
-          sevaCredit: data.sevaCredit,
-          sevaDebit: data.sevaDebit,
-          sevaBalance: data.sevaBalance,
-          sevaTotal: data.sevaTotal,
-          storeSevaBalance: data.storeSevaBalance,
-          demoStore: data.demoStore,
-        } as CustomerTxType);
-      });
-
-      // Convert map to array and sort by most recent date first
-      const transactionsData = Array.from(transactionsMap.values())
-        .filter(tx => tx.demoStore === false)
-        .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
-
-      // Extract unique store locations
-      const uniqueStoreLocations = Array.from(
-        new Set(
-          transactionsData
-            .filter(tx => tx.demoStore === false)
-            .map(tx => tx.storeLocation)
-            .filter(location => location) // Filter out undefined/null values
-        )
-      ).sort();
-
-      setStoreLocations([...uniqueStoreLocations]);
-      setTransactions(transactionsData);
-      setFilteredTransactions(transactionsData);
-
-      // Filter transactions based on selected store location
-      if (selectedStoreLocation !== 'All Locations') {
-        setFilteredTransactions(
-          transactionsData.filter(tx => tx.storeLocation === selectedStoreLocation)
-        );
-      }
-
-      // Calculate top customers based on sevaEarned and sevaDebit
-      const customerContributions = transactionsData.reduce((acc: Record<string, Customer>, tx) => {
+  // Store seva balances state
+  const [storeSevaBalances, setStoreSevaBalances] = useState<{ [key: string]: number }>({});
+  
+  // Calculate top customers from cached transactions data
+  const topCustomers = React.useMemo(() => {
+    if (!transactions.length) return [];
+    
+    const customerContributions = transactions
+      .filter(tx => tx.paymentMethod !== 'admin')
+      .reduce((acc: Record<string, Customer>, tx) => {
         const mobile = tx.customerMobile;
         if (!acc[mobile]) {
           acc[mobile] = {
@@ -339,20 +206,36 @@ export const GoSevaPool = () => {
         return acc;
       }, {});
 
-      const topCustomers = Object.values(customerContributions)
-        // .filter((customer): customer is Customer => customer?.demoStore === false)
-        .sort((a: Customer, b: Customer) => b.sevaCoinsCurrentMonth - a.sevaCoinsCurrentMonth);
-      // .slice(0, 10); // Get top 10 customers
+    return Object.values(customerContributions)
+      .sort((a: Customer, b: Customer) => b.sevaCoinsCurrentMonth - a.sevaCoinsCurrentMonth);
+  }, [transactions]);
+  
+  // Fetch store seva balances
+  const fetchStoreSevaBalances = async () => {
+    try {
+      const storesSnapshot = await getDocs(collection(db, 'stores'));
+      const storeBalances: { [key: string]: number } = {};
 
-      setCustomers(topCustomers as Customer[]);
+      storesSnapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.storeName && data.storeSevaBalance !== undefined) {
+          storeBalances[data.storeName] = data.storeSevaBalance;
+        }
+      });
+
+      setStoreSevaBalances(storeBalances);
     } catch (error) {
-      // console.error('Error fetching data:', error);
-      toast.error('Failed to load data');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+      console.error('Error fetching store balances:', error);
     }
   };
+  
+  // Fetch admin details and store balances on mount
+  useEffect(() => {
+    if (user && user.role === 'admin') {
+      fetchAdminDetails();
+      fetchStoreSevaBalances();
+    }
+  }, [user]);
 
   const handleAllocation = async () => {
     const amount = parseFloat(allocationAmount);
@@ -454,16 +337,16 @@ export const GoSevaPool = () => {
         walletDeduction: 0,
         cashPayment: 0,
         previousBalance: {
-          walletBalance: currentSevaPool?.currentBalance || 0,
+          walletBalance: currentSevaPool?.currentSevaBalance || 0,
           surabhiBalance: 0,
         },
         newBalance: {
-          walletBalance: Number(((currentSevaPool?.currentBalance || 0) - amount).toFixed(2)),
+          walletBalance: Number(((currentSevaPool?.currentSevaBalance || 0) - amount).toFixed(2)),
           surabhiBalance: 0,
         },
         walletCredit: 0,
         walletDebit: amount, // Debit from the pool
-        walletBalance: Number(((currentSevaPool?.currentBalance || 0) - amount).toFixed(2)),
+        walletBalance: Number(((currentSevaPool?.currentSevaBalance || 0) - amount).toFixed(2)),
         surabhiDebit: 0,
         surabhiCredit: 0,
         surabhiBalance: 0,
@@ -488,49 +371,23 @@ export const GoSevaPool = () => {
         createdAt: timestamp,
       });
 
-      // Update state
-      setSevaPool({
-        ...sevaPool,
-        currentSevaBalance: sevaPool.currentSevaBalance - amount,
-        totalAllocations: sevaPool.totalAllocations + amount,
-        allocationsCurrentMonth: sevaPool.allocationsCurrentMonth + amount,
-        lastAllocatedDate: timestamp,
-      });
-
       setAllocationAmount('');
       setAllocationDescription('');
       setIsAllocationDialogOpen(false);
       toast.success(`₹${amount} allocated successfully`);
 
       // Refresh data to show the new transaction
-      fetchData();
+      await handleRefresh();
+      await fetchStoreSevaBalances();
     } catch (error) {
       // console.error('Error allocating funds:', error);
       toast.error('Failed to allocate funds');
     }
   };
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    fetchData();
-  };
+  // Note: handleRefresh is already defined above with cache invalidation
 
-  useEffect(() => {
-    fetchData();
-  }, [user]); // Re-fetch when user changes
-
-  // Filter transactions when selected store location changes
-  useEffect(() => {
-    if (selectedStoreLocation === 'All Locations') {
-      setFilteredTransactions(transactions);
-    } else {
-      setFilteredTransactions(
-        transactions.filter(
-          tx => tx.storeLocation === selectedStoreLocation || tx.storeName === selectedStoreLocation
-        )
-      );
-    }
-  }, [selectedStoreLocation, transactions]);
+  // No useEffect needed - data is automatically fetched by React Query hooks
 
   const monthlyStats = {
     totalContributions: transactions.reduce(
@@ -577,10 +434,10 @@ export const GoSevaPool = () => {
           <Button
             variant="outline"
             onClick={handleRefresh}
-            disabled={refreshing}
+            disabled={loading}
             className="flex-1 sm:flex-none"
           >
-            {refreshing ? (
+            {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <RefreshCw className="h-4 w-4" />
@@ -716,7 +573,7 @@ export const GoSevaPool = () => {
               <span className="text-sm font-medium text-red-600">Current Pool</span>
             </div>
             <p className="text-2xl font-bold text-red-900">
-              ₹{sevaPool.currentSevaBalance.toFixed(2)}
+              ₹{(sevaPool.currentSevaBalance || 0).toFixed(2)}
             </p>
             <p className="text-xs text-red-600 mt-1">Available for allocation</p>
           </CardContent>
@@ -914,16 +771,16 @@ export const GoSevaPool = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {customers.map(customer => (
-                <div key={customer.mobile} className="flex flex-col p-4 border rounded-lg gap-3">
+                <div key={customer.customerMobile} className="flex flex-col p-4 border rounded-lg gap-3">
                   <div className="flex items-center gap-4">
                     <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
                       <span className="font-medium text-gray-700">
-                        {customer.name.charAt(0).toUpperCase()}
+                        {(customer.customerName || '').charAt(0).toUpperCase()}
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{customer.name}</p>
-                      <p className="text-xs sm:text-sm text-gray-600">{customer.mobile}</p>
+                      <p className="font-medium text-gray-900 truncate">{customer.customerName || ''}</p>
+                      <p className="text-xs sm:text-sm text-gray-600">{customer.customerMobile || ''}</p>
                       {customer.storeLocation && (
                         <p className="text-xs text-gray-500">{customer.storeLocation}</p>
                       )}
@@ -934,7 +791,7 @@ export const GoSevaPool = () => {
                     <div className="space-y-1">
                       <p className="text-gray-500">Current Month Seva Contribution</p>
                       <p className="font-bold text-green-600">
-                        ₹{customer.sevaCoinsCurrentMonth.toFixed(2)}
+                        ₹{((customer.sevaBalanceCurrentMonth || 0)).toFixed(2)}
                       </p>
                     </div>
                     {/* <div className="space-y-1">

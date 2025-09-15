@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { collection, getDocs, orderBy, query, Timestamp, where } from 'firebase/firestore';
+import { Timestamp } from 'firebase/firestore';
 import {
   ChevronLeft,
   ChevronRight,
@@ -11,7 +11,7 @@ import {
   TrendingUp,
   Wallet,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,22 +33,35 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { db } from '@/lib/firebase';
+import { useActiveStores, useTransactions, useInvalidateQueries } from '@/hooks/useFirebaseQueries';
+import { useDebouncedSearch } from '@/hooks/useDebounce';
+import { useFilterPreferences } from '@/hooks/useLocalStorage';
 import { CustomerTxType, StoreType } from '@/types/types';
 
 export const SalesManagement = () => {
-  const [transactions, setTransactions] = useState<CustomerTxType[]>([]);
-  const [stores, setStores] = useState<StoreType[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Use cached data with React Query
+  const { data: transactions = [], isLoading: transactionsLoading, error: transactionsError } = useTransactions();
+  const { data: stores = [], isLoading: storesLoading } = useActiveStores();
+  const { invalidateTransactions, invalidateAll } = useInvalidateQueries();
+
+  // Use cached filter preferences
+  const [filterPreferences, setFilterPreferences] = useFilterPreferences();
 
   // Separate search terms for transactions and recharges
   const [transactionsSearchTerm, setTransactionsSearchTerm] = useState('');
   const [rechargesSearchTerm, setRechargesSearchTerm] = useState('');
 
-  const [filterStore, setFilterStore] = useState('all');
-  const [filterPayment, setFilterPayment] = useState('all');
+  // Use debounced search to reduce API calls
+  const { debouncedSearchTerm: debouncedTransactionsSearch } = useDebouncedSearch(transactionsSearchTerm);
+  const { debouncedSearchTerm: debouncedRechargesSearch } = useDebouncedSearch(rechargesSearchTerm);
+
+  const [filterStore, setFilterStore] = useState(filterPreferences.storeFilter || 'all');
+  const [filterPayment, setFilterPayment] = useState(filterPreferences.paymentFilter || 'all');
+  const [rechargesFilterStore, setRechargesFilterStore] = useState('all');
+
+  // Derived loading and error states
+  const loading = transactionsLoading || storesLoading;
+  const error = transactionsError ? 'Failed to load data' : null;
 
   const [activeTab, setActiveTab] = useState('transactions');
 
@@ -58,61 +71,22 @@ export const SalesManagement = () => {
   const [transactionsPerPage, setTransactionsPerPage] = useState(10);
   const [rechargesPerPage, setRechargesPerPage] = useState(10);
 
-  // Fetch transactions from Firestore
-  const fetchTransactions = async () => {
-    try {
-      const transactionsRef = collection(db, 'CustomerTx');
-      const q = query(transactionsRef, where('amount', '>', 0), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      const transactionsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt || Timestamp.now(),
-      })) as CustomerTxType[];
-      setTransactions(transactionsData);
-    } catch (err) {
-      console.error('Error fetching transactions:', err);
-      setError('Failed to load transactions');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+  // Refresh function using cache invalidation
+  const handleRefresh = async () => {
+    await invalidateAll();
   };
 
-  // Fetch stores from Firestore
-  const fetchStores = async () => {
-    try {
-      const storesRef = collection(db, 'stores');
-      const snapshot = await getDocs(storesRef);
-      const storesData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
-        storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date(),
-        walletEnabled: doc.data().walletEnabled || false,
-      })) as StoreType[];
-      setStores(
-        storesData.filter(store => store.storeStatus === 'active' && store.demoStore === false)
-      );
-    } catch (err) {
-      console.error('Error fetching stores:', err);
-      setError('Failed to load store locations');
-    }
-  };
-
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      await Promise.all([fetchTransactions(), fetchStores()]);
-    };
-    loadData();
-  }, []);
-
-  const handleRefresh = () => {
-    setRefreshing(true);
+  // Update filter preferences when filters change
+  const updateFilterStore = (value: string) => {
+    setFilterStore(value);
+    setFilterPreferences(prev => ({ ...prev, storeFilter: value }));
     setTransactionsPage(1);
-    setRechargesPage(1);
-    fetchTransactions();
+  };
+
+  const updateFilterPayment = (value: string) => {
+    setFilterPayment(value);
+    setFilterPreferences(prev => ({ ...prev, paymentFilter: value }));
+    setTransactionsPage(1);
   };
 
   // Filter transactions (sales)
@@ -120,10 +94,10 @@ export const SalesManagement = () => {
     if (tx.type !== 'sale' || tx.demoStore) return false;
 
     const matchesSearch =
-      transactionsSearchTerm === '' ||
-      (tx.customerName?.toLowerCase() || '').includes(transactionsSearchTerm.toLowerCase()) ||
-      (tx.customerMobile || '').includes(transactionsSearchTerm) ||
-      (tx.invoiceId || '').includes(transactionsSearchTerm);
+      debouncedTransactionsSearch === '' ||
+      (tx.customerName?.toLowerCase() || '').includes(debouncedTransactionsSearch.toLowerCase()) ||
+      (tx.customerMobile || '').includes(debouncedTransactionsSearch) ||
+      (tx.invoiceId || '').includes(debouncedTransactionsSearch);
     const matchesStore = filterStore === 'all' || tx.storeLocation === filterStore;
     const matchesPayment = filterPayment === 'all' || tx.paymentMethod === filterPayment;
 
@@ -134,11 +108,13 @@ export const SalesManagement = () => {
   const filteredRecharges = transactions.filter(tx => {
     if (tx.type !== 'recharge' || tx.demoStore) return false;
 
-    return (
-      rechargesSearchTerm === '' ||
-      (tx.customerName?.toLowerCase() || '').includes(rechargesSearchTerm.toLowerCase()) ||
-      (tx.customerMobile || '').includes(rechargesSearchTerm)
-    );
+    const matchesSearch =
+      debouncedRechargesSearch === '' ||
+      (tx.customerName?.toLowerCase() || '').includes(debouncedRechargesSearch.toLowerCase()) ||
+      (tx.customerMobile || '').includes(debouncedRechargesSearch);
+    const matchesStore = rechargesFilterStore === 'all' || tx.storeLocation === rechargesFilterStore;
+
+    return matchesSearch && matchesStore;
   });
 
   // Pagination logic for transactions
@@ -208,12 +184,8 @@ export const SalesManagement = () => {
           <p className="text-gray-600">View and manage all sales transactions</p>
           <p className="text-gray-600">This tab shows only Live Stores Details</p>
         </div>
-        <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
-          {refreshing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="h-4 w-4" />
-          )}
+        <Button variant="outline" onClick={handleRefresh}>
+          <RefreshCw className="h-4 w-4" />
           <span className="ml-2">Refresh</span>
         </Button>
       </div>
@@ -295,31 +267,29 @@ export const SalesManagement = () => {
                   <CardTitle>Sales Transactions</CardTitle>
                   <CardDescription>
                     {filteredTransactions.length} transactions found
-                    {(transactionsSearchTerm || filterStore !== 'all' || filterPayment !== 'all') &&
+                    {(debouncedTransactionsSearch || filterStore !== 'all' || filterPayment !== 'all') &&
                       ' (filtered)'}
                   </CardDescription>
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-                  <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <div className="relative w-full sm:w-64">
+                    {/* <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" /> */}
                     <Input
+                      type="text"
                       placeholder="Search transactions..."
                       value={transactionsSearchTerm}
                       onChange={e => {
                         setTransactionsSearchTerm(e.target.value);
                         setTransactionsPage(1);
                       }}
-                      className="pl-14 w-full sm:w-64"
+                      className="pl-10 pr-3 w-full" // ensures placeholder/text start after icon
                     />
                   </div>
 
                   <Select
                     value={filterStore}
-                    onValueChange={value => {
-                      setFilterStore(value);
-                      setTransactionsPage(1);
-                    }}
+                    onValueChange={updateFilterStore}
                   >
                     <SelectTrigger className="w-full sm:w-36 md:w-40 lg:w-48 h-7 xs:h-8 sm:h-9 text-[10px] xs:text-xs sm:text-sm">
                       <SelectValue placeholder="Filter by store" />
@@ -342,10 +312,7 @@ export const SalesManagement = () => {
 
                   <Select
                     value={filterPayment}
-                    onValueChange={value => {
-                      setFilterPayment(value);
-                      setTransactionsPage(1);
-                    }}
+                    onValueChange={updateFilterPayment}
                   >
                     <SelectTrigger className="w-full sm:w-32 md:w-36 lg:w-40 h-7 xs:h-8 sm:h-9 text-[10px] xs:text-xs sm:text-sm">
                       <SelectValue placeholder="Payment" />
@@ -374,7 +341,7 @@ export const SalesManagement = () => {
                 <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-500">
                   <Search className="h-8 w-8" />
                   <p>No transactions found</p>
-                  {(transactionsSearchTerm || filterStore !== 'all' || filterPayment !== 'all') && (
+                  {(debouncedTransactionsSearch || filterStore !== 'all' || filterPayment !== 'all') && (
                     <Button
                       variant="ghost"
                       onClick={() => {
@@ -589,21 +556,52 @@ export const SalesManagement = () => {
                 <div>
                   <CardTitle>Wallet Recharges</CardTitle>
                   <CardDescription>
-                    {filteredRecharges.length} recharge records (Total: ₹
-                    {totalStats.totalRecharges.toFixed(2).toLocaleString()})
+                    {filteredRecharges.length} recharge records found
+                    {(debouncedRechargesSearch || rechargesFilterStore !== 'all') && ' (filtered)'}
+                    (Total: ₹{totalStats.totalRecharges.toFixed(2).toLocaleString()})
                   </CardDescription>
                 </div>
-                <div className="relative">
-                  <Search className="absolute left-2 xs:left-2.5 sm:left-3 top-[7px] xs:top-[9px] sm:top-3 h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-gray-400" />
-                  <Input
-                    placeholder="Search recharges..."
-                    value={rechargesSearchTerm}
-                    onChange={e => {
-                      setRechargesSearchTerm(e.target.value);
+
+                <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                  <div className="relative w-full sm:w-64">
+                    {/* <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" /> */}
+                    <Input
+                      type="text"
+                      placeholder="Search recharges..."
+                      value={rechargesSearchTerm}
+                      onChange={e => {
+                        setRechargesSearchTerm(e.target.value);
+                        setRechargesPage(1);
+                      }}
+                      className="pl-10 pr-3 w-full"
+                    />
+                  </div>
+
+                  <Select
+                    value={rechargesFilterStore}
+                    onValueChange={value => {
+                      setRechargesFilterStore(value);
                       setRechargesPage(1);
                     }}
-                    className="pl-7 xs:pl-8 sm:pl-10 w-full sm:w-48 md:w-56 lg:w-64 h-7 xs:h-8 sm:h-9 text-[10px] xs:text-xs sm:text-sm rounded-[3px] xs:rounded-[4px] sm:rounded"
-                  />
+                  >
+                    <SelectTrigger className="w-full sm:w-36 md:w-40 lg:w-48 h-7 xs:h-8 sm:h-9 text-[10px] xs:text-xs sm:text-sm">
+                      <SelectValue placeholder="Filter by store" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all" className="text-[10px] xs:text-xs sm:text-sm">
+                        All Stores
+                      </SelectItem>
+                      {stores.map(store => (
+                        <SelectItem
+                          key={store.id}
+                          value={store.storeName}
+                          className="text-[10px] xs:text-xs sm:text-sm"
+                        >
+                          {store.storeName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardHeader>
@@ -613,7 +611,7 @@ export const SalesManagement = () => {
                 <div className="flex flex-col items-center justify-center py-12 gap-2 text-gray-500">
                   <Search className="h-8 w-8" />
                   <p>No recharge records found</p>
-                  {rechargesSearchTerm && (
+                  {debouncedRechargesSearch && (
                     <Button variant="ghost" onClick={() => setRechargesSearchTerm('')}>
                       Clear search
                     </Button>
@@ -646,9 +644,9 @@ export const SalesManagement = () => {
                           <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                             Seva Amount
                           </TableHead>
-                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          {/* <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                             Type
-                          </TableHead>
+                          </TableHead> */}
                           <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                             Date
                           </TableHead>
@@ -671,7 +669,7 @@ export const SalesManagement = () => {
                             </TableCell>
                             <TableCell>{(recharge.surabhiEarned || 0).toFixed(2)}</TableCell>
                             <TableCell>₹{(recharge.sevaEarned || 0).toFixed(2)}</TableCell>
-                            <TableCell>
+                            {/* <TableCell>
                               {recharge.demoStore ? (
                                 <Badge variant="destructive" className="text-xs">
                                   Demo
@@ -681,7 +679,7 @@ export const SalesManagement = () => {
                                   Live
                                 </Badge>
                               )}
-                            </TableCell>
+                            </TableCell> */}
                             <TableCell>
                               {format(recharge.createdAt.toDate(), 'dd MMM yyyy, hh:mm a')}
                             </TableCell>

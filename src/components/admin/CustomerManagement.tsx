@@ -1,18 +1,10 @@
 // src/components/CustomerManagement.tsx
-import { collection, getDocs, query, Timestamp, updateDoc, where } from 'firebase/firestore';
-import {
-  Coins,
-  Edit,
-  Eye,
-  Filter,
-  Loader2,
-  MapPin,
-  Phone,
-  Search,
-  Users,
-  Wallet,
-} from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { updateDoc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { Coins, Edit, Eye, Filter, Loader2, MapPin, Phone, Users, Wallet } from 'lucide-react';
+import { useState } from 'react';
+import { useCustomers, useActiveStores, useInvalidateQueries } from '@/hooks/useFirebaseQueries';
+import { useDebouncedSearch } from '@/hooks/useDebounce';
+import { useFilterPreferences } from '@/hooks/useLocalStorage';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -39,11 +31,20 @@ import { db } from '@/lib/firebase';
 import { CustomerType, StoreType } from '@/types/types';
 
 export const CustomerManagement = () => {
-  const [customers, setCustomers] = useState<CustomerType[]>([]);
-  const [stores, setStores] = useState<StoreType[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Use cached data with React Query
+  const { data: customers = [], isLoading: customersLoading, error: customersError } = useCustomers();
+  const { data: stores = [], isLoading: storesLoading } = useActiveStores();
+  const { invalidateCustomers } = useInvalidateQueries();
+
+  // Use cached filter preferences
+  const [filterPreferences, setFilterPreferences] = useFilterPreferences();
+
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStore, setFilterStore] = useState('all');
+  const { debouncedSearchTerm } = useDebouncedSearch(searchTerm);
+  const [filterStore, setFilterStore] = useState(filterPreferences.storeFilter || 'all');
+
+  // Derived loading state
+  const loading = customersLoading || storesLoading;
   const [editCustomer, setEditCustomer] = useState<CustomerType | null>(null);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerType | null>(null);
@@ -51,117 +52,12 @@ export const CustomerManagement = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [editedData, setEditedData] = useState<Partial<CustomerType>>({});
 
-  // Fetch customers from Firestore
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'Customers'));
-        const customersData: CustomerType[] = [];
+  // Update filter preferences when store filter changes
+  const updateFilterStore = (value: string) => {
+    setFilterStore(value);
+    setFilterPreferences(prev => ({ ...prev, storeFilter: value }));
+  };
 
-        querySnapshot.forEach(doc => {
-          const data = doc.data();
-          customersData.push({
-            id: doc.id,
-            role: data.role || 'customer',
-            customerName: data.customerName || data.name || '',
-            gender: data.gender || '',
-            isStudent: data.isStudent || false,
-            customerMobile: data.customerMobile || data.mobile || '',
-            customerEmail: data.customerEmail || data.email || '',
-            storeLocation: data.storeLocation || 'Unassigned',
-            demoStore: data.demoStore || false,
-            city: data.city || 'N/A',
-            district: data.district || 'N/A',
-            referredBy: data.referredBy || null,
-            referredUsers: (data.referredUsers || []).map((ref: any) => ({
-              customerMobile: ref.customerMobile || ref.mobile,
-              customerName: ref.customerName || ref.name || '',
-              createdAt: ref.createdAt || Timestamp.now(),
-            })),
-            customerPassword: data.customerPassword || '',
-            tpin: data.tpin || '',
-            createdAt: data.createdAt || Timestamp.now(),
-            walletRechargeDone: data.walletRechargeDone || false,
-            saleElgibility: data.saleElgibility || false,
-            walletId: data.walletId || '',
-            walletBalance: data.walletBalance || 0,
-            walletBalanceCurrentMonth: data.walletBalanceCurrentMonth || 0,
-            surabhiBalance: data.surabhiBalance || data.surabhiCoins || 0,
-            surabhiCredit: data.surabhiCredit || 0,
-            surabhiDebit: data.surabhiDebit || 0,
-            surabhiReferral: data.surabhiReferral || data.referralSurabhi || 0,
-            surabhiBalanceCurrentMonth:
-              data.surabhiBalanceCurrentMonth || data.surabhiCoinsCurrentMonth || 0,
-            sevaBalance: data.sevaBalance || 0,
-            sevaCredit: data.sevaCredit || 0,
-            sevaDebit: data.sevaDebit || 0,
-            sevaTotal: data.sevaTotal || data.sevaCoinsTotal || 0,
-            sevaBalanceCurrentMonth:
-              data.sevaBalanceCurrentMonth || data.sevaCoinsCurrentMonth || 0,
-            lastTransactionDate: data.lastTransactionDate || null,
-            quarterlyPurchaseTotal: data.quarterlyPurchaseTotal || 0,
-            lastQuarterCheck: data.lastQuarterCheck || null,
-            coinsFrozen: data.coinsFrozen || false,
-            currentQuarterStart: data.currentQuarterStart || null,
-            cumTotal: data.cumTotal || 0,
-            joinedDate: data.joinedDate || data.createdAt,
-            quarterlyTarget: data.quarterlyTarget || 0,
-            targetMet: data.targetMet || false,
-            carriedForwardTarget: data.carriedForwardTarget || 0,
-          });
-        });
-        setCustomers(customersData);
-      } catch (error) {
-        // console.error('Error fetching customers:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const fetchStores = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'stores'));
-        const storesData = querySnapshot.docs.map((doc): StoreType => {
-          const data = doc.data();
-          return {
-            storePrefix: data.storePrefix || '',
-            id: doc.id,
-            demoStore: data.demoStore,
-            storeName: data.storeName || data.name || '',
-            storeLocation: data.storeLocation || data.location || '',
-            storeAddress: data.storeAddress || data.address || '',
-            storeSevaBalance: data.storeSevaBalance || 0,
-            adminCurrentBalance: data.adminCurrentBalance || 0,
-            adminStoreProfit: data.adminStoreProfit || 0,
-            referralCommission: data.referralCommission || 0,
-            surabhiCommission: data.surabhiCommission || 0,
-            sevaCommission: data.sevaCommission || 0,
-            cashOnlyCommission: data.cashOnlyCommission || 0,
-            storeContactNumber: data.storeContactNumber || data.contactNumber || '',
-            storeStatus: data.storeStatus === 'active' ? 'active' : 'inactive',
-            storeCurrentBalance: data.storeCurrentBalance || data.currentBalance || 0,
-            walletEnabled: data.walletEnabled || false,
-            storeCreatedAt:
-              data.storeCreatedAt instanceof Timestamp
-                ? data.storeCreatedAt
-                : Timestamp.fromDate(new Date(data.storeCreatedAt || new Date())),
-            storeUpdatedAt:
-              data.storeUpdatedAt instanceof Timestamp
-                ? data.storeUpdatedAt
-                : Timestamp.fromDate(new Date(data.storeUpdatedAt || new Date())),
-          };
-        });
-        setStores(storesData);
-      } catch (error) {
-        // console.error('Error fetching stores:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCustomers();
-    fetchStores();
-  }, []);
 
   // Get demo store locations to exclude from analytics
   const demoStoreLocations = stores
@@ -170,14 +66,11 @@ export const CustomerManagement = () => {
 
   const filteredCustomers = customers.filter(customer => {
     const matchesSearch =
-      customer.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.customerMobile.includes(searchTerm) ||
-      customer.customerEmail.toLowerCase().includes(searchTerm.toLowerCase());
+      customer.customerName.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      customer.customerMobile.includes(debouncedSearchTerm) ||
+      customer.customerEmail.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
 
     const matchesStore = filterStore === 'all' || customer.storeLocation === filterStore;
-
-    // Exclude customers from demo stores
-    // const isNotFromDemoStore = !demoStoreLocations.includes(customer.storeLocation);
 
     return matchesSearch && matchesStore;
   });
@@ -308,12 +201,8 @@ export const CustomerManagement = () => {
         updatedAt: Timestamp.now(),
       });
 
-      // Update local state
-      setCustomers(prev =>
-        prev.map(c =>
-          c.customerMobile === editCustomer.customerMobile ? { ...c, ...editedData } : c
-        )
-      );
+      // Invalidate customers cache to refetch updated data
+      invalidateCustomers();
 
       toast({
         title: 'Success',
@@ -778,7 +667,7 @@ export const CustomerManagement = () => {
 
             <div className="flex flex-col xs:flex-row gap-2 sm:gap-3 w-full lg:w-auto">
               <div className="relative w-full xs:w-auto">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
+                {/* <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" /> */}
                 <Input
                   placeholder="Search by name, mobile or email"
                   value={searchTerm}
@@ -787,7 +676,7 @@ export const CustomerManagement = () => {
                 />
               </div>
 
-              <Select value={filterStore} onValueChange={setFilterStore}>
+              <Select value={filterStore} onValueChange={updateFilterStore}>
                 <SelectTrigger className="w-full xs:w-[150px] sm:w-48 h-8 sm:h-10 text-xs sm:text-sm">
                   <div className="flex items-center gap-2">
                     <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4" />

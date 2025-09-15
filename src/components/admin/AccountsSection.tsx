@@ -565,7 +565,7 @@ const Accounts = () => {
                     setSearchTerm(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="pl-10 xs:pl-16 w-full xs:w-48 sm:w-64 h-8 xs:h-9 sm:h-10 text-xs xs:text-sm"
+                  className="pl-10 xs:pl-14 w-full xs:w-48 sm:w-64 h-8 xs:h-9 sm:h-10 text-xs xs:text-sm"
                 />
               </div>
 

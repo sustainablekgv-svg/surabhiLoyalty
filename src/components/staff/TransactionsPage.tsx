@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
-import { collection, getDocs, orderBy, query, Timestamp, where } from 'firebase/firestore';
+import { Timestamp } from 'firebase/firestore';
 import { CalendarIcon, Filter, Loader2, Search, ShoppingCart, Zap } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -24,8 +24,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { db } from '@/lib/firebase';
-import { CustomerTxType, TransactionsPageProps } from '@/types/types';
+import { useDebouncedSearch } from '@/hooks/useDebounce';
+import { useInvalidateQueries, useTransactions } from '@/hooks/useFirebaseQueries';
+import { useFilterPreferences } from '@/hooks/useLocalStorage';
+import { TransactionsPageProps } from '@/types/types';
 import { Badge } from '../ui/badge';
 const formatTimestamp = (timestamp: Timestamp): string => {
   return format(timestamp.toDate(), 'dd MMM yyyy, hh:mm a');
@@ -38,15 +40,62 @@ const formatDate = (timestamp: Timestamp): string => {
 export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
-  const [allTransactions, setAllTransactions] = useState<CustomerTxType[]>([]);
-  const [filteredTransactions, setFilteredTransactions] = useState<CustomerTxType[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
   const [isFiltering, setIsFiltering] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'sales' | 'recharges'>('sales');
+
+  // Use caching hooks
+  const { data: allTransactions = [], isLoading, error } = useTransactions();
+  const { invalidateTransactions } = useInvalidateQueries();
+  const debouncedSearchTerm = useDebouncedSearch(searchTerm, 300);
+  const [filterPreferences, setFilterPreferences] = useFilterPreferences({
+    startDate: '',
+    endDate: '',
+    activeTab: 'sales' as 'sales' | 'recharges',
+  });
+
+  // Filter transactions based on search term, date range, store location, and tab
+  const filteredTransactions = allTransactions.filter(transaction => {
+    // Filter by store location
+    if (storeLocation && transaction.storeLocation !== storeLocation) return false;
+
+    // Filter by transaction type based on active tab
+    const transactionType = activeTab === 'sales' ? 'sale' : 'recharge';
+    if (transaction.type !== transactionType) return false;
+
+    // Filter by amount > 0
+    if (transaction.amount <= 0) return false;
+
+    // Filter by search term (customer mobile or name)
+    if (debouncedSearchTerm) {
+      let debouncedSearchTerm: string | null = null;
+      const searchLower =
+        typeof debouncedSearchTerm === 'string' ? debouncedSearchTerm.toLowerCase() : '';
+      const matchesSearch =
+        (transaction.customerMobile?.toLowerCase() || '').includes(searchLower) ||
+        (transaction.customerName?.toLowerCase() || '').includes(searchLower) ||
+        (transaction.id.toLowerCase() || '').includes(searchLower);
+      if (!matchesSearch) return false;
+    }
+
+    // Filter by date range
+    if (startDate) {
+      const transactionDate = transaction.createdAt.toDate();
+      const filterStartDate = new Date(startDate);
+      if (transactionDate < filterStartDate) return false;
+    }
+
+    if (endDate) {
+      const transactionDate = transaction.createdAt.toDate();
+      const filterEndDate = new Date(endDate);
+      filterEndDate.setHours(23, 59, 59, 999); // End of day
+      if (transactionDate > filterEndDate) return false;
+    }
+
+    return true;
+  });
 
   // Calculate pagination for filtered results
   const indexOfLastRecord = currentPage * recordsPerPage;
@@ -64,102 +113,31 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
     setCurrentPage(1);
   };
 
-  // Fetch all transactions for current store and tab
-  const fetchAllTransactions = async () => {
-    if (!storeLocation) return;
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const q = query(
-        collection(db, 'CustomerTx'),
-        where('storeLocation', '==', storeLocation),
-        where('type', '==', activeTab === 'sales' ? 'sale' : 'recharge'),
-        where('amount', '>', 0),
-        orderBy('createdAt', 'desc')
-      );
-      const querySnapshot = await getDocs(q);
-      const fetchedTransactions: CustomerTxType[] = [];
-
-      querySnapshot.forEach(doc => {
-        const data = doc.data();
-        fetchedTransactions.push({
-          id: doc.id,
-          ...data,
-          createdAt: data.createdAt as Timestamp,
-        } as CustomerTxType);
-      });
-
-      setAllTransactions(fetchedTransactions);
-      setFilteredTransactions(fetchedTransactions);
-    } catch (err) {
-      // console.error('Error fetching transactions:', err);
-      setError('Failed to load transactions. Please try again.');
-      toast.error('Failed to load transactions');
-    } finally {
-      setIsLoading(false);
-    }
+  // Update filter preferences
+  const updateActiveTab = (newTab: 'sales' | 'recharges') => {
+    setActiveTab(newTab);
+    setFilterPreferences(prev => ({ ...prev, activeTab: newTab }));
+    setCurrentPage(1);
   };
 
-  // Fetch transactions when store location or active tab changes
-  useEffect(() => {
+  const updateDateFilters = (newStartDate: string, newEndDate: string) => {
+    setStartDate(newStartDate);
+    setEndDate(newEndDate);
+    setFilterPreferences(prev => ({ ...prev, startDate: newStartDate, endDate: newEndDate }));
     setCurrentPage(1);
-    fetchAllTransactions();
-  }, [storeLocation, activeTab]);
+  };
 
-  // Apply filters
-  useEffect(() => {
-    if (!allTransactions.length) return;
-
-    setIsFiltering(true);
-    let result = [...allTransactions];
-    // console.log('The data in line 112 is', result);
-
-    // Filter by tab
-    if (activeTab === 'sales') {
-      result = result.filter(tx => tx.type === 'sale');
-    } else if (activeTab === 'recharges') {
-      result = result.filter(tx => tx.type === 'recharge');
-      // console.log('the resulrs in line 118 is', result);
-    }
-
-    // Search filter (customer name or mobile)
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(
-        tx =>
-          tx.customerName?.toLowerCase().includes(term) ||
-          tx.customerMobile?.toLowerCase().includes(term) ||
-          tx.invoiceId?.toLowerCase().includes(term)
-      );
-    }
-
-    // Date range filter
-    if (startDate || endDate) {
-      const start = startDate ? new Date(startDate) : null;
-      const end = endDate ? new Date(endDate) : null;
-
-      if (start) start.setHours(0, 0, 0, 0);
-      if (end) end.setHours(23, 59, 59, 999);
-
-      result = result.filter(tx => {
-        const txDate = tx.createdAt.toDate();
-        if (start && txDate < start) return false;
-        if (end && txDate > end) return false;
-        return true;
-      });
-    }
-
-    setFilteredTransactions(result);
-    setCurrentPage(1);
-    setIsFiltering(false);
-  }, [searchTerm, startDate, endDate, allTransactions, activeTab]);
+  const handleRefresh = () => {
+    invalidateTransactions();
+    toast.success('Transactions refreshed');
+  };
 
   const handleClearFilters = () => {
     setSearchTerm('');
     setStartDate('');
     setEndDate('');
+    setFilterPreferences(prev => ({ ...prev, startDate: '', endDate: '' }));
+    setCurrentPage(1);
   };
 
   const calculateTotalAmount = () => {
@@ -219,7 +197,7 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
                 placeholder="Search by name or mobile..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="pl-12"
+                className="pl-14 h-12"
                 disabled={isLoading}
               />
             </div>
@@ -232,8 +210,8 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
                 id="startDate"
                 type="date"
                 value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                className="pl-12"
+                onChange={e => updateDateFilters(e.target.value, endDate)}
+                className="pl-14 h-12"
                 disabled={isLoading}
                 max={endDate || undefined}
               />
@@ -247,8 +225,8 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
                 id="endDate"
                 type="date"
                 value={endDate}
-                onChange={e => setEndDate(e.target.value)}
-                className="pl-12"
+                onChange={e => updateDateFilters(startDate, e.target.value)}
+                className="pl-14 h-12"
                 disabled={isLoading}
                 min={startDate || undefined}
               />
@@ -259,7 +237,7 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
               variant="outline"
               onClick={handleClearFilters}
               className="w-full"
-              disabled={isLoading || (!searchTerm && !startDate && !endDate)}
+              disabled={isLoading || (!debouncedSearchTerm && !startDate && !endDate)}
             >
               Clear Filters
             </Button>
@@ -314,7 +292,10 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
       )}
 
       {/* Transaction List with Tabs */}
-      <Tabs value={activeTab} onValueChange={value => setActiveTab(value as 'sales' | 'recharges')}>
+      <Tabs
+        value={activeTab}
+        onValueChange={value => updateActiveTab(value as 'sales' | 'recharges')}
+      >
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="sales">
             <ShoppingCart className="h-4 w-4 mr-2" />
@@ -331,7 +312,7 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
             <CardContent>
               {error ? (
                 <div className="text-center py-8 text-red-500">
-                  <p>{error}</p>
+                  <p>{error?.toString()}</p>
                   <Button
                     variant="outline"
                     className="mt-4"
@@ -474,7 +455,7 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
             <CardContent>
               {error ? (
                 <div className="text-center py-8 text-red-500">
-                  <p>{error}</p>
+                  <p>{error?.toString()}</p>
                   <Button
                     variant="outline"
                     className="mt-4"

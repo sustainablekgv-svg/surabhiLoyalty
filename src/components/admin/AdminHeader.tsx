@@ -1,16 +1,24 @@
-import { collection, getDocs, limit, query, Timestamp, where } from 'firebase/firestore';
-import { doc, updateDoc } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDocs,
+  limit,
+  query,
+  Timestamp,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
 import { Coins, LogOut, Settings } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,7 +52,7 @@ function safeFormatDate(date: any, dateFormat: string = 'dd MMM yyyy'): string {
   }
 }
 
-import { StoreType, AdminHeaderProps } from '@/types/types';
+import { AdminHeaderProps, StoreType } from '@/types/types';
 
 import { format } from 'date-fns';
 export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
@@ -57,7 +65,6 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
     storeLocation: user.storeLocation,
     role: user.role,
     staffStatus: user.staffStatus,
-    staffPin: user.staffPin,
     staffPassword: user.staffPassword,
   });
   const [isUpdating, setIsUpdating] = useState(false);
@@ -111,9 +118,9 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
       if (formData.staffStatus) updateData.staffStatus = formData.staffStatus;
 
       // Conditional updates for sensitive fields
-      if (formData.staffPin && formData.staffPin !== user.staffPin) {
-        updateData.staffPin = formData.staffPin;
-      }
+      // if (formData.staffPin && formData.staffPin !== user.staffPin) {
+      //   updateData.staffPin = formData.staffPin;
+      // }
       if (formData.staffPassword && formData.staffPassword !== user.staffPassword) {
         updateData.staffPassword = formData.staffPassword;
       }
@@ -352,7 +359,7 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <div>
+              {/* <div>
                 <Label htmlFor="staffPin" className="text-xs sm:text-sm">
                   Staff PIN
                 </Label>
@@ -364,7 +371,7 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
                   onChange={handleInputChange}
                   className="h-8 sm:h-10 text-xs sm:text-sm"
                 />
-              </div>
+              </div> */}
               <div>
                 <Label htmlFor="staffPassword" className="text-xs sm:text-sm">
                   New Password

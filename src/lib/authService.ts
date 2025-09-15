@@ -2,6 +2,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 
 import { auth, db } from '@/lib/firebase';
+import { encryptText, decryptText, safeDecryptText, isEncrypted } from '@/lib/encryption';
 export interface User {
   id: string;
   mobile: string;
@@ -26,17 +27,30 @@ export const getCustomerByMobile = async (
       const customerDoc = querySnapshot.docs[0];
       const customerData = customerDoc.data();
 
-      // In production, use proper password hashing (bcrypt, etc.)
-      if (customerData.customerPassword === password) {
-        return {
-          id: customerDoc.id,
-          mobile: customerData.mobile,
-          role: 'customer',
-          name: customerData.name,
-          email: customerData.email,
-          createdAt: customerData.createdAt,
-          demoStore: customerData.demoStore,
-        };
+      // Compare password with stored password (encrypted or plain)
+      if (customerData.customerPassword) {
+        let passwordMatch = false;
+        
+        if (isEncrypted(customerData.customerPassword)) {
+          // Try to decrypt the stored password
+          const decryptedStoredPassword = safeDecryptText(customerData.customerPassword);
+          passwordMatch = decryptedStoredPassword === password;
+        } else {
+          // Direct comparison for unencrypted passwords (backward compatibility)
+          passwordMatch = customerData.customerPassword === password;
+        }
+        
+        if (passwordMatch) {
+          return {
+            id: customerDoc.id,
+            mobile: customerData.mobile,
+            role: 'customer',
+            name: customerData.name,
+            email: customerData.email,
+            createdAt: customerData.createdAt,
+            demoStore: customerData.demoStore,
+          };
+        }
       }
     }
     return null;
@@ -65,8 +79,23 @@ export const getStaffByMobile = async (
     const doc = querySnapshot.docs[0];
     const staffData = doc.data();
     // console.log('The line 36 is', staffData);
-    // Verify password
-    if (staffData.staffPassword !== password) {
+    // Compare password with stored password (encrypted or plain)
+    if (staffData.staffPassword) {
+      let passwordMatch = false;
+      
+      if (isEncrypted(staffData.staffPassword)) {
+        // Try to decrypt the stored password
+        const decryptedStoredPassword = safeDecryptText(staffData.staffPassword);
+        passwordMatch = decryptedStoredPassword === password;
+      } else {
+        // Direct comparison for unencrypted passwords (backward compatibility)
+        passwordMatch = staffData.staffPassword === password;
+      }
+      
+      if (!passwordMatch) {
+        return null;
+      }
+    } else {
       return null;
     }
 

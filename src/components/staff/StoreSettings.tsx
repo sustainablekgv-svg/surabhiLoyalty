@@ -1,15 +1,15 @@
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,7 +31,6 @@ export const StoreSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
   const [formData, setFormData] = useState<Partial<StaffType>>({
     staffName: '',
     staffPassword: '',
-    staffPin: '',
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const [staffData, setStaffData] = useState<StaffType | null>(null);
@@ -49,7 +48,6 @@ export const StoreSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
           setFormData({
             staffName: data.staffName,
             staffPassword: data.staffPassword,
-            staffPin: data.staffPin,
           });
         }
       } catch (error) {
@@ -75,16 +73,16 @@ export const StoreSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
     if (!user.id) return;
 
     // Validate required fields
-    if (!formData.staffName || !formData.staffPassword || !formData.staffPin) {
+    if (!formData.staffName || !formData.staffPassword) {
       toast.error('All fields are required');
       return;
     }
 
     // Validate PIN format
-    if (formData.staffPin && (formData.staffPin.length !== 4 || !/^\d+$/.test(formData.staffPin))) {
-      toast.error('Store PIN must be a 4-digit number');
-      return;
-    }
+    // if (formData.staffPin && (formData.staffPin.length !== 4 || !/^\d+$/.test(formData.staffPin))) {
+    //   toast.error('Store PIN must be a 4-digit number');
+    //   return;
+    // }
 
     setIsUpdating(true);
     try {
@@ -93,7 +91,6 @@ export const StoreSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
       await updateDoc(staffRef, {
         staffName: formData.staffName,
         staffPassword: formData.staffPassword,
-        staffPin: formData.staffPin,
       });
 
       // console.log('Staff record updated for ID:', user.id);
@@ -163,7 +160,7 @@ export const StoreSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
             />
           </div>
 
-          <div className="space-y-0.5 xs:space-y-1 sm:space-y-2">
+          {/* <div className="space-y-0.5 xs:space-y-1 sm:space-y-2">
             <Label htmlFor="staffPin" className="text-[10px] xs:text-xs sm:text-sm font-semibold">
               Store PIN (4 digits)
             </Label>
@@ -176,7 +173,7 @@ export const StoreSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
               onChange={handleInputChange}
               className="text-gray-800 font-medium h-7 xs:h-8 sm:h-10 text-xs xs:text-sm px-2 xs:px-3 rounded-md"
             />
-          </div>
+          </div> */}
         </div>
 
         <DialogFooter className="mt-3 xs:mt-4 sm:mt-6 gap-1.5 xs:gap-2 sm:gap-3 flex-col xs:flex-row">

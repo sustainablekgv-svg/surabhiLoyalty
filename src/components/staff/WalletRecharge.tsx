@@ -37,6 +37,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useAuth } from '@/hooks/auth-context';
 import { db } from '@/lib/firebase';
 import {
@@ -101,6 +108,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [storeDetails, setStoreDetails] = useState<StoreType | null>(null);
+  // Removed availableStores and selectedStore - now using only staff's location
 
   const [sevaPool, setSevaPool] = useState<SevaPoolType>({
     currentSevaBalance: 0,
@@ -173,30 +181,33 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch store details first
-        const q = query(
+        // Fetch only the staff's store details
+        const storesQuery = query(
           collection(db, 'stores'),
-          where('storeName', '==', user.storeLocation) // exact match
+          where('storeStatus', '==', 'active'),
+          where('storeName', '==', user.storeLocation),
+          where('demoStore', '==', demoStore)
         );
 
-        const querySnapshotStores = await getDocs(q);
-        if (!querySnapshotStores.empty) {
-          querySnapshotStores.forEach(doc => {
-            const storeData = doc.data() as StoreType;
-            setStoreDetails(storeData);
-
-            // Check if wallet is disabled for this store
-            if (!storeData.walletEnabled) {
-              toast.error('Wallet recharge is disabled for this store');
-            }
-          });
+        const storesSnapshot = await getDocs(storesQuery);
+        if (!storesSnapshot.empty) {
+          const storeData = {
+            ...(storesSnapshot.docs[0].data() as StoreType),
+            id: storesSnapshot.docs[0].id,
+          };
+          setStoreDetails(storeData);
+          
+          // Check if wallet is disabled for this store
+          if (!storeData.walletEnabled) {
+            toast.error('Wallet recharge is disabled for this store');
+          }
         } else {
-          toast.error('No stores found with that name');
+          toast.error('Store not found or inactive');
+          return;
         }
 
-        // Then fetch customers
+        // Fetch customers for the staff's store only
         const customersCollection = collection(db, 'Customers');
-        // console.log('THe sote Lcoation in line 163 is', user.storeLocation);
         const customersq = query(
           customersCollection,
           where('storeLocation', '==', user.storeLocation),
@@ -218,7 +229,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
     };
 
     fetchData();
-  }, []);
+  }, [demoStore, user.storeLocation]);
 
   const filteredCustomers = customers.filter(customer => {
     const nameMatch = (customer.customerName ?? '')
@@ -248,6 +259,8 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
     return calculateCommissions(parseFloat(rechargeAmount) || 0);
   }, [rechargeAmount, storeDetails]);
 
+  // Removed handleStoreChange - now using only staff's location
+
   // Real-time listener for customers
   useEffect(() => {
     if (!user?.storeLocation) return;
@@ -255,7 +268,8 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
     const customersCollection = collection(db, 'Customers');
     const customersQuery = query(
       customersCollection,
-      where('storeLocation', '==', user.storeLocation)
+      where('storeLocation', '==', user.storeLocation),
+      where('demoStore', '==', demoStore)
     );
 
     const unsubscribe = onSnapshot(
@@ -277,7 +291,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
     );
 
     return () => unsubscribe();
-  }, [user?.storeLocation]);
+  }, [user?.storeLocation, demoStore]);
 
   // Real-time listener for selected customer
   useEffect(() => {
@@ -682,16 +696,16 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
           demoStore: demoStore,
         });
 
-        await addActivityRecord({
-          type: 'recharge',
-          remarks: `${selectedCustomer.customerName} recharged for the first time`,
-          amount: rechargeAmountNum,
-          customerMobile: selectedCustomer.customerMobile,
-          customerName: selectedCustomer.customerName,
-          createdAt: Timestamp.fromDate(new Date()),
-          storeLocation: storeLocation,
-          demoStore: demoStore,
-        });
+        // await addActivityRecord({
+        //   type: 'recharge',
+        //   remarks: `${selectedCustomer.customerName} recharged for the first time`,
+        //   amount: rechargeAmountNum,
+        //   customerMobile: selectedCustomer.customerMobile,
+        //   customerName: selectedCustomer.customerName,
+        //   createdAt: Timestamp.fromDate(new Date()),
+        //   storeLocation: storeLocation,
+        //   demoStore: demoStore,
+        // });
       }
 
       // Add activity records for the recharge and commissions
@@ -837,7 +851,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
             Wallet Recharge {demoStore && <Badge>Demo Store</Badge>}
           </h2>
           <p className="text-sm xs:text-base text-gray-600">
-            Recharge customer wallets at {storeLocation}
+            Recharge customer wallets at {user.storeLocation}
           </p>
           {storeDetails && (
             <div className="flex flex-wrap gap-2 xs:gap-4 mt-2 text-xs xs:text-sm">
@@ -868,6 +882,30 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
           )}
         </div>
       </div>
+
+      {/* Store Information - Staff Location Only */}
+      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+        <CardHeader className="px-3 py-3 xs:px-4 xs:py-4 sm:p-6">
+          <CardTitle className="flex items-center gap-1 xs:gap-2 text-sm xs:text-base sm:text-lg">
+            <MapPin className="h-3.5 w-3.5 xs:h-4 xs:w-4 sm:h-5 sm:w-5 text-blue-600" />
+            Store Location
+          </CardTitle>
+          <CardDescription className="text-xs xs:text-sm">
+            Wallet recharges restricted to your assigned store
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-3 xs:px-6">
+          <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <Shield className="h-4 w-4 text-blue-600" />
+            <span className="font-medium text-blue-900">{user.storeLocation}</span>
+            {storeDetails && !storeDetails.walletEnabled && (
+              <Badge variant="destructive" className="ml-auto text-xs">
+                Wallet Disabled
+              </Badge>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Wallet Disabled Message */}
       {storeDetails && !storeDetails.walletEnabled && (
@@ -907,7 +945,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
                   placeholder="Search by name, mobile or email"
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="pl-8 xs:pl-10 h-9 xs:h-10 md:h-12 text-xs xs:text-sm md:text-base rounded-md"
+                  className="pl-9 xs:pl-12 h-9 xs:h-10 md:h-12 text-xs xs:text-sm md:text-base rounded-md"
                 />
               </div>
 

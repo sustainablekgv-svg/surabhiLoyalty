@@ -183,42 +183,14 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
       }
     };
 
-    const fetchCustomers = async () => {
-      setIsFetchingCustomers(true);
-      try {
-        const q = query(collection(db, 'Customers'));
-        const querySnapshot = await getDocs(q);
-        const customersData: CustomerType[] = [];
-        querySnapshot.forEach(doc => {
-          const data = doc.data();
-          customersData.push({
-            id: doc.id,
-            ...data,
-            // Ensure required properties exist with defaults
-            quarterlyTarget: data.quarterlyTarget || 0,
-            carriedForwardTarget: data.carriedForwardTarget || 0,
-            cumTotal: data.cumTotal || 0,
-            joinedDate: data.joinedDate || data.createdAt || Timestamp.now(),
-            targetMet: data.targetMet || false,
-            coinsFrozen: data.coinsFrozen || false,
-          } as CustomerType);
-        });
-        setCustomers(customersData);
-      } catch (error) {
-        // console.error('Error fetching customers:', error);
-        toast.error('Failed to load customers');
-      } finally {
-        setIsFetchingCustomers(false);
-      }
-    };
-    fetchCustomers();
     fetchData();
   }, [storeLocation]);
 
   const filteredCustomers = customers.filter(
     customer =>
-      customer.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.customerMobile.includes(searchTerm)
+      (customer.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.customerMobile.includes(searchTerm)) &&
+      customer.demoStore === demoStore
   );
 
   // Automatically use all available Surabhi coins if customer is selected
@@ -1442,7 +1414,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                 placeholder="Search by name or mobile number"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="pl-12 h-12"
+                className="pl-14 h-12"
               />
             </div>
             <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -1602,7 +1574,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                         placeholder="Enter sale amount"
                         value={saleAmount || ''}
                         onChange={e => setSaleAmount(Number(e.target.value))}
-                        className="pl-12 h-12"
+                        className="pl-14 h-12"
                         required
                       />
                     </div>
@@ -1618,7 +1590,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                         placeholder="Enter invoice ID or leave blank to auto-generate"
                         value={invoiceId}
                         onChange={e => setInvoiceId(e.target.value)}
-                        className="pl-12 h-12"
+                        className="pl-14 h-12"
                       />
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
@@ -1647,7 +1619,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                               Math.floor(Math.max(0, Math.min(value, maxCoins)))
                             );
                           }}
-                          className="pl-12 h-12"
+                          className="pl-14 h-12"
                         />
                       </div>
                       <p className="text-xs text-gray-600">

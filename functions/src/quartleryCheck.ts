@@ -21,28 +21,24 @@ export const checkQuarterlyCriteria = functions.scheduler.onSchedule(
       const joinedDate = data.joinedDate?.toDate();
       if (!joinedDate) return;
 
-      // Calculate how many quarters passed since joining
-      const now = new Date();
-      const quartersSinceJoining =
-        Math.floor(
-          ((now.getFullYear() - joinedDate.getFullYear()) * 12 +
-            (now.getMonth() - joinedDate.getMonth())) /
-            3
-        ) + 1;
+      // Increment quartersPast for each customer every time this function runs
+      const currentQuartersPast = (data.quartersPast || 0) + 1;
 
-      const expectedSpend = 2000 * quartersSinceJoining;
+      // For first quarter, no target. For subsequent quarters, target is 2000 * quartersPast
       const cumTotal = data.cumTotal || 0;
+      let coinsFrozen = false;
 
-      const carriedForwardTarget = expectedSpend > cumTotal ? expectedSpend - cumTotal : 0;
+      if (currentQuartersPast > 1) {
+        const expectedSpend = 2000 * currentQuartersPast;
+        coinsFrozen = cumTotal < expectedSpend;
+      }
 
-      const targetMet = cumTotal >= expectedSpend;
-
+      const now = new Date();
       updates.push(
         doc.ref.update({
-          quarterlyTarget: expectedSpend,
-          carriedForwardTarget,
-          targetMet,
-          saleElgibility: targetMet,
+          quartersPast: currentQuartersPast,
+          coinsFrozen,
+          saleElgibility: !coinsFrozen,
           lastQuarterCheck: admin.firestore.Timestamp.now(),
           currentQuarterStart: new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1),
         })

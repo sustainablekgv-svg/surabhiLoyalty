@@ -1,19 +1,19 @@
 import { format } from 'date-fns';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, Timestamp, where } from 'firebase/firestore';
 import {
-  Users,
-  Search,
-  Phone,
-  Wallet,
+  ChevronDown,
+  ChevronUp,
   Coins,
   Eye,
   Filter,
   Loader2,
-  ChevronDown,
-  ChevronUp,
+  Phone,
+  Search,
   Star,
+  Users,
+  Wallet,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { Badge } from '@/components/ui/badge';
@@ -304,7 +304,7 @@ export const StoreUsers = ({ storeLocation }: StoreUsersProps) => {
                   placeholder="Search customers..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="pl-7 xs:pl-8 sm:pl-10 w-full sm:w-64 h-8 xs:h-9 sm:h-10 text-xs xs:text-sm"
+                  className="pl-8 xs:pl-9 sm:pl-12 w-full sm:w-64 h-8 xs:h-9 sm:h-10 text-xs xs:text-sm"
                 />
               </div>
             </div>

@@ -33,6 +33,7 @@ import { toast } from 'sonner';
 import { auth, db } from '@/lib/firebase';
 import { CustomerType, UserRegistrationProps } from '@/types/types';
 import { Badge } from '../ui/badge';
+import { encryptText } from '@/lib/encryption';
 
 export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationProps) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -236,8 +237,8 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
         city: formData.city || null,
         referredBy: formData.referredBy || null,
         referredUsers: null,
-        customerPassword: formData.customerPassword,
-        tpin: formData.tpin,
+        customerPassword: encryptText(formData.customerPassword),
+        tpin: encryptText(formData.tpin),
         createdAt: Timestamp.now(),
         walletRechargeDone: false,
         saleElgibility: false,
@@ -413,7 +414,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                       placeholder="Enter customer name"
                       value={formData.customerName}
                       onChange={e => setFormData({ ...formData, customerName: e.target.value })}
-                      className="w-full pl-16 pr-3 py-1.5 xs:py-2 h-10 xs:h-11 sm:h-12 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full pl-14 pr-3 py-1.5 xs:py-2 h-10 xs:h-11 sm:h-12 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       required
                     />
                   </div>
@@ -435,7 +436,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                       placeholder="Enter 10-digit number"
                       value={formData.customerMobile}
                       onChange={e => setFormData({ ...formData, customerMobile: e.target.value })}
-                      className="w-full pl-16 pr-3 py-1.5 xs:py-2 h-10 xs:h-11 sm:h-12 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full pl-14 pr-3 py-1.5 xs:py-2 h-10 xs:h-11 sm:h-12 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       maxLength={10}
                       required
                     />
@@ -458,7 +459,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                       placeholder="Enter email address"
                       value={formData.customerEmail}
                       onChange={e => setFormData({ ...formData, customerEmail: e.target.value })}
-                      className="w-full pl-16 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full pl-14 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       required
                     />
                   </div>
@@ -493,7 +494,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                       placeholder="Enter district"
                       value={formData.district}
                       onChange={e => setFormData({ ...formData, district: e.target.value })}
-                      className="w-full pl-3 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full pl-3 pr-3 py-1.5 xs:py-2 h-10 xs:h-11 sm:h-12 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                 </div>
@@ -606,7 +607,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                       placeholder="Enter password"
                       value={formData.customerPassword}
                       onChange={e => setFormData({ ...formData, customerPassword: e.target.value })}
-                      className="w-full pl-10 pr-10 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full pl-12 pr-10 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       required
                     />
                     <button
@@ -654,7 +655,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                       placeholder="Enter 4-digit TPIN"
                       value={formData.tpin}
                       onChange={e => setFormData({ ...formData, tpin: e.target.value })}
-                      className="w-full pl-10 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full pl-12 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       maxLength={4}
                       required
                     />
@@ -674,7 +675,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                       placeholder="Enter referrer's mobile number"
                       value={formData.referredBy}
                       onChange={e => setFormData({ ...formData, referredBy: e.target.value })}
-                      className="w-full pl-10 pr-10 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full pl-12 pr-10 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       maxLength={10}
                     />
                     {formData.referredBy && (

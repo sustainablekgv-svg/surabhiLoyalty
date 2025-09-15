@@ -45,6 +45,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { encryptText } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { StaffType, StoreType } from '@/types/types';
 
@@ -227,7 +228,7 @@ export const StaffManagement = () => {
         storeLocation: currentStaff.storeLocation,
         staffSalesCount: currentStaff.staffSalesCount || 0,
         staffRechargesCount: currentStaff.staffRechargesCount || 0,
-        staffPassword: currentStaff.staffPassword || '',
+        staffPassword: currentStaff.staffPassword ? encryptText(currentStaff.staffPassword) : '',
         lastActive: currentStaff.lastActive || null,
         createdAt: currentStaff.id
           ? currentStaff.createdAt instanceof Timestamp
@@ -528,7 +529,7 @@ export const StaffManagement = () => {
                     <TableHead className="text-xs xs:text-sm">Status</TableHead>
                     <TableHead className="text-xs xs:text-sm">Sales Count</TableHead>
                     <TableHead className="text-xs xs:text-sm">Recharges Count</TableHead>
-                    <TableHead className="text-xs xs:text-sm">Staff Pin</TableHead>
+                    {/* <TableHead className="text-xs xs:text-sm">Staff Pin</TableHead> */}
                     <TableHead className="text-xs xs:text-sm">Password</TableHead>
                     <TableHead className="text-xs xs:text-sm">Actions</TableHead>
                   </TableRow>
