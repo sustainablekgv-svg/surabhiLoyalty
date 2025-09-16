@@ -154,7 +154,7 @@ export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
     },
     {
       title: 'Surabhi Coins',
-      value: totalSurabhiCoins,
+      value: totalSurabhiCoins.toFixed(2),
       change: `${sevaCoinsThisMonth} this month`,
       icon: Coins,
       color: 'text-amber-600',
@@ -214,12 +214,12 @@ export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
                       <div className="bg-green-100 p-1.5 xs:p-2 rounded-full">
                         <DollarSign className="h-3.5 w-3.5 xs:h-4 xs:w-4 text-green-600" />
                       </div>
-                      <div>
-                        <p className="font-medium text-xs xs:text-sm truncate max-w-[150px] xs:max-w-[200px]">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-xs xs:text-sm break-words">
                           {activity.remarks}
                         </p>
                         <p className="text-[10px] xs:text-xs text-gray-600">
-                          <span className="truncate max-w-[80px] xs:max-w-[120px] inline-block align-bottom">
+                          <span className="break-words">
                             {activity.customerName}
                           </span>{' '}
                           • {format(activity.createdAt?.toDate() || new Date(), 'MMM dd, hh:mm a')}
@@ -228,7 +228,7 @@ export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
                     </div>
                     {activity.amount > 0 && (
                       <span className="font-bold text-green-600 text-xs xs:text-sm">
-                        ₹{activity.amount}
+                        ₹{activity.amount.toFixed(2)}
                       </span>
                     )}
                   </div>
@@ -261,8 +261,8 @@ export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
                     key={customer.customerMobile}
                     className="flex items-center justify-between p-2 xs:p-3 bg-amber-50 rounded-lg"
                   >
-                    <div>
-                      <p className="font-medium text-xs xs:text-sm truncate max-w-[150px] xs:max-w-[200px]">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-xs xs:text-sm break-words">
                         {customer.customerName}
                       </p>
                       <p className="text-[10px] xs:text-xs text-gray-600">
@@ -274,7 +274,7 @@ export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
                         ₹{(customer.walletBalance || 0).toFixed(2)}
                       </p>
                       <p className="text-[10px] xs:text-xs text-gray-600">
-                        {customer.surabhiBalance || 0} coins
+                        {(customer.surabhiBalance || 0).toFixed(2)} coins
                       </p>
                     </div>
                   </div>

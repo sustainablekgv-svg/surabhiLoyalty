@@ -86,7 +86,7 @@ const Accounts = () => {
         id: doc.id,
         ...doc.data(),
       })) as StoreType[];
-      console.log('The stores data is', storesData);
+      // console.log('The stores data is', storesData);
       setStores(storesData.filter(store => store.demoStore === false));
       return storesData;
     } catch (err) {
@@ -167,15 +167,20 @@ const Accounts = () => {
     try {
       setIsSubmittingSettlement(true);
 
-      const amount = Number(settlementAmount);
+      const amount = parseFloat(settlementAmount.toString()).toFixed(2);
 
       // For positive amounts: add to adminCurrentBalance, deduct from storeCurrentBalance
       // For negative amounts: deduct from adminCurrentBalance, add to storeCurrentBalance
-      const newStoreBalance = (selectedStoreForSettlement.storeCurrentBalance || 0) - amount;
-      const newAdminBalance = (selectedStoreForSettlement.adminCurrentBalance || 0) + amount;
+      const newStoreBalance =
+        (selectedStoreForSettlement.storeCurrentBalance || 0) - parseFloat(amount);
+      const newAdminBalance =
+        (selectedStoreForSettlement.adminCurrentBalance || 0) + parseFloat(amount);
 
       // Check if the amount is within the allowed range
-      if (amount > 0 && amount > (selectedStoreForSettlement.storeCurrentBalance || 0)) {
+      if (
+        parseFloat(amount) > 0 &&
+        parseFloat(amount) > (selectedStoreForSettlement.storeCurrentBalance || 0)
+      ) {
         toast.error(
           `Amount exceeds store's current balance of ₹${selectedStoreForSettlement.storeCurrentBalance || 0}`
         );
@@ -183,7 +188,10 @@ const Accounts = () => {
         return;
       }
 
-      if (amount < 0 && Math.abs(amount) > (selectedStoreForSettlement.adminCurrentBalance || 0)) {
+      if (
+        parseFloat(amount) < 0 &&
+        Math.abs(parseFloat(amount)) > (selectedStoreForSettlement.adminCurrentBalance || 0)
+      ) {
         toast.error(
           `Amount exceeds admin's current balance of ₹${selectedStoreForSettlement.adminCurrentBalance || 0}`
         );
@@ -201,9 +209,9 @@ const Accounts = () => {
         customerName: 'Admin',
         customerMobile: '',
         type: 'settlement',
-        amount: Math.abs(amount),
-        debit: amount >= 0 ? Math.abs(amount) : 0,
-        credit: amount < 0 ? Math.abs(amount) : 0,
+        amount: Math.abs(parseFloat(amount)),
+        debit: parseFloat(amount) >= 0 ? Math.abs(parseFloat(amount)) : 0,
+        credit: parseFloat(amount) < 0 ? Math.abs(parseFloat(amount)) : 0,
         adminCut: 0,
         adminProfit: 0,
         currentBalance: newStoreBalance,
@@ -212,7 +220,7 @@ const Accounts = () => {
         // invoiceId: invoiceId,
         remarks:
           settlementDescription ||
-          `Settlement adjustment ${amount >= 0 ? 'from store to admin' : 'from admin to store'} for ${selectedStoreForSettlement.storeName}`,
+          `Settlement adjustment ${parseFloat(amount) >= 0 ? 'from store to admin' : 'from admin to store'} for ${selectedStoreForSettlement.storeName}`,
         demoStore: selectedStoreForSettlement.demoStore || false,
       };
 

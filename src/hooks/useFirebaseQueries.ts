@@ -151,13 +151,10 @@ export const useCustomers = (storeLocation?: string, demoStore?: boolean) => {
         return {
           id: doc.id,
           ...data,
-          quarterlyTarget: data.quarterlyTarget || 0,
-          carriedForwardTarget: data.carriedForwardTarget || 0,
           cumTotal: data.cumTotal || 0,
           joinedDate: data.joinedDate || data.createdAt || Timestamp.now(),
-          targetMet: data.targetMet || false,
           coinsFrozen: data.coinsFrozen || false,
-        } as CustomerType;
+        } as unknown as CustomerType;
       });
     },
     staleTime: CACHE_CONFIG.CUSTOMERS.staleTime,
@@ -274,7 +271,7 @@ export const useSevaPool = () => {
 
       const data = poolSnapshot.data();
       return {
-        currentSevaBalance: data.currentBalance ?? 0,
+        currentSevaBalance: data.currentSevaBalance ?? 0,
         totalContributions: data.totalContributions ?? 0,
         totalAllocations: data.totalAllocations ?? 0,
         contributionsCurrentMonth: data.contributionsCurrentMonth ?? 0,

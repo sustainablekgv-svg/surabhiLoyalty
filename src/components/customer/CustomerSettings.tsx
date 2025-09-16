@@ -2,6 +2,8 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 
+import { encryptText } from '@/lib/encryption';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -86,7 +88,7 @@ export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSetting
 
       // Conditional updates for sensitive fields
       if (formData.tpin && formData.tpin !== customerData?.tpin) {
-        updateData.tpin = formData.tpin;
+        updateData.tpin = encryptText(formData.tpin.trim());
       }
 
       if (

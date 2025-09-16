@@ -201,7 +201,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                 <User className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-purple-600" />
               </div>
               <div>
-                <h2 className="text-sm xs:text-base sm:text-lg font-bold truncate max-w-[150px] xs:max-w-[200px] sm:max-w-full">
+                <h2 className="text-sm xs:text-base sm:text-lg font-bold break-words">
                   {customerData.customerName}
                 </h2>
                 <p className="text-[9px] xs:text-[10px] sm:text-xs text-gray-600">
@@ -282,8 +282,8 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                       <div className="bg-white p-1 sm:p-1.5 rounded-full border">
                         {getActivityIcon(activity.type)}
                       </div>
-                      <div>
-                        <p className="font-medium text-[10px] sm:text-xs truncate max-w-[120px] sm:max-w-full">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-[10px] sm:text-xs break-words">
                           {activity.type === 'recharge'
                             ? 'Wallet Recharge'
                             : activity.type === 'sale'
@@ -298,7 +298,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                                       ? 'Surabhi Coins Earned'
                                       : 'Account Activity'}
                         </p>
-                        <p className="text-[9px] sm:text-[10px] text-gray-600 truncate max-w-[150px] sm:max-w-full">
+                        <p className="text-[9px] sm:text-[10px] text-gray-600 break-words">
                           {activity.createdAt && formatActivityDate(activity.createdAt)} •{' '}
                           {activity.storeLocation}
                         </p>

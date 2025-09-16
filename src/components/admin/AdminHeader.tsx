@@ -110,12 +110,22 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
       // Only include fields that have values and are different from current
       const updateData: Partial<StaffType> = {};
 
-      // Required fields that should always be included if they exist in formData
-      if (formData.staffName) updateData.staffName = formData.staffName;
-      if (formData.staffEmail) updateData.staffEmail = formData.staffEmail;
-      if (formData.storeLocation) updateData.storeLocation = formData.storeLocation;
-      if (formData.role) updateData.role = formData.role;
-      if (formData.staffStatus) updateData.staffStatus = formData.staffStatus;
+      // Check each field for changes
+      if (formData.staffName && formData.staffName !== user.staffName) {
+        updateData.staffName = formData.staffName;
+      }
+      if (formData.staffEmail && formData.staffEmail !== user.staffEmail) {
+        updateData.staffEmail = formData.staffEmail;
+      }
+      if (formData.storeLocation && formData.storeLocation !== user.storeLocation) {
+        updateData.storeLocation = formData.storeLocation;
+      }
+      if (formData.role && formData.role !== user.role) {
+        updateData.role = formData.role;
+      }
+      if (formData.staffStatus && formData.staffStatus !== user.staffStatus) {
+        updateData.staffStatus = formData.staffStatus;
+      }
 
       // Conditional updates for sensitive fields
       // if (formData.staffPin && formData.staffPin !== user.staffPin) {
@@ -197,7 +207,7 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
 
           <div className="flex items-center gap-1 xs:gap-2 sm:gap-3 justify-end">
             <div className="hidden xs:block text-right">
-              <p className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-900 truncate max-w-[80px] xs:max-w-[100px] sm:max-w-[120px] md:max-w-none">
+              <p className="text-[10px] xs:text-xs sm:text-sm font-medium text-gray-900 break-words">
                 {user.staffName || 'Admin'}
               </p>
               <div className="flex items-center gap-0.5 xs:gap-1 sm:gap-2 justify-end">
@@ -207,7 +217,7 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
                 >
                   {user.role.toUpperCase()}
                 </Badge>
-                <span className="text-[8px] xs:text-[9px] sm:text-xs text-gray-600 truncate max-w-[40px] xs:max-w-[60px] sm:max-w-[80px] md:max-w-none">
+                <span className="text-[8px] xs:text-[9px] sm:text-xs text-gray-600 break-words">
                   {user.staffMobile}
                 </span>
               </div>

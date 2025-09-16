@@ -2,7 +2,16 @@ import CryptoJS from 'crypto-js';
 
 // Secret key for encryption - Must be 32 characters for AES-256
 const SECRET_KEY = (() => {
-  const envSecret = import.meta.env.VITE_ENCRYPTION_SECRET;
+  // Use process.env in test environment, import.meta.env in browser
+  let envSecret: string;
+  
+  // Check if we're in a test environment or if import.meta is not available
+  if (typeof process !== 'undefined' && (process.env.NODE_ENV === 'test' || typeof window === 'undefined')) {
+    envSecret = process.env.VITE_ENCRYPTION_SECRET || 'default-test-secret-key-32-chars';
+  } else {
+    // Browser environment with Vite
+    envSecret = (import.meta as any).env.VITE_ENCRYPTION_SECRET;
+  }
 
   if (!envSecret) {
     console.error('VITE_ENCRYPTION_SECRET environment variable is not set');

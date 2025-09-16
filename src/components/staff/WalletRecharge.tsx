@@ -434,7 +434,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
       // Prepare update data
       const updateData: Partial<CustomerType> = {
         walletBalance: currentData.walletBalance + rechargeAmountNum,
-        surabhiBalance: currentData.surabhiBalance + surabhiCoinsEarned,
+        surabhiBalance: Number((currentData.surabhiBalance + surabhiCoinsEarned).toFixed(2)),
         sevaBalance: currentData.sevaBalance + sevaAmountEarned,
         sevaTotal: currentData.sevaTotal + sevaAmountEarned,
         lastTransactionDate: Timestamp.fromDate(new Date()),
@@ -453,8 +453,9 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
       } else {
         updateData.walletBalanceCurrentMonth =
           currentData.walletBalanceCurrentMonth + rechargeAmountNum;
-        updateData.surabhiBalanceCurrentMonth =
-          currentData.surabhiBalanceCurrentMonth + surabhiCoinsEarned;
+        updateData.surabhiBalanceCurrentMonth = Number(
+          (currentData.surabhiBalanceCurrentMonth + surabhiCoinsEarned).toFixed(2)
+        );
         updateData.sevaBalanceCurrentMonth = currentData.sevaBalanceCurrentMonth + sevaAmountEarned;
       }
 
@@ -492,7 +493,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
         walletBalance: currentData.walletBalance + rechargeAmountNum,
         surabhiCredit: surabhiCoinsEarned,
         surabhiDebit: 0,
-        surabhiBalance: currentData.surabhiBalance + surabhiCoinsEarned,
+        surabhiBalance: Number((currentData.surabhiBalance + surabhiCoinsEarned).toFixed(2)),
         sevaCredit: sevaAmountEarned,
         sevaDebit: 0,
         sevaBalance: currentData.sevaBalanceCurrentMonth + sevaAmountEarned,
@@ -764,14 +765,14 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
           return {
             ...c,
             walletBalance: c.walletBalance + rechargeAmountNum,
-            surabhiBalance: c.surabhiBalance + surabhiCoinsEarned,
+            surabhiBalance: Number((c.surabhiBalance + surabhiCoinsEarned).toFixed(2)),
             sevaTotal: c.sevaTotal + sevaAmountEarned,
             walletBalanceCurrentMonth: resetMonthlyFields
               ? rechargeAmountNum
               : c.walletBalanceCurrentMonth + rechargeAmountNum,
             surabhiBalanceCurrentMonth: resetMonthlyFields
               ? surabhiCoinsEarned
-              : c.surabhiBalanceCurrentMonth + surabhiCoinsEarned,
+            : Number((c.surabhiBalanceCurrentMonth + surabhiCoinsEarned).toFixed(2)),
             sevaBalanceCurrentMonth: resetMonthlyFields
               ? sevaAmountEarned
               : c.sevaBalanceCurrentMonth + sevaAmountEarned,
@@ -1024,11 +1025,11 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
                           </div>
                           <div className="text-right">
                             <p className="text-xs xs:text-sm font-medium text-green-600">
-                              ₹{customer.walletBalance.toLocaleString()}
+                              ₹{customer.walletBalance.toFixed(2).toLocaleString()}
                             </p>
                             <p className="text-[10px] xs:text-xs text-gray-500">Current Balance</p>
                             <p className="text-xs xs:text-sm font-medium text-amber-600 mt-0.5 xs:mt-1">
-                              {customer.surabhiBalance}{' '}
+                              {customer.surabhiBalance.toFixed(2)}{' '}
                               <span className="hidden xs:inline">Surabhi Balance</span>
                               <span className="xs:hidden">Surabhi</span>
                             </p>
@@ -1089,11 +1090,11 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
                       </div>
                       <div className="flex flex-col items-end">
                         <Badge variant="secondary" className="mb-1 text-[10px] xs:text-xs">
-                          ₹{selectedCustomer.walletBalance.toLocaleString()}
+                          ₹{selectedCustomer.walletBalance.toFixed(2).toLocaleString()}
                         </Badge>
                         {/* {selectedCustomer.sevaTotal && selectedCustomer.sevaTotal > 0 && (
                         <Badge variant="outline" className="text-blue-600 border-blue-200 text-[10px] xs:text-xs">
-                          ₹{selectedCustomer.sevaTotal} Seva
+                          ₹{selectedCustomer.sevaTotal.toFixed(2)} Seva
                         </Badge>
                       )} */}
                       </div>
@@ -1235,7 +1236,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
                             </div>
                             <span className="font-bold text-green-600 text-xs xs:text-sm">
                               +{referralAmount} to{' '}
-                              <span className="truncate max-w-[100px] inline-block align-bottom">
+                              <span className="break-words inline-block align-bottom">
                                 {selectedCustomer.referredBy}
                               </span>
                             </span>
@@ -1250,7 +1251,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
                             </span>
                           </div>
                           <span className="font-bold text-blue-600 text-xs xs:text-sm">
-                            +₹{sevaAmountEarned}
+                            +₹{sevaAmountEarned.toFixed(2)}
                           </span>
                         </div>
                       </div>
@@ -1277,7 +1278,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
                     ) : (
                       <>
                         <CheckCircle className="h-3.5 w-3.5 xs:h-4 xs:w-4 mr-1.5 xs:mr-2" />
-                        Recharge ₹{rechargeAmountNum.toLocaleString()}
+                        Recharge ₹{rechargeAmountNum.toFixed(2).toLocaleString()}
                       </>
                     )}
                   </Button>
@@ -1316,11 +1317,11 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
                 <div className="text-gray-500">Customer Email:</div>
                 <div className="truncate">{selectedCustomer?.customerEmail}</div>
                 <div className="text-gray-500">Wallet Balance:</div>
-                <div>₹{selectedCustomer?.walletBalance.toLocaleString()}</div>
+                <div>₹{selectedCustomer?.walletBalance.toFixed(2).toLocaleString()}</div>
                 <div className="text-gray-500">Surbahi Balance:</div>
-                <div>{selectedCustomer?.surabhiBalance}</div>
+                <div>{selectedCustomer?.surabhiBalance.toFixed(2)}</div>
                 {/* <div className="text-gray-500">Seva Wallet:</div>
-                <div>₹{selectedCustomer.sevaTotal}</div> */}
+                <div>₹{selectedCustomer.sevaTotal.toFixed(2)}</div> */}
               </div>
             </div>
 

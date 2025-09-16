@@ -12,7 +12,7 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
-import { Edit, MapPin, PlusCircle, Shield, Store, Trash2, User, UserPlus } from 'lucide-react';
+import { Edit, Key, MapPin, PlusCircle, Shield, Store, Trash2, User, UserPlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -48,6 +48,7 @@ import {
 import { encryptText } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { StaffType, StoreType } from '@/types/types';
+import { PasswordDecryptor } from './PasswordDecryptor';
 
 async function checkContactNumberExists(
   contactNumber: string,
@@ -80,11 +81,11 @@ async function fetchDemoStoreStatus(storeLocation: string): Promise<boolean> {
   }
 
   const demoStore = querySnapshot.docs[0].data().demoStore;
-  console.log('The lin 72 location is', storeLocation, demoStore);
+  // console.log('The lin 72 location is', storeLocation, demoStore);
   return Boolean(demoStore); // Ensure boolean return
 }
 
-console.log('THe location is', fetchDemoStoreStatus('Frappe'));
+// console.log('THe location is', fetchDemoStoreStatus('Frappe'));
 
 export const StaffManagement = () => {
   const [emailError, setEmailError] = useState<string>('');
@@ -92,7 +93,7 @@ export const StaffManagement = () => {
   const [stores, setStores] = useState<StoreType[]>([]);
   const [staff, setStaff] = useState<StaffType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'staff' | 'stores'>('staff');
+  const [activeTab, setActiveTab] = useState<'staff' | 'stores' | 'decrypt'>('staff');
   const [contactNumberError, setContactNumberError] = useState('');
 
   // Staff state
@@ -485,6 +486,14 @@ export const StaffManagement = () => {
             <Store className="h-3.5 w-3.5 xs:h-4 xs:w-4 mr-1.5 xs:mr-2" />
             Store Management
           </Button>
+          <Button
+            variant={activeTab === 'decrypt' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('decrypt')}
+            className="h-10 text-xs xs:text-sm w-full xs:w-auto justify-start xs:justify-center"
+          >
+            <Key className="h-3.5 w-3.5 xs:h-4 xs:w-4 mr-1.5 xs:mr-2" />
+            Password Decryptor
+          </Button>
         </div>
       </div>
 
@@ -568,100 +577,92 @@ export const StaffManagement = () => {
                   </TableBody>
                 ) : (
                   <TableBody>
-                    {staff.map(
-                      member => (
-                        console.log('demoStore value:', member.demoStore),
-                        (
-                          <TableRow key={member.id}>
-                            <TableCell className="font-medium text-xs xs:text-sm">
-                              <div className="flex items-center gap-1 xs:gap-2">
-                                {member.staffName}
-                                {member.role === 'admin' && (
-                                  <Shield className="h-3 w-3 xs:h-4 xs:w-4 text-primary" />
-                                )}
+                    {staff.map(member => (
+                      // console.log('demoStore value:', member.demoStore),
+                      <TableRow key={member.id}>
+                        <TableCell className="font-medium text-xs xs:text-sm">
+                          <div className="flex items-center gap-1 xs:gap-2">
+                            {member.staffName}
+                            {member.role === 'admin' && (
+                              <Shield className="h-3 w-3 xs:h-4 xs:w-4 text-primary" />
+                            )}
 
-                                {member.demoStore === true && (
-                                  <Badge variant={'default'} className="text-[10px] xs:text-xs">
-                                    Demo
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="text-[10px] xs:text-xs sm:text-sm text-muted-foreground">
-                                {member.staffEmail}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-xs xs:text-sm">
-                              {member.staffMobile}
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={member.role === 'admin' ? 'default' : 'outline'}
-                                className="text-[10px] xs:text-xs"
-                              >
-                                {member.role}
+                            {member.demoStore === true && (
+                              <Badge variant={'default'} className="text-[10px] xs:text-xs">
+                                Demo
                               </Badge>
-                            </TableCell>
-                            <TableCell className="text-xs xs:text-sm">
-                              {stores.find(s => s.storeName === member.storeLocation)?.storeName ||
-                                'Unassigned'}
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={member.staffStatus === 'active' ? 'default' : 'secondary'}
-                                className="text-[10px] xs:text-xs"
-                              >
-                                {member.staffStatus}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-xs xs:text-sm">
-                              {member.staffSalesCount || 0}
-                            </TableCell>
-                            <TableCell className="text-xs xs:text-sm">
-                              {member.staffRechargesCount || 0}
-                            </TableCell>
-                            <TableCell className="text-xs xs:text-sm">
-                              {member.staffPassword}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex flex-col xs:flex-row gap-1 xs:gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-[10px] xs:text-xs h-7 xs:h-8 px-1.5 xs:px-2"
-                                  onClick={() => {
-                                    setCurrentStaff(member);
-                                    setIsStaffDialogOpen(true);
-                                  }}
-                                >
-                                  <Edit className="h-3 w-3 xs:h-4 xs:w-4 mr-0.5 xs:mr-1" />
-                                  Edit
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-red-600 hover:text-red-700 text-[10px] xs:text-xs h-7 xs:h-8 px-1.5 xs:px-2"
-                                  onClick={() => {
-                                    setCurrentStaff(member);
-                                    setIsDeleteStaffDialogOpen(true);
-                                  }}
-                                  disabled={member.role === 'admin'}
-                                >
-                                  <Trash2 className="h-3 w-3 xs:h-4 xs:w-4 mr-0.5 xs:mr-1" />
-                                  Remove
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )
-                      )
-                    )}
+                            )}
+                          </div>
+                          <div className="text-[10px] xs:text-xs sm:text-sm text-muted-foreground">
+                            {member.staffEmail}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs xs:text-sm">{member.staffMobile}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={member.role === 'admin' ? 'default' : 'outline'}
+                            className="text-[10px] xs:text-xs"
+                          >
+                            {member.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs xs:text-sm">
+                          {stores.find(s => s.storeName === member.storeLocation)?.storeName ||
+                            'Unassigned'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={member.staffStatus === 'active' ? 'default' : 'secondary'}
+                            className="text-[10px] xs:text-xs"
+                          >
+                            {member.staffStatus}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs xs:text-sm">
+                          {member.staffSalesCount || 0}
+                        </TableCell>
+                        <TableCell className="text-xs xs:text-sm">
+                          {member.staffRechargesCount || 0}
+                        </TableCell>
+                        <TableCell className="text-xs xs:text-sm">{member.staffPassword}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col xs:flex-row gap-1 xs:gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-[10px] xs:text-xs h-7 xs:h-8 px-1.5 xs:px-2"
+                              onClick={() => {
+                                setCurrentStaff(member);
+                                setIsStaffDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="h-3 w-3 xs:h-4 xs:w-4 mr-0.5 xs:mr-1" />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 text-[10px] xs:text-xs h-7 xs:h-8 px-1.5 xs:px-2"
+                              onClick={() => {
+                                setCurrentStaff(member);
+                                setIsDeleteStaffDialogOpen(true);
+                              }}
+                              disabled={member.role === 'admin'}
+                            >
+                              <Trash2 className="h-3 w-3 xs:h-4 xs:w-4 mr-0.5 xs:mr-1" />
+                              Remove
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 )}
               </Table>
             </div>
           </CardContent>
         </Card>
-      ) : (
+      ) : activeTab === 'stores' ? (
         <Card>
           <CardHeader className="px-2 xs:px-3 sm:px-6 py-2 xs:py-3 sm:py-4">
             <div className="flex flex-col xs:flex-row justify-between items-start xs:items-center gap-2 xs:gap-0">
@@ -716,9 +717,6 @@ export const StaffManagement = () => {
                 <TableBody>
                   {stores.map(store => (
                     <TableRow key={store.id}>
-                      {/* <TableCell className="text-xs">
-                      {store.id.substring(0, 8)}...
-                    </TableCell> */}
                       <TableCell className="font-medium text-xs xs:text-sm">
                         {store.storeName}
                         {store.demoStore && (
@@ -764,17 +762,6 @@ export const StaffManagement = () => {
                         {store.cashOnlyCommission}%
                       </TableCell>
                       <TableCell className="text-xs xs:text-sm">{store.sevaCommission}%</TableCell>
-                      {/* <TableCell>
-                      <Badge variant={store.storeStatus === 'active' ? 'default' : 'secondary'}>
-                        {store.storeStatus}
-                      </Badge>
-                    </TableCell> */}
-                      {/* <TableCell className="text-xs">
-                      {new Date(store.storeCreatedAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {new Date(store.storeUpdatedAt).toLocaleDateString()}
-                    </TableCell> */}
                       <TableCell>
                         <div className="flex flex-col xs:flex-row gap-1 xs:gap-2">
                           <Button
@@ -810,7 +797,9 @@ export const StaffManagement = () => {
             </div>
           </CardContent>
         </Card>
-      )}
+      ) : activeTab === 'decrypt' ? (
+        <PasswordDecryptor />
+      ) : null}
 
       {/* Staff Dialog */}
       <Dialog open={isStaffDialogOpen} onOpenChange={setIsStaffDialogOpen}>
@@ -853,7 +842,7 @@ export const StaffManagement = () => {
                     });
                     setMobileError(''); // Clear error when typing
                   }}
-                  placeholder="Enter mobile number"
+                  placeholder="Enter staff mobile"
                   disabled={!!currentStaff?.id}
                   className="h-7 xs:h-8 sm:h-9 text-xs xs:text-sm rounded-[4px] xs:rounded"
                 />
@@ -875,7 +864,7 @@ export const StaffManagement = () => {
                   });
                   setEmailError(''); // Clear error when typing
                 }}
-                placeholder="Enter email address"
+                placeholder="Enter staff email"
                 disabled={!!currentStaff?.id}
                 className="h-7 xs:h-8 sm:h-9 text-xs xs:text-sm rounded-[4px] xs:rounded"
               />
@@ -1191,7 +1180,7 @@ export const StaffManagement = () => {
                   onChange={e =>
                     setCurrentStore({
                       ...currentStore,
-                      storeCurrentBalance: Number(e.target.value),
+                      storeCurrentBalance: Number(parseFloat(e.target.value).toFixed(2)) || 0,
                     })
                   }
                   placeholder="Enter store current balance"
@@ -1207,7 +1196,7 @@ export const StaffManagement = () => {
                   onChange={e =>
                     setCurrentStore({
                       ...currentStore,
-                      adminCurrentBalance: Number(e.target.value),
+                      adminCurrentBalance: Number(parseFloat(e.target.value).toFixed(2)) || 0,
                     })
                   }
                   placeholder="Enter admin current balance"
@@ -1224,7 +1213,7 @@ export const StaffManagement = () => {
                   onChange={e =>
                     setCurrentStore({
                       ...currentStore,
-                      storeSevaBalance: Number(e.target.value),
+                      storeSevaBalance: Number(parseFloat(e.target.value).toFixed(2)) || 0,
                     })
                   }
                   placeholder="Enter store seva balance"
@@ -1240,7 +1229,7 @@ export const StaffManagement = () => {
                   onChange={e =>
                     setCurrentStore({
                       ...currentStore,
-                      adminStoreProfit: Number(e.target.value),
+                      adminStoreProfit: Number(parseFloat(e.target.value).toFixed(2)) || 0,
                     })
                   }
                   placeholder="Enter admin store profit"
@@ -1261,7 +1250,7 @@ export const StaffManagement = () => {
                     onChange={e =>
                       setCurrentStore({
                         ...currentStore,
-                        referralCommission: Number(e.target.value),
+                        referralCommission: Number(parseFloat(e.target.value).toFixed(2)) || 0,
                       })
                     }
                   />
@@ -1277,7 +1266,7 @@ export const StaffManagement = () => {
                     onChange={e =>
                       setCurrentStore({
                         ...currentStore,
-                        surabhiCommission: Number(e.target.value),
+                        surabhiCommission: Number(parseFloat(e.target.value).toFixed(2)) || 0,
                       })
                     }
                   />
@@ -1293,7 +1282,7 @@ export const StaffManagement = () => {
                     onChange={e =>
                       setCurrentStore({
                         ...currentStore,
-                        cashOnlyCommission: Number(e.target.value),
+                        cashOnlyCommission: Number(parseFloat(e.target.value).toFixed(2)) || 0,
                       })
                     }
                   />
@@ -1309,7 +1298,7 @@ export const StaffManagement = () => {
                     onChange={e =>
                       setCurrentStore({
                         ...currentStore,
-                        sevaCommission: Number(e.target.value),
+                        sevaCommission: Number(parseFloat(e.target.value).toFixed(2)) || 0,
                       })
                     }
                   />

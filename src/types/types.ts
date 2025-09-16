@@ -41,6 +41,9 @@ export interface CustomerType {
   cumTotal: number;
   joinedDate: Timestamp;
   quartersPast: number;
+  quarterlyTarget?: number;
+  carriedForwardTarget?: number;
+  targetMet?: boolean;
 }
 
 export interface StaffHeaderProps {

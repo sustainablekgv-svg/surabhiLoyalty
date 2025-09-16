@@ -53,7 +53,7 @@ export const StoreHeader = ({ user, onLogout }: StaffHeaderProps) => {
           <div className="flex items-center gap-1 xs:gap-2 sm:gap-4 w-full xs:w-auto justify-end">
             <div className="flex items-center gap-1 xs:gap-2 sm:gap-3">
               <div className="text-right hidden xs:block">
-                <p className="text-xs xs:text-sm font-medium text-gray-900 truncate max-w-[100px] sm:max-w-[120px] md:max-w-[180px]">
+                <p className="text-xs xs:text-sm font-medium text-gray-900 break-words">
                   {user.name || 'Store Member'}
                 </p>
                 <div className="flex items-center gap-1 sm:gap-2">
@@ -100,7 +100,7 @@ export const StoreHeader = ({ user, onLogout }: StaffHeaderProps) => {
                 <Badge variant="secondary" className="text-[10px] py-0 h-4">
                   {user.role.toUpperCase()}
                 </Badge>
-                <span className="text-[10px] text-gray-600 truncate max-w-[60px]">
+                <span className="text-[10px] text-gray-600 break-words max-w-[80px]">
                   {user.name?.split(' ')[0] || 'Store'}
                 </span>
               </div>

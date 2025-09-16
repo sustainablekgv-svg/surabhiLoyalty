@@ -36,6 +36,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/auth-context';
+import { decryptText, isEncrypted } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import {
   AccountTxType,
@@ -124,12 +125,39 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
   };
 
   const verifyTPINAndProcess = () => {
-    if (enteredTPIN === selectedCustomer.tpin) {
-      setShowTPINModal(false);
-      setEnteredTPIN('');
-      handleSale();
-    } else {
-      toast.error('Invalid TPIN. Please try again.');
+    try {
+      const enteredTPINStr = String(enteredTPIN).trim();
+      const storedTPIN = selectedCustomer.tpin;
+
+      let isValidTPIN = false;
+
+      // Since all TPINs are encrypted, decrypt the stored TPIN and compare
+      if (isEncrypted(storedTPIN)) {
+        const decryptedStoredTPIN = decryptText(storedTPIN);
+        isValidTPIN = enteredTPINStr === decryptedStoredTPIN;
+      } else {
+        // Fallback for any unencrypted TPINs (direct comparison)
+        isValidTPIN = enteredTPINStr === storedTPIN;
+      }
+
+      console.log('TPIN verification:', {
+        entered: enteredTPINStr,
+        storedEncrypted: storedTPIN,
+        isEncrypted: isEncrypted(storedTPIN),
+        isValid: isValidTPIN,
+      });
+
+      if (isValidTPIN) {
+        setShowTPINModal(false);
+        setEnteredTPIN('');
+        handleSale();
+      } else {
+        toast.error('Invalid TPIN. Please try again.');
+        setEnteredTPIN('');
+      }
+    } catch (error) {
+      console.error('TPIN verification error:', error);
+      toast.error('TPIN verification failed. Please try again.');
       setEnteredTPIN('');
     }
   };
@@ -1486,8 +1514,12 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                             </Badge>
                           )}
                         </div>
-                        <p className="font-medium text-green-600">₹{customer.walletBalance}</p>
-                        <p className="text-amber-600">{customer.surabhiBalance} Surabhi Balance</p>
+                        <p className="font-medium text-green-600">
+                          ₹{customer.walletBalance.toFixed(2)}
+                        </p>
+                        <p className="text-amber-600">
+                          {customer.surabhiBalance.toFixed(2)} Surabhi Balance
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1726,7 +1758,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                           </div>
                         )}
 
-                      {storeDetails && (
+                      {/* {storeDetails && (
                         <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
                           <span className="text-sm font-medium text-orange-900">
                             Surabh Percentage (Wallet{' '}
@@ -1736,7 +1768,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                             {storeDetails.surabhiCommission}%
                           </span>
                         </div>
-                      )}
+                      )} */}
 
                       {(paymentMethod === 'cash' || paymentMethod === 'mixed') &&
                         saleCalculation.goSevaContribution > 0 && (

@@ -1,10 +1,11 @@
 // src/components/CustomerManagement.tsx
-import { updateDoc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
-import { Coins, Edit, Eye, Filter, Loader2, MapPin, Phone, Users, Wallet } from 'lucide-react';
-import { useState } from 'react';
-import { useCustomers, useActiveStores, useInvalidateQueries } from '@/hooks/useFirebaseQueries';
 import { useDebouncedSearch } from '@/hooks/useDebounce';
+import { useActiveStores, useCustomers, useInvalidateQueries } from '@/hooks/useFirebaseQueries';
 import { useFilterPreferences } from '@/hooks/useLocalStorage';
+import { collection, getDocs, query, Timestamp, updateDoc, where } from 'firebase/firestore';
+import { Coins, Edit, Eye, Filter, Key, Loader2, MapPin, Phone, Users, Wallet } from 'lucide-react';
+import { useState } from 'react';
+import { PasswordDecryptor } from './PasswordDecryptor';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,8 +28,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
+import { encryptText } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
-import { CustomerType, StoreType } from '@/types/types';
+import { CustomerType } from '@/types/types';
 
 export const CustomerManagement = () => {
   // Use cached data with React Query
@@ -41,7 +43,11 @@ export const CustomerManagement = () => {
   const { invalidateCustomers } = useInvalidateQueries();
 
   // Use cached filter preferences
-  const [filterPreferences, setFilterPreferences] = useFilterPreferences();
+  const [filterPreferences, setFilterPreferences] = useFilterPreferences({
+    startDate: '',
+    endDate: '',
+    activeTab: 'sales' as const,
+  });
 
   const [searchTerm, setSearchTerm] = useState('');
   const { debouncedSearchTerm } = useDebouncedSearch(searchTerm);
@@ -55,6 +61,7 @@ export const CustomerManagement = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editedData, setEditedData] = useState<Partial<CustomerType>>({});
+  const [activeTab, setActiveTab] = useState<'customers' | 'decrypt'>('customers');
 
   // Update filter preferences when store filter changes
   const updateFilterStore = (value: string) => {
@@ -146,7 +153,7 @@ export const CustomerManagement = () => {
       ...prev,
       [name]:
         name === 'walletBalance' || name === 'surabhiBalance' || name === 'sevaTotal'
-          ? parseFloat(value) || 0
+          ? Number(parseFloat(value).toFixed(2)) || 0
           : value,
     }));
   };
@@ -188,8 +195,8 @@ export const CustomerManagement = () => {
       // Get the first matching document (assuming mobile numbers are unique)
       const customerDoc = querySnapshot.docs[0];
 
-      // Update the document
-      await updateDoc(customerDoc.ref, {
+      // Prepare update data with encryption for sensitive fields
+      const updateData: any = {
         customerName: editedData.customerName,
         customerEmail: editedData.customerEmail,
         storeLocation: editedData.storeLocation,
@@ -199,10 +206,21 @@ export const CustomerManagement = () => {
         surabhiBalance: editedData.surabhiBalance,
         sevaTotal: editedData.sevaTotal,
         walletRechargeDone: editedData.walletRechargeDone,
-        tpin: editedData.tpin,
-        customerPassword: editedData.customerPassword,
         updatedAt: Timestamp.now(),
-      });
+      };
+
+      // Only encrypt and update TPIN if it's provided and not empty
+      if (editedData.tpin && editedData.tpin.trim() !== '') {
+        updateData.tpin = encryptText(editedData.tpin.trim());
+      }
+
+      // Only encrypt and update password if it's provided and not empty
+      if (editedData.customerPassword && editedData.customerPassword.trim() !== '') {
+        updateData.customerPassword = encryptText(editedData.customerPassword.trim());
+      }
+
+      // Update the document
+      await updateDoc(customerDoc.ref, updateData);
 
       // Invalidate customers cache to refetch updated data
       invalidateCustomers();
@@ -573,7 +591,31 @@ export const CustomerManagement = () => {
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 justify-between items-start sm:items-center">
+      {/* Tab Navigation */}
+      <div className="flex flex-col xs:flex-row gap-2 xs:gap-4 mb-4 xs:mb-6">
+        <div className="flex flex-col xs:flex-row gap-1 xs:gap-2 w-full xs:w-auto">
+          <Button
+            variant={activeTab === 'customers' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('customers')}
+            className="h-10 text-xs xs:text-sm w-full xs:w-auto justify-start xs:justify-center"
+          >
+            <Users className="h-3.5 w-3.5 xs:h-4 xs:w-4 mr-1.5 xs:mr-2" />
+            Customer Management
+          </Button>
+          <Button
+            variant={activeTab === 'decrypt' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('decrypt')}
+            className="h-10 text-xs xs:text-sm w-full xs:w-auto justify-start xs:justify-center"
+          >
+            <Key className="h-3.5 w-3.5 xs:h-4 xs:w-4 mr-1.5 xs:mr-2" />
+            Password Decryptor
+          </Button>
+        </div>
+      </div>
+
+      {activeTab === 'customers' ? (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 justify-between items-start sm:items-center">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Customer Management</h2>
           <p className="text-xs sm:text-sm text-gray-600">View and manage all customer accounts</p>
@@ -787,6 +829,14 @@ export const CustomerManagement = () => {
           </div>
         </CardContent>
       </Card>
+        </div>
+      ) : (
+        <PasswordDecryptor 
+          title="Customer Password Decryptor"
+          description="Enter an encrypted customer password to view its original value"
+          placeholder="Enter encrypted customer password"
+        />
+      )}
     </div>
   );
 };

@@ -21,7 +21,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
@@ -39,15 +39,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/auth-context'; // Import useAuth hook
-import { db } from '@/lib/firebase';
-import { CustomerTxType, SevaPoolType, StaffType } from '@/types/types';
 import {
   useCustomers,
+  useInvalidateQueries,
   useSevaPool,
   useTransactions,
-  useInvalidateQueries,
 } from '@/hooks/useFirebaseQueries';
-import { useDebouncedSearch } from '@/hooks/useDebounce';
+import { db } from '@/lib/firebase';
+import { StaffType } from '@/types/types';
 
 interface Customer {
   id?: string;
@@ -124,8 +123,8 @@ export const GoSevaPool = () => {
     lastAllocatedDate: Timestamp.now(),
   };
 
-  const customers = customersData || [];
-  const transactions = transactionsData || [];
+  const customers = customersData?.filter(c => c.demoStore === false) || [];
+  const transactions = transactionsData?.filter(tx => tx.demoStore === false) || [];
   const loading = sevaPoolLoading || customersLoading || transactionsLoading;
 
   // Get unique store locations
@@ -245,7 +244,7 @@ export const GoSevaPool = () => {
   }, [user]);
 
   const handleAllocation = async () => {
-    const amount = parseFloat(allocationAmount);
+    const amount = Number(parseFloat(allocationAmount).toFixed(2));
 
     if (!selectedStoreForAllocation) {
       toast.error('Please select a store for allocation');
@@ -478,7 +477,7 @@ export const GoSevaPool = () => {
                     <option value="">Select a store</option>
                     {storeLocations.map(store => (
                       <option key={store} value={store}>
-                        {store} - ₹{(storeSevaBalances[store] || 0).toLocaleString()}
+                        {store} - ₹{(storeSevaBalances[store] || 0).toFixed(2).toLocaleString()}
                       </option>
                     ))}
                   </select>
@@ -505,14 +504,14 @@ export const GoSevaPool = () => {
                     <option value="">Select a store</option>
                     {Object.keys(storeSevaBalances).map(storeName => (
                       <option key={storeName} value={storeName}>
-                        {storeName} - ₹{storeSevaBalances[storeName].toLocaleString()}
+                        {storeName} - ₹{storeSevaBalances[storeName].toFixed(2).toLocaleString()}
                       </option>
                     ))}
                   </select>
                   {selectedStoreForAllocation && (
                     <div className="mt-2 p-2 bg-blue-50 rounded-md">
                       <p className="text-sm text-blue-800">
-                        <strong>Store Seva Balance: ₹{storeSevaBalances[selectedStoreForAllocation]?.toLocaleString() || 0}</strong>
+                        <strong>Store Seva Balance: ₹{(storeSevaBalances[selectedStoreForAllocation] || 0).toFixed(2).toLocaleString()}</strong>
                       </p>
                     </div>
                   )}

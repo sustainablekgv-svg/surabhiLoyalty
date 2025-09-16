@@ -1,5 +1,4 @@
 import { format } from 'date-fns';
-import { Timestamp } from 'firebase/firestore';
 import {
   ChevronLeft,
   ChevronRight,
@@ -33,10 +32,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useActiveStores, useTransactions, useInvalidateQueries } from '@/hooks/useFirebaseQueries';
 import { useDebouncedSearch } from '@/hooks/useDebounce';
+import { useActiveStores, useInvalidateQueries, useTransactions } from '@/hooks/useFirebaseQueries';
 import { useFilterPreferences } from '@/hooks/useLocalStorage';
-import { CustomerTxType, StoreType } from '@/types/types';
 
 export const SalesManagement = () => {
   // Use cached data with React Query
@@ -49,7 +47,11 @@ export const SalesManagement = () => {
   const { invalidateTransactions, invalidateAll } = useInvalidateQueries();
 
   // Use cached filter preferences
-  const [filterPreferences, setFilterPreferences] = useFilterPreferences();
+  const [filterPreferences, setFilterPreferences] = useFilterPreferences({
+    startDate: '',
+    endDate: '',
+    activeTab: 'sales' as const,
+  });
 
   // Separate search terms for transactions and recharges
   const [transactionsSearchTerm, setTransactionsSearchTerm] = useState('');
@@ -124,9 +126,7 @@ export const SalesManagement = () => {
   });
 
   // Pagination logic for transactions
-  const transactionsTotalPages = Number(
-    Math.ceil(filteredTransactions.length / transactionsPerPage).toFixed(2)
-  );
+  const transactionsTotalPages = Math.ceil(filteredTransactions.length / transactionsPerPage);
   const transactionsStartIndex = (transactionsPage - 1) * transactionsPerPage;
   const transactionsEndIndex = transactionsStartIndex + transactionsPerPage;
   const paginatedTransactions = filteredTransactions.slice(
@@ -135,9 +135,7 @@ export const SalesManagement = () => {
   );
 
   // Pagination logic for recharges
-  const rechargesTotalPages = Number(
-    Math.ceil(filteredRecharges.length / rechargesPerPage).toFixed(2)
-  );
+  const rechargesTotalPages = Math.ceil(filteredRecharges.length / rechargesPerPage);
   const rechargesStartIndex = (rechargesPage - 1) * rechargesPerPage;
   const rechargesEndIndex = rechargesStartIndex + rechargesPerPage;
   const paginatedRecharges = filteredRecharges.slice(rechargesStartIndex, rechargesEndIndex);
@@ -503,11 +501,7 @@ export const SalesManagement = () => {
                         <Button
                           variant="outline"
                           className="h-8 w-8 p-0"
-                          onClick={() =>
-                            setTransactionsPage(
-                              Number(Math.max(1, transactionsPage - 1).toFixed(2))
-                            )
-                          }
+                          onClick={() => setTransactionsPage(Math.max(1, transactionsPage - 1))}
                           disabled={transactionsPage === 1}
                         >
                           <span className="sr-only">Go to previous page</span>
@@ -518,9 +512,7 @@ export const SalesManagement = () => {
                           className="h-8 w-8 p-0"
                           onClick={() =>
                             setTransactionsPage(
-                              Number(
-                                Math.min(transactionsTotalPages, transactionsPage + 1).toFixed(2)
-                              )
+                              Math.min(transactionsTotalPages, transactionsPage + 1)
                             )
                           }
                           disabled={
@@ -633,9 +625,9 @@ export const SalesManagement = () => {
                           <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                             Mobile
                           </TableHead>
-                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          {/* <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                             Invoice ID
-                          </TableHead>
+                          </TableHead> */}
                           <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                             Amount
                           </TableHead>
@@ -664,7 +656,7 @@ export const SalesManagement = () => {
                           <TableRow key={recharge.id}>
                             <TableCell className="font-medium">{recharge.customerName}</TableCell>
                             <TableCell>{recharge.customerMobile}</TableCell>
-                            <TableCell>{recharge.invoiceId || 'N/A'}</TableCell>
+                            {/* <TableCell>{recharge.invoiceId || 'N/A'}</TableCell> */}
                             <TableCell className="text-green-600">
                               ₹{Number(recharge.amount).toFixed(2)}
                             </TableCell>
@@ -735,9 +727,7 @@ export const SalesManagement = () => {
                         <Button
                           variant="outline"
                           className="h-6 w-6 xs:h-7 xs:w-7 sm:h-8 sm:w-8 p-0"
-                          onClick={() =>
-                            setRechargesPage(Number(Math.max(1, rechargesPage - 1).toFixed(2)))
-                          }
+                          onClick={() => setRechargesPage(Math.max(1, rechargesPage - 1))}
                           disabled={rechargesPage === 1}
                         >
                           <span className="sr-only">Go to previous page</span>
@@ -747,9 +737,7 @@ export const SalesManagement = () => {
                           variant="outline"
                           className="h-6 w-6 xs:h-7 xs:w-7 sm:h-8 sm:w-8 p-0"
                           onClick={() =>
-                            setRechargesPage(
-                              Number(Math.min(rechargesTotalPages, rechargesPage + 1).toFixed(2))
-                            )
+                            setRechargesPage(Math.min(rechargesTotalPages, rechargesPage + 1))
                           }
                           disabled={
                             rechargesPage === rechargesTotalPages || rechargesTotalPages === 0

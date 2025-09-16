@@ -259,14 +259,11 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
         sevaTotal: 0,
         sevaBalanceCurrentMonth: 0,
         lastTransactionDate: null,
-        quarterlyPurchaseTotal: 0,
         lastQuarterCheck: null,
         coinsFrozen: true,
         currentQuarterStart: null,
         joinedDate: Timestamp.now(),
-        quarterlyTarget: 0,
-        targetMet: false,
-        carriedForwardTarget: 0,
+        quartersPast:0,
       };
 
       await setDoc(doc(customersCollection, newUserUid), newUserData);
@@ -346,7 +343,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
     let password = '';
     for (let i = 0; i < 12; i++) {
-      password += chars.charAt(Number((Math.random() * chars.length).toFixed(2)) % chars.length);
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     setFormData({ ...formData, customerPassword: password });
     toast.success('Secure password generated!');
@@ -362,7 +359,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
       toast.error('Please fill name, mobile and email first');
       return;
     }
-    const tpin = Number((1000 + Math.random() * 9000).toFixed(2)).toString();
+    const tpin = Math.floor(1000 + Math.random() * 9000).toString();
     setFormData({ ...formData, tpin });
     toast.success('4-digit TPIN generated!');
   };

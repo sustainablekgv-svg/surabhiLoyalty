@@ -57,45 +57,47 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
   });
 
   // Filter transactions based on search term, date range, store location, and tab
-  const filteredTransactions = allTransactions.filter(transaction => {
-    // Filter by store location
-    if (storeLocation && transaction.storeLocation !== storeLocation) return false;
+  const filteredTransactions = allTransactions
+    ?.filter(tx => tx.demoStore === demoStore)
+    ?.filter(transaction => {
+      // Filter by store location
+      if (storeLocation && transaction.storeLocation !== storeLocation) return false;
 
-    // Filter by transaction type based on active tab
-    const transactionType = activeTab === 'sales' ? 'sale' : 'recharge';
-    if (transaction.type !== transactionType) return false;
+      // Filter by transaction type based on active tab
+      const transactionType = activeTab === 'sales' ? 'sale' : 'recharge';
+      if (transaction.type !== transactionType) return false;
 
-    // Filter by amount > 0
-    if (transaction.amount <= 0) return false;
+      // Filter by amount > 0
+      if (transaction.amount <= 0) return false;
 
-    // Filter by search term (customer mobile or name)
-    if (debouncedSearchTerm) {
-      let debouncedSearchTerm: string | null = null;
-      const searchLower =
-        typeof debouncedSearchTerm === 'string' ? debouncedSearchTerm.toLowerCase() : '';
-      const matchesSearch =
-        (transaction.customerMobile?.toLowerCase() || '').includes(searchLower) ||
-        (transaction.customerName?.toLowerCase() || '').includes(searchLower) ||
-        (transaction.id.toLowerCase() || '').includes(searchLower);
-      if (!matchesSearch) return false;
-    }
+      // Filter by search term (customer mobile or name)
+      if (debouncedSearchTerm) {
+        let debouncedSearchTerm: string | null = null;
+        const searchLower =
+          typeof debouncedSearchTerm === 'string' ? debouncedSearchTerm.toLowerCase() : '';
+        const matchesSearch =
+          (transaction.customerMobile?.toLowerCase() || '').includes(searchLower) ||
+          (transaction.customerName?.toLowerCase() || '').includes(searchLower) ||
+          (transaction.id.toLowerCase() || '').includes(searchLower);
+        if (!matchesSearch) return false;
+      }
 
-    // Filter by date range
-    if (startDate) {
-      const transactionDate = transaction.createdAt.toDate();
-      const filterStartDate = new Date(startDate);
-      if (transactionDate < filterStartDate) return false;
-    }
+      // Filter by date range
+      if (startDate) {
+        const transactionDate = transaction.createdAt.toDate();
+        const filterStartDate = new Date(startDate);
+        if (transactionDate < filterStartDate) return false;
+      }
 
-    if (endDate) {
-      const transactionDate = transaction.createdAt.toDate();
-      const filterEndDate = new Date(endDate);
-      filterEndDate.setHours(23, 59, 59, 999); // End of day
-      if (transactionDate > filterEndDate) return false;
-    }
+      if (endDate) {
+        const transactionDate = transaction.createdAt.toDate();
+        const filterEndDate = new Date(endDate);
+        filterEndDate.setHours(23, 59, 59, 999); // End of day
+        if (transactionDate > filterEndDate) return false;
+      }
 
-    return true;
-  });
+      return true;
+    });
 
   // Calculate pagination for filtered results
   const indexOfLastRecord = currentPage * recordsPerPage;
@@ -141,20 +143,18 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
   };
 
   const calculateTotalAmount = () => {
-    return allTransactions
-      .filter(tx => tx.demoStore === demoStore)
-      .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+    return filteredTransactions.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
   };
 
   const calculateTotalRecharges = () => {
-    return allTransactions
-      .filter(tx => tx.type === 'recharge' && tx.demoStore === demoStore)
+    return filteredTransactions
+      .filter(tx => tx.type === 'recharge')
       .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
   };
 
   const calculateTotalSales = () => {
-    return allTransactions
-      .filter(tx => tx.type === 'sale' && tx.demoStore === demoStore)
+    return filteredTransactions
+      .filter(tx => tx.type === 'sale')
       .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
   };
 
@@ -255,17 +255,17 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0">
-              <p className="text-2xl font-bold">{allTransactions.length}</p>
+              <p className="text-2xl font-bold">{filteredTransactions.length}</p>
             </CardContent>
           </Card>
-          <Card className="bg-green-50">
+          {/* <Card className="bg-green-50">
             <CardHeader className="p-4">
               <CardTitle className="text-sm font-medium text-green-600">Total Amount</CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0">
               <p className="text-2xl font-bold">₹{calculateTotalAmount().toFixed(2)}</p>
             </CardContent>
-          </Card>
+          </Card> */}
           {activeTab == 'sales' && (
             <Card className="bg-purple-50">
               <CardHeader className="p-4">

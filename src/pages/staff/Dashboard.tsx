@@ -1,5 +1,6 @@
 import {
   History,
+  Shield,
   ShoppingCart,
   Store,
   TrendingUp,
@@ -15,6 +16,7 @@ import { SalesManagement } from '@/components/staff/SalesManagement';
 import StoreAccounts from '@/components/staff/storeAccounts';
 import { StoreHeader } from '@/components/staff/StoreHeader';
 import { StoreStats } from '@/components/staff/StoreStats';
+import { TPINDecryptor } from '@/components/staff/TPINDecryptor';
 import { TransactionsPage } from '@/components/staff/TransactionsPage';
 import { UserRegistration } from '@/components/staff/UserRegistration';
 import { WalletRecharge } from '@/components/staff/WalletRecharge';
@@ -140,7 +142,7 @@ const StoreDashboard = () => {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             {/* Tabs Navigation */}
             <div className="mb-4 sm:mb-6 md:mb-8 overflow-x-hidden overflow-y-hidden">
-              <TabsList className="grid w-full grid-cols-6 bg-gray-100 p-0.5 rounded-lg overflow-y-hidden">
+              <TabsList className="grid w-full grid-cols-7 bg-gray-100 p-0.5 rounded-lg overflow-y-hidden">
                 {[
                   { value: 'overview', icon: TrendingUp, label: 'Overview' },
                   { value: 'register', icon: UserPlus, label: 'Register' },
@@ -148,6 +150,7 @@ const StoreDashboard = () => {
                   { value: 'sales', icon: ShoppingCart, label: 'Sales' },
                   { value: 'transactions', icon: History, label: 'Transactions' },
                   { value: 'accounts', icon: WalletCards, label: 'Accounts' },
+                  { value: 'tpin', icon: Shield, label: 'TPIN' },
                 ]
                   .filter(tab => (walletEnabled ? true : tab.value !== 'recharge'))
                   .map(tab => (
@@ -208,6 +211,10 @@ const StoreDashboard = () => {
 
               <TabsContent value="accounts" className="pt-2">
                 <StoreAccounts storeLocation={user?.storeLocation || ''} userRole={''} demoStore />
+              </TabsContent>
+
+              <TabsContent value="tpin" className="pt-2">
+                <TPINDecryptor />
               </TabsContent>
             </div>
           </Tabs>

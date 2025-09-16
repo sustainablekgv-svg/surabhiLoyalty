@@ -221,7 +221,7 @@ export const CustomerDetails = () => {
                 <div>
                   <h3 className="text-xs sm:text-sm font-medium text-amber-600">Surabhi Coins</h3>
                   <p className="text-xl sm:text-2xl font-bold text-amber-700 mt-0.5 sm:mt-1">
-                    {Math.floor(customer.surabhiBalance || 0)}
+                    {(customer.surabhiBalance || 0).toFixed(2)}
                   </p>
                 </div>
                 <div className="bg-amber-100 p-1.5 sm:p-2 rounded-full">
@@ -291,7 +291,7 @@ export const CustomerDetails = () => {
           <CardContent className="space-y-4">
             <div>
               <p className="text-xs text-muted-foreground">Surabhi Coins</p>
-              <p className="text-lg font-medium">{Math.floor(customer.surabhiBalance || 0)}</p>
+              <p className="text-lg font-medium">{(customer.surabhiBalance || 0).toFixed(2)}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Total Seva Coins</p>

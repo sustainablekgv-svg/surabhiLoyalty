@@ -381,16 +381,16 @@ export const AdminRecentActivity = () => {
                         {getActivityIcon(activity.type)}
                       </div>
                     </div>
-                    <div className="overflow-hidden">
-                      <p className="font-medium text-[10px] xs:text-xs sm:text-sm truncate max-w-[150px] xs:max-w-[200px] sm:max-w-none">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-[10px] xs:text-xs sm:text-sm break-words">
                         {activity.remarks}
                       </p>
                       <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 text-[8px] xs:text-[10px] sm:text-xs text-gray-600 flex-wrap">
-                        <span className="truncate max-w-[60px] xs:max-w-[80px] sm:max-w-none">
+                        <span className="break-words">
                           {activity.customerName}
                         </span>
                         <span className="hidden xs:inline">•</span>
-                        <span className="truncate max-w-[60px] xs:max-w-[80px] sm:max-w-none">
+                        <span className="break-words">
                           {activity.storeLocation}
                         </span>
                         <span className="hidden xs:inline">•</span>

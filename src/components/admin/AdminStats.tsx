@@ -116,7 +116,7 @@ export const AdminStats = () => {
         const demoStoreLocations = stores
           .filter(store => store.demoStore === true)
           .map(store => store.storeName);
-        console.log('The demo store locations are', demoStoreLocations);
+        // console.log('The demo store locations are', demoStoreLocations);
         // Filter out customers from demo stores for KPI calculations
         // const nonDemoCustomers = customers.filter(customer => customer.demoStore === false);
         // console.log('The non Demo Customers are', nonDemoCustomers);
