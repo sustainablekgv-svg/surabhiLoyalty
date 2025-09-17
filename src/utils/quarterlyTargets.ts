@@ -66,10 +66,9 @@ export function hasMetQuarterlyTarget(customer: CustomerType): boolean {
   }
 
   // For subsequent quarters: cumulative target = 2000 * (quarters completed - 1)
-  const cumulativeTarget = 2000 * quartersPast;
-  const quarterlyTarget = cumulativeTarget;
+  const cummulativeTarget = 2000 * quartersPast;
 
-  return customer.cumTotal >= quarterlyTarget;
+  return customer.cumTotal >= cummulativeTarget;
 }
 
 /**

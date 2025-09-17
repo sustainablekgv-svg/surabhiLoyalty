@@ -37,7 +37,7 @@ export const checkQuarterlyCriteria = functions.scheduler.onSchedule(
 
       // Calculate quarterly target: First quarter has no target, subsequent quarters: 2000 * (quarters-1)
       const cumTotal = data.cumTotal || 0;
-      let cumulativeTarget = 0;
+      let cummulativeTarget = 0;
       let coinsFrozen = false;
       let targetMet = true;
 
@@ -48,15 +48,15 @@ export const checkQuarterlyCriteria = functions.scheduler.onSchedule(
       //   coinsFrozen = false;
       // } else {
       // For subsequent quarters: cumulative target = 2000 * (quarters completed - 1)
-      cumulativeTarget = 2000 * currentQuartersPast;
-      targetMet = cumTotal >= cumulativeTarget;
+      cummulativeTarget = 2000 * currentQuartersPast;
+      targetMet = cumTotal >= cummulativeTarget;
       coinsFrozen = !targetMet; // Freeze coins if cumulative target not met
       // }
 
       updates.push(
         doc.ref.update({
           quartersPast: currentQuartersPast,
-          cumulativeTarget,
+          cummulativeTarget: cummulativeTarget,
           targetMet,
           coinsFrozen,
           lastQuarterCheck: admin.firestore.Timestamp.now(),
