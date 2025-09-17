@@ -196,8 +196,8 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             ...(data as CustomerType),
             mobile: data.mobile, // Using mobile as identifier
             // Ensure required properties exist with defaults
-            quarterlyTarget: data.quarterlyTarget || 0,
-            carriedForwardTarget: data.carriedForwardTarget || 0,
+            // quarterlyTarget: data.quarterlyTarget || 0,
+            // carriedForwardTarget: data.carriedForwardTarget || 0,
             cumTotal: data.cumTotal || 0,
             joinedDate: data.joinedDate || data.createdAt || Timestamp.now(),
             targetMet: data.targetMet || false,
@@ -222,7 +222,12 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         customer.customerMobile.includes(searchTerm)) &&
       customer.demoStore === demoStore
   );
-
+  console.log(
+    'The log values in line 225 are',
+    selectedCustomer?.coinsFrozen,
+    selectedCustomer?.cumTotal,
+    selectedCustomer?.quartersPast
+  );
   // Automatically use all available Surabhi coins if customer is selected
   useEffect(() => {
     if (selectedCustomer && saleAmount && saleAmount > 0) {
@@ -472,7 +477,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
       await updateDoc(customerRef, updateData);
 
       // Record transaction
-      const customerTxData: CustomerTxType = {
+      const customerTxData: Omit<CustomerTxType, 'id'> = {
         type: 'sale',
         customerName: selectedCustomer.customerName,
         customerMobile: selectedCustomer.customerMobile,
@@ -677,18 +682,25 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         await addDoc(collection(db, 'AccountTx'), accountTxData);
 
         // Create CustomerTx record
-        const customerTxData: Omit<Partial<CustomerTxType>, 'id'> = {
-          type: 'sale', // Added the required type field
+        const customerTxData: Omit<CustomerTxType, 'id'> = {
+          type: 'sale',
           customerMobile: selectedCustomer.customerMobile,
-          customerName: selectedCustomer.customerName, // Added customerName
+          customerName: selectedCustomer.customerName,
           demoStore: storeDetails.demoStore || false,
-          // storeLocation: storeLocation,
+          storeLocation: storeLocation,
           storeName: user.storeLocation,
           createdAt: Timestamp.fromDate(new Date()),
           paymentMethod: paymentMethod,
           processedBy: user.name,
-          invoiceId: txInvoiceId, // Add unique invoice ID
+          invoiceId: txInvoiceId,
           remarks: `Sale transaction for ${selectedCustomer.customerName}`,
+          // Required fields with defaults
+          amount: saleAmount,
+          surabhiEarned: Number(saleCalculation.surabhiCoinsEarned.toFixed(2)),
+          sevaEarned: Number(sevaContribution.toFixed(2)),
+          referralEarned: 0,
+          referredBy: selectedCustomer.referredBy || '',
+          adminProft: Number(calculateAdminCut(saleAmount, storeDetails).toFixed(2)),
 
           // Sale-Specific Fields
           surabhiUsed: Number(saleCalculation.surabhiCoinsUsed.toFixed(2)),
@@ -820,15 +832,25 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           });
         }
 
-        const customerTxData: Omit<Partial<CustomerTxType>, 'id'> = {
+        const customerTxData: Omit<CustomerTxType, 'id'> = {
           type: 'sale',
           customerMobile: selectedCustomer.customerMobile,
           customerName: selectedCustomer.customerName,
+          demoStore: storeDetails.demoStore || false,
+          storeLocation: storeLocation,
           storeName: user.storeLocation,
           createdAt: Timestamp.fromDate(new Date()),
           paymentMethod: paymentMethod,
           processedBy: user.name,
           invoiceId: txInvoiceId,
+          remarks: `Sale transaction for ${selectedCustomer.customerName}`,
+          // Required fields with defaults
+          amount: saleAmount,
+          surabhiEarned: Number(saleCalculation.surabhiCoinsEarned.toFixed(2)),
+          sevaEarned: Number(sevaContribution.toFixed(2)),
+          referralEarned: 0,
+          referredBy: selectedCustomer.referredBy || '',
+          adminProft: Number(calculateAdminCut(saleAmount, storeDetails).toFixed(2)),
           // Sale-Specific Fields
           surabhiUsed: Number(saleCalculation.surabhiCoinsUsed.toFixed(2)),
           walletDeduction: Number(saleCalculation.walletDeduction.toFixed(2)),
@@ -1023,16 +1045,25 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             });
           }
 
-          const customerTxData: Omit<Partial<CustomerTxType>, 'id'> = {
-            type: 'sale', // Added the required type field
+          const customerTxData: Omit<CustomerTxType, 'id'> = {
+            type: 'sale',
             customerMobile: selectedCustomer.customerMobile,
-            customerName: selectedCustomer.customerName, // Added customerName
-            // storeLocation: storeLocation,
+            customerName: selectedCustomer.customerName,
+            demoStore: storeDetails.demoStore || false,
+            storeLocation: storeLocation,
             storeName: user.storeLocation,
             createdAt: Timestamp.fromDate(new Date()),
             paymentMethod: paymentMethod,
             processedBy: user.name,
             invoiceId: txInvoiceId,
+            remarks: `Sale transaction for ${selectedCustomer.customerName}`,
+            // Required fields with defaults
+            amount: saleAmount,
+            surabhiEarned: Number(saleCalculation.surabhiCoinsEarned.toFixed(2)),
+            sevaEarned: Number(sevaContribution.toFixed(2)),
+            referralEarned: 0,
+            referredBy: selectedCustomer.referredBy || '',
+            adminProft: Number(calculateAdminCut(saleAmount, storeDetails).toFixed(2)),
             // Sale-Specific Fields
             surabhiUsed: Number(saleCalculation.surabhiCoinsUsed.toFixed(2)),
             walletDeduction: Number(saleCalculation.walletDeduction.toFixed(2)),
@@ -1219,7 +1250,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             }
 
             // Add CustomerTx record for the referral Surabhi Coins earned by referrer
-            const referrerTxData: CustomerTxType = {
+            const referrerTxData: Omit<CustomerTxType, 'id'> = {
               type: 'referral',
               customerMobile: referrer.customerMobile,
               demoStore: referrerStoreDetails?.demoStore || false,
@@ -1227,8 +1258,9 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
               storeLocation: referrer.storeLocation,
               storeName: referrer.storeLocation,
               createdAt: Timestamp.fromDate(new Date()),
+              paymentMethod: 'admin',
               processedBy: user.name,
-              invoiceId: txInvoiceId, // Add unique invoice ID
+              invoiceId: txInvoiceId,
               remarks: `Referral bonus for referring ${selectedCustomer.customerName}`,
               amount: 0,
               surabhiEarned: referralAmount,
@@ -1247,7 +1279,6 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                 walletBalance: referrer.walletBalance,
                 surabhiBalance: referrer.surabhiBalance + referralAmount,
               },
-              paymentMethod: paymentMethod,
               walletCredit: 0,
               walletDebit: 0,
               walletBalance: referrer.walletBalance,
@@ -1505,7 +1536,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                               Student
                             </Badge>
                           )}
-                          {!hasMetQuarterlyTarget(customer) && (
+                          {customer.coinsFrozen && (
                             <Badge
                               variant="outline"
                               className="border-red-200 text-red-800 text-xs"

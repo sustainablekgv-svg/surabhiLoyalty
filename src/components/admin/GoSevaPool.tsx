@@ -46,7 +46,7 @@ import {
   useTransactions,
 } from '@/hooks/useFirebaseQueries';
 import { db } from '@/lib/firebase';
-import { StaffType } from '@/types/types';
+import { CustomerTxType, StaffType } from '@/types/types';
 
 interface Customer {
   id?: string;
@@ -124,12 +124,13 @@ export const GoSevaPool = () => {
   };
 
   const customers = customersData?.filter(c => c.demoStore === false) || [];
-  const transactions = transactionsData?.filter(tx => tx.demoStore === false) || [];
+  const transactions =
+    transactionsData?.filter(tx => tx.demoStore === false && tx.type != 'referral') || [];
   const loading = sevaPoolLoading || customersLoading || transactionsLoading;
 
   // Get unique store locations
   const storeLocations = [
-    'All Locations',
+    // 'All Locations',
     ...new Set(customers.map(c => c.storeLocation).filter(Boolean)),
   ];
 
@@ -324,21 +325,24 @@ export const GoSevaPool = () => {
         return `SEVA-${timestamp}-${randomStr}`;
       };
 
-      await addDoc(collection(db, 'CustomerTx'), {
-        type: 'seva_allocation', // Use the correct type from the interface
-        customerMobile: adminDetails.staffMobile, // Use admin's mobile
-        customerName: adminDetails.staffName, // Use admin's name
+      const customerTxData: Omit<CustomerTxType, 'id'> = {
+        type: 'seva_allocation',
+        customerMobile: adminDetails.staffMobile,
+        customerName: adminDetails.staffName,
         storeLocation: selectedStoreForAllocation,
         storeName: selectedStoreForAllocation,
         createdAt: timestamp,
         paymentMethod: 'admin',
         processedBy: adminDetails.staffName,
         invoiceId: generateInvoiceId(),
+        remarks: `${allocationDescription} (from ${selectedStoreForAllocation})`,
+        demoStore: storeDemoStore,
         amount: amount,
         surabhiEarned: 0,
         sevaEarned: 0,
         referralEarned: 0,
-        referredBy: null,
+        referredBy: '',
+        adminProft: 0,
         surabhiUsed: 0,
         walletDeduction: 0,
         cashPayment: 0,
@@ -360,9 +364,10 @@ export const GoSevaPool = () => {
         sevaDebit: amount, // Debit from the pool
         sevaBalance: Number((storeSevaBalances[selectedStoreForAllocation] - amount).toFixed(2)),
         sevaTotal: currentSevaPool?.totalContributions || 0,
-        remarks: `${allocationDescription} (from ${selectedStoreForAllocation})`,
-        demoStore: storeDemoStore,
-      });
+        storeSevaBalance: Number((storeSevaBalances[selectedStoreForAllocation] - amount).toFixed(2)),
+      };
+
+      await addDoc(collection(db, 'CustomerTx'), customerTxData);
 
       // Also add to Activity log
       await addDoc(collection(db, 'Activity'), {

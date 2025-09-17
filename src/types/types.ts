@@ -41,8 +41,8 @@ export interface CustomerType {
   cumTotal: number;
   joinedDate: Timestamp;
   quartersPast: number;
-  quarterlyTarget?: number;
-  carriedForwardTarget?: number;
+  cummulativeTarget: number;
+  // carriedForwardTarget?: number;
   targetMet?: boolean;
 }
 
@@ -171,7 +171,7 @@ export interface AdminHeaderProps {
 
 export interface CustomerTxType {
   id?: string;
-  type: 'recharge' | 'sale' | 'referral';
+  type: 'recharge' | 'sale' | 'referral' | 'seva_allocation';
   invoiceId?: string; // Optional invoice ID field
   // staffName: string; // Used in recharge
   // Common Fields

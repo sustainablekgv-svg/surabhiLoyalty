@@ -30,10 +30,10 @@ import {
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { encryptText } from '@/lib/encryption';
 import { auth, db } from '@/lib/firebase';
 import { CustomerType, UserRegistrationProps } from '@/types/types';
 import { Badge } from '../ui/badge';
-import { encryptText } from '@/lib/encryption';
 
 export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationProps) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -260,10 +260,11 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
         sevaBalanceCurrentMonth: 0,
         lastTransactionDate: null,
         lastQuarterCheck: null,
-        coinsFrozen: true,
+        coinsFrozen: false,
         currentQuarterStart: null,
+        cummulativeTarget: 0,
         joinedDate: Timestamp.now(),
-        quartersPast:0,
+        quartersPast: 0,
       };
 
       await setDoc(doc(customersCollection, newUserUid), newUserData);

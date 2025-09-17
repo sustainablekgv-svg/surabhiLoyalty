@@ -1,6 +1,6 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { SalesManagement } from '../SalesManagement';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
+import { SalesManagement } from '../SalesManagement';
 
 // Mock Firebase
 jest.mock('firebase/firestore', () => ({
@@ -14,7 +14,7 @@ jest.mock('firebase/firestore', () => ({
   serverTimestamp: jest.fn(),
   Timestamp: {
     now: jest.fn(() => ({ toDate: () => new Date('2024-01-01') })),
-    fromDate: jest.fn((date) => ({ toDate: () => date })),
+    fromDate: jest.fn(date => ({ toDate: () => date })),
   },
   updateDoc: jest.fn(),
   where: jest.fn(),
@@ -51,7 +51,9 @@ jest.mock('@/components/ui/badge', () => ({
 
 jest.mock('@/components/ui/button', () => ({
   Button: ({ children, onClick, disabled, ...props }: any) => (
-    <button onClick={onClick} disabled={disabled} {...props}>{children}</button>
+    <button onClick={onClick} disabled={disabled} {...props}>
+      {children}
+    </button>
   ),
 }));
 
@@ -81,7 +83,9 @@ jest.mock('@/components/ui/select', () => ({
   ),
   SelectContent: ({ children, ...props }: any) => <div {...props}>{children}</div>,
   SelectItem: ({ children, value, ...props }: any) => (
-    <option value={value} {...props}>{children}</option>
+    <option value={value} {...props}>
+      {children}
+    </option>
   ),
   SelectTrigger: ({ children, ...props }: any) => <div {...props}>{children}</div>,
   SelectValue: ({ placeholder, ...props }: any) => <span {...props}>{placeholder}</span>,
@@ -102,7 +106,10 @@ const {
 } = require('firebase/firestore');
 
 const { useAuth } = require('@/hooks/auth-context');
-const { hasMetQuarterlyTarget, updateCustomerQuarterlyTarget } = require('@/utils/quarterlyTargets');
+const {
+  hasMetQuarterlyTarget,
+  updateCustomerQuarterlyTarget,
+} = require('@/utils/quarterlyTargets');
 
 // Mock data
 const mockUser = {
@@ -142,7 +149,7 @@ const mockCustomers = [
     demoStore: false,
     tpin: '1234',
     quarterlyTarget: 5000,
-    carriedForwardTarget: 0,
+    // carriedForwardTarget: 0,
     cumTotal: 6000,
     targetMet: true,
     coinsFrozen: false,
@@ -161,7 +168,7 @@ const mockCustomers = [
     demoStore: false,
     tpin: '5678',
     quarterlyTarget: 5000,
-    carriedForwardTarget: 0,
+    // carriedForwardTarget: 0,
     cumTotal: 3000,
     targetMet: false,
     coinsFrozen: true,
@@ -177,26 +184,28 @@ const mockProps = {
 describe('SalesManagement', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Mock useAuth
     useAuth.mockReturnValue({
       user: mockUser,
       isAuthenticated: true,
     });
-    
+
     // Mock Firebase functions
-    getDocs.mockImplementation((queryRef) => {
+    getDocs.mockImplementation(queryRef => {
       // Mock store query
       if (queryRef._path?.segments?.includes('stores')) {
         return Promise.resolve({
           empty: false,
-          docs: [{
-            id: mockStoreDetails.id,
-            data: () => mockStoreDetails,
-          }],
+          docs: [
+            {
+              id: mockStoreDetails.id,
+              data: () => mockStoreDetails,
+            },
+          ],
         });
       }
-      
+
       // Mock customers query
       if (queryRef._path?.segments?.includes('Customers')) {
         return Promise.resolve({
@@ -207,24 +216,24 @@ describe('SalesManagement', () => {
           })),
         });
       }
-      
+
       return Promise.resolve({ empty: true, docs: [] });
     });
-    
+
     collection.mockReturnValue({ _path: { segments: ['stores'] } });
     query.mockReturnValue({ _path: { segments: ['stores'] } });
     where.mockReturnValue({});
     addDoc.mockResolvedValue({ id: 'new-transaction-id' });
     updateDoc.mockResolvedValue({});
     getDoc.mockResolvedValue({ exists: () => true, data: () => mockStoreDetails });
-    
+
     hasMetQuarterlyTarget.mockReturnValue(true);
     updateCustomerQuarterlyTarget.mockResolvedValue({});
   });
 
   it('should render sales management interface', async () => {
     render(<SalesManagement {...mockProps} />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('Sales Management')).toBeInTheDocument();
       expect(screen.getByPlaceholderText('Search customers...')).toBeInTheDocument();
@@ -233,7 +242,7 @@ describe('SalesManagement', () => {
 
   it('should load and display customers', async () => {
     render(<SalesManagement {...mockProps} />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
       expect(screen.getByText('Jane Smith')).toBeInTheDocument();
@@ -242,60 +251,60 @@ describe('SalesManagement', () => {
 
   it('should filter customers based on search term', async () => {
     render(<SalesManagement {...mockProps} />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const searchInput = screen.getByPlaceholderText('Search customers...');
     fireEvent.change(searchInput, { target: { value: 'John' } });
-    
+
     expect(screen.getByText('John Doe')).toBeInTheDocument();
     expect(screen.queryByText('Jane Smith')).not.toBeInTheDocument();
   });
 
   it('should select customer when clicked', async () => {
     render(<SalesManagement {...mockProps} />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const customerCard = screen.getByText('John Doe').closest('div');
     fireEvent.click(customerCard!);
-    
+
     expect(screen.getByText('Selected Customer: John Doe')).toBeInTheDocument();
   });
 
   it('should handle sale amount input', async () => {
     render(<SalesManagement {...mockProps} />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const customerCard = screen.getByText('John Doe').closest('div');
     fireEvent.click(customerCard!);
-    
+
     const saleAmountInput = screen.getByPlaceholderText('Enter sale amount');
     fireEvent.change(saleAmountInput, { target: { value: '1000' } });
-    
+
     expect((saleAmountInput as HTMLInputElement).value).toBe('1000');
   });
 
   it('should calculate sale details correctly', async () => {
     render(<SalesManagement {...mockProps} />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const customerCard = screen.getByText('John Doe').closest('div');
     fireEvent.click(customerCard!);
-    
+
     const saleAmountInput = screen.getByPlaceholderText('Enter sale amount');
     fireEvent.change(saleAmountInput, { target: { value: '1000' } });
-    
+
     await waitFor(() => {
       expect(screen.getByText('Sale Calculation')).toBeInTheDocument();
     });
@@ -303,36 +312,36 @@ describe('SalesManagement', () => {
 
   it('should handle payment method selection', async () => {
     render(<SalesManagement {...mockProps} />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const customerCard = screen.getByText('John Doe').closest('div');
     fireEvent.click(customerCard!);
-    
+
     const paymentSelect = screen.getByTestId('select');
     fireEvent.click(paymentSelect);
-    
+
     expect(paymentSelect).toHaveAttribute('data-value', 'wallet');
   });
 
   it('should show TPIN modal when customer has TPIN', async () => {
     render(<SalesManagement {...mockProps} />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const customerCard = screen.getByText('John Doe').closest('div');
     fireEvent.click(customerCard!);
-    
+
     const saleAmountInput = screen.getByPlaceholderText('Enter sale amount');
     fireEvent.change(saleAmountInput, { target: { value: '1000' } });
-    
+
     const processButton = screen.getByText('Process Sale');
     fireEvent.click(processButton);
-    
+
     await waitFor(() => {
       expect(screen.getByText('Enter TPIN')).toBeInTheDocument();
     });
@@ -340,30 +349,30 @@ describe('SalesManagement', () => {
 
   it('should verify TPIN correctly', async () => {
     render(<SalesManagement {...mockProps} />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const customerCard = screen.getByText('John Doe').closest('div');
     fireEvent.click(customerCard!);
-    
+
     const saleAmountInput = screen.getByPlaceholderText('Enter sale amount');
     fireEvent.change(saleAmountInput, { target: { value: '1000' } });
-    
+
     const processButton = screen.getByText('Process Sale');
     fireEvent.click(processButton);
-    
+
     await waitFor(() => {
       expect(screen.getByText('Enter TPIN')).toBeInTheDocument();
     });
-    
+
     const tpinInput = screen.getByPlaceholderText('Enter 4-digit TPIN');
     fireEvent.change(tpinInput, { target: { value: '1234' } });
-    
+
     const verifyButton = screen.getByText('Verify & Process');
     fireEvent.click(verifyButton);
-    
+
     await waitFor(() => {
       expect(addDoc).toHaveBeenCalled();
       expect(toast.success).toHaveBeenCalledWith('Sale processed successfully!');
@@ -372,30 +381,30 @@ describe('SalesManagement', () => {
 
   it('should handle invalid TPIN', async () => {
     render(<SalesManagement {...mockProps} />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const customerCard = screen.getByText('John Doe').closest('div');
     fireEvent.click(customerCard!);
-    
+
     const saleAmountInput = screen.getByPlaceholderText('Enter sale amount');
     fireEvent.change(saleAmountInput, { target: { value: '1000' } });
-    
+
     const processButton = screen.getByText('Process Sale');
     fireEvent.click(processButton);
-    
+
     await waitFor(() => {
       expect(screen.getByText('Enter TPIN')).toBeInTheDocument();
     });
-    
+
     const tpinInput = screen.getByPlaceholderText('Enter 4-digit TPIN');
     fireEvent.change(tpinInput, { target: { value: '9999' } });
-    
+
     const verifyButton = screen.getByText('Verify & Process');
     fireEvent.click(verifyButton);
-    
+
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Invalid TPIN. Please try again.');
     });
@@ -403,19 +412,19 @@ describe('SalesManagement', () => {
 
   it('should handle customers with frozen coins', async () => {
     hasMetQuarterlyTarget.mockReturnValue(false);
-    
+
     render(<SalesManagement {...mockProps} />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('Jane Smith')).toBeInTheDocument();
     });
-    
+
     const customerCard = screen.getByText('Jane Smith').closest('div');
     fireEvent.click(customerCard!);
-    
+
     const saleAmountInput = screen.getByPlaceholderText('Enter sale amount');
     fireEvent.change(saleAmountInput, { target: { value: '1000' } });
-    
+
     // Should show warning about frozen coins
     await waitFor(() => {
       expect(screen.getByText(/coins are frozen/i)).toBeInTheDocument();
@@ -424,37 +433,37 @@ describe('SalesManagement', () => {
 
   it('should handle sale processing error', async () => {
     addDoc.mockRejectedValue(new Error('Firebase error'));
-    
+
     render(<SalesManagement {...mockProps} />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const customerCard = screen.getByText('John Doe').closest('div');
     fireEvent.click(customerCard!);
-    
+
     const saleAmountInput = screen.getByPlaceholderText('Enter sale amount');
     fireEvent.change(saleAmountInput, { target: { value: '1000' } });
-    
+
     const processButton = screen.getByText('Process Sale');
     fireEvent.click(processButton);
-    
+
     await waitFor(() => {
       const tpinInput = screen.getByPlaceholderText('Enter 4-digit TPIN');
       fireEvent.change(tpinInput, { target: { value: '1234' } });
-      
+
       const verifyButton = screen.getByText('Verify & Process');
       fireEvent.click(verifyButton);
     });
-    
+
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Failed to process sale. Please try again.');
     });
   });
 
   it('should handle store not found error', async () => {
-    getDocs.mockImplementation((queryRef) => {
+    getDocs.mockImplementation(queryRef => {
       if (queryRef._path?.segments?.includes('stores')) {
         return Promise.resolve({ empty: true, docs: [] });
       }
@@ -466,9 +475,9 @@ describe('SalesManagement', () => {
         })),
       });
     });
-    
+
     render(<SalesManagement {...mockProps} />);
-    
+
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('No stores found with that name');
     });
@@ -476,9 +485,9 @@ describe('SalesManagement', () => {
 
   it('should handle data fetching error', async () => {
     getDocs.mockRejectedValue(new Error('Firebase error'));
-    
+
     render(<SalesManagement {...mockProps} />);
-    
+
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Failed to fetch data');
     });
@@ -486,17 +495,17 @@ describe('SalesManagement', () => {
 
   it('should automatically calculate Surabhi coins to use', async () => {
     render(<SalesManagement {...mockProps} />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const customerCard = screen.getByText('John Doe').closest('div');
     fireEvent.click(customerCard!);
-    
+
     const saleAmountInput = screen.getByPlaceholderText('Enter sale amount');
     fireEvent.change(saleAmountInput, { target: { value: '300' } });
-    
+
     // Should automatically set coins to use based on available balance and sale amount
     await waitFor(() => {
       const coinsInput = screen.getByDisplayValue('300'); // Min of 500 (balance) and 300 (sale amount)
@@ -506,58 +515,58 @@ describe('SalesManagement', () => {
 
   it('should handle cash payment method', async () => {
     render(<SalesManagement {...mockProps} />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const customerCard = screen.getByText('John Doe').closest('div');
     fireEvent.click(customerCard!);
-    
+
     const saleAmountInput = screen.getByPlaceholderText('Enter sale amount');
     fireEvent.change(saleAmountInput, { target: { value: '1000' } });
-    
+
     // Change payment method to cash
     const paymentSelect = screen.getByTestId('select');
     fireEvent.click(paymentSelect);
-    
+
     expect(screen.getByText('Sale Calculation')).toBeInTheDocument();
   });
 
   it('should validate sale amount input', async () => {
     render(<SalesManagement {...mockProps} />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const customerCard = screen.getByText('John Doe').closest('div');
     fireEvent.click(customerCard!);
-    
+
     const saleAmountInput = screen.getByPlaceholderText('Enter sale amount');
     fireEvent.change(saleAmountInput, { target: { value: '0' } });
-    
+
     const processButton = screen.getByText('Process Sale');
     expect(processButton).toBeDisabled();
   });
 
   it('should clear selection when new customer is selected', async () => {
     render(<SalesManagement {...mockProps} />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     // Select first customer
     const johnCard = screen.getByText('John Doe').closest('div');
     fireEvent.click(johnCard!);
-    
+
     expect(screen.getByText('Selected Customer: John Doe')).toBeInTheDocument();
-    
+
     // Select second customer
     const janeCard = screen.getByText('Jane Smith').closest('div');
     fireEvent.click(janeCard!);
-    
+
     expect(screen.getByText('Selected Customer: Jane Smith')).toBeInTheDocument();
     expect(screen.queryByText('Selected Customer: John Doe')).not.toBeInTheDocument();
   });

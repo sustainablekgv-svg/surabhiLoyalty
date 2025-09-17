@@ -1,6 +1,17 @@
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions/v2';
 
+// Define CustomerType interface for proper typing
+interface CustomerType {
+  quartersPast?: number;
+  cumTotal?: number;
+  joinedDate?: admin.firestore.Timestamp;
+  coinsFrozen?: boolean;
+  lastQuarterCheck?: admin.firestore.Timestamp;
+  cummulativeTarget?: number;
+  targetMet?: boolean;
+}
+
 admin.initializeApp();
 const db = admin.firestore();
 
@@ -16,7 +27,7 @@ export const checkQuarterlyCriteria = functions.scheduler.onSchedule(
     const updates: Promise<any>[] = [];
 
     customersSnapshot.forEach(doc => {
-      const data = doc.data() as any;
+      const data = doc.data() as CustomerType;
 
       const joinedDate = data.joinedDate?.toDate();
       if (!joinedDate) return;
@@ -24,23 +35,31 @@ export const checkQuarterlyCriteria = functions.scheduler.onSchedule(
       // Increment quartersPast for each customer every time this function runs
       const currentQuartersPast = (data.quartersPast || 0) + 1;
 
-      // For first quarter, no target. For subsequent quarters, target is 2000 * quartersPast
+      // Calculate quarterly target: First quarter has no target, subsequent quarters: 2000 * (quarters-1)
       const cumTotal = data.cumTotal || 0;
+      let cumulativeTarget = 0;
       let coinsFrozen = false;
+      let targetMet = true;
 
-      if (currentQuartersPast > 1) {
-        const expectedSpend = 2000 * currentQuartersPast;
-        coinsFrozen = cumTotal < expectedSpend;
-      }
+      // First quarter after joining has no target requirement
+      // if (currentQuartersPast === 1) {
+      //   quarterlyTarget = 0;
+      //   targetMet = true;
+      //   coinsFrozen = false;
+      // } else {
+      // For subsequent quarters: cumulative target = 2000 * (quarters completed - 1)
+      cumulativeTarget = 2000 * currentQuartersPast;
+      targetMet = cumTotal >= cumulativeTarget;
+      coinsFrozen = !targetMet; // Freeze coins if cumulative target not met
+      // }
 
-      const now = new Date();
       updates.push(
         doc.ref.update({
           quartersPast: currentQuartersPast,
+          cumulativeTarget,
+          targetMet,
           coinsFrozen,
-          saleElgibility: !coinsFrozen,
           lastQuarterCheck: admin.firestore.Timestamp.now(),
-          currentQuarterStart: new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1),
         })
       );
     });

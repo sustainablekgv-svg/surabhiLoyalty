@@ -9,15 +9,15 @@ import {
   Timestamp,
   where,
 } from 'firebase/firestore';
-import { Coins, Gift, Heart, Phone, Target, TrendingUp, User, Wallet } from 'lucide-react';
+import { Coins, Gift, Heart, Key, Phone, Target, TrendingUp, User, Wallet } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/auth-context';
+import { decryptText } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { ActivityType, CustomerType } from '@/types/types';
 import { Badge } from '../ui/badge';
-
 interface CustomerStatsProps {
   userId: string;
 }
@@ -211,6 +211,18 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                       Demo Customer
                     </Badge>
                   )}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 xs:gap-2 sm:gap-3 mt-1 xs:mt-0">
+              <div className="bg-blue-100 p-1 xs:p-1.5 sm:p-2 rounded-full">
+                <Key className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-blue-600" />
+              </div>
+              <div className="text-left sm:text-right">
+                <p className="text-[9px] xs:text-[10px] sm:text-xs text-gray-600">Your T Pin</p>
+                <p className="text-xs xs:text-sm sm:text-base font-bold">
+                  {decryptText(customerData.tpin)}
                 </p>
               </div>
             </div>
