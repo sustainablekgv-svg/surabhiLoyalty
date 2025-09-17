@@ -97,7 +97,7 @@ export function updateCustomerQuarterlyTarget(customer: CustomerType): Partial<C
   }
 
   return {
-    quarterlyTarget: newTarget,
+    cummulativeTarget: newTarget,
     targetMet,
     coinsFrozen,
   };
