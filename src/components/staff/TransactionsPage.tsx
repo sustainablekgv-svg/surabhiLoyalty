@@ -55,10 +55,10 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
     endDate: '',
     activeTab: 'sales' as 'sales' | 'recharges',
   });
-
+  // console.log('All transactions are', allTransactions);
   // Filter transactions based on search term, date range, store location, and tab
   const filteredTransactions = allTransactions
-    ?.filter(tx => tx.demoStore === demoStore)
+    // ?.filter(tx => tx.demoStore === demoStore)
     ?.filter(transaction => {
       // Filter by store location
       if (storeLocation && transaction.storeLocation !== storeLocation) return false;
@@ -68,7 +68,7 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
       if (transaction.type !== transactionType) return false;
 
       // Filter by amount > 0
-      if (transaction.amount <= 0) return false;
+      // if (transaction.amount <= 0) return false;
 
       // Filter by search term (customer mobile or name)
       if (debouncedSearchTerm) {
@@ -104,7 +104,7 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
   const currentRecords = filteredTransactions.slice(indexOfFirstRecord, indexOfLastRecord);
   const totalPages = Math.ceil(filteredTransactions.length / recordsPerPage);
-
+  // console.log('THe current records are', currentRecords);
   // Change page
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 

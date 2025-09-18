@@ -624,7 +624,17 @@ export const StaffManagement = () => {
                         <TableCell className="text-xs xs:text-sm">
                           {member.staffRechargesCount || 0}
                         </TableCell>
-                        <TableCell className="text-xs xs:text-sm">{member.staffPassword}</TableCell>
+                        <TableCell className="text-xs xs:text-sm">
+                          {/* {member.staffPassword ? (() => {
+                            try {
+                              return decryptText(member.staffPassword);
+                            } catch (error) {
+                              console.error('Decryption failed for staff password:', error);
+                              return 'Invalid Password';
+                            }
+                          })() : 'N/A'} */}
+                          {member?.staffPassword}
+                        </TableCell>
                         <TableCell>
                           <div className="flex flex-col xs:flex-row gap-1 xs:gap-2">
                             <Button

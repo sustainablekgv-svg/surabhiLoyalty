@@ -476,66 +476,6 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
 
       await updateDoc(customerRef, updateData);
 
-      // Record transaction
-      const customerTxData: Omit<CustomerTxType, 'id'> = {
-        type: 'sale',
-        customerName: selectedCustomer.customerName,
-        customerMobile: selectedCustomer.customerMobile,
-        demoStore: storeDetails.demoStore || false,
-        storeLocation: storeLocation,
-        storeName: user.storeLocation,
-        createdAt: Timestamp.fromDate(new Date()),
-        paymentMethod: paymentMethod,
-        processedBy: user.name,
-        invoiceId: txInvoiceId, // Add the invoice ID
-        remarks: `Sale of ₹${saleAmount} by ${user.name}`,
-        // Recharge-Specific Fields (with defaults)
-        amount: saleAmount,
-        surabhiEarned: saleCalculation.surabhiCoinsEarned,
-        sevaEarned: saleCalculation.goSevaContribution,
-        referralEarned: saleCalculation.referrerSurabhiCoinsEarned,
-        referredBy: selectedCustomer.referredBy,
-
-        // Sale-Specific Fields
-        surabhiUsed: saleCalculation.surabhiCoinsUsed,
-        walletDeduction: saleCalculation.walletDeduction,
-        cashPayment: saleCalculation.cashPayment,
-        adminProft: customRound(
-          (saleCalculation.cashPayment *
-            (storeDetails.surabhiCommission - storeDetails.cashOnlyCommission)) /
-            100 +
-            (saleCalculation.surabhiCoinsUsed *
-              (storeDetails.referralCommission +
-                storeDetails.cashOnlyCommission +
-                storeDetails.sevaCommission)) /
-              100
-        ),
-
-        // Balance information
-        previousBalance: {
-          walletBalance: selectedCustomer.walletBalance,
-          surabhiBalance: selectedCustomer.surabhiBalance,
-        },
-        newBalance: {
-          walletBalance: newWalletBalance,
-          surabhiBalance: newSurabhiCoins,
-        },
-
-        // Transaction amounts
-        walletCredit: 0,
-        walletDebit: saleCalculation.walletDeduction,
-        walletBalance: newWalletBalance,
-        surabhiDebit: saleCalculation.surabhiCoinsUsed,
-        surabhiCredit: saleCalculation.surabhiCoinsEarned,
-        surabhiBalance: newSurabhiCoins,
-        sevaCredit: sevaContribution,
-        sevaDebit: 0,
-        sevaBalance: Number((selectedCustomer.sevaBalance + sevaContribution).toFixed(2)),
-        sevaTotal: Number((selectedCustomer.sevaTotal + sevaContribution).toFixed(2)),
-        storeSevaBalance: Number((storeDetails.storeSevaBalance + sevaContribution).toFixed(2)),
-      };
-      await addDoc(collection(db, 'CustomerTx'), customerTxData);
-
       // Handle Referrer Income for non-cash/non-mixed payments
       // For cash/mixed payments, referrer income is handled in a separate block below
       if (

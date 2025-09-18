@@ -1,17 +1,17 @@
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-import { encryptText } from '@/lib/encryption';
+import { decryptText, encryptText } from '@/lib/encryption';
 
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -48,10 +48,28 @@ export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSetting
         if (customerSnapshot.exists()) {
           const data = customerSnapshot.data() as CustomerType;
           setCustomerData(data);
+          // Decrypt password and TPIN for display
+          let decryptedPassword = '';
+          let decryptedTpin = '';
+
+          try {
+            decryptedPassword = data.customerPassword ? decryptText(data.customerPassword) : '';
+          } catch (error) {
+            console.error('Error decrypting password:', error);
+            decryptedPassword = 'Error decrypting password';
+          }
+
+          try {
+            decryptedTpin = data.tpin ? decryptText(data.tpin) : '';
+          } catch (error) {
+            console.error('Error decrypting TPIN:', error);
+            decryptedTpin = 'Error decrypting TPIN';
+          }
+
           setFormData({
             customerName: data.customerName,
-            customerPassword: data.customerPassword,
-            tpin: data.tpin,
+            customerPassword: decryptedPassword,
+            tpin: decryptedTpin,
           });
         }
       } catch (error) {
@@ -86,16 +104,35 @@ export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSetting
         updateData.customerName = formData.customerName;
       }
 
-      // Conditional updates for sensitive fields
-      if (formData.tpin && formData.tpin !== customerData?.tpin) {
-        updateData.tpin = encryptText(formData.tpin.trim());
+      // Conditional updates for sensitive fields - encrypt both password and TPIN
+      if (formData.tpin) {
+        // Decrypt stored TPIN to compare with current input
+        let storedTpin = '';
+        try {
+          storedTpin = customerData?.tpin ? decryptText(customerData.tpin) : '';
+        } catch (error) {
+          console.error('Error decrypting stored TPIN:', error);
+        }
+
+        if (formData.tpin !== storedTpin) {
+          updateData.tpin = encryptText(formData.tpin.trim());
+        }
       }
 
-      if (
-        formData.customerPassword &&
-        formData.customerPassword !== customerData?.customerPassword
-      ) {
-        updateData.customerPassword = formData.customerPassword;
+      if (formData.customerPassword) {
+        // Decrypt stored password to compare with current input
+        let storedPassword = '';
+        try {
+          storedPassword = customerData?.customerPassword
+            ? decryptText(customerData.customerPassword)
+            : '';
+        } catch (error) {
+          console.error('Error decrypting stored password:', error);
+        }
+
+        if (formData.customerPassword !== storedPassword) {
+          updateData.customerPassword = encryptText(formData.customerPassword.trim());
+        }
       }
 
       // Verify we have at least one field to update

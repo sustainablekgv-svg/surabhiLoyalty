@@ -7,14 +7,32 @@ import {
   orderBy,
   query,
   Timestamp,
+  updateDoc,
   where,
 } from 'firebase/firestore';
-import { Coins, Gift, Heart, Key, Phone, Target, TrendingUp, User, Wallet } from 'lucide-react';
+import {
+  Coins,
+  Edit3,
+  Gift,
+  Heart,
+  Key,
+  Lock,
+  Phone,
+  Save,
+  Target,
+  TrendingUp,
+  User,
+  Wallet,
+  X,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/auth-context';
-import { decryptText } from '@/lib/encryption';
+import { decryptText, encryptText } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { ActivityType, CustomerType } from '@/types/types';
 import { Badge } from '../ui/badge';
@@ -28,6 +46,11 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
   const [activities, setActivities] = useState<ActivityType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEditingPassword, setIsEditingPassword] = useState(false);
+  const [isEditingTpin, setIsEditingTpin] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [newTpin, setNewTpin] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const fetchCustomerData = async () => {
@@ -73,6 +96,68 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
 
     fetchCustomerData();
   }, [userId]);
+
+  const handleSavePassword = async () => {
+    if (!customerData || !newPassword.trim()) {
+      toast.error('Please enter a valid password');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const encryptedPassword = encryptText(newPassword.trim());
+      const docRef = doc(db, 'Customers', userId);
+      await updateDoc(docRef, {
+        customerPassword: encryptedPassword,
+      });
+
+      setCustomerData(prev => (prev ? { ...prev, customerPassword: encryptedPassword } : null));
+      setIsEditingPassword(false);
+      setNewPassword('');
+      toast.success('Password updated successfully');
+    } catch (error) {
+      console.error('Error updating password:', error);
+      toast.error('Failed to update password');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveTpin = async () => {
+    if (!customerData || !newTpin.trim() || newTpin.trim().length !== 4) {
+      toast.error('Please enter a valid 4-digit TPIN');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const encryptedTpin = encryptText(newTpin.trim());
+      const docRef = doc(db, 'Customers', userId);
+      await updateDoc(docRef, {
+        tpin: encryptedTpin,
+      });
+
+      setCustomerData(prev => (prev ? { ...prev, tpin: encryptedTpin } : null));
+      setIsEditingTpin(false);
+      setNewTpin('');
+      toast.success('TPIN updated successfully');
+    } catch (error) {
+      console.error('Error updating TPIN:', error);
+      toast.error('Failed to update TPIN');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelPasswordEdit = () => {
+    setIsEditingPassword(false);
+    setNewPassword('');
+  };
+
+  const handleCancelTpinEdit = () => {
+    setIsEditingTpin(false);
+    setNewTpin('');
+  };
 
   if (loading) {
     return <div>Loading customer data...</div>;
@@ -155,7 +240,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
     {
       title: 'Wallet Balance',
       value: `₹${customerData.walletBalance.toFixed(2)}`,
-      description: 'Available for purchases at registered store only',
+      description: 'Available for purchases at registered store only',
       icon: Wallet,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
@@ -169,6 +254,24 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       color: 'text-amber-600',
       bgColor: 'bg-amber-50',
       borderColor: 'border-amber-200',
+    },
+    {
+      title: 'Cumulative Purchase',
+      value: `₹${(customerData.cumTotal || 0).toFixed(2)}`,
+      description: 'Total amount spent since joining',
+      icon: TrendingUp,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+      borderColor: 'border-blue-200',
+    },
+    {
+      title: 'Quarterly Target',
+      value: `₹${(customerData.cummulativeTarget || 0).toFixed(2)}`,
+      description: customerData.targetMet ? 'Target achieved!' : 'Target to achieve',
+      icon: Target,
+      color: customerData.targetMet ? 'text-green-600' : 'text-orange-600',
+      bgColor: customerData.targetMet ? 'bg-green-50' : 'bg-orange-50',
+      borderColor: customerData.targetMet ? 'border-green-200' : 'border-orange-200',
     },
     {
       title: 'Seva Contribution',
@@ -215,18 +318,116 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
               </div>
             </div>
 
+            {/* Password Section */}
+            <div className="flex items-center gap-1 xs:gap-2 sm:gap-3 mt-1 xs:mt-0">
+              <div className="bg-green-100 p-1 xs:p-1.5 sm:p-2 rounded-full">
+                <Lock className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-green-600" />
+              </div>
+              <div className="text-left sm:text-right">
+                <p className="text-[9px] xs:text-[10px] sm:text-xs text-gray-600">Your Password</p>
+                {isEditingPassword ? (
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="text"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      placeholder="Enter new password"
+                      className="h-6 text-xs w-20 xs:w-24 sm:w-28"
+                      disabled={isSaving}
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleSavePassword}
+                      disabled={isSaving}
+                      className="h-6 w-6 p-0"
+                    >
+                      <Save className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleCancelPasswordEdit}
+                      disabled={isSaving}
+                      className="h-6 w-6 p-0"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <p className="text-xs xs:text-sm sm:text-base font-bold">
+                      {customerData.customerPassword
+                        ? decryptText(customerData.customerPassword)
+                        : 'N/A'}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsEditingPassword(true)}
+                      className="h-6 w-6 p-0"
+                    >
+                      <Edit3 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* TPIN Section */}
             <div className="flex items-center gap-1 xs:gap-2 sm:gap-3 mt-1 xs:mt-0">
               <div className="bg-blue-100 p-1 xs:p-1.5 sm:p-2 rounded-full">
                 <Key className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-blue-600" />
               </div>
               <div className="text-left sm:text-right">
                 <p className="text-[9px] xs:text-[10px] sm:text-xs text-gray-600">Your T Pin</p>
-                <p className="text-xs xs:text-sm sm:text-base font-bold">
-                  {decryptText(customerData.tpin)}
-                </p>
+                {isEditingTpin ? (
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="text"
+                      value={newTpin}
+                      onChange={e => setNewTpin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                      placeholder="Enter 4-digit TPIN"
+                      className="h-6 text-xs w-20 xs:w-24 sm:w-28"
+                      disabled={isSaving}
+                      maxLength={4}
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleSaveTpin}
+                      disabled={isSaving}
+                      className="h-6 w-6 p-0"
+                    >
+                      <Save className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleCancelTpinEdit}
+                      disabled={isSaving}
+                      className="h-6 w-6 p-0"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <p className="text-xs xs:text-sm sm:text-base font-bold">
+                      {customerData.tpin ? decryptText(customerData.tpin) : 'N/A'}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsEditingTpin(true)}
+                      className="h-6 w-6 p-0"
+                    >
+                      <Edit3 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 
+            {/* Phone Section */}
             <div className="flex items-center gap-1 xs:gap-2 sm:gap-3 mt-1 xs:mt-0">
               <div className="bg-blue-100 p-1 xs:p-1.5 sm:p-2 rounded-full">
                 <Phone className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-blue-600" />
@@ -245,7 +446,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       </Card>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-1.5 xs:gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-1.5 xs:gap-2 sm:gap-3">
         {stats.map((stat, index) => (
           <Card
             key={index}

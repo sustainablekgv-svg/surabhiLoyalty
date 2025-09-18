@@ -1,8 +1,9 @@
-import { FileText, History, Share2, TrendingUp } from 'lucide-react';
+import { FileText, History, Settings, Share2, TrendingUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { AccountSettings } from '@/components/customer/AccountSettings';
 import { CustomerHeader } from '@/components/customer/CustomerHeader';
 import { CustomerStats } from '@/components/customer/CustomerStats';
 import { ReferralSystem } from '@/components/customer/ReferralSystem';
@@ -86,7 +87,7 @@ const CustomerDashboard = () => {
           onValueChange={setActiveTab}
           className="w-full space-y-2 xs:space-y-3 sm:space-y-4"
         >
-          <TabsList className="grid w-full grid-cols-4 mb-2 xs:mb-3 sm:mb-4 h-10">
+          <TabsList className="grid w-full grid-cols-5 mb-2 xs:mb-3 sm:mb-4 h-10">
             <TabsTrigger
               value="overview"
               className="flex items-center justify-center p-2"
@@ -109,6 +110,13 @@ const CustomerDashboard = () => {
               <History className="h-4 w-4" />
             </TabsTrigger>
             <TabsTrigger
+              value="settings"
+              className="flex items-center justify-center p-2"
+              title="Settings"
+            >
+              <Settings className="h-4 w-4" />
+            </TabsTrigger>
+            <TabsTrigger
               value="terms"
               className="flex items-center justify-center p-2"
               title="Terms"
@@ -127,6 +135,10 @@ const CustomerDashboard = () => {
 
           <TabsContent value="history" className="mt-0">
             <TransactionHistory userId={user.id} demoStore={user.demoStore} />
+          </TabsContent>
+
+          <TabsContent value="settings" className="mt-0">
+            <AccountSettings userId={user.id} />
           </TabsContent>
 
           <TabsContent value="terms" className="mt-0">
