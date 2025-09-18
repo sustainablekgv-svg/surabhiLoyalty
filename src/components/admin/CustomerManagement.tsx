@@ -28,7 +28,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { encryptText } from '@/lib/encryption';
+import { encryptText, decryptText } from '@/lib/encryption';
+import { PasswordInput } from '@/components/ui/password-input';
 import { db } from '@/lib/firebase';
 import { CustomerType } from '@/types/types';
 
@@ -141,8 +142,8 @@ export const CustomerManagement = () => {
       surabhiBalance: customer.surabhiBalance,
       sevaTotal: customer.sevaTotal,
       walletRechargeDone: customer.walletRechargeDone,
-      tpin: customer.tpin,
-      customerPassword: customer.customerPassword,
+      tpin: customer.tpin ? decryptText(customer.tpin) : '',
+      customerPassword: customer.customerPassword ? decryptText(customer.customerPassword) : '',
     });
     setIsEditDialogOpen(true);
   };
@@ -393,10 +394,10 @@ export const CustomerManagement = () => {
                   <div className="space-y-2 mt-2 text-sm">
                     <p>
                       <span className="text-muted-foreground">Login Password:</span>{' '}
-                      {selectedCustomer.customerPassword}
+                      {selectedCustomer.customerPassword ? decryptText(selectedCustomer.customerPassword) : 'N/A'}
                     </p>
                     <p>
-                      <span className="text-muted-foreground">TPIN:</span> {selectedCustomer.tpin}
+                      <span className="text-muted-foreground">TPIN:</span> {selectedCustomer.tpin ? decryptText(selectedCustomer.tpin) : 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -549,10 +550,9 @@ export const CustomerManagement = () => {
               <Label htmlFor="customerPassword" className="text-right">
                 Login Password
               </Label>
-              <Input
+              <PasswordInput
                 id="customerPassword"
                 name="customerPassword"
-                type="text"
                 value={editedData.customerPassword || ''}
                 onChange={handleInputChange}
                 className="col-span-3"
@@ -564,10 +564,9 @@ export const CustomerManagement = () => {
               <Label htmlFor="tpin" className="text-right">
                 Transaction PIN
               </Label>
-              <Input
+              <PasswordInput
                 id="tpin"
                 name="tpin"
-                type="text"
                 value={editedData.tpin || ''}
                 onChange={handleInputChange}
                 className="col-span-3"

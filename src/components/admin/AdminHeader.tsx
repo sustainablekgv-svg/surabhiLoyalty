@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import {
   Select,
   SelectContent,
@@ -31,6 +32,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
+import { encryptText, safeDecryptText } from '@/lib/encryption';
 import { StaffType } from '@/types/types';
 
 // Safe date formatting utility
@@ -65,7 +67,7 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
     storeLocation: user.storeLocation,
     role: user.role,
     staffStatus: user.staffStatus,
-    staffPassword: user.staffPassword,
+    staffPassword: user.staffPassword ? safeDecryptText(user.staffPassword) || user.staffPassword : '',
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
@@ -131,8 +133,11 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
       // if (formData.staffPin && formData.staffPin !== user.staffPin) {
       //   updateData.staffPin = formData.staffPin;
       // }
-      if (formData.staffPassword && formData.staffPassword !== user.staffPassword) {
-        updateData.staffPassword = formData.staffPassword;
+      if (formData.staffPassword) {
+        const currentDecryptedPassword = user.staffPassword ? safeDecryptText(user.staffPassword) || user.staffPassword : '';
+        if (formData.staffPassword !== currentDecryptedPassword) {
+          updateData.staffPassword = encryptText(formData.staffPassword);
+        }
       }
 
       // Verify we have at least one field to update
@@ -386,13 +391,13 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
                 <Label htmlFor="staffPassword" className="text-xs sm:text-sm">
                   New Password
                 </Label>
-                <Input
+                <PasswordInput
                   id="staffPassword"
                   name="staffPassword"
-                  type="text"
                   value={formData.staffPassword || ''}
                   onChange={handleInputChange}
                   className="h-8 sm:h-10 text-xs sm:text-sm"
+                  placeholder="Enter new password"
                 />
               </div>
             </div>

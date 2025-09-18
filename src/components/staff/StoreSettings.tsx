@@ -13,7 +13,9 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import { db } from '@/lib/firebase';
+import { decryptText, encryptText, safeDecryptText } from '@/lib/encryption';
 import { StaffType } from '@/types/types';
 
 interface StaffSettingsProps {
@@ -45,9 +47,11 @@ export const StoreSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
         if (staffSnapshot.exists()) {
           const data = staffSnapshot.data() as StaffType;
           setStaffData(data);
+          // Decrypt password for display if it's encrypted
+          const decryptedPassword = data.staffPassword ? safeDecryptText(data.staffPassword) || data.staffPassword : '';
           setFormData({
             staffName: data.staffName,
-            staffPassword: data.staffPassword,
+            staffPassword: decryptedPassword,
           });
         }
       } catch (error) {
@@ -86,11 +90,14 @@ export const StoreSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
 
     setIsUpdating(true);
     try {
+      // Encrypt password before saving to database
+      const encryptedPassword = formData.staffPassword ? encryptText(formData.staffPassword) : '';
+      
       // Update staff document directly using user.id
       const staffRef = doc(db, 'staff', user.id);
       await updateDoc(staffRef, {
         staffName: formData.staffName,
-        staffPassword: formData.staffPassword,
+        staffPassword: encryptedPassword,
       });
 
       // console.log('Staff record updated for ID:', user.id);
@@ -150,13 +157,13 @@ export const StoreSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
             >
               Password
             </Label>
-            <Input
+            <PasswordInput
               id="staffPassword"
               name="staffPassword"
-              type="text"
               value={formData.staffPassword || ''}
               onChange={handleInputChange}
               className="text-gray-800 font-medium h-7 xs:h-8 sm:h-10 text-xs xs:text-sm px-2 xs:px-3 rounded-md"
+              placeholder="Enter your password"
             />
           </div>
 
