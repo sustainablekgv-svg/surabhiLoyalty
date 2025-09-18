@@ -616,222 +616,231 @@ export const CustomerManagement = () => {
       {activeTab === 'customers' ? (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 justify-between items-start sm:items-center">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Customer Management</h2>
-          <p className="text-xs sm:text-sm text-gray-600">View and manage all customer accounts</p>
-          <p className="text-xs sm:text-sm text-gray-600">
-            This tab shows customers of both live and demo stores
-          </p>
-        </div>
-      </div>
-
-      {/* Analytics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Customers</p>
-                <p className="text-2xl font-bold">{totalStats.totalCustomers}</p>
-              </div>
-              <div className="bg-primary/10 p-2 rounded-lg">
-                <Users className="h-4 w-4 text-primary" />
-              </div>
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Customer Management</h2>
+              <p className="text-xs sm:text-sm text-gray-600">
+                View and manage all customer accounts
+              </p>
+              <p className="text-xs sm:text-sm text-gray-600">
+                This tab shows customers of both live and demo stores
+              </p>
             </div>
-            <div className="flex items-center gap-1 mt-2">
-              {/* <span className="text-sm text-muted-foreground">
+          </div>
+
+          {/* Analytics Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Total Customers</p>
+                    <p className="text-2xl font-bold">{totalStats.totalCustomers}</p>
+                  </div>
+                  <div className="bg-primary/10 p-2 rounded-lg">
+                    <Users className="h-4 w-4 text-primary" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 mt-2">
+                  {/* <span className="text-sm text-muted-foreground">
                 {totalStats.registeredCustomers} registered
               </span> */}
-            </div>
-          </CardContent>
-        </Card>
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Wallet Balance</p>
-                <p className="text-2xl font-bold">₹{totalStats.totalWalletBalance.toFixed(2)}</p>
-              </div>
-              <div className="bg-purple-500/10 p-2 rounded-lg">
-                <Wallet className="h-4 w-4 text-purple-500" />
-              </div>
-            </div>
-            <div className="flex items-center gap-1 mt-2">
-              <span className="text-sm text-muted-foreground">
-                {totalStats.activeThisMonth} active this month
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Wallet Balance</p>
+                    <p className="text-2xl font-bold">
+                      ₹{totalStats.totalWalletBalance.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="bg-purple-500/10 p-2 rounded-lg">
+                    <Wallet className="h-4 w-4 text-purple-500" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 mt-2">
+                  <span className="text-sm text-muted-foreground">
+                    {totalStats.activeThisMonth} active this month
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Loyalty Coins</p>
-                <p className="text-2xl font-bold">{totalStats.totalSurabhiCoins.toFixed(2)}</p>
-              </div>
-              <div className="bg-amber-500/10 p-2 rounded-lg">
-                <Coins className="h-4 w-4 text-amber-500" />
-              </div>
-            </div>
-            {/* <div className="flex items-center gap-1 mt-2">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Loyalty Coins</p>
+                    <p className="text-2xl font-bold">{totalStats.totalSurabhiCoins.toFixed(2)}</p>
+                  </div>
+                  <div className="bg-amber-500/10 p-2 rounded-lg">
+                    <Coins className="h-4 w-4 text-amber-500" />
+                  </div>
+                </div>
+                {/* <div className="flex items-center gap-1 mt-2">
               <span className="text-sm text-muted-foreground">
                 {totalStats.totalSevaCoins.toFixed(2)} Seva Coins
               </span>
             </div> */}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Referrals</p>
-                <p className="text-2xl font-bold">{totalStats.totalReferrals}</p>
-              </div>
-              <div className="bg-green-500/10 p-2 rounded-lg">
-                <Users className="h-4 w-4 text-green-500" />
-              </div>
-            </div>
-            <div className="flex items-center gap-1 mt-2">
-              <span className="text-sm text-muted-foreground">Total referrals</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
-            <div>
-              <CardTitle>Customer Accounts</CardTitle>
-              <CardDescription>{filteredCustomers.length} customers found</CardDescription>
-            </div>
-
-            <div className="flex flex-col xs:flex-row gap-2 sm:gap-3 w-full lg:w-auto">
-              <div className="relative w-full xs:w-auto">
-                {/* <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" /> */}
-                <Input
-                  placeholder="Search by name, mobile or email"
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  className="pl-14 w-full sm:w-64 h-8 sm:h-10 text-xs sm:text-sm"
-                />
-              </div>
-
-              <Select value={filterStore} onValueChange={updateFilterStore}>
-                <SelectTrigger className="w-full xs:w-[150px] sm:w-48 h-8 sm:h-10 text-xs sm:text-sm">
-                  <div className="flex items-center gap-2">
-                    <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    <SelectValue placeholder="All Stores" />
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Referrals</p>
+                    <p className="text-2xl font-bold">{totalStats.totalReferrals}</p>
                   </div>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all" className="text-xs sm:text-sm">
-                    All Stores
-                  </SelectItem>
-                  {stores
-                    .filter(store => !store.demoStore)
-                    .map(store => (
-                      <SelectItem
-                        key={store.id}
-                        value={store.storeName}
-                        className="text-xs sm:text-sm"
-                      >
-                        {store.storeName}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardHeader>
-
-        <CardContent>
-          <div className="space-y-4">
-            {filteredCustomers.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No customers found matching your criteria</p>
-              </div>
-            ) : (
-              filteredCustomers.map(customer => (
-                <div
-                  key={customer.customerMobile}
-                  className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg gap-2 sm:gap-4"
-                >
-                  <div className="flex-1 min-w-0 w-full lg:w-auto">
-                    <div className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2 sm:gap-3 mb-2 sm:mb-3">
-                      <h3 className="font-medium text-gray-900 text-sm sm:text-base">
-                        {customer.customerName}
-                      </h3>
-                      <div className="flex gap-1 sm:gap-2">
-                        {customer.demoStore && (
-                          <Badge
-                            variant="default"
-                            className="text-[10px] sm:text-xs py-0 sm:py-0.5"
-                          >
-                            Demo
-                          </Badge>
-                        )}
-                        <Badge variant="outline" className="text-[10px] sm:text-xs py-0 sm:py-0.5">
-                          {customer.referredUsers?.length || 0} referrals
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-1 sm:gap-3 text-xs sm:text-sm">
-                      <div className="flex items-center gap-1 sm:gap-2 text-gray-600">
-                        <Phone className="h-3 w-3" />
-                        <span className="truncate">{customer.customerMobile}</span>
-                      </div>
-                      <div className="flex items-center gap-1 sm:gap-2 text-gray-600">
-                        <MapPin className="h-3 w-3" />
-                        <span className="truncate">{customer.storeLocation}</span>
-                      </div>
-                      <div className="flex items-center gap-1 sm:gap-2 text-purple-600">
-                        <Wallet className="h-3 w-3" />
-                        <span>₹{customer.walletBalance.toFixed(2)}</span>
-                      </div>
-                      <div className="flex items-center gap-1 sm:gap-2 text-amber-600">
-                        <Coins className="h-3 w-3" />
-                        <span>{customer.surabhiBalance.toFixed(2)} coins</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 w-full lg:w-auto mt-2 lg:mt-0">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 lg:flex-none h-7 sm:h-8 text-[10px] sm:text-xs"
-                      onClick={() => viewCustomerDetails(customer)}
-                    >
-                      <Eye className="h-3 w-3 mr-1" />
-                      <span className="hidden xs:inline">View Details</span>
-                      <span className="xs:hidden">View</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 lg:flex-none h-7 sm:h-8 text-[10px] sm:text-xs"
-                      onClick={() => handleEditClick(customer)}
-                    >
-                      <Edit className="h-3 w-3 mr-1" />
-                      <span className="hidden xs:inline">Edit</span>
-                      <span className="xs:hidden">Edit</span>
-                    </Button>
+                  <div className="bg-green-500/10 p-2 rounded-lg">
+                    <Users className="h-4 w-4 text-green-500" />
                   </div>
                 </div>
-              ))
-            )}
+                <div className="flex items-center gap-1 mt-2">
+                  <span className="text-sm text-muted-foreground">Total referrals</span>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
+                <div>
+                  <CardTitle>Customer Accounts</CardTitle>
+                  <CardDescription>{filteredCustomers.length} customers found</CardDescription>
+                </div>
+
+                <div className="flex flex-col xs:flex-row gap-2 sm:gap-3 w-full lg:w-auto">
+                  <div className="relative w-full xs:w-auto">
+                    {/* <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" /> */}
+                    <Input
+                      placeholder="Search by name, mobile or email"
+                      value={searchTerm}
+                      onChange={e => setSearchTerm(e.target.value)}
+                      className="pl-14 w-full sm:w-64 h-8 sm:h-10 text-xs sm:text-sm"
+                    />
+                  </div>
+
+                  <Select value={filterStore} onValueChange={updateFilterStore}>
+                    <SelectTrigger className="w-full xs:w-[150px] sm:w-48 h-8 sm:h-10 text-xs sm:text-sm">
+                      <div className="flex items-center gap-2">
+                        <Filter className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        <SelectValue placeholder="All Stores" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all" className="text-xs sm:text-sm">
+                        All Stores
+                      </SelectItem>
+                      {stores
+                        .filter(store => !store.demoStore)
+                        .map(store => (
+                          <SelectItem
+                            key={store.id}
+                            value={store.storeName}
+                            className="text-xs sm:text-sm"
+                          >
+                            {store.storeName}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent>
+              <div className="space-y-4">
+                {filteredCustomers.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">
+                      No customers found matching your criteria
+                    </p>
+                  </div>
+                ) : (
+                  filteredCustomers.map(customer => (
+                    <div
+                      key={customer.customerMobile}
+                      className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg gap-2 sm:gap-4"
+                    >
+                      <div className="flex-1 min-w-0 w-full lg:w-auto">
+                        <div className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-2 sm:gap-3 mb-2 sm:mb-3">
+                          <h3 className="font-medium text-gray-900 text-sm sm:text-base">
+                            {customer.customerName}
+                          </h3>
+                          <div className="flex gap-1 sm:gap-2">
+                            {customer.demoStore && (
+                              <Badge
+                                variant="default"
+                                className="text-[10px] sm:text-xs py-0 sm:py-0.5"
+                              >
+                                Demo
+                              </Badge>
+                            )}
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] sm:text-xs py-0 sm:py-0.5"
+                            >
+                              {customer.referredUsers?.length || 0} referrals
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-1 sm:gap-3 text-xs sm:text-sm">
+                          <div className="flex items-center gap-1 sm:gap-2 text-gray-600">
+                            <Phone className="h-3 w-3" />
+                            <span className="truncate">{customer.customerMobile}</span>
+                          </div>
+                          <div className="flex items-center gap-1 sm:gap-2 text-gray-600">
+                            <MapPin className="h-3 w-3" />
+                            <span className="truncate">{customer.storeLocation}</span>
+                          </div>
+                          <div className="flex items-center gap-1 sm:gap-2 text-purple-600">
+                            <Wallet className="h-3 w-3" />
+                            <span>₹{customer.walletBalance.toFixed(2)}</span>
+                          </div>
+                          <div className="flex items-center gap-1 sm:gap-2 text-amber-600">
+                            <Coins className="h-3 w-3" />
+                            <span>{customer.surabhiBalance.toFixed(2)} coins</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 w-full lg:w-auto mt-2 lg:mt-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 lg:flex-none h-7 sm:h-8 text-[10px] sm:text-xs"
+                          onClick={() => viewCustomerDetails(customer)}
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          <span className="hidden xs:inline">View Details</span>
+                          <span className="xs:hidden">View</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 lg:flex-none h-7 sm:h-8 text-[10px] sm:text-xs"
+                          onClick={() => handleEditClick(customer)}
+                        >
+                          <Edit className="h-3 w-3 mr-1" />
+                          <span className="hidden xs:inline">Edit</span>
+                          <span className="xs:hidden">Edit</span>
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       ) : (
-        <PasswordDecryptor 
+        <PasswordDecryptor
           title="Customer Password Decryptor"
           description="Enter an encrypted customer password to view its original value"
           placeholder="Enter encrypted customer password"

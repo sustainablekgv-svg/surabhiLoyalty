@@ -43,7 +43,7 @@ export const checkQuarterlyCriteria = functions.scheduler.onSchedule(
 
       // First quarter after joining has no target requirement
       // if (currentQuartersPast === 1) {
-      //   quarterlyTarget = 0;
+      //   cummulativeTarget = 0;
       //   targetMet = true;
       //   coinsFrozen = false;
       // } else {

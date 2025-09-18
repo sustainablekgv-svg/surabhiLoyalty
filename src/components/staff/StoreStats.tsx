@@ -219,10 +219,8 @@ export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
                           {activity.remarks}
                         </p>
                         <p className="text-[10px] xs:text-xs text-gray-600">
-                          <span className="break-words">
-                            {activity.customerName}
-                          </span>{' '}
-                          • {format(activity.createdAt?.toDate() || new Date(), 'MMM dd, hh:mm a')}
+                          <span className="break-words">{activity.customerName}</span> •{' '}
+                          {format(activity.createdAt?.toDate() || new Date(), 'MMM dd, hh:mm a')}
                         </p>
                       </div>
                     </div>

@@ -57,7 +57,7 @@ describe('MemoryCache', () => {
     it('should expire items after TTL', () => {
       cache.set('key1', 'value1', 500); // 500ms TTL
       expect(cache.get('key1')).toBe('value1');
-      
+
       // Advance time by 600ms
       jest.advanceTimersByTime(600);
       expect(cache.get('key1')).toBeNull();
@@ -66,11 +66,11 @@ describe('MemoryCache', () => {
     it('should use default TTL when not specified', () => {
       cache.set('key1', 'value1'); // Uses default 1000ms TTL
       expect(cache.get('key1')).toBe('value1');
-      
+
       // Advance time by 500ms - should still exist
       jest.advanceTimersByTime(500);
       expect(cache.get('key1')).toBe('value1');
-      
+
       // Advance time by another 600ms (total 1100ms) - should be expired
       jest.advanceTimersByTime(600);
       expect(cache.get('key1')).toBeNull();
@@ -78,16 +78,16 @@ describe('MemoryCache', () => {
 
     it('should update last accessed time on get', () => {
       cache.set('key1', 'value1', 1000);
-      
+
       // Advance time by 500ms
       jest.advanceTimersByTime(500);
-      
+
       // Access the item (should update lastAccessed)
       expect(cache.get('key1')).toBe('value1');
-      
+
       // Advance time by another 700ms (total 1200ms from creation)
       jest.advanceTimersByTime(700);
-      
+
       // Item should be expired because TTL is based on creation time, not last access
       expect(cache.get('key1')).toBeNull();
     });
@@ -103,7 +103,7 @@ describe('MemoryCache', () => {
       cache.get('key1'); // hit
       cache.get('key1'); // hit
       cache.get('nonexistent'); // miss
-      
+
       const stats = cache.getStats();
       expect(stats.size).toBe(1);
       expect(stats.totalAccessCount).toBe(2);
@@ -127,7 +127,10 @@ describe('cacheUtils', () => {
     });
 
     it('should set and get active stores', () => {
-      const stores = [{ id: '1', name: 'Store 1' }, { id: '2', name: 'Store 2' }];
+      const stores = [
+        { id: '1', name: 'Store 1' },
+        { id: '2', name: 'Store 2' },
+      ];
       cacheUtils.setActiveStores(stores);
       expect(cacheUtils.getActiveStores()).toEqual(stores);
     });
@@ -159,14 +162,14 @@ describe('cacheUtils', () => {
     it('should return statistics for all caches', () => {
       cacheUtils.setStore('1', { id: '1', name: 'Store' });
       cacheUtils.setCustomer('1', { id: '1', name: 'Customer' });
-      
+
       const stats = cacheUtils.getAllStats();
-      
+
       expect(stats).toHaveProperty('stores');
       expect(stats).toHaveProperty('customers');
       expect(stats).toHaveProperty('products');
       expect(stats).toHaveProperty('config');
-      
+
       expect(stats.stores.size).toBe(1);
       expect(stats.customers.size).toBe(1);
     });
@@ -177,9 +180,9 @@ describe('cacheUtils', () => {
       cacheUtils.setStore('1', { id: '1', name: 'Store' });
       cacheUtils.setCustomer('1', { id: '1', name: 'Customer' });
       cacheUtils.setConfig('key', 'value');
-      
+
       cacheUtils.clearAll();
-      
+
       expect(cacheUtils.getStore('1')).toBeNull();
       expect(cacheUtils.getCustomer('1')).toBeNull();
       expect(cacheUtils.getConfig('key')).toBeNull();
@@ -191,13 +194,13 @@ describe('cache instances', () => {
   it('should have separate cache instances', () => {
     const storeData = { id: '1', name: 'Store' };
     const customerData = { id: '1', name: 'Customer' };
-    
+
     storeCache.set('test', storeData);
     customerCache.set('test', customerData);
-    
+
     expect(storeCache.get('test')).toEqual(storeData);
     expect(customerCache.get('test')).toEqual(customerData);
-    
+
     // They should be independent
     storeCache.delete('test');
     expect(storeCache.get('test')).toBeNull();

@@ -38,7 +38,7 @@ jest.mock('firebase/firestore', () => ({
   arrayUnion: jest.fn(),
   Timestamp: {
     now: jest.fn(() => ({ toDate: () => new Date() })),
-    fromDate: jest.fn((date) => ({ toDate: () => date })),
+    fromDate: jest.fn(date => ({ toDate: () => date })),
   },
   writeBatch: jest.fn(),
   onSnapshot: jest.fn(),

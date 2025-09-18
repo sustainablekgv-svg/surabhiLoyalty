@@ -196,12 +196,10 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             ...(data as CustomerType),
             mobile: data.mobile, // Using mobile as identifier
             // Ensure required properties exist with defaults
-            // quarterlyTarget: data.quarterlyTarget || 0,
-            // carriedForwardTarget: data.carriedForwardTarget || 0,
             cumTotal: data.cumTotal || 0,
             joinedDate: data.joinedDate || data.createdAt || Timestamp.now(),
-            targetMet: data.targetMet || false,
-            coinsFrozen: data.coinsFrozen || false,
+            cummulativeTarget: data.cummulativeTarget || 0,
+            insFrozen: data.coinsFrozen || false,
           };
         });
         setCustomers(customersData);

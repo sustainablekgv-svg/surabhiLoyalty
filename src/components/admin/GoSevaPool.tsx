@@ -364,7 +364,9 @@ export const GoSevaPool = () => {
         sevaDebit: amount, // Debit from the pool
         sevaBalance: Number((storeSevaBalances[selectedStoreForAllocation] - amount).toFixed(2)),
         sevaTotal: currentSevaPool?.totalContributions || 0,
-        storeSevaBalance: Number((storeSevaBalances[selectedStoreForAllocation] - amount).toFixed(2)),
+        storeSevaBalance: Number(
+          (storeSevaBalances[selectedStoreForAllocation] - amount).toFixed(2)
+        ),
       };
 
       await addDoc(collection(db, 'CustomerTx'), customerTxData);

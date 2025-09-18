@@ -265,9 +265,9 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       borderColor: 'border-blue-200',
     },
     {
-      title: 'Quarterly Target',
+      title: 'Cummulative Target',
       value: `₹${(customerData.cummulativeTarget || 0).toFixed(2)}`,
-      description: customerData.targetMet ? 'Target achieved!' : 'Target to achieve',
+      description: customerData.targetMet ? 'Target achieved!' : 'Target to be achieved',
       icon: Target,
       color: customerData.targetMet ? 'text-green-600' : 'text-orange-600',
       bgColor: customerData.targetMet ? 'bg-green-50' : 'bg-orange-50',

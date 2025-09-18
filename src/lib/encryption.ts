@@ -4,9 +4,12 @@ import CryptoJS from 'crypto-js';
 const SECRET_KEY = (() => {
   // Use process.env in test environment, import.meta.env in browser
   let envSecret: string;
-  
+
   // Check if we're in a test environment or if import.meta is not available
-  if (typeof process !== 'undefined' && (process.env.NODE_ENV === 'test' || typeof window === 'undefined')) {
+  if (
+    typeof process !== 'undefined' &&
+    (process.env.NODE_ENV === 'test' || typeof window === 'undefined')
+  ) {
     envSecret = process.env.VITE_ENCRYPTION_SECRET || 'default-test-secret-key-32-chars';
   } else {
     // Browser environment with Vite

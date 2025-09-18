@@ -16,7 +16,7 @@ jest.mock('firebase/firestore', () => ({
   serverTimestamp: jest.fn(),
   Timestamp: {
     now: jest.fn(() => ({ toDate: () => new Date('2024-01-01') })),
-    fromDate: jest.fn((date) => ({ toDate: () => date })),
+    fromDate: jest.fn(date => ({ toDate: () => date })),
   },
 }));
 
@@ -27,7 +27,7 @@ jest.mock('@/lib/firebase', () => ({
 
 // Mock encryption
 jest.mock('@/lib/encryption', () => ({
-  encryptText: jest.fn((text) => `encrypted_${text}`),
+  encryptText: jest.fn(text => `encrypted_${text}`),
 }));
 
 // Mock toast
@@ -45,7 +45,9 @@ jest.mock('@/components/ui/badge', () => ({
 
 jest.mock('@/components/ui/button', () => ({
   Button: ({ children, onClick, ...props }: any) => (
-    <button onClick={onClick} {...props}>{children}</button>
+    <button onClick={onClick} {...props}>
+      {children}
+    </button>
   ),
 }));
 
@@ -58,7 +60,7 @@ jest.mock('@/components/ui/card', () => ({
 }));
 
 jest.mock('@/components/ui/dialog', () => ({
-  Dialog: ({ children, open }: any) => open ? <div data-testid="dialog">{children}</div> : null,
+  Dialog: ({ children, open }: any) => (open ? <div data-testid="dialog">{children}</div> : null),
   DialogContent: ({ children, ...props }: any) => <div {...props}>{children}</div>,
   DialogDescription: ({ children, ...props }: any) => <div {...props}>{children}</div>,
   DialogFooter: ({ children, ...props }: any) => <div {...props}>{children}</div>,
@@ -67,9 +69,7 @@ jest.mock('@/components/ui/dialog', () => ({
 }));
 
 jest.mock('@/components/ui/input', () => ({
-  Input: ({ onChange, ...props }: any) => (
-    <input onChange={onChange} {...props} />
-  ),
+  Input: ({ onChange, ...props }: any) => <input onChange={onChange} {...props} />,
 }));
 
 jest.mock('@/components/ui/label', () => ({
@@ -84,7 +84,9 @@ jest.mock('@/components/ui/select', () => ({
   ),
   SelectContent: ({ children, ...props }: any) => <div {...props}>{children}</div>,
   SelectItem: ({ children, value, ...props }: any) => (
-    <option value={value} {...props}>{children}</option>
+    <option value={value} {...props}>
+      {children}
+    </option>
   ),
   SelectTrigger: ({ children, ...props }: any) => <div {...props}>{children}</div>,
   SelectValue: ({ placeholder, ...props }: any) => <span {...props}>{placeholder}</span>,
@@ -163,13 +165,13 @@ const mockStaff = [
 describe('StaffManagement', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Mock getDocs to return mock data
-    getDocs.mockImplementation((queryRef) => {
+    getDocs.mockImplementation(queryRef => {
       // Handle both collection references and query references
       const path = queryRef._path || queryRef.path || queryRef;
       const collectionName = path?.segments?.[0] || (typeof path === 'string' ? path : 'unknown');
-      
+
       if (collectionName === 'stores' || collectionName.includes('stores')) {
         return Promise.resolve({
           docs: mockStores.map(store => ({
@@ -179,7 +181,7 @@ describe('StaffManagement', () => {
           empty: false,
         });
       }
-      
+
       if (collectionName === 'staff' || collectionName.includes('staff')) {
         return Promise.resolve({
           docs: mockStaff.map(staff => ({
@@ -189,24 +191,24 @@ describe('StaffManagement', () => {
           empty: false,
         });
       }
-      
+
       return Promise.resolve({ docs: [], empty: true });
     });
-    
+
     collection.mockImplementation((db, collectionName) => ({
       _path: { segments: [collectionName] },
-      path: collectionName
+      path: collectionName,
     }));
     doc.mockReturnValue({});
     query.mockImplementation((collectionRef, ...constraints) => ({
       _path: collectionRef._path,
-      path: collectionRef.path
+      path: collectionRef.path,
     }));
     where.mockReturnValue({});
     addDoc.mockResolvedValue({ id: 'new-id' });
     updateDoc.mockResolvedValue({});
     deleteDoc.mockResolvedValue({});
-    encryptText.mockImplementation((text) => `encrypted_${text}`);
+    encryptText.mockImplementation(text => `encrypted_${text}`);
   });
 
   it('should render loading state initially', () => {
@@ -216,7 +218,7 @@ describe('StaffManagement', () => {
 
   it('should render staff and stores data after loading', async () => {
     render(<StaffManagement />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
       expect(screen.getByText('john@test.com')).toBeInTheDocument();
@@ -226,33 +228,33 @@ describe('StaffManagement', () => {
 
   it('should open staff dialog when Add Staff button is clicked', async () => {
     render(<StaffManagement />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const addStaffButton = screen.getByText('Add Staff');
     fireEvent.click(addStaffButton);
-    
+
     expect(screen.getByTestId('dialog')).toBeInTheDocument();
   });
 
   it('should validate staff email format', async () => {
     render(<StaffManagement />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const addStaffButton = screen.getByText('Add Staff');
     fireEvent.click(addStaffButton);
-    
+
     const emailInput = screen.getByPlaceholderText('Enter staff email');
     fireEvent.change(emailInput, { target: { value: 'invalid-email' } });
-    
+
     const saveButton = screen.getByText('Save Staff');
     fireEvent.click(saveButton);
-    
+
     await waitFor(() => {
       expect(screen.getByText('Please enter a valid email address')).toBeInTheDocument();
     });
@@ -260,20 +262,20 @@ describe('StaffManagement', () => {
 
   it('should validate staff mobile number format', async () => {
     render(<StaffManagement />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const addStaffButton = screen.getByText('Add Staff');
     fireEvent.click(addStaffButton);
-    
+
     const mobileInput = screen.getByPlaceholderText('Enter staff mobile');
     fireEvent.change(mobileInput, { target: { value: '123' } });
-    
+
     const saveButton = screen.getByText('Save Staff');
     fireEvent.click(saveButton);
-    
+
     await waitFor(() => {
       expect(screen.getByText('Please enter a valid 10-digit mobile number')).toBeInTheDocument();
     });
@@ -281,7 +283,7 @@ describe('StaffManagement', () => {
 
   it('should create new staff successfully', async () => {
     // Mock query to return empty results (no existing email/mobile)
-    getDocs.mockImplementation((queryRef) => {
+    getDocs.mockImplementation(queryRef => {
       if (queryRef._path) {
         return Promise.resolve({ docs: [], empty: true });
       }
@@ -295,32 +297,34 @@ describe('StaffManagement', () => {
           })),
         });
       }
-      return Promise.resolve({ docs: mockStaff.map(staff => ({ id: staff.id, data: () => staff })) });
+      return Promise.resolve({
+        docs: mockStaff.map(staff => ({ id: staff.id, data: () => staff })),
+      });
     });
-    
+
     render(<StaffManagement />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const addStaffButton = screen.getByText('Add Staff');
     fireEvent.click(addStaffButton);
-    
+
     // Fill form
     const nameInput = screen.getByPlaceholderText('Enter staff name');
     const emailInput = screen.getByPlaceholderText('Enter staff email');
     const mobileInput = screen.getByPlaceholderText('Enter staff mobile');
     const passwordInput = screen.getByPlaceholderText('Enter staff password');
-    
+
     fireEvent.change(nameInput, { target: { value: 'Jane Doe' } });
     fireEvent.change(emailInput, { target: { value: 'jane@test.com' } });
     fireEvent.change(mobileInput, { target: { value: '1234567890' } });
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
-    
+
     const saveButton = screen.getByText('Save Staff');
     fireEvent.click(saveButton);
-    
+
     await waitFor(() => {
       expect(addDoc).toHaveBeenCalledWith(
         expect.anything(),
@@ -337,100 +341,105 @@ describe('StaffManagement', () => {
 
   it('should switch between staff and stores tabs', async () => {
     render(<StaffManagement />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const storesTab = screen.getByText('Stores');
     fireEvent.click(storesTab);
-    
+
     expect(screen.getByText('Test Store 1')).toBeInTheDocument();
   });
 
   it('should handle edit staff functionality', async () => {
     render(<StaffManagement />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const editButtons = screen.getAllByText('Edit');
     fireEvent.click(editButtons[0]);
-    
+
     expect(screen.getByTestId('dialog')).toBeInTheDocument();
     expect(screen.getByDisplayValue('John Doe')).toBeInTheDocument();
   });
 
   it('should handle delete staff functionality', async () => {
     render(<StaffManagement />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const deleteButtons = screen.getAllByText('Delete');
     fireEvent.click(deleteButtons[0]);
-    
+
     expect(screen.getByTestId('dialog')).toBeInTheDocument();
     expect(screen.getByText('Delete Staff')).toBeInTheDocument();
   });
 
   it('should handle store creation', async () => {
     render(<StaffManagement />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const storesTab = screen.getByText('Stores');
     fireEvent.click(storesTab);
-    
+
     const addStoreButton = screen.getByText('Add Store');
     fireEvent.click(addStoreButton);
-    
+
     expect(screen.getByTestId('dialog')).toBeInTheDocument();
   });
 
   it('should handle error when fetching data fails', async () => {
     getDocs.mockRejectedValue(new Error('Firebase error'));
-    
+
     await act(async () => {
       render(<StaffManagement />);
     });
-    
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Error fetching data');
-    }, { timeout: 3000 });
+
+    await waitFor(
+      () => {
+        expect(toast.error).toHaveBeenCalledWith('Error fetching data');
+      },
+      { timeout: 3000 }
+    );
   });
 
   it('should validate duplicate email when creating staff', async () => {
     // Mock query to return existing email
-    getDocs.mockImplementation((queryRef) => {
+    getDocs.mockImplementation(queryRef => {
       if (queryRef._path) {
         return Promise.resolve({
           docs: [{ id: 'existing-id', data: () => ({ staffEmail: 'existing@test.com' }) }],
           empty: false,
         });
       }
-      return Promise.resolve({ docs: mockStaff.map(staff => ({ id: staff.id, data: () => staff })) });
+      return Promise.resolve({
+        docs: mockStaff.map(staff => ({ id: staff.id, data: () => staff })),
+      });
     });
-    
+
     render(<StaffManagement />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const addStaffButton = screen.getByText('Add Staff');
     fireEvent.click(addStaffButton);
-    
+
     const emailInput = screen.getByPlaceholderText('Enter staff email');
     fireEvent.change(emailInput, { target: { value: 'existing@test.com' } });
-    
+
     const saveButton = screen.getByText('Save Staff');
     fireEvent.click(saveButton);
-    
+
     await waitFor(() => {
       expect(screen.getByText('This email is already registered')).toBeInTheDocument();
     });
@@ -438,31 +447,33 @@ describe('StaffManagement', () => {
 
   it('should validate duplicate mobile when creating staff', async () => {
     // Mock query to return existing mobile
-    getDocs.mockImplementation((queryRef) => {
+    getDocs.mockImplementation(queryRef => {
       if (queryRef._path) {
         return Promise.resolve({
           docs: [{ id: 'existing-id', data: () => ({ staffMobile: '9999999999' }) }],
           empty: false,
         });
       }
-      return Promise.resolve({ docs: mockStaff.map(staff => ({ id: staff.id, data: () => staff })) });
+      return Promise.resolve({
+        docs: mockStaff.map(staff => ({ id: staff.id, data: () => staff })),
+      });
     });
-    
+
     render(<StaffManagement />);
-    
+
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
-    
+
     const addStaffButton = screen.getByText('Add Staff');
     fireEvent.click(addStaffButton);
-    
+
     const mobileInput = screen.getByPlaceholderText('Enter staff mobile');
     fireEvent.change(mobileInput, { target: { value: '9999999999' } });
-    
+
     const saveButton = screen.getByText('Save Staff');
     fireEvent.click(saveButton);
-    
+
     await waitFor(() => {
       expect(screen.getByText('This mobile number is already registered')).toBeInTheDocument();
     });

@@ -386,13 +386,9 @@ export const AdminRecentActivity = () => {
                         {activity.remarks}
                       </p>
                       <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 text-[8px] xs:text-[10px] sm:text-xs text-gray-600 flex-wrap">
-                        <span className="break-words">
-                          {activity.customerName}
-                        </span>
+                        <span className="break-words">{activity.customerName}</span>
                         <span className="hidden xs:inline">•</span>
-                        <span className="break-words">
-                          {activity.storeLocation}
-                        </span>
+                        <span className="break-words">{activity.storeLocation}</span>
                         <span className="hidden xs:inline">•</span>
                         <span>{formatTimestamp(activity.createdAt)}</span>
                       </div>
