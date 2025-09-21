@@ -61,9 +61,9 @@ export function hasMetQuarterlyTarget(customer: CustomerType): boolean {
   const quartersPast = customer.quartersPast;
   //  || getQuartersElapsed(customer.joinedDate.toDate(), new Date());
   // First quarter has no target requirement
-  if (quartersPast <= 1) {
-    return true;
-  }
+  // if (quartersPast <= 1) {
+  //   return true;
+  // }
 
   // For subsequent quarters: cumulative target = 2000 * (quarters completed - 1)
   const cummulativeTarget = 2000 * quartersPast;
@@ -78,22 +78,22 @@ export function hasMetQuarterlyTarget(customer: CustomerType): boolean {
 export function updateCustomerQuarterlyTarget(customer: CustomerType): Partial<CustomerType> {
   const quartersPast = customer.quartersPast;
   // || getQuartersElapsed(customer.joinedDate.toDate(), new Date());
-  console.log('The value in line 81 is quartersPast', quartersPast);
+  // console.log('The value in line 81 is quartersPast', quartersPast);
   let newTarget = 0;
   let targetMet = true;
   let coinsFrozen = false;
 
   // First quarter has no target
-  if (quartersPast <= 1) {
-    newTarget = 0;
-    targetMet = true;
-    coinsFrozen = false;
-  } else {
-    // Cumulative target for subsequent quarters: 2000 * (quarters completed - 1)
-    newTarget = 2000 * quartersPast;
-    targetMet = customer.cumTotal >= newTarget;
-    coinsFrozen = !targetMet;
-  }
+  // if (quartersPast <= 1) {
+  //   newTarget = 0;
+  //   targetMet = true;
+  //   coinsFrozen = false;
+  // } else {
+  // Cumulative target for subsequent quarters: 2000 * (quarters completed - 1)
+  newTarget = 2000 * quartersPast;
+  targetMet = customer.cumTotal >= newTarget;
+  coinsFrozen = !targetMet;
+  // }
 
   return {
     cummulativeTarget: newTarget,
@@ -101,18 +101,3 @@ export function updateCustomerQuarterlyTarget(customer: CustomerType): Partial<C
     coinsFrozen,
   };
 }
-
-/**
- * Calculate carried forward target for next quarter if current target not met
- */
-// export function calculateCarriedForwardTarget(customer: CustomerType): number {
-//   if (customer.targetMet) {
-//     return 0; // No carryforward if target was met
-//   }
-
-//   const quarterlyTarget = customer.quarterlyTarget;
-//   // || calculateQuarterlyTarget(customer.joinedDate);
-//   const shortfall = Math.max(0, quarterlyTarget - customer.cumTotal);
-
-//   return shortfall;
-// }

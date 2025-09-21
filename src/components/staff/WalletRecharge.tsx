@@ -422,9 +422,9 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
       if (querySnapshot.empty) {
         throw new Error('Customer not found in database');
       }
-
       const customerDoc = querySnapshot.docs[0];
       const currentData = customerDoc.data() as CustomerType;
+      console.log('THe customers data in line is', currentData);
 
       // Handle lastTransactionDate properly
       const lastTransactionDate = currentData.lastTransactionDate || null;
@@ -464,7 +464,6 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
       //   const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
       //   return `INV-${timestamp}-${randomStr}`;
       // };
-
       // Create CustomerTx record
       const customerTxData: Omit<CustomerTxType, 'id'> = {
         type: 'recharge',
@@ -775,7 +774,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
       setIsLoading(false);
     }
   };
-
+  console.log('THe customers data in line 427 is', selectedCustomer);
   const handleRechargeClick = () => {
     if (!selectedCustomer || !rechargeAmount) {
       toast.error('Please select a customer and enter recharge amount');
@@ -811,7 +810,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
         </div>
         <div>
           <h2 className="text-xl xs:text-2xl font-bold text-gray-900">
-            Wallet Recharge {demoStore && <Badge>Demo Store</Badge>}
+            Wallet Recharge {demoStore === true && <Badge>Demo Store</Badge>}
           </h2>
           <p className="text-sm xs:text-base text-gray-600">
             Recharge customer wallets at {user.storeLocation}

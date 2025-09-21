@@ -5,6 +5,7 @@ import {
   getDoc,
   getDocs,
   increment,
+  onSnapshot,
   query,
   serverTimestamp,
   Timestamp,
@@ -164,28 +165,9 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
 
   // Fetch customers from Firestore
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCustomers = async () => {
       try {
-        // Fetch store details first
-        const q = query(
-          collection(db, 'stores'),
-          where('storeStatus', '==', 'active'),
-          where('storeName', '==', storeLocation),
-          where('demoStore', '==', demoStore)
-        );
-
-        const querySnapshotStores = await getDocs(q);
-        if (!querySnapshotStores.empty) {
-          const storeData = {
-            ...(querySnapshotStores.docs[0].data() as StoreType),
-            id: querySnapshotStores.docs[0].id,
-          };
-          setStoreDetails(storeData);
-        } else {
-          toast.error('No stores found with that name');
-        }
-
-        // Then fetch customers
+        // Fetch customers
         const customersCollection = collection(db, 'Customers');
         // console.log('The line 120 data is', demoStore);
         const custQuery = query(customersCollection, where('demoStore', '==', demoStore));
@@ -204,14 +186,48 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         });
         setCustomers(customersData);
       } catch (error) {
-        toast.error('Failed to fetch data');
-        // console.error('Error fetching data:', error);
+        toast.error('Failed to fetch customers');
+        // console.error('Error fetching customers:', error);
       } finally {
         setIsFetchingCustomers(false);
       }
     };
 
-    fetchData();
+    fetchCustomers();
+  }, [demoStore]);
+
+  // Real-time listener for store details
+  useEffect(() => {
+    if (!storeLocation) return;
+
+    const storeQuery = query(
+      collection(db, 'stores'),
+      where('storeStatus', '==', 'active'),
+      where('storeName', '==', storeLocation),
+      where('demoStore', '==', demoStore)
+    );
+
+    const unsubscribe = onSnapshot(
+      storeQuery,
+      querySnapshot => {
+        if (!querySnapshot.empty) {
+          const storeDoc = querySnapshot.docs[0];
+          const storeData = {
+            ...(storeDoc.data() as StoreType),
+            id: storeDoc.id,
+          };
+          setStoreDetails(storeData);
+        } else {
+          toast.error('No stores found with that name');
+        }
+      },
+      error => {
+        toast.error('Failed to fetch store details');
+        // console.error('Error listening to store updates:', error);
+      }
+    );
+
+    return () => unsubscribe();
   }, [storeLocation, demoStore]);
 
   const filteredCustomers = customers.filter(
@@ -220,12 +236,12 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         customer.customerMobile.includes(searchTerm)) &&
       customer.demoStore === demoStore
   );
-  console.log(
-    'The log values in line 225 are',
-    selectedCustomer?.coinsFrozen,
-    selectedCustomer?.cumTotal,
-    selectedCustomer?.quartersPast
-  );
+  // console.log(
+  //   'The log values in line 225 are',
+  //   selectedCustomer?.coinsFrozen,
+  //   selectedCustomer?.cumTotal,
+  //   selectedCustomer?.quartersPast
+  // );
   // Automatically use all available Surabhi coins if customer is selected
   useEffect(() => {
     if (selectedCustomer && saleAmount && saleAmount > 0) {
@@ -521,49 +537,6 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
               createdAt: Timestamp.fromDate(new Date()),
               demoStore: demoStore,
             });
-
-            // Add CustomerTx record for the referral Surabhi Coins earned by referrer
-            // const referrerTxData: CustomerTxType = {
-            //   type: 'referral',
-            //   customerMobile: referrerData.customerMobile,
-            //   customerName: referrerData.customerName,
-            //   storeLocation: selectedCustomer.storeLocation,
-            //   storeName: selectedCustomer.storeLocation,
-            //   createdAt: Timestamp.fromDate(new Date()),
-            //   remarks: `Referral bonus of ₹${incrementAmount} for referring ${selectedCustomer.customerName}`,
-            //   processedBy: user.name,
-            //   invoiceId: txInvoiceId,
-            //   amount: 0,
-            //   surabhiEarned: incrementAmount,
-            //   sevaEarned: 0,
-            //   referralEarned: 0,
-            //   referredBy: '',
-            //   surabhiUsed: 0,
-            //   walletDeduction: 0,
-            //   cashPayment: 0,
-            //   adminProft: 0,
-            //   previousBalance: {
-            //     walletBalance: referrerData.walletBalance,
-            //     surabhiBalance: referrerData.surabhiBalance
-            //   },
-            //   newBalance: {
-            //     walletBalance: referrerData.walletBalance,
-            //     surabhiBalance: referrerData.surabhiBalance + incrementAmount
-            //   },
-            //   paymentMethod: paymentMethod,
-            //   walletCredit: 0,
-            //   walletDebit: 0,
-            //   walletBalance: referrerData.walletBalance,
-            //   surabhiDebit: 0,
-            //   surabhiCredit: incrementAmount,
-            //   surabhiBalance: referrerData.surabhiBalance + incrementAmount,
-            //   sevaCredit: 0,
-            //   sevaDebit: 0,
-            //   sevaBalance: referrerData.sevaBalanceCurrentMonth || 0,
-            //   sevaTotal: referrerData.sevaTotal || 0,
-            // };
-
-            // await addDoc(collection(db, 'CustomerTx'), referrerTxData);
           } else {
             console.warn(`Referrer with mobile ${selectedCustomer.referredBy} not found`);
           }
@@ -671,7 +644,11 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           surabhiDebit: Number(saleCalculation.surabhiCoinsUsed.toFixed(2)),
           surabhiCredit: Number(saleCalculation.surabhiCoinsEarned.toFixed(2)),
           surabhiBalance: Number(
-            (selectedCustomer.surabhiBalance + saleCalculation.surabhiCoinsEarned).toFixed(2)
+            (
+              selectedCustomer.surabhiBalance -
+              saleCalculation.surabhiCoinsUsed +
+              saleCalculation.surabhiCoinsEarned
+            ).toFixed(2)
           ),
           sevaCredit: Number(sevaContribution.toFixed(2)),
           sevaDebit: Number((0).toFixed(2)),
@@ -689,6 +666,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           where('storeName', '==', user.storeLocation),
           where('demoStore', '==', demoStore)
         );
+        // console.log('The customers data in line 947 is', selectedCustomer);
         const storeSnapshotWallet = await getDocs(storeQueryWallet);
         if (!storeSnapshotWallet.empty) {
           const storeDoc = storeSnapshotWallet.docs[0];
@@ -821,7 +799,11 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           surabhiDebit: Number(saleCalculation.surabhiCoinsUsed.toFixed(2)),
           surabhiCredit: Number(saleCalculation.surabhiCoinsEarned.toFixed(2)),
           surabhiBalance: Number(
-            (selectedCustomer.surabhiBalance + saleCalculation.surabhiCoinsEarned).toFixed(2)
+            (
+              selectedCustomer.surabhiBalance -
+              saleCalculation.surabhiCoinsUsed +
+              saleCalculation.surabhiCoinsEarned
+            ).toFixed(2)
           ),
           sevaCredit: Number(sevaContribution.toFixed(2)),
           sevaDebit: Number((0).toFixed(2)),
@@ -1033,7 +1015,11 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             surabhiDebit: Number(saleCalculation.surabhiCoinsUsed.toFixed(2)),
             surabhiCredit: Number(saleCalculation.surabhiCoinsEarned.toFixed(2)),
             surabhiBalance: Number(
-              (selectedCustomer.surabhiBalance + saleCalculation.surabhiCoinsEarned).toFixed(2)
+              (
+                selectedCustomer.surabhiBalance -
+                saleCalculation.surabhiCoinsUsed +
+                saleCalculation.surabhiCoinsEarned
+              ).toFixed(2)
             ),
             sevaCredit: Number(sevaContribution.toFixed(2)),
             sevaDebit: Number((0).toFixed(2)),
@@ -1370,7 +1356,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         </div>
         <div>
           <h2 className="text-2xl font-bold text-gray-900">
-            Sales Management {demoStore && <Badge>Demo Store</Badge>}
+            Sales Management {demoStore === true && <Badge>Demo Store</Badge>}
           </h2>
           <p className="text-gray-600">Process customer purchases at {storeLocation}</p>
           {storeDetails && (
@@ -1424,6 +1410,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                   <div
                     key={customer.id}
                     onClick={() => {
+                      // console.log('The slected Customer is', customer);
                       setSelectedCustomer(customer);
                       // Check if customer is registered at the same store as the current user
                       const isSameStore = customer.storeLocation === user.storeLocation;

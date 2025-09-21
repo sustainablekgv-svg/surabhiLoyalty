@@ -158,6 +158,7 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
       .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
   };
 
+  console.log('The transactions are in line 161', filteredTransactions);
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-6">
@@ -166,7 +167,7 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
         </div>
         <div>
           <h2 className="text-2xl font-bold text-gray-900">
-            Transaction History {demoStore && <Badge>Demo Store</Badge>}
+            Transaction History {demoStore === true && <Badge>Demo Store</Badge>}
           </h2>
           <p className="text-gray-600">View transactions and recharges at {storeLocation}</p>
         </div>
