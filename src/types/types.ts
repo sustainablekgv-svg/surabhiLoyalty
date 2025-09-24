@@ -6,6 +6,7 @@ export interface CustomerType {
   customerName: string;
   gender: string;
   isStudent: boolean;
+  dateOfBirth?: string;
   customerMobile: string;
   customerEmail: string;
   storeLocation: string;

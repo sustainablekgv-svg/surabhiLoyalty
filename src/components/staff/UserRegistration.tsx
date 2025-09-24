@@ -15,6 +15,7 @@ import {
   where,
 } from 'firebase/firestore';
 import {
+  Calendar,
   CheckCircle,
   Eye,
   EyeOff,
@@ -50,6 +51,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
     referredBy: '',
     gender: '',
     isStudent: false,
+    dateOfBirth: '',
     tpin: '',
     district: '',
     city: '',
@@ -229,6 +231,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
         customerName: formData.customerName,
         gender: formData.gender,
         isStudent: formData.isStudent,
+        dateOfBirth: formData.dateOfBirth || undefined,
         customerMobile: formData.customerMobile,
         customerEmail: formData.customerEmail,
         storeLocation,
@@ -304,6 +307,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
         referredBy: '',
         gender: '',
         isStudent: false,
+        dateOfBirth: '',
         tpin: '',
         district: '',
         city: '',
@@ -459,6 +463,23 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                       onChange={e => setFormData({ ...formData, customerEmail: e.target.value })}
                       className="w-full pl-14 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       required
+                    />
+                  </div>
+                </div>
+
+                {/* Date of Birth Field */}
+                <div className="space-y-2">
+                  <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700">
+                    Date of Birth (Optional)
+                  </label>
+                  <div className="relative">
+                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      id="dateOfBirth"
+                      type="date"
+                      value={formData.dateOfBirth}
+                      onChange={e => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                      className="w-full pl-14 pr-3 py-1.5 xs:py-2 h-10 xs:h-11 sm:h-12 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                 </div>

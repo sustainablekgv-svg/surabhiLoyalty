@@ -1,5 +1,5 @@
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { Edit3, Lock, Save, Settings, User, X } from 'lucide-react';
+import { Calendar, Edit3, Lock, Save, Settings, User, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -192,6 +192,23 @@ export const AccountSettings = ({ userId }: AccountSettingsProps) => {
               <Input value={customerData.customerMobile} disabled className="bg-gray-50" />
             </div>
           </div>
+
+          {/* Date of Birth */}
+          {customerData.dateOfBirth && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+              <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Date of Birth
+              </Label>
+              <div className="md:col-span-2">
+                <Input 
+                  value={new Date(customerData.dateOfBirth).toLocaleDateString()} 
+                  disabled 
+                  className="bg-gray-50" 
+                />
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

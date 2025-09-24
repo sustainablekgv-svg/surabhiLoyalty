@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/ui/password-input';
 import {
   Select,
   SelectContent,
@@ -28,8 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { encryptText, decryptText } from '@/lib/encryption';
-import { PasswordInput } from '@/components/ui/password-input';
+import { decryptText, encryptText } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { CustomerType } from '@/types/types';
 
@@ -135,6 +135,7 @@ export const CustomerManagement = () => {
     setEditedData({
       customerName: customer.customerName,
       customerEmail: customer.customerEmail,
+      dateOfBirth: customer.dateOfBirth || '',
       storeLocation: customer.storeLocation,
       city: customer.city || 'N/A',
       district: customer.district || 'N/A',
@@ -279,6 +280,12 @@ export const CustomerManagement = () => {
                       <span className="text-muted-foreground">Email:</span>{' '}
                       {selectedCustomer.customerEmail || 'N/A'}
                     </p>
+                    {selectedCustomer.dateOfBirth && (
+                      <p>
+                        <span className="text-muted-foreground">Date of Birth:</span>{' '}
+                        {new Date(selectedCustomer.dateOfBirth).toLocaleDateString()}
+                      </p>
+                    )}
                     <p>
                       <span className="text-muted-foreground">Store Location:</span>{' '}
                       {selectedCustomer.storeLocation}
@@ -394,10 +401,13 @@ export const CustomerManagement = () => {
                   <div className="space-y-2 mt-2 text-sm">
                     <p>
                       <span className="text-muted-foreground">Login Password:</span>{' '}
-                      {selectedCustomer.customerPassword ? decryptText(selectedCustomer.customerPassword) : 'N/A'}
+                      {selectedCustomer.customerPassword
+                        ? decryptText(selectedCustomer.customerPassword)
+                        : 'N/A'}
                     </p>
                     <p>
-                      <span className="text-muted-foreground">TPIN:</span> {selectedCustomer.tpin ? decryptText(selectedCustomer.tpin) : 'N/A'}
+                      <span className="text-muted-foreground">TPIN:</span>{' '}
+                      {selectedCustomer.tpin ? decryptText(selectedCustomer.tpin) : 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -452,6 +462,20 @@ export const CustomerManagement = () => {
                 name="customerEmail"
                 type="email"
                 value={editedData.customerEmail || ''}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="dateOfBirth" className="text-right">
+                Date of Birth
+              </Label>
+              <Input
+                id="dateOfBirth"
+                name="dateOfBirth"
+                type="date"
+                value={editedData.dateOfBirth || ''}
                 onChange={handleInputChange}
                 className="col-span-3"
               />

@@ -302,7 +302,7 @@ const Index = () => {
                         type="tel"
                         placeholder="Enter your mobile number"
                         value={formData.mobile}
-                        onChange={e => setFormData({ ...formData, mobile: e.target.value })}
+                        onChange={e => setFormData({ ...formData, mobile: e.target.value.trim() })}
                         className="pl-12 sm:pl-14 h-10 sm:h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500 text-xs sm:text-sm"
                         required
                       />
@@ -320,7 +320,9 @@ const Index = () => {
                         type={showPassword ? 'text' : 'password'}
                         placeholder="Enter your password"
                         value={formData.password}
-                        onChange={e => setFormData({ ...formData, password: e.target.value })}
+                        onChange={e =>
+                          setFormData({ ...formData, password: e.target.value.trim() })
+                        }
                         className="pl-12 sm:pl-14 pr-10 sm:pr-12 h-10 sm:h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500 text-xs sm:text-sm"
                         required
                       />

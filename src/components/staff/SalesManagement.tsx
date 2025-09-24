@@ -163,18 +163,18 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
     }
   };
 
-  // Fetch customers from Firestore
+  // Real-time listener for customers from Firestore
   useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        // Fetch customers
-        const customersCollection = collection(db, 'Customers');
-        // console.log('The line 120 data is', demoStore);
-        const custQuery = query(customersCollection, where('demoStore', '==', demoStore));
-        const querySnapshot = await getDocs(custQuery);
+    const customersCollection = collection(db, 'Customers');
+    const custQuery = query(customersCollection, where('demoStore', '==', demoStore));
+
+    const unsubscribe = onSnapshot(
+      custQuery,
+      querySnapshot => {
         const customersData = querySnapshot.docs.map(doc => {
           const data = doc.data();
           return {
+            id: doc.id,
             ...(data as CustomerType),
             mobile: data.mobile, // Using mobile as identifier
             // Ensure required properties exist with defaults
@@ -185,16 +185,42 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           };
         });
         setCustomers(customersData);
-      } catch (error) {
+        setIsFetchingCustomers(false);
+      },
+      error => {
+        console.error('Error fetching customers:', error);
         toast.error('Failed to fetch customers');
-        // console.error('Error fetching customers:', error);
-      } finally {
         setIsFetchingCustomers(false);
       }
-    };
+    );
 
-    fetchCustomers();
+    return () => unsubscribe();
   }, [demoStore]);
+
+  // Real-time listener for selectedCustomer
+  useEffect(() => {
+    if (!selectedCustomer?.id) return;
+
+    const customerDocRef = doc(db, 'Customers', selectedCustomer.id);
+
+    const unsubscribe = onSnapshot(
+      customerDocRef,
+      docSnapshot => {
+        if (docSnapshot.exists()) {
+          const updatedCustomerData = {
+            id: docSnapshot.id,
+            ...(docSnapshot.data() as CustomerType),
+          };
+          setSelectedCustomer(updatedCustomerData);
+        }
+      },
+      error => {
+        console.error('Error listening to selected customer:', error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [selectedCustomer?.id]);
 
   // Real-time listener for store details
   useEffect(() => {

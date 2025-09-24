@@ -170,6 +170,17 @@ export const CustomerDetails = () => {
                 </p>
               </div>
             </div>
+            {customer.dateOfBirth && (
+              <div>
+                <p className="text-[10px] xs:text-xs text-muted-foreground">Date of Birth</p>
+                <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2">
+                  <Calendar className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4" />
+                  <p className="text-xs xs:text-sm sm:text-base">
+                    {new Date(customer.dateOfBirth).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            )}
             <div>
               <p className="text-[10px] xs:text-xs text-muted-foreground">Store Location</p>
               <div className="flex items-center gap-1 xs:gap-1.5 sm:gap-2">

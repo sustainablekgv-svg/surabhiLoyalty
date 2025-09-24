@@ -211,7 +211,11 @@ const StoreDashboard = () => {
               </TabsContent>
 
               <TabsContent value="accounts" className="pt-2">
-                <StoreAccounts storeLocation={user?.storeLocation || ''} userRole={''} demoStore />
+                <StoreAccounts
+                  storeLocation={user?.storeLocation || ''}
+                  userRole={user?.role || ''}
+                  demoStore={user?.demoStore || false}
+                />
               </TabsContent>
 
               <TabsContent value="tpin" className="pt-2">
