@@ -48,7 +48,9 @@ export const StoreSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
           const data = staffSnapshot.data() as StaffType;
           setStaffData(data);
           // Decrypt password for display if it's encrypted
-          const decryptedPassword = data.staffPassword ? safeDecryptText(data.staffPassword) || data.staffPassword : '';
+          const decryptedPassword = data.staffPassword
+            ? safeDecryptText(data.staffPassword) || data.staffPassword
+            : '';
           setFormData({
             staffName: data.staffName,
             staffPassword: decryptedPassword,
@@ -92,7 +94,7 @@ export const StoreSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
     try {
       // Encrypt password before saving to database
       const encryptedPassword = formData.staffPassword ? encryptText(formData.staffPassword) : '';
-      
+
       // Update staff document directly using user.id
       const staffRef = doc(db, 'staff', user.id);
       await updateDoc(staffRef, {

@@ -32,6 +32,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from '@/hooks/use-toast';
 import { useDebouncedSearch } from '@/hooks/useDebounce';
 import { useActiveStores, useInvalidateQueries, useTransactions } from '@/hooks/useFirebaseQueries';
 import { useFilterPreferences } from '@/hooks/useLocalStorage';
@@ -80,7 +81,19 @@ export const SalesManagement = () => {
 
   // Refresh function using cache invalidation
   const handleRefresh = async () => {
-    await invalidateAll();
+    try {
+      await invalidateAll();
+      toast({
+        title: 'Data refreshed successfully',
+        variant: 'default',
+      });
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      toast({
+        title: 'Failed to refresh data',
+        variant: 'destructive',
+      });
+    }
   };
 
   // Update filter preferences when filters change

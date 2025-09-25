@@ -40,9 +40,7 @@ const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
             ) : (
               <Eye className="h-4 w-4 text-gray-500" />
             )}
-            <span className="sr-only">
-              {showPassword ? 'Hide password' : 'Show password'}
-            </span>
+            <span className="sr-only">{showPassword ? 'Hide password' : 'Show password'}</span>
           </Button>
         )}
       </div>

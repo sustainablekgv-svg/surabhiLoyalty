@@ -3,7 +3,19 @@ import { useDebouncedSearch } from '@/hooks/useDebounce';
 import { useActiveStores, useCustomers, useInvalidateQueries } from '@/hooks/useFirebaseQueries';
 import { useFilterPreferences } from '@/hooks/useLocalStorage';
 import { collection, getDocs, query, Timestamp, updateDoc, where } from 'firebase/firestore';
-import { Coins, Edit, Eye, Filter, Key, Loader2, MapPin, Phone, Users, Wallet } from 'lucide-react';
+import {
+  Coins,
+  Edit,
+  Eye,
+  Filter,
+  Key,
+  Loader2,
+  MapPin,
+  Phone,
+  RefreshCw,
+  Users,
+  Wallet,
+} from 'lucide-react';
 import { useState } from 'react';
 import { PasswordDecryptor } from './PasswordDecryptor';
 
@@ -63,6 +75,7 @@ export const CustomerManagement = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [editedData, setEditedData] = useState<Partial<CustomerType>>({});
   const [activeTab, setActiveTab] = useState<'customers' | 'decrypt'>('customers');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Update filter preferences when store filter changes
   const updateFilterStore = (value: string) => {
@@ -242,6 +255,31 @@ export const CustomerManagement = () => {
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    try {
+      setIsRefreshing(true);
+      // Invalidate customers cache to trigger refetch
+      invalidateCustomers();
+
+      // Show success message after a brief delay
+      setTimeout(() => {
+        toast({
+          title: 'Success',
+          description: 'Customer data refreshed successfully',
+          variant: 'default',
+        });
+        setIsRefreshing(false);
+      }, 1000);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to refresh customer data',
+        variant: 'destructive',
+      });
+      setIsRefreshing(false);
     }
   };
 
@@ -640,7 +678,18 @@ export const CustomerManagement = () => {
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 justify-between items-start sm:items-center">
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Customer Management</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Customer Management</h2>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="h-8 w-8 p-0"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
               <p className="text-xs sm:text-sm text-gray-600">
                 View and manage all customer accounts
               </p>

@@ -1,8 +1,19 @@
 import { format } from 'date-fns';
 import { collection, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
-import { Activity, Coins, DollarSign, TrendingUp, UserPlus, Users, Wallet } from 'lucide-react';
+import {
+  Activity,
+  Coins,
+  DollarSign,
+  RefreshCw,
+  TrendingUp,
+  UserPlus,
+  Users,
+  Wallet,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { db } from '@/lib/firebase';
 import { ActivityType, CustomerType, StaffStatsProps, StoreType } from '@/types/types';
@@ -14,6 +25,7 @@ export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
   const [currentStore, setCurrentStore] = useState<StoreType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -162,8 +174,42 @@ export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
     },
   ];
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      // The real-time listeners will automatically refresh the data
+      // We just need to show loading state briefly
+      setTimeout(() => {
+        setIsRefreshing(false);
+        toast.success('Data refreshed successfully');
+      }, 1000);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      toast.error('Failed to refresh data');
+      setIsRefreshing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Header with Refresh Button */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-xl xs:text-2xl font-bold text-gray-900">Store Overview</h2>
+          <p className="text-sm text-gray-600">Real-time statistics for {storeLocation}</p>
+        </div>
+        <Button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          variant="outline"
+          size="sm"
+          className="flex items-center gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 xs:gap-4 sm:gap-6">
         {stats.map((stat, index) => (

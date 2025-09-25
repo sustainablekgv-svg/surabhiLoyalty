@@ -67,7 +67,9 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
     storeLocation: user.storeLocation,
     role: user.role,
     staffStatus: user.staffStatus,
-    staffPassword: user.staffPassword ? safeDecryptText(user.staffPassword) || user.staffPassword : '',
+    staffPassword: user.staffPassword
+      ? safeDecryptText(user.staffPassword) || user.staffPassword
+      : '',
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
@@ -134,7 +136,9 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
       //   updateData.staffPin = formData.staffPin;
       // }
       if (formData.staffPassword) {
-        const currentDecryptedPassword = user.staffPassword ? safeDecryptText(user.staffPassword) || user.staffPassword : '';
+        const currentDecryptedPassword = user.staffPassword
+          ? safeDecryptText(user.staffPassword) || user.staffPassword
+          : '';
         if (formData.staffPassword !== currentDecryptedPassword) {
           updateData.staffPassword = encryptText(formData.staffPassword);
         }

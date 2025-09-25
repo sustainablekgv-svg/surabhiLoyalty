@@ -18,6 +18,7 @@ import {
   HandCoins,
   Loader2,
   Phone,
+  RefreshCw,
   Search,
   ShoppingCart,
 } from 'lucide-react';
@@ -106,6 +107,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
   const [showTPINModal, setShowTPINModal] = useState(false);
   const [enteredTPIN, setEnteredTPIN] = useState('');
   const [invoiceId, setInvoiceId] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [_sevaPool] = useState<SevaPoolType>({
     currentSevaBalance: 0,
@@ -116,6 +118,62 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
     lastResetDate: Timestamp.now(),
     lastAllocatedDate: Timestamp.now(),
   });
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    setIsFetchingCustomers(true);
+
+    try {
+      // Manually fetch fresh data to supplement real-time listeners
+      const customersCollection = collection(db, 'Customers');
+      const custQuery = query(customersCollection);
+      const querySnapshot = await getDocs(custQuery);
+
+      const customersData = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...(data as CustomerType),
+          mobile: data.mobile,
+          cumTotal: data.cumTotal || 0,
+          joinedDate: data.joinedDate || data.createdAt || Timestamp.now(),
+          cummulativeTarget: data.cummulativeTarget || 0,
+          insFrozen: data.coinsFrozen || false,
+        };
+      });
+
+      setCustomers(customersData);
+
+      // Also refresh store details
+      if (storeLocation) {
+        const storeQuery = query(
+          collection(db, 'stores'),
+          where('storeStatus', '==', 'active'),
+          where('storeName', '==', storeLocation),
+          where('demoStore', '==', demoStore)
+        );
+
+        const storeSnapshot = await getDocs(storeQuery);
+        if (!storeSnapshot.empty) {
+          const storeDoc = storeSnapshot.docs[0];
+          const storeData = {
+            ...(storeDoc.data() as StoreType),
+            id: storeDoc.id,
+          };
+          setStoreDetails(storeData);
+        }
+      }
+
+      setIsRefreshing(false);
+      setIsFetchingCustomers(false);
+      toast.success('Data refreshed successfully');
+    } catch (error) {
+      // console.error('Error refreshing data:', error);
+      toast.error('Failed to refresh data');
+      setIsRefreshing(false);
+      setIsFetchingCustomers(false);
+    }
+  };
 
   const handleSaleWithTPIN = async () => {
     if (selectedCustomer.tpin) {
@@ -141,12 +199,12 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         isValidTPIN = enteredTPINStr === storedTPIN;
       }
 
-      console.log('TPIN verification:', {
-        entered: enteredTPINStr,
-        storedEncrypted: storedTPIN,
-        isEncrypted: isEncrypted(storedTPIN),
-        isValid: isValidTPIN,
-      });
+      // console.log('TPIN verification:', {
+      //   entered: enteredTPINStr,
+      //   storedEncrypted: storedTPIN,
+      //   isEncrypted: isEncrypted(storedTPIN),
+      //   isValid: isValidTPIN,
+      // });
 
       if (isValidTPIN) {
         setShowTPINModal(false);
@@ -157,7 +215,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         setEnteredTPIN('');
       }
     } catch (error) {
-      console.error('TPIN verification error:', error);
+      // console.error('TPIN verification error:', error);
       toast.error('TPIN verification failed. Please try again.');
       setEnteredTPIN('');
     }
@@ -189,7 +247,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         setIsFetchingCustomers(false);
       },
       error => {
-        console.error('Error fetching customers:', error);
+        // console.error('Error fetching customers:', error);
         toast.error('Failed to fetch customers');
         setIsFetchingCustomers(false);
       }
@@ -216,7 +274,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         }
       },
       error => {
-        console.error('Error listening to selected customer:', error);
+        // console.error('Error listening to selected customer:', error);
       }
     );
 
@@ -556,7 +614,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             // Add activity record for referrer
             await addActivityRecord({
               type: 'referral',
-              remarks: `${selectedCustomer.referredBy} got ₹${incrementAmount} referral from ${selectedCustomer.customerName}'s recharge`,
+              remarks: `${selectedCustomer.referredBy} got ₹${incrementAmount} referral from ${selectedCustomer.customerName}'s recharge of ₹${saleCalculation.totalAmount}`,
               amount: incrementAmount,
               customerMobile: selectedCustomer.referredBy,
               storeLocation: selectedCustomer.storeLocation,
@@ -565,10 +623,10 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
               demoStore: demoStore,
             });
           } else {
-            console.warn(`Referrer with mobile ${selectedCustomer.referredBy} not found`);
+            // console.warn(`Referrer with mobile ${selectedCustomer.referredBy} not found`);
           }
         } catch (error) {
-          console.error('Error processing referral:', error);
+          // console.error('Error processing referral:', error);
           // Consider adding error handling/retry logic here
         }
       }
@@ -580,7 +638,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
       ) {
         await addActivityRecord({
           type: 'seva_contribution',
-          remarks: `Seva contribution of ₹${saleCalculation.goSevaContribution} from ${selectedCustomer.customerName}'s purchase`,
+          remarks: `Seva contribution of ₹${saleCalculation.goSevaContribution} from ${selectedCustomer.customerName}'s purchase of ₹${saleCalculation.totalAmount}`,
           amount: saleCalculation.goSevaContribution,
           customerMobile: selectedCustomer.customerMobile,
           customerName: selectedCustomer.customerName,
@@ -683,7 +741,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             (storeDetails.storeSevaBalance || 0 + sevaContribution).toFixed(2)
           ),
         };
-        console.log('THe line 688 is wallet', customerTxData);
+        // console.log('THe line 688 is wallet', customerTxData);
         await addDoc(collection(db, 'CustomerTx'), customerTxData);
         // Update store balance
         const storeQueryWallet = query(
@@ -838,7 +896,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           sevaTotal: Number((selectedCustomer.sevaTotal + sevaContribution).toFixed(2)),
           storeSevaBalance: Number((storeDetails.storeSevaBalance + sevaContribution).toFixed(2)),
         };
-        console.log('THe cash sale is', customerTxData);
+        // console.log('THe cash sale is', customerTxData);
         await addDoc(collection(db, 'CustomerTx'), customerTxData);
 
         // Update customer document in Firestore for cash payment
@@ -1054,7 +1112,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             sevaTotal: Number((selectedCustomer.sevaTotal + sevaContribution).toFixed(2)),
             storeSevaBalance: Number((storeDetails.storeSevaBalance + sevaContribution).toFixed(2)),
           };
-          console.log('THe mixed sale is', customerTxData);
+          // console.log('THe mixed sale is', customerTxData);
           await addDoc(collection(db, 'CustomerTx'), customerTxData);
 
           // Update customer document in Firestore for mixed payment
@@ -1246,7 +1304,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             // Add activity record for referrer
             await addActivityRecord({
               type: 'referral',
-              remarks: `${selectedCustomer.referredBy} got ₹${referralAmount} referral from ${selectedCustomer.customerName}'s purchase`,
+              remarks: `${selectedCustomer.referredBy} got ₹${referralAmount} referral from ${selectedCustomer.customerName}'s purchase of ₹${saleCalculation.totalAmount}`,
               amount: referralAmount,
               customerMobile: selectedCustomer.referredBy,
               storeLocation: referrer.storeLocation,
@@ -1375,34 +1433,46 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="bg-green-100 p-3 rounded-full">
-          <ShoppingCart className="h-6 w-6 text-green-600" />
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="bg-green-100 p-3 rounded-full">
+            <ShoppingCart className="h-6 w-6 text-green-600" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Sales Management {demoStore === true && <Badge>Demo Store</Badge>}
+            </h2>
+            <p className="text-gray-600">Process customer purchases at {storeLocation}</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">
-            Sales Management {demoStore === true && <Badge>Demo Store</Badge>}
-          </h2>
-          <p className="text-gray-600">Process customer purchases at {storeLocation}</p>
-          {storeDetails && (
-            <div className="flex gap-4 mt-2 text-sm flex-wrap">
-              <Badge variant="outline" className="border-blue-200 text-blue-800">
-                Referral: {storeDetails.referralCommission}%
+        <Button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          variant="outline"
+          size="sm"
+          className="flex items-center gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+        {storeDetails && (
+          <div className="flex gap-4 mt-2 text-sm flex-wrap">
+            <Badge variant="outline" className="border-blue-200 text-blue-800">
+              Referral: {storeDetails.referralCommission}%
+            </Badge>
+            {storeDetails && storeDetails.walletEnabled === true && (
+              <Badge variant="outline" className="border-green-200 text-green-800">
+                Surabhi: {storeDetails.surabhiCommission}%
               </Badge>
-              {storeDetails && storeDetails.walletEnabled === true && (
-                <Badge variant="outline" className="border-green-200 text-green-800">
-                  Surabhi: {storeDetails.surabhiCommission}%
-                </Badge>
-              )}
-              <Badge variant="outline" className="border-red-200 text-red-800">
-                Cash Only: {storeDetails.cashOnlyCommission}%
-              </Badge>
-              <Badge variant="outline" className="border-purple-200 text-purple-800">
-                Seva: {storeDetails.sevaCommission}%
-              </Badge>
-            </div>
-          )}
-        </div>
+            )}
+            <Badge variant="outline" className="border-red-200 text-red-800">
+              Cash Only: {storeDetails.cashOnlyCommission}%
+            </Badge>
+            <Badge variant="outline" className="border-purple-200 text-purple-800">
+              Seva: {storeDetails.sevaCommission}%
+            </Badge>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

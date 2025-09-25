@@ -146,6 +146,10 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // console.log('Form submitted with data:', formData);
+    // console.log('Store location:', storeLocation);
+    // console.log('Demo store:', demoStore);
+
     // if (!isAuthReady) {
     //   toast.error('System is not ready yet. Please try again.');
     //   return;
@@ -156,11 +160,14 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
       !formData.customerMobile ||
       !formData.customerEmail ||
       !formData.customerPassword ||
-      !formData.tpin
+      !formData.tpin ||
+      !formData.gender
     ) {
+      // console.log('Validation failed - missing required fields');
       toast.error('Please fill all required fields');
       return;
     }
+    // console.log('Form validation passed');
 
     if (!/^\d{10}$/.test(formData.customerMobile)) {
       toast.error('Please enter a valid 10-digit mobile number');
@@ -191,7 +198,9 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
     const toastId = toast.loading('Checking details...');
 
     try {
+      // console.log('Starting registration process...');
       const customersCollection = collection(db, 'Customers');
+      // console.log('Customers collection initialized');
 
       // Check if email already exists
       const emailQuery = query(
@@ -218,11 +227,13 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
       }
 
       // Proceed with registration
+      // console.log('Creating Firebase user with email:', formData.customerEmail);
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formData.customerEmail,
         formData.customerPassword
       );
+      // console.log('Firebase user created successfully, UID:', userCredential.user.uid);
       const newUserUid = userCredential.user.uid;
 
       const walletId = `WALLET-${newUserUid.substring(0, 8).toUpperCase()}`;
@@ -231,14 +242,14 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
         customerName: formData.customerName,
         gender: formData.gender,
         isStudent: formData.isStudent,
-        dateOfBirth: formData.dateOfBirth || undefined,
+        ...(formData.dateOfBirth.trim() !== '' && { dateOfBirth: formData.dateOfBirth }),
         customerMobile: formData.customerMobile,
         customerEmail: formData.customerEmail,
         storeLocation,
         demoStore: demoStore || false,
-        district: formData.district || null,
-        city: formData.city || null,
-        referredBy: formData.referredBy || null,
+        district: formData.district.trim() !== '' ? formData.district : null,
+        city: formData.city.trim() !== '' ? formData.city : null,
+        referredBy: formData.referredBy.trim() !== '' ? formData.referredBy : null,
         referredUsers: null,
         customerPassword: encryptText(formData.customerPassword),
         tpin: encryptText(formData.tpin),
@@ -270,7 +281,9 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
         quartersPast: 0,
       };
 
+      // console.log('Creating customer document with data:', newUserData);
       await setDoc(doc(customersCollection, newUserUid), newUserData);
+      // console.log('Customer document created successfully');
 
       // Handle referral if exists
       if (formData.referredBy && referralName && isElgibleForReferral) {
@@ -316,6 +329,8 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
       setIsElgibleForReferral(false);
     } catch (error: any) {
       // console.error('Registration error:', error);
+      // console.error('Error code:', error.code);
+      // console.error('Error message:', error.message);
       let errorMessage = 'Registration failed. Please try again.';
 
       switch (error.code) {
@@ -402,7 +417,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
             </div>
 
             <div className="p-3 xs:p-4 sm:p-6 pt-0">
-              <form onSubmit={handleSubmit} className="space-y-3 xs:space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-3 xs:space-y-4" noValidate>
                 {/* Name Field */}
                 <div className="space-y-2">
                   <label htmlFor="customerName" className="block text-sm font-medium text-gray-700">
@@ -480,6 +495,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                       value={formData.dateOfBirth}
                       onChange={e => setFormData({ ...formData, dateOfBirth: e.target.value })}
                       className="w-full pl-14 pr-3 py-1.5 xs:py-2 h-10 xs:h-11 sm:h-12 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      onInvalid={e => e.preventDefault()}
                     />
                   </div>
                 </div>
@@ -759,10 +775,9 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                   <CheckCircle className="h-4 w-4 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-blue-900">Digital Wallet</h3>
-                  <p className="text-sm text-blue-700">
-                    Secure storage for your money with 1:1 value
-                  </p>
+                  <h3 className="font-medium text-blue-900">Recharge Wallet</h3>
+                  <p className="text-sm text-blue-700">Earn Surabhi Coins on every recharge</p>
+                  <p className="text-xs text-blue-700">Visit store to recharge</p>
                 </div>
               </div>
 
@@ -772,10 +787,11 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                   <CheckCircle className="h-4 w-4 text-amber-600" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-amber-900">Reward Coins</h3>
+                  <h3 className="font-medium text-amber-900">Amount Spent</h3>
                   <p className="text-sm text-amber-700">
-                    Earn Surabhi coins on every wallet recharge
+                    Earn Surabhi coins on amount spent during sales
                   </p>
+                  <p className="text-xs text-blue-700">Shop at the Store</p>
                 </div>
               </div>
 
@@ -785,8 +801,14 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                   <CheckCircle className="h-4 w-4 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-green-900">Referral Program</h3>
-                  <p className="text-sm text-green-700">Earn bonus when you refer friends</p>
+                  <h3 className="font-medium text-green-900">Refer Friends</h3>
+                  <p className="text-sm text-green-700">
+                    Earn surabhi coins on referral recharge and amount spent by referral during
+                    sales.
+                  </p>
+                  <p className="text-xs text-green-700">
+                    Ask friends to use your number when signing up
+                  </p>
                 </div>
               </div>
 
@@ -796,10 +818,11 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                   <CheckCircle className="h-4 w-4 text-purple-600" />
                 </div>
                 <div>
-                  <h3 className="font-medium text-purple-900">Community Support</h3>
+                  <h3 className="font-medium text-purple-900">Seva Contribution</h3>
                   <p className="text-sm text-purple-700">
-                    Fraction of a recharges support community welfare
+                    Earn Seva Coins on every recharge and amount spent during sales
                   </p>
+                  <p className="text-xs text-purple-700">Help the Community</p>
                 </div>
               </div>
 

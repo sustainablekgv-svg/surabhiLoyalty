@@ -18,6 +18,7 @@ import {
   Key,
   Lock,
   Phone,
+  RefreshCw,
   Save,
   Target,
   TrendingUp,
@@ -51,51 +52,68 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
   const [newPassword, setNewPassword] = useState('');
   const [newTpin, setNewTpin] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchCustomerData = async () => {
+    if (!userId) return;
+
+    setLoading(true);
+    try {
+      // Fetch the customer document with the given userId
+      const docRef = doc(db, 'Customers', userId);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const customer = { id: docSnap.id, ...docSnap.data() } as CustomerType;
+        setCustomerData(customer);
+
+        // Only fetch activities if customer has a mobile number
+        if (customer.customerMobile) {
+          const activitiesQuery = query(
+            collection(db, 'Activity'),
+            where('customerMobile', '==', customer.customerMobile),
+            orderBy('createdAt', 'desc'),
+            limit(3)
+          );
+
+          const querySnapshot = await getDocs(activitiesQuery);
+          const activitiesData = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+          })) as ActivityType[];
+
+          setActivities(activitiesData);
+        }
+      } else {
+        setError('No customer data found');
+      }
+    } catch (err) {
+      // console.error('Error fetching customer data:', err);
+      setError('Failed to fetch customer data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchCustomerData = async () => {
-      if (!userId) return;
-
-      setLoading(true);
-      try {
-        // Fetch the customer document with the given userId
-        const docRef = doc(db, 'Customers', userId);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const customer = { id: docSnap.id, ...docSnap.data() } as CustomerType;
-          setCustomerData(customer);
-
-          // Only fetch activities if customer has a mobile number
-          if (customer.customerMobile) {
-            const activitiesQuery = query(
-              collection(db, 'Activity'),
-              where('customerMobile', '==', customer.customerMobile),
-              orderBy('createdAt', 'desc'),
-              limit(3)
-            );
-
-            const querySnapshot = await getDocs(activitiesQuery);
-            const activitiesData = querySnapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data(),
-            })) as ActivityType[];
-
-            setActivities(activitiesData);
-          }
-        } else {
-          setError('No customer data found');
-        }
-      } catch (err) {
-        // console.error('Error fetching customer data:', err);
-        setError('Failed to fetch customer data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchCustomerData();
   }, [userId]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    setError(null);
+    try {
+      await fetchCustomerData();
+      setTimeout(() => {
+        toast.success('Data refreshed successfully');
+        setIsRefreshing(false);
+      }, 1000);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      toast.error('Failed to refresh data');
+      setIsRefreshing(false);
+    }
+  };
 
   const handleSavePassword = async () => {
     if (!customerData || !newPassword.trim()) {
@@ -299,23 +317,34 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       <Card className="shadow-lg border-0 bg-white">
         <CardContent className="p-2 xs:p-3 sm:p-4">
           <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-1.5 xs:gap-2 sm:gap-3">
-            <div className="flex items-center gap-1 xs:gap-2 sm:gap-3">
-              <div className="bg-purple-100 p-1 xs:p-1.5 sm:p-2 rounded-full">
-                <User className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-purple-600" />
+            <div className="flex items-center justify-between w-full xs:w-auto">
+              <div className="flex items-center gap-1 xs:gap-2 sm:gap-3">
+                <div className="bg-purple-100 p-1 xs:p-1.5 sm:p-2 rounded-full">
+                  <User className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-purple-600" />
+                </div>
+                <div>
+                  <h2 className="text-sm xs:text-base sm:text-lg font-bold break-words">
+                    {customerData.customerName}
+                  </h2>
+                  <p className="text-[9px] xs:text-[10px] sm:text-xs text-gray-600">
+                    Member since {memberSince}
+                    {customerData.demoStore && (
+                      <Badge className="bg-black text-white text-[6px] ml-2  xs:text-[7px] sm:text-[8px] rounded-full px-1 xs:px-1.5 sm:px-2">
+                        Demo Customer
+                      </Badge>
+                    )}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-sm xs:text-base sm:text-lg font-bold break-words">
-                  {customerData.customerName}
-                </h2>
-                <p className="text-[9px] xs:text-[10px] sm:text-xs text-gray-600">
-                  Member since {memberSince}
-                  {customerData.demoStore && (
-                    <Badge className="bg-black text-white text-[6px] ml-2  xs:text-[7px] sm:text-[8px] rounded-full px-1 xs:px-1.5 sm:px-2">
-                      Demo Customer
-                    </Badge>
-                  )}
-                </p>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="h-6 w-6 p-0 xs:hidden"
+              >
+                <RefreshCw className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </Button>
             </div>
 
             {/* Password Section */}
@@ -440,6 +469,19 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                   {customerData.customerMobile}
                 </p>
               </div>
+            </div>
+
+            {/* Refresh Button for larger screens */}
+            <div className="hidden xs:flex items-center mt-1 xs:mt-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="h-8 w-8 p-0"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </Button>
             </div>
           </div>
         </CardContent>

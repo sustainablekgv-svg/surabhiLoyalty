@@ -1,5 +1,15 @@
 import { collection, doc, getDoc, getDocs, query, Timestamp, where } from 'firebase/firestore';
-import { Calendar, Coins, Copy, CreditCard, Phone, Share2, Store, Users } from 'lucide-react';
+import {
+  Calendar,
+  Coins,
+  Copy,
+  CreditCard,
+  Phone,
+  RefreshCw,
+  Share2,
+  Store,
+  Users,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -35,56 +45,76 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
   const [loading, setLoading] = useState(true);
   const [referralIncome, setReferralIncome] = useState(0);
   const [userData, setUserData] = useState<any>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchReferralData = async () => {
+    try {
+      // Fetch current user data to get referralIncome
+      const docRef = doc(db, 'Customers', userId);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const customerData = docSnap.data();
+        setUserData(customerData);
+        setReferralIncome(customerData.referralSurabhi || 0);
+
+        // Fetch referred customers using the data directly from docSnap
+        const referredCustomersQuery = query(
+          collection(db, 'Customers'),
+          where('referredBy', '==', customerData.customerMobile)
+        );
+        const referredCustomersSnapshot = await getDocs(referredCustomersQuery);
+
+        const customersData: ReferredCustomer[] = [];
+        referredCustomersSnapshot.forEach(doc => {
+          const data = doc.data();
+          customersData.push({
+            name: data.customerName,
+            mobile: data.customerMobile,
+            email: data.customerEmail,
+            storeLocation: data.storeLocation,
+            walletBalance: data.walletBalance,
+            walletRechargeDone: data.walletRechargeDone,
+            saleEligibility: data.saleEligibility,
+            surabhiBalance: data.surabhiBalance,
+            sevaCoinsTotal: data.sevaCoinsTotal,
+            createdAt: data.createdAt,
+            lastTransactionDate: data.lastTransactionDate,
+          });
+        });
+
+        setReferredCustomers(customersData);
+      }
+    } catch (error) {
+      // console.error('Error fetching referral data:', error);
+      toast.error('Failed to load referral data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchReferralData = async () => {
-      try {
-        // Fetch current user data to get referralIncome
-        const docRef = doc(db, 'Customers', userId);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const customerData = docSnap.data();
-          setUserData(customerData);
-          setReferralIncome(customerData.referralSurabhi || 0);
-
-          // Fetch referred customers using the data directly from docSnap
-          const referredCustomersQuery = query(
-            collection(db, 'Customers'),
-            where('referredBy', '==', customerData.customerMobile)
-          );
-          const referredCustomersSnapshot = await getDocs(referredCustomersQuery);
-
-          const customersData: ReferredCustomer[] = [];
-          referredCustomersSnapshot.forEach(doc => {
-            const data = doc.data();
-            customersData.push({
-              name: data.customerName,
-              mobile: data.customerMobile,
-              email: data.customerEmail,
-              storeLocation: data.storeLocation,
-              walletBalance: data.walletBalance,
-              walletRechargeDone: data.walletRechargeDone,
-              saleEligibility: data.saleEligibility,
-              surabhiBalance: data.surabhiBalance,
-              sevaCoinsTotal: data.sevaCoinsTotal,
-              createdAt: data.createdAt,
-              lastTransactionDate: data.lastTransactionDate,
-            });
-          });
-
-          setReferredCustomers(customersData);
-        }
-      } catch (error) {
-        // console.error('Error fetching referral data:', error);
-        toast.error('Failed to load referral data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchReferralData();
   }, [userId]);
+
+  const handleRefresh = async () => {
+    try {
+      setIsRefreshing(true);
+      setLoading(true);
+
+      // Re-fetch referral data
+      await fetchReferralData();
+
+      // Show success message after a brief delay
+      setTimeout(() => {
+        toast.success('Referral data refreshed successfully');
+        setIsRefreshing(false);
+      }, 1000);
+    } catch (error) {
+      toast.error('Failed to refresh referral data');
+      setIsRefreshing(false);
+    }
+  };
 
   const totalReferrals = referredCustomers.length;
   // const activeReferrals = referredCustomers.filter(c => c.registered).length;
@@ -140,23 +170,34 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
 
   return (
     <div className="space-y-4 xs:space-y-5 sm:space-y-6">
-      <div className="flex items-center gap-1.5 xs:gap-2 mb-3 xs:mb-4 sm:mb-5">
-        <div className="bg-green-100 p-1.5 xs:p-2 sm:p-2.5 rounded-full">
-          <Share2 className="h-3.5 xs:h-4 sm:h-5 w-3.5 xs:w-4 sm:w-5 text-green-600" />
+      <div className="flex items-center justify-between mb-3 xs:mb-4 sm:mb-5">
+        <div className="flex items-center gap-1.5 xs:gap-2">
+          <div className="bg-green-100 p-1.5 xs:p-2 sm:p-2.5 rounded-full">
+            <Share2 className="h-3.5 xs:h-4 sm:h-5 w-3.5 xs:w-4 sm:w-5 text-green-600" />
+          </div>
+          <div>
+            <h2 className="text-base xs:text-lg sm:text-xl font-bold text-gray-900">
+              Referral Program
+            </h2>
+            <p className="text-[10px] xs:text-xs text-gray-600">
+              Invite friends and earn on their spendings
+              {userData?.demoStore && (
+                <Badge className="bg-black text-white text-[6px] ml-2  xs:text-[7px] sm:text-[8px] rounded-full px-1 xs:px-1.5 sm:px-2">
+                  Demo Customer
+                </Badge>
+              )}
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-base xs:text-lg sm:text-xl font-bold text-gray-900">
-            Referral Program
-          </h2>
-          <p className="text-[10px] xs:text-xs text-gray-600">
-            Invite friends and earn on their spendings
-            {userData.demoStore && (
-              <Badge className="bg-black text-white text-[6px] ml-2  xs:text-[7px] sm:text-[8px] rounded-full px-1 xs:px-1.5 sm:px-2">
-                Demo Customer
-              </Badge>
-            )}
-          </p>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="h-8 w-8 p-0"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+        </Button>
       </div>
 
       {/* Referral Stats */}

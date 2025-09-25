@@ -1,7 +1,8 @@
 import { format } from 'date-fns';
 import { collection, getDocs, orderBy, query, Timestamp, where } from 'firebase/firestore';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,12 @@ const StoreAccounts = ({
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   // Fetch all transactions for current store
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchAllTransactions();
+    toast.success('Accounts data refreshed successfully');
+  };
+
   const fetchAllTransactions = async () => {
     if (!user.storeLocation) {
       // console.log('No store location provided');
@@ -122,8 +129,14 @@ const StoreAccounts = ({
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">{user.storeLocation} Accounts</h2>
-        {demoStore === true && <Badge>Demo Store</Badge>}
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-bold">{user.storeLocation} Accounts</h2>
+          {demoStore === true && <Badge>Demo Store</Badge>}
+        </div>
+        <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          <span className="ml-2">Refresh</span>
+        </Button>
       </div>
 
       <Card>

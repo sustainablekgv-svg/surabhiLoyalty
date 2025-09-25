@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { Timestamp } from 'firebase/firestore';
-import { Filter, Loader2, ShoppingCart, Zap } from 'lucide-react';
+import { Filter, Loader2, RefreshCw, ShoppingCart, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -158,19 +158,31 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
       .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
   };
 
-  console.log('The transactions are in line 161', filteredTransactions);
+  // console.log('The transactions are in line 161', filteredTransactions);
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="bg-blue-100 p-3 rounded-full">
-          <ShoppingCart className="h-6 w-6 text-blue-600" />
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="bg-blue-100 p-3 rounded-full">
+            <ShoppingCart className="h-6 w-6 text-blue-600" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Transaction History {demoStore === true && <Badge>Demo Store</Badge>}
+            </h2>
+            <p className="text-gray-600">View transactions and recharges at {storeLocation}</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">
-            Transaction History {demoStore === true && <Badge>Demo Store</Badge>}
-          </h2>
-          <p className="text-gray-600">View transactions and recharges at {storeLocation}</p>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={isLoading}
+          className="flex items-center gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
 
       {/* Filtering Options */}
@@ -513,9 +525,9 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
                         <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                           Seva Amount
                         </TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                        {/* <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                           Type
-                        </TableHead>
+                        </TableHead> */}
                         <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                           Date
                         </TableHead>

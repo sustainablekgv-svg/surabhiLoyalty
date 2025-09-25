@@ -12,7 +12,18 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
-import { Edit, Key, MapPin, PlusCircle, Shield, Store, Trash2, User, UserPlus } from 'lucide-react';
+import {
+  Edit,
+  Key,
+  MapPin,
+  PlusCircle,
+  RefreshCw,
+  Shield,
+  Store,
+  Trash2,
+  User,
+  UserPlus,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -92,76 +103,77 @@ export const StaffManagement = () => {
   const [mobileError, setMobileError] = useState<string>('');
   const [stores, setStores] = useState<StoreType[]>([]);
   const [staff, setStaff] = useState<StaffType[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<'staff' | 'stores' | 'decrypt'>('staff');
-  const [contactNumberError, setContactNumberError] = useState('');
+  const [contactNumberError, setContactNumberError] = useState<string>('');
 
   // Staff state
-  const [isStaffDialogOpen, setIsStaffDialogOpen] = useState(false);
+  const [isStaffDialogOpen, setIsStaffDialogOpen] = useState<boolean>(false);
   const [currentStaff, setCurrentStaff] = useState<Partial<StaffType> | null>(null);
-  const [isDeleteStaffDialogOpen, setIsDeleteStaffDialogOpen] = useState(false);
+  const [isDeleteStaffDialogOpen, setIsDeleteStaffDialogOpen] = useState<boolean>(false);
 
   // Store state
-  const [isStoreDialogOpen, setIsStoreDialogOpen] = useState(false);
+  const [isStoreDialogOpen, setIsStoreDialogOpen] = useState<boolean>(false);
   const [currentStore, setCurrentStore] = useState<Partial<StoreType> | null>(null);
-  const [isDeleteStoreDialogOpen, setIsDeleteStoreDialogOpen] = useState(false);
+  const [isDeleteStoreDialogOpen, setIsDeleteStoreDialogOpen] = useState<boolean>(false);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   // Fetch data from Firestore
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch stores
+      const storesSnapshot = await getDocs(collection(db, 'stores'));
+      const storesData = storesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        storeName: doc.data().storeName || '',
+        storeLocation: doc.data().storeLocation || '',
+        storeAddress: doc.data().storeAddress || '',
+        storeContactNumber: doc.data().storeContactNumber || '',
+        storePrefix: doc.data().storePrefix || '',
+        storeCurrentBalance: Number(doc.data().storeCurrentBalance) || 0,
+        storeSevaBalance: Number(doc.data().storeSevaBalance) || 0,
+        referralCommission: Number(doc.data().referralCommission) || 0,
+        surabhiCommission: Number(doc.data().surabhiCommission) || 0,
+        sevaCommission: Number(doc.data().sevaCommission) || 0,
+        cashOnlyCommission: Number(doc.data().cashOnlyCommission) || 0,
+        storeStatus: (doc.data().storeStatus as 'active' | 'inactive') || 'active',
+        walletEnabled: Boolean(doc.data().walletEnabled !== false),
+        demoStore: Boolean(doc.data().demoStore) || false,
+        adminCurrentBalance: Number(doc.data().adminCurrentBalance) || 0,
+        adminStoreProfit: Number(doc.data().adminStoreProfit) || 0,
+        storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
+        storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date(),
+      })) as StoreType[];
+      setStores(storesData);
+
+      // Fetch staff
+      const staffSnapshot = await getDocs(collection(db, 'staff'));
+      const staffData = staffSnapshot.docs.map(doc => ({
+        id: doc.id,
+        staffName: doc.data().staffName || '',
+        staffMobile: doc.data().staffMobile || '',
+        staffEmail: doc.data().staffEmail || '',
+        storeLocation: doc.data().storeLocation || '',
+        demoStore: Boolean(doc.data().demoStore) || false,
+        role: (doc.data().role as 'admin' | 'staff') || 'staff',
+        staffStatus: (doc.data().staffStatus as 'active' | 'inactive') || 'active',
+        staffSalesCount: Number(doc.data().staffSalesCount) || 0,
+        staffPassword: doc.data().staffPassword || '',
+        staffRechargesCount: Number(doc.data().staffRechargesCount) || 0,
+        lastActive: doc.data().lastActive?.toDate() || undefined,
+        createdAt: doc.data().createdAt || Timestamp.now(),
+      })) as StaffType[];
+      setStaff(staffData);
+    } catch (error) {
+      toast.error('Error fetching data');
+      // console.error('Error fetching data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        // Fetch stores
-        const storesSnapshot = await getDocs(collection(db, 'stores'));
-        const storesData = storesSnapshot.docs.map(doc => ({
-          id: doc.id,
-          storeName: doc.data().storeName || '',
-          storeLocation: doc.data().storeLocation || '',
-          storeAddress: doc.data().storeAddress || '',
-          storeContactNumber: doc.data().storeContactNumber || '',
-          storePrefix: doc.data().storePrefix || '',
-          storeCurrentBalance: Number(doc.data().storeCurrentBalance) || 0,
-          storeSevaBalance: Number(doc.data().storeSevaBalance) || 0,
-          referralCommission: Number(doc.data().referralCommission) || 0,
-          surabhiCommission: Number(doc.data().surabhiCommission) || 0,
-          sevaCommission: Number(doc.data().sevaCommission) || 0,
-          cashOnlyCommission: Number(doc.data().cashOnlyCommission) || 0,
-          storeStatus: doc.data().storeStatus || 'active',
-          walletEnabled: doc.data().walletEnabled !== false,
-          demoStore: doc.data().demoStore || false,
-          adminCurrentBalance: Number(doc.data().adminCurrentBalance) || 0,
-          adminStoreProfit: Number(doc.data().adminStoreProfit) || 0,
-          storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
-          storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date(),
-        })) as StoreType[];
-        setStores(storesData);
-
-        // Fetch staff
-        const staffSnapshot = await getDocs(collection(db, 'staff'));
-        const staffData = staffSnapshot.docs.map(doc => ({
-          id: doc.id,
-          staffName: doc.data().staffName || '',
-          staffMobile: doc.data().staffMobile || '',
-          staffEmail: doc.data().staffEmail || '',
-          storeLocation: doc.data().storeLocation || '',
-          demoStore: doc.data().demoStore || false,
-          role: doc.data().role || 'staff',
-          staffStatus: doc.data().staffStatus || 'active',
-          staffSalesCount: Number(doc.data().staffSalesCount) || 0,
-          staffPassword: doc.data().staffPassword || '',
-          staffRechargesCount: Number(doc.data().staffRechargesCount) || 0,
-          lastActive: doc.data().lastActive?.toDate(),
-          createdAt: doc.data().createdAt || Timestamp.now(),
-        })) as StaffType[];
-        setStaff(staffData);
-      } catch (error) {
-        toast.error('Error fetching data');
-        // console.error('Error fetching data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchData();
   }, []);
 
@@ -260,12 +272,13 @@ export const StaffManagement = () => {
         staffMobile: doc.data().staffMobile || '',
         staffEmail: doc.data().staffEmail || '',
         storeLocation: doc.data().storeLocation || '',
-        role: doc.data().role || 'staff',
-        staffStatus: doc.data().staffStatus || 'active',
+        demoStore: Boolean(doc.data().demoStore) || false,
+        role: (doc.data().role as 'admin' | 'staff') || 'staff',
+        staffStatus: (doc.data().staffStatus as 'active' | 'inactive') || 'active',
         staffSalesCount: Number(doc.data().staffSalesCount) || 0,
-        staffRechargesCount: doc.data().staffRechargesCount || 0,
+        staffRechargesCount: Number(doc.data().staffRechargesCount) || 0,
         staffPassword: doc.data().staffPassword || '',
-        lastActive: doc.data().lastActive?.toDate(),
+        lastActive: doc.data().lastActive?.toDate() || undefined,
         createdAt: doc.data().createdAt || Timestamp.now(),
       })) as StaffType[];
       setStaff(refreshedStaffData);
@@ -275,6 +288,67 @@ export const StaffManagement = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    try {
+      setIsRefreshing(true);
+      await fetchData();
+
+      // Show success message after a brief delay
+      setTimeout(() => {
+        toast.success('Data refreshed successfully');
+        setIsRefreshing(false);
+      }, 1000);
+    } catch (error) {
+      toast.error('Failed to refresh data');
+      setIsRefreshing(false);
+    }
+  };
+
+  const validateStaffForm = async () => {
+    let isValid = true;
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!currentStaff?.staffEmail || !emailRegex.test(currentStaff.staffEmail)) {
+      setEmailError('Please enter a valid email address');
+      isValid = false;
+    } else {
+      // Check if email exists
+      const emailQuery = query(
+        collection(db, 'staff'),
+        where('staffEmail', '==', currentStaff.staffEmail)
+      );
+      const emailSnapshot = await getDocs(emailQuery);
+      if (!emailSnapshot.empty && emailSnapshot.docs[0].id !== currentStaff?.id) {
+        setEmailError('This email is already registered');
+        isValid = false;
+      } else {
+        setEmailError('');
+      }
+    }
+
+    // Validate mobile format (10 digits for Indian numbers)
+    if (!currentStaff?.staffMobile || currentStaff.staffMobile.length !== 10) {
+      setMobileError('Please enter a valid 10-digit mobile number');
+      isValid = false;
+    } else {
+      // Check if mobile exists
+      const mobileQuery = query(
+        collection(db, 'staff'),
+        where('staffMobile', '==', currentStaff.staffMobile)
+      );
+      const mobileSnapshot = await getDocs(mobileQuery);
+      if (!mobileSnapshot.empty && mobileSnapshot.docs[0].id !== currentStaff?.id) {
+        setMobileError('This mobile number is already registered');
+        isValid = false;
+      } else {
+        setMobileError('');
+      }
+    }
+
+    return isValid;
   };
 
   const handleDeleteStaff = async () => {
@@ -288,8 +362,17 @@ export const StaffManagement = () => {
       const staffSnapshot = await getDocs(collection(db, 'staff'));
       const updatedStaff = staffSnapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data(),
-        lastActive: doc.data().lastActive?.toDate(),
+        staffName: doc.data().staffName || '',
+        staffMobile: doc.data().staffMobile || '',
+        staffEmail: doc.data().staffEmail || '',
+        storeLocation: doc.data().storeLocation || '',
+        demoStore: Boolean(doc.data().demoStore) || false,
+        role: (doc.data().role as 'admin' | 'staff') || 'staff',
+        staffStatus: (doc.data().staffStatus as 'active' | 'inactive') || 'active',
+        staffSalesCount: Number(doc.data().staffSalesCount) || 0,
+        staffPassword: doc.data().staffPassword || '',
+        staffRechargesCount: Number(doc.data().staffRechargesCount) || 0,
+        lastActive: doc.data().lastActive?.toDate() || undefined,
         createdAt: doc.data().createdAt || Timestamp.now(),
       })) as StaffType[];
       setStaff(updatedStaff);
@@ -393,9 +476,9 @@ export const StaffManagement = () => {
         surabhiCommission: Number(doc.data().surabhiCommission) || 0,
         sevaCommission: Number(doc.data().sevaCommission) || 0,
         cashOnlyCommission: Number(doc.data().cashOnlyCommission) || 0,
-        storeStatus: doc.data().storeStatus || 'active',
-        walletEnabled: doc.data().walletEnabled !== false,
-        demoStore: doc.data().demoStore || false,
+        storeStatus: (doc.data().storeStatus as 'active' | 'inactive') || 'active',
+        walletEnabled: Boolean(doc.data().walletEnabled !== false),
+        demoStore: Boolean(doc.data().demoStore) || false,
         adminCurrentBalance: Number(doc.data().adminCurrentBalance) || 0,
         adminStoreProfit: Number(doc.data().adminStoreProfit) || 0,
         storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
@@ -460,7 +543,18 @@ export const StaffManagement = () => {
     <div className="space-y-6">
       <div className="flex flex-col xs:flex-row justify-between items-start xs:items-center gap-3 xs:gap-2">
         <div>
-          <h1 className="text-xl xs:text-2xl font-bold">System Configuration</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl xs:text-2xl font-bold">System Configuration</h1>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="h-8 w-8 p-0"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
           <p className="text-sm xs:text-base text-muted-foreground">
             Manage staff accounts and store locations
           </p>
@@ -1422,8 +1516,9 @@ export const StaffManagement = () => {
                     surabhiCommission: Number(doc.data().surabhiCommission) || 0,
                     sevaCommission: Number(doc.data().sevaCommission) || 0,
                     cashOnlyCommission: Number(doc.data().cashOnlyCommission) || 0,
-                    storeStatus: doc.data().storeStatus || 'active',
-                    walletEnabled: doc.data().walletEnabled || false,
+                    storeStatus: (doc.data().storeStatus as 'active' | 'inactive') || 'active',
+                    walletEnabled: Boolean(doc.data().walletEnabled) || false,
+                    demoStore: Boolean(doc.data().demoStore) || false,
                     adminCurrentBalance: Number(doc.data().adminCurrentBalance) || 0,
                     adminStoreProfit: Number(doc.data().adminStoreProfit) || 0,
                     storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),

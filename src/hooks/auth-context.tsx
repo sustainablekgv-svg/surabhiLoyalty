@@ -11,6 +11,7 @@ import {
 import { auth } from '@/lib/firebase';
 import { sessionManager } from '@/lib/sessionManager';
 import { storageUtils } from '@/lib/storage';
+import { tabSync } from '@/lib/tabSync';
 
 interface AuthContextType {
   user: User | null;
@@ -27,6 +28,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [authUnsubscribe, setAuthUnsubscribe] = useState<(() => void) | null>(null);
 
   // Update initializeAuth to be more robust
   const initializeAuth = useCallback(async () => {
@@ -68,17 +70,49 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  // Update the main useEffect
+  // Update the main useEffect with tab synchronization
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
+    let tabSyncUnsubscribers: (() => void)[] = [];
 
     const initAuth = async () => {
       try {
-        unsubscribe = onAuthStateChanged(auth, async firebaseUser => {
-          if (!isInitialized) {
-            await initializeAuth();
+        // Only the main tab should handle Firebase auth state changes
+        if (sessionManager.isMainTab()) {
+          unsubscribe = onAuthStateChanged(auth, async firebaseUser => {
+            if (!isInitialized) {
+              await initializeAuth();
+            }
+
+            // Broadcast auth state change to other tabs
+            tabSync.broadcast('AUTH_STATE_CHANGE', {
+              user: firebaseUser ? { uid: firebaseUser.uid, email: firebaseUser.email } : null,
+              timestamp: Date.now(),
+            });
+          });
+          setAuthUnsubscribe(() => unsubscribe);
+        }
+
+        // Set up tab synchronization listeners
+        const logoutUnsubscribe = tabSync.subscribe('LOGOUT', message => {
+          if (message.tabId !== tabSync.getTabId()) {
+            // Another tab logged out, clear local state
+            setUser(null);
+            storageUtils.clearAll();
           }
         });
+
+        const authChangeUnsubscribe = tabSync.subscribe('AUTH_STATE_CHANGE', message => {
+          if (message.tabId !== tabSync.getTabId()) {
+            // Another tab changed auth state, sync local state
+            if (!message.payload.user) {
+              setUser(null);
+              storageUtils.clearAll();
+            }
+          }
+        });
+
+        tabSyncUnsubscribers = [logoutUnsubscribe, authChangeUnsubscribe];
 
         if (!isInitialized) {
           await initializeAuth();
@@ -96,6 +130,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (unsubscribe) {
         unsubscribe();
       }
+      tabSyncUnsubscribers.forEach(unsub => unsub());
     };
   }, [initializeAuth, isInitialized]);
 
@@ -150,8 +185,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = async (): Promise<void> => {
     setIsLoading(true);
     try {
-      // Sign out from Firebase
-      await signOut(auth);
+      // Only sign out from Firebase if this is the main tab
+      if (sessionManager.isMainTab()) {
+        await signOut(auth);
+      }
+
+      // Clear session for this tab (this will broadcast to other tabs)
+      sessionManager.clearSession();
     } catch (error) {
       // console.error('Firebase logout error:', error);
     } finally {

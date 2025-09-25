@@ -1,7 +1,10 @@
+import { tabSync } from './tabSync';
+
 const INACTIVITY_TIMEOUT_MINUTES = 30;
 const SESSION_TOKEN_KEY = 'sessionToken';
 const LAST_ACTIVITY_KEY = 'lastActive';
 const USER_KEY = 'user';
+const TAB_SESSIONS_KEY = 'tabSessions';
 
 // Generate a secure random session token
 const generateSessionToken = (): string => {
@@ -15,53 +18,150 @@ const isValidSessionToken = (token: string): boolean => {
   return typeof token === 'string' && /^[a-f0-9]{64}$/.test(token);
 };
 
+// Tab-specific session management
+interface TabSession {
+  tabId: string;
+  sessionToken: string;
+  lastActivity: number;
+  isActive: boolean;
+}
+
+const getTabSessions = (): Record<string, TabSession> => {
+  try {
+    const sessions = localStorage.getItem(TAB_SESSIONS_KEY);
+    return sessions ? JSON.parse(sessions) : {};
+  } catch {
+    return {};
+  }
+};
+
+const setTabSessions = (sessions: Record<string, TabSession>): void => {
+  try {
+    localStorage.setItem(TAB_SESSIONS_KEY, JSON.stringify(sessions));
+  } catch (error) {
+    console.warn('Failed to save tab sessions:', error);
+  }
+};
+
+const cleanupInactiveTabs = (): void => {
+  const sessions = getTabSessions();
+  const now = Date.now();
+  const activeTabs = tabSync.getActiveTabs();
+
+  // Remove sessions for tabs that are no longer active
+  Object.keys(sessions).forEach(tabId => {
+    if (
+      !activeTabs.includes(tabId) ||
+      now - sessions[tabId].lastActivity > INACTIVITY_TIMEOUT_MINUTES * 60 * 1000
+    ) {
+      delete sessions[tabId];
+    }
+  });
+
+  setTabSessions(sessions);
+};
+
 export const sessionManager = {
   isSessionExpired: (): boolean => {
-    const lastActive = localStorage.getItem(LAST_ACTIVITY_KEY);
-    const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
+    cleanupInactiveTabs();
 
-    // Check if session token exists and is valid
-    if (!sessionToken || !isValidSessionToken(sessionToken)) {
+    const currentTabId = tabSync.getTabId();
+    const sessions = getTabSessions();
+    const currentSession = sessions[currentTabId];
+
+    // Check if current tab has a valid session
+    if (!currentSession || !isValidSessionToken(currentSession.sessionToken)) {
       return true;
     }
-
-    if (!lastActive) return true;
 
     const now = Date.now();
-    const lastActiveTime = parseInt(lastActive, 10);
+    const inactiveMinutes = (now - currentSession.lastActivity) / (1000 * 60);
 
-    // Validate timestamp
-    if (isNaN(lastActiveTime) || lastActiveTime > now) {
-      return true;
-    }
-
-    const inactiveMinutes = (now - lastActiveTime) / (1000 * 60);
     return inactiveMinutes > INACTIVITY_TIMEOUT_MINUTES;
   },
 
   updateActivity: (): void => {
     const now = Date.now();
-    localStorage.setItem(LAST_ACTIVITY_KEY, now.toString());
+    const currentTabId = tabSync.getTabId();
+    const sessions = getTabSessions();
 
-    // Generate new session token if it doesn't exist
-    if (!localStorage.getItem(SESSION_TOKEN_KEY)) {
-      localStorage.setItem(SESSION_TOKEN_KEY, generateSessionToken());
+    // Update or create session for current tab
+    if (!sessions[currentTabId]) {
+      sessions[currentTabId] = {
+        tabId: currentTabId,
+        sessionToken: generateSessionToken(),
+        lastActivity: now,
+        isActive: true,
+      };
+    } else {
+      sessions[currentTabId].lastActivity = now;
+      sessions[currentTabId].isActive = true;
     }
+
+    setTabSessions(sessions);
+
+    // Also update legacy storage for backward compatibility
+    localStorage.setItem(LAST_ACTIVITY_KEY, now.toString());
+    if (!localStorage.getItem(SESSION_TOKEN_KEY)) {
+      localStorage.setItem(SESSION_TOKEN_KEY, sessions[currentTabId].sessionToken);
+    }
+
+    // Broadcast session update to other tabs
+    tabSync.broadcast('SESSION_UPDATE', {
+      tabId: currentTabId,
+      lastActivity: now,
+    });
   },
 
   initializeSession: (): void => {
+    const currentTabId = tabSync.getTabId();
     const sessionToken = generateSessionToken();
+    const now = Date.now();
+
+    const sessions = getTabSessions();
+    sessions[currentTabId] = {
+      tabId: currentTabId,
+      sessionToken,
+      lastActivity: now,
+      isActive: true,
+    };
+
+    setTabSessions(sessions);
+
+    // Legacy storage
     localStorage.setItem(SESSION_TOKEN_KEY, sessionToken);
-    localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
+    localStorage.setItem(LAST_ACTIVITY_KEY, now.toString());
   },
 
   getSessionToken: (): string | null => {
+    const currentTabId = tabSync.getTabId();
+    const sessions = getTabSessions();
+    const currentSession = sessions[currentTabId];
+
+    if (currentSession && isValidSessionToken(currentSession.sessionToken)) {
+      return currentSession.sessionToken;
+    }
+
+    // Fallback to legacy storage
     const token = localStorage.getItem(SESSION_TOKEN_KEY);
     return token && isValidSessionToken(token) ? token : null;
   },
 
   clearSession: (): void => {
-    // Clear all session-related data
+    const currentTabId = tabSync.getTabId();
+    const sessions = getTabSessions();
+
+    // Remove current tab's session
+    delete sessions[currentTabId];
+    setTabSessions(sessions);
+
+    // Broadcast logout to other tabs
+    tabSync.broadcast('LOGOUT', {
+      tabId: currentTabId,
+      timestamp: Date.now(),
+    });
+
+    // Clear legacy session data
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(LAST_ACTIVITY_KEY);
     localStorage.removeItem(SESSION_TOKEN_KEY);
@@ -79,25 +179,39 @@ export const sessionManager = {
 
   // Security check for potential session hijacking
   validateSession: (): boolean => {
-    const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
-    const lastActive = localStorage.getItem(LAST_ACTIVITY_KEY);
+    cleanupInactiveTabs();
+
+    const currentTabId = tabSync.getTabId();
+    const sessions = getTabSessions();
+    const currentSession = sessions[currentTabId];
     const user = localStorage.getItem(USER_KEY);
 
     // All session data must be present and valid
-    if (!sessionToken || !lastActive || !user) {
+    if (!currentSession || !user) {
       return false;
     }
 
-    if (!isValidSessionToken(sessionToken)) {
+    if (!isValidSessionToken(currentSession.sessionToken)) {
       return false;
     }
 
     // Check for suspicious activity patterns
-    const lastActiveTime = parseInt(lastActive, 10);
-    if (isNaN(lastActiveTime) || lastActiveTime > Date.now()) {
+    if (isNaN(currentSession.lastActivity) || currentSession.lastActivity > Date.now()) {
       return false;
     }
 
     return true;
+  },
+
+  // Get all active tab sessions
+  getActiveSessions: (): TabSession[] => {
+    cleanupInactiveTabs();
+    const sessions = getTabSessions();
+    return Object.values(sessions).filter(session => session.isActive);
+  },
+
+  // Check if this is the main tab (for coordinating Firebase listeners)
+  isMainTab: (): boolean => {
+    return tabSync.isMainTabInstance();
   },
 };

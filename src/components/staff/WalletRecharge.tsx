@@ -22,6 +22,7 @@ import {
   Mail,
   MapPin,
   Phone,
+  RefreshCw,
   Search,
   Shield,
   Wallet,
@@ -101,6 +102,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [storeDetails, setStoreDetails] = useState<StoreType | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   // Removed availableStores and selectedStore - now using only staff's location
 
   const [sevaPool, setSevaPool] = useState<SevaPoolType>({
@@ -624,7 +626,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
           // Add activity record for referrer here to avoid duplicate records
           await addActivityRecord({
             type: 'referral',
-            remarks: `${currentData.referredBy} - Earned Surabhi Referral of ₹${referralAmount}`,
+            remarks: `${currentData.referredBy} - Earned Surabhi Referral of ₹${referralAmount} for Sale Purchase of ${currentData.customerName}`,
             amount: rechargeAmountNum,
             customerName: referrerData.customerName,
             customerMobile: currentData.referredBy,
@@ -695,17 +697,6 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
           storeLocation: storeLocation,
           demoStore: demoStore,
         });
-
-        // await addActivityRecord({
-        //   type: 'recharge',
-        //   remarks: `${selectedCustomer.customerName} recharged for the first time`,
-        //   amount: rechargeAmountNum,
-        //   customerMobile: selectedCustomer.customerMobile,
-        //   customerName: selectedCustomer.customerName,
-        //   createdAt: Timestamp.fromDate(new Date()),
-        //   storeLocation: storeLocation,
-        //   demoStore: demoStore,
-        // });
       }
 
       // Add activity records for the recharge and commissions
@@ -722,7 +713,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
 
       await addActivityRecord({
         type: 'surabhi_earn',
-        remarks: `${selectedCustomer.customerName} Earned ${surabhiCoinsEarned} Surabhi Coins from recharge`,
+        remarks: `${selectedCustomer.customerName} Earned ${surabhiCoinsEarned} Surabhi Coins from recharge of ₹${rechargeAmountNum}`,
         amount: surabhiCoinsEarned,
         customerMobile: selectedCustomer.customerMobile,
         customerName: selectedCustomer.customerName,
@@ -738,7 +729,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
       if (!storeDetails?.demoStore && sevaAmountEarned > 0) {
         await addActivityRecord({
           type: 'seva_contribution',
-          remarks: `${selectedCustomer.customerName} contributed ₹${sevaAmountEarned} to Seva Pool from recharge`,
+          remarks: `${selectedCustomer.customerName} contributed ₹${sevaAmountEarned} to Seva Pool from recharge of ₹${rechargeAmountNum}`,
           amount: sevaAmountEarned,
           customerMobile: selectedCustomer.customerMobile,
           customerName: selectedCustomer.customerName,
@@ -805,47 +796,97 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
     setShowConfirmation(true);
   };
 
+  const handleRefresh = async () => {
+    try {
+      setIsRefreshing(true);
+      setIsFetchingCustomers(true);
+
+      // Actually fetch the data instead of just showing a message
+      // Re-fetch customers and store details
+      const storesQuery = query(
+        collection(db, 'stores'),
+        where('storeStatus', '==', 'active'),
+        where('storeName', '==', user.storeLocation),
+        where('demoStore', '==', demoStore)
+      );
+
+      const storesSnapshot = await getDocs(storesQuery);
+      if (!storesSnapshot.empty) {
+        const storeData = {
+          ...(storesSnapshot.docs[0].data() as StoreType),
+          id: storesSnapshot.docs[0].id,
+        };
+        setStoreDetails(storeData);
+      }
+
+      const customersCollection = collection(db, 'Customers');
+      const customersq = query(
+        customersCollection,
+        where('storeLocation', '==', user.storeLocation),
+        where('demoStore', '==', demoStore)
+      );
+      const querySnapshot = await getDocs(customersq);
+      const customersData = querySnapshot.docs.map(doc => ({
+        ...(doc.data() as CustomerType),
+        id: doc.id,
+        customerMobile: doc.data().customerMobile,
+      }));
+      setCustomers(customersData);
+
+      setIsRefreshing(false);
+      setIsFetchingCustomers(false);
+      toast.success('Data refreshed successfully!');
+    } catch (error) {
+      setIsRefreshing(false);
+      setIsFetchingCustomers(false);
+      toast.error('Failed to refresh data');
+    }
+  };
+
   return (
     <div className="space-y-4 xs:space-y-6">
-      <div className="flex items-center gap-2 xs:gap-3 mb-4 xs:mb-6 p-2 xs:p-0">
-        <div className="bg-green-100 p-2 xs:p-3 rounded-full">
-          <Wallet className="h-5 w-5 xs:h-6 xs:w-6 text-green-600" />
+      <div className="flex items-center justify-between mb-4 xs:mb-6 p-2 xs:p-0">
+        <div className="flex items-center gap-2 xs:gap-3">
+          <div className="bg-green-100 p-2 xs:p-3 rounded-full">
+            <Wallet className="h-5 w-5 xs:h-6 xs:w-6 text-green-600" />
+          </div>
+          <div>
+            <h2 className="text-xl xs:text-2xl font-bold text-gray-900">
+              Wallet Recharge {demoStore === true && <Badge>Demo Store</Badge>}
+            </h2>
+            <p className="text-sm xs:text-base text-gray-600">
+              Recharge customer wallets at {user.storeLocation}
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-xl xs:text-2xl font-bold text-gray-900">
-            Wallet Recharge {demoStore === true && <Badge>Demo Store</Badge>}
-          </h2>
-          <p className="text-sm xs:text-base text-gray-600">
-            Recharge customer wallets at {user.storeLocation}
-          </p>
-          {storeDetails && (
-            <div className="flex flex-wrap gap-2 xs:gap-4 mt-2 text-xs xs:text-sm">
-              {storeDetails.walletEnabled && (
-                <Badge
-                  variant="outline"
-                  className="border-green-200 text-red-800 text-xs xs:text-sm"
-                >
-                  Surabhi: {storeDetails.surabhiCommission}%
-                </Badge>
-              )}
-              <Badge variant="outline" className="border-blue-200 text-blue-800 text-xs xs:text-sm">
-                Referral: {storeDetails.referralCommission}%
+        <Button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          variant="outline"
+          size="sm"
+          className="flex items-center gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+        {storeDetails && (
+          <div className="flex flex-wrap gap-2 xs:gap-4 mt-2 text-xs xs:text-sm">
+            {storeDetails.walletEnabled && (
+              <Badge variant="outline" className="border-green-200 text-red-800 text-xs xs:text-sm">
+                Surabhi: {storeDetails.surabhiCommission}%
               </Badge>
-              <Badge
-                variant="outline"
-                className="border-blue-200 text-green-800 text-xs xs:text-sm"
-              >
-                Cash Only: {storeDetails.cashOnlyCommission}%
-              </Badge>
-              <Badge
-                variant="outline"
-                className="border-blue-200 text-purple-800 text-xs xs:text-sm"
-              >
-                Seva: {storeDetails.sevaCommission}%
-              </Badge>
-            </div>
-          )}
-        </div>
+            )}
+            <Badge variant="outline" className="border-blue-200 text-blue-800 text-xs xs:text-sm">
+              Referral: {storeDetails.referralCommission}%
+            </Badge>
+            <Badge variant="outline" className="border-blue-200 text-green-800 text-xs xs:text-sm">
+              Cash Only: {storeDetails.cashOnlyCommission}%
+            </Badge>
+            <Badge variant="outline" className="border-blue-200 text-purple-800 text-xs xs:text-sm">
+              Seva: {storeDetails.sevaCommission}%
+            </Badge>
+          </div>
+        )}
       </div>
 
       {/* Store Information - Staff Location Only */}

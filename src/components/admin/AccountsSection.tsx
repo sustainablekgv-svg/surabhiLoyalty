@@ -359,14 +359,14 @@ const Accounts = () => {
 
   // Log balance information for debugging (only in development)
   if (process.env.NODE_ENV === 'development' && stores.length > 0) {
-    console.log('Balance Summary:', {
-      totalStoreBalance: totalStoreBalance.toFixed(2),
-      totalAdminBalance: totalAdminBalance.toFixed(2),
-      totalCurrentBalance: totalCurrentBalance.toFixed(2),
-      storeBalancesSum: storeBalancesSum.toFixed(2),
-      balancesMismatch,
-      storeCount: stores.length,
-    });
+    // console.log('Balance Summary:', {
+    //   totalStoreBalance: totalStoreBalance.toFixed(2),
+    //   totalAdminBalance: totalAdminBalance.toFixed(2),
+    //   totalCurrentBalance: totalCurrentBalance.toFixed(2),
+    //   storeBalancesSum: storeBalancesSum.toFixed(2),
+    //   balancesMismatch,
+    //   storeCount: stores.length,
+    // });
   }
 
   return (

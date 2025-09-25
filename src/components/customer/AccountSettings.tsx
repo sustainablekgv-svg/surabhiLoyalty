@@ -201,10 +201,10 @@ export const AccountSettings = ({ userId }: AccountSettingsProps) => {
                 Date of Birth
               </Label>
               <div className="md:col-span-2">
-                <Input 
-                  value={new Date(customerData.dateOfBirth).toLocaleDateString()} 
-                  disabled 
-                  className="bg-gray-50" 
+                <Input
+                  value={new Date(customerData.dateOfBirth).toLocaleDateString()}
+                  disabled
+                  className="bg-gray-50"
                 />
               </div>
             </div>
