@@ -5,6 +5,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  onSnapshot,
   query,
   serverTimestamp,
   Timestamp,
@@ -182,6 +183,7 @@ export const GoSevaPool = () => {
 
   // Store seva balances state
   const [storeSevaBalances, setStoreSevaBalances] = useState<{ [key: string]: number }>({});
+  const [storeBalancesLoading, setStoreBalancesLoading] = useState(true);
 
   // Calculate top customers from cached transactions data
   const topCustomers = React.useMemo(() => {
@@ -217,7 +219,7 @@ export const GoSevaPool = () => {
     );
   }, [transactions]);
 
-  // Fetch store seva balances
+  // Fetch store seva balances with real-time updates
   const fetchStoreSevaBalances = async () => {
     try {
       const storesSnapshot = await getDocs(collection(db, 'stores'));
@@ -231,16 +233,45 @@ export const GoSevaPool = () => {
       });
 
       setStoreSevaBalances(storeBalances);
+      setStoreBalancesLoading(false);
     } catch (error) {
       console.error('Error fetching store balances:', error);
+      setStoreBalancesLoading(false);
     }
   };
 
-  // Fetch admin details and store balances on mount
+  // Set up real-time listener for store balances
+  useEffect(() => {
+    if (!user || user.role !== 'admin') return;
+
+    const unsubscribe = onSnapshot(
+      collection(db, 'stores'),
+      snapshot => {
+        const storeBalances: { [key: string]: number } = {};
+
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          if (data.storeName && data.storeSevaBalance !== undefined) {
+            storeBalances[data.storeName] = data.storeSevaBalance;
+          }
+        });
+
+        setStoreSevaBalances(storeBalances);
+        setStoreBalancesLoading(false);
+      },
+      error => {
+        console.error('Error listening to store balances:', error);
+        setStoreBalancesLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user]);
+
+  // Fetch admin details on mount
   useEffect(() => {
     if (user && user.role === 'admin') {
       fetchAdminDetails();
-      fetchStoreSevaBalances();
     }
   }, [user]);
 
@@ -391,7 +422,7 @@ export const GoSevaPool = () => {
 
       // Refresh data to show the new transaction
       await handleRefresh();
-      await fetchStoreSevaBalances();
+      // Note: storeSevaBalances will be automatically updated via real-time listener
     } catch (error) {
       // console.error('Error allocating funds:', error);
       toast.error('Failed to allocate funds');
@@ -480,13 +511,17 @@ export const GoSevaPool = () => {
                     className="w-full p-2 border rounded-md"
                     value={selectedStoreForAllocation || ''}
                     onChange={e => setSelectedStoreForAllocation(e.target.value)}
+                    disabled={storeBalancesLoading}
                   >
-                    <option value="">Select a store</option>
-                    {storeLocations.map(store => (
-                      <option key={store} value={store}>
-                        {store} - ₹{(storeSevaBalances[store] || 0).toFixed(2).toLocaleString()}
-                      </option>
-                    ))}
+                    <option value="">
+                      {storeBalancesLoading ? 'Loading stores...' : 'Select a store'}
+                    </option>
+                    {!storeBalancesLoading &&
+                      storeLocations.map(store => (
+                        <option key={store} value={store}>
+                          {store} - ₹{(storeSevaBalances[store] || 0).toFixed(2).toLocaleString()}
+                        </option>
+                      ))}
                   </select>
                 </div>
 

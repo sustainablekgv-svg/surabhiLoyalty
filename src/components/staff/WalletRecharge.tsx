@@ -92,6 +92,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
   // console.log('The storeLocation is', user.storeLocation);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerType | null>(null);
+  console.log('THe selected Customer in wallet is', selectedCustomer);
   const [rechargeAmount, setRechargeAmount] = useState('');
   // const [invoiceId, setInvoiceId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -424,7 +425,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
       }
       const customerDoc = querySnapshot.docs[0];
       const currentData = customerDoc.data() as CustomerType;
-      console.log('THe customers data in line is', currentData);
+      // console.log('THe customers data in line is', currentData);
 
       // Handle lastTransactionDate properly
       const lastTransactionDate = currentData.lastTransactionDate || null;
@@ -485,29 +486,31 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
         walletDeduction: 0,
         cashPayment: 0,
         previousBalance: {
-          walletBalance: currentData.walletBalance,
-          surabhiBalance: currentData.surabhiBalance,
+          walletBalance: selectedCustomer.walletBalance,
+          surabhiBalance: selectedCustomer.surabhiBalance,
         },
         newBalance: {
-          walletBalance: currentData.walletBalance + rechargeAmountNum,
-          surabhiBalance: Number((currentData.surabhiBalance + surabhiCoinsEarned).toFixed(2)),
+          walletBalance: selectedCustomer.walletBalance + rechargeAmountNum,
+          surabhiBalance: Number((selectedCustomer.surabhiBalance + surabhiCoinsEarned).toFixed(2)),
         },
         walletCredit: rechargeAmountNum,
         walletDebit: 0,
-        walletBalance: currentData.walletBalance + rechargeAmountNum,
+        walletBalance: selectedCustomer.walletBalance + rechargeAmountNum,
         surabhiCredit: surabhiCoinsEarned,
         surabhiDebit: 0,
-        surabhiBalance: Number((currentData.surabhiBalance + surabhiCoinsEarned).toFixed(2)),
+        surabhiBalance: Number((selectedCustomer.surabhiBalance + surabhiCoinsEarned).toFixed(2)),
         sevaCredit: sevaAmountEarned,
         sevaDebit: 0,
-        sevaBalance: currentData.sevaBalanceCurrentMonth + sevaAmountEarned,
-        sevaTotal: currentData.sevaTotal + sevaAmountEarned,
+        sevaBalance: Number(((selectedCustomer.sevaBalance || 0) + sevaAmountEarned).toFixed(2)),
+        sevaTotal: Number(((selectedCustomer.sevaTotal || 0) + sevaAmountEarned).toFixed(2)),
         remarks: `Wallet recharge of ₹${rechargeAmountNum} for ${selectedCustomer.customerName}`,
-        storeSevaBalance: storeDetails.storeSevaBalance + sevaAmountEarned,
+        storeSevaBalance: Number(
+          ((storeDetails.storeSevaBalance || 0) + sevaAmountEarned).toFixed(2)
+        ),
       };
 
       await addDoc(collection(db, 'CustomerTx'), customerTxData);
-
+      console.log('THe wallet recharge is', customerTxData);
       const accountTxData: Omit<AccountTxType, 'id'> = {
         createdAt: Timestamp.fromDate(new Date()),
         storeName: storeDetails.storeName,

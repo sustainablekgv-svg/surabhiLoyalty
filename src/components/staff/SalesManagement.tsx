@@ -166,7 +166,8 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
   // Real-time listener for customers from Firestore
   useEffect(() => {
     const customersCollection = collection(db, 'Customers');
-    const custQuery = query(customersCollection, where('demoStore', '==', demoStore));
+    const custQuery = query(customersCollection);
+    //  where('demoStore', '==', demoStore));
 
     const unsubscribe = onSnapshot(
       custQuery,
@@ -605,14 +606,12 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           debit: Number((saleCalculation.totalAmount - adminCutTx).toFixed(2)),
           adminCut: Number(adminCutTx.toFixed(2)),
           adminCurrentBalance: Number(
-            (-(storeDetails.storeCurrentBalance || 0) + saleAmount - adminCutTx).toFixed(2)
+            (-(storeDetails.storeCurrentBalance || 0) - saleAmount + adminCutTx).toFixed(2)
           ),
           currentBalance: Number(
-            ((storeDetails.storeCurrentBalance || 0) - saleAmount + adminCutTx).toFixed(2)
+            ((storeDetails.storeCurrentBalance || 0) + saleAmount - adminCutTx).toFixed(2)
           ),
-          sevaBalance: Number(
-            ((storeDetails.storeSevaBalance || 0) + saleCalculation.goSevaContribution).toFixed(2)
-          ),
+          sevaBalance: Number((selectedCustomer.sevaBalance || 0).toFixed(2)),
           remarks: `Wallet sale for ${selectedCustomer.customerName} (${selectedCustomer.customerMobile})`,
           demoStore: storeDetails.demoStore || false,
         };
@@ -678,13 +677,13 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           ),
           sevaCredit: Number(sevaContribution.toFixed(2)),
           sevaDebit: Number((0).toFixed(2)),
-          sevaBalance: Number(
-            (selectedCustomer.sevaBalanceCurrentMonth + sevaContribution).toFixed(2)
+          sevaBalance: Number(((selectedCustomer.sevaBalance || 0) + sevaContribution).toFixed(2)),
+          sevaTotal: Number((selectedCustomer.sevaTotal || 0 + sevaContribution).toFixed(2)),
+          storeSevaBalance: Number(
+            (storeDetails.storeSevaBalance || 0 + sevaContribution).toFixed(2)
           ),
-          sevaTotal: Number((selectedCustomer.sevaTotal + sevaContribution).toFixed(2)),
-          storeSevaBalance: Number((storeDetails.storeSevaBalance + sevaContribution).toFixed(2)),
         };
-
+        console.log('THe line 688 is wallet', customerTxData);
         await addDoc(collection(db, 'CustomerTx'), customerTxData);
         // Update store balance
         const storeQueryWallet = query(
@@ -762,7 +761,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         const poolDoc = await getDoc(poolRef);
         const sevaPool = poolDoc.data();
 
-        // Only update SevaPool for non-demo stores
+        // Only update SevaPool for non-demo storesp
         if (!storeDetails?.demoStore) {
           await updateDoc(poolRef, {
             currentSevaBalance: Number((sevaPool.currentSevaBalance + sevaContribution).toFixed(2)),
@@ -839,7 +838,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           sevaTotal: Number((selectedCustomer.sevaTotal + sevaContribution).toFixed(2)),
           storeSevaBalance: Number((storeDetails.storeSevaBalance + sevaContribution).toFixed(2)),
         };
-
+        console.log('THe cash sale is', customerTxData);
         await addDoc(collection(db, 'CustomerTx'), customerTxData);
 
         // Update customer document in Firestore for cash payment
@@ -1055,7 +1054,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             sevaTotal: Number((selectedCustomer.sevaTotal + sevaContribution).toFixed(2)),
             storeSevaBalance: Number((storeDetails.storeSevaBalance + sevaContribution).toFixed(2)),
           };
-
+          console.log('THe mixed sale is', customerTxData);
           await addDoc(collection(db, 'CustomerTx'), customerTxData);
 
           // Update customer document in Firestore for mixed payment

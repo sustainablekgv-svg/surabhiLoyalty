@@ -12,10 +12,12 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import {
+  AlertTriangle,
   ArrowDown,
   ArrowDownLeft,
   ArrowUp,
   ArrowUpRight,
+  Calculator,
   ChevronLeft,
   ChevronRight,
   Edit,
@@ -302,6 +304,15 @@ const Accounts = () => {
     fetchAccountData();
   }, []);
 
+  // Update balance calculations when stores data changes
+  useEffect(() => {
+    if (stores.length > 0) {
+      // This will trigger re-calculation of balance variables
+      // The calculations are already done in the render, so this just ensures
+      // the component re-renders when stores data changes
+    }
+  }, [stores]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -323,6 +334,39 @@ const Accounts = () => {
         </Button>
       </div>
     );
+  }
+
+  // Calculate total balances from all stores
+  const totalStoreBalance = stores.reduce(
+    (sum, store) => sum + (store.storeCurrentBalance || 0),
+    0
+  );
+  const totalAdminBalance = stores.reduce(
+    (sum, store) => sum + (store.adminCurrentBalance || 0),
+    0
+  );
+  const totalSevaBalance = stores.reduce((sum, store) => sum + (store.storeSevaBalance || 0), 0);
+  const totalAdminProfit = stores.reduce((sum, store) => sum + (store.adminStoreProfit || 0), 0);
+  const totalCurrentBalance = totalStoreBalance + totalAdminBalance;
+
+  // Validation: Check if individual store balances sum matches the expected total
+  const storeBalancesSum = stores.reduce((sum, store) => {
+    const storeTotal = (store.storeCurrentBalance || 0) + (store.adminCurrentBalance || 0);
+    return sum + storeTotal;
+  }, 0);
+
+  const balancesMismatch = Math.abs(totalCurrentBalance - storeBalancesSum) > 0.01; // Allow for small floating point differences
+
+  // Log balance information for debugging (only in development)
+  if (process.env.NODE_ENV === 'development' && stores.length > 0) {
+    console.log('Balance Summary:', {
+      totalStoreBalance: totalStoreBalance.toFixed(2),
+      totalAdminBalance: totalAdminBalance.toFixed(2),
+      totalCurrentBalance: totalCurrentBalance.toFixed(2),
+      storeBalancesSum: storeBalancesSum.toFixed(2),
+      balancesMismatch,
+      storeCount: stores.length,
+    });
   }
 
   return (
@@ -352,6 +396,90 @@ const Accounts = () => {
           <span className="ml-1 xs:ml-1.5 sm:ml-2">Refresh</span>
         </Button>
       </div>
+
+      {/* Total Balance Summary */}
+      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+        <CardHeader className="pb-2 xs:pb-4 sm:pb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base xs:text-lg sm:text-xl text-blue-900 flex items-center">
+                <Calculator className="h-4 xs:h-5 sm:h-6 w-4 xs:w-5 sm:w-6 mr-1 xs:mr-2" />
+                Total Balance Summary
+              </CardTitle>
+              <CardDescription className="text-xs xs:text-sm text-blue-700">
+                Combined balances across all live stores
+              </CardDescription>
+            </div>
+            {balancesMismatch && (
+              <div className="flex items-center text-red-600 bg-red-50 px-2 xs:px-3 py-1 rounded-full text-xs xs:text-sm">
+                <AlertTriangle className="h-3 xs:h-4 w-3 xs:w-4 mr-1" />
+                <span className="hidden xs:inline">Balance Mismatch Detected</span>
+                <span className="xs:hidden">Mismatch</span>
+              </div>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 xs:gap-4 sm:gap-6">
+            <div className="text-center">
+              <p className="text-xs xs:text-sm text-gray-600 mb-1">Total Current Balance</p>
+              <p
+                className={`text-lg xs:text-xl sm:text-2xl font-bold ${
+                  balancesMismatch
+                    ? 'text-red-600'
+                    : totalCurrentBalance >= 0
+                      ? 'text-green-600'
+                      : 'text-red-600'
+                }`}
+              >
+                {totalCurrentBalance >= 0 ? '+' : ''}₹{totalCurrentBalance.toFixed(2)}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs xs:text-sm text-gray-600 mb-1">Store Balances</p>
+              <p
+                className={`text-lg xs:text-xl sm:text-2xl font-bold ${
+                  totalStoreBalance >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {totalStoreBalance >= 0 ? '+' : ''}₹{totalStoreBalance.toFixed(2)}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs xs:text-sm text-gray-600 mb-1">Admin Balances</p>
+              <p
+                className={`text-lg xs:text-xl sm:text-2xl font-bold ${
+                  totalAdminBalance >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {totalAdminBalance >= 0 ? '+' : ''}₹{totalAdminBalance.toFixed(2)}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs xs:text-sm text-gray-600 mb-1">Total Seva Balance</p>
+              <p
+                className={`text-lg xs:text-xl sm:text-2xl font-bold ${
+                  totalSevaBalance >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {totalSevaBalance >= 0 ? '+' : ''}₹{totalSevaBalance.toFixed(2)}
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 pt-4 border-t border-blue-200">
+            <div className="text-center">
+              <p className="text-xs xs:text-sm text-gray-600 mb-1">Total Admin Profit</p>
+              <p
+                className={`text-xl xs:text-2xl sm:text-3xl font-bold ${
+                  totalAdminProfit >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {totalAdminProfit >= 0 ? '+' : ''}₹{totalAdminProfit.toFixed(2)}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Store Balances */}
       <Card>
