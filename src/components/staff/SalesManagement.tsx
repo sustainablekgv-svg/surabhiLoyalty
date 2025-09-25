@@ -290,7 +290,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
     const surabhiCoinsPart =
       (saleCalculation.surabhiCoinsUsed *
         (storeDetails.referralCommission +
-          storeDetails.surabhiCommission +
+          Math.max(storeDetails.surabhiCommission, storeDetails.cashOnlyCommission) +
           storeDetails.sevaCommission)) /
       100;
 
@@ -606,10 +606,10 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           debit: Number((saleCalculation.totalAmount - adminCutTx).toFixed(2)),
           adminCut: Number(adminCutTx.toFixed(2)),
           adminCurrentBalance: Number(
-            (-(storeDetails.storeCurrentBalance || 0) - saleAmount + adminCutTx).toFixed(2)
+            (-(storeDetails.storeCurrentBalance || 0) + saleAmount - adminCutTx).toFixed(2)
           ),
           currentBalance: Number(
-            ((storeDetails.storeCurrentBalance || 0) + saleAmount - adminCutTx).toFixed(2)
+            ((storeDetails.storeCurrentBalance || 0) - saleAmount + adminCutTx).toFixed(2)
           ),
           sevaBalance: Number((selectedCustomer.sevaBalance || 0).toFixed(2)),
           remarks: `Wallet sale for ${selectedCustomer.customerName} (${selectedCustomer.customerMobile})`,

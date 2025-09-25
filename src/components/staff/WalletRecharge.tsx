@@ -583,7 +583,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
       if (!storeDetails?.demoStore && sevaAmountEarned > 0) {
         const poolRef = doc(db, 'SevaPool', 'main');
         await updateDoc(poolRef, {
-          currentSevaBalance: increment(sevaAmountEarned),
+          currentSevaBalance: Number((sevaPool.currentSevaBalance + sevaAmountEarned).toFixed(2)),
           contributionsCurrentMonth: increment(1),
           totalContributions: increment(1),
           lastAllocatedDate: serverTimestamp(),
