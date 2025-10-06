@@ -106,13 +106,13 @@ export const useOptimizedFirestore = <T>(
             setLoading(false);
             setError(null);
           } catch (err) {
-            console.error('Error processing Firestore snapshot:', err);
+            // console.error('Error processing Firestore snapshot:', err);
             setError(err as Error);
             setLoading(false);
           }
         },
         err => {
-          console.error('Firestore listener error:', err);
+          // console.error('Firestore listener error:', err);
           setError(err as Error);
           setLoading(false);
         }
@@ -128,7 +128,7 @@ export const useOptimizedFirestore = <T>(
 
       unsubscribeRef.current = unsubscribe;
     } catch (err) {
-      console.error('Error creating Firestore listener:', err);
+      // console.error('Error creating Firestore listener:', err);
       setError(err as Error);
       setLoading(false);
     }

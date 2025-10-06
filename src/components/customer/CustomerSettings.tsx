@@ -55,14 +55,14 @@ export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSetting
           try {
             decryptedPassword = data.customerPassword ? decryptText(data.customerPassword) : '';
           } catch (error) {
-            console.error('Error decrypting password:', error);
+            // console.error('Error decrypting password:', error);
             decryptedPassword = 'Error decrypting password';
           }
 
           try {
             decryptedTpin = data.tpin ? decryptText(data.tpin) : '';
           } catch (error) {
-            console.error('Error decrypting TPIN:', error);
+            // console.error('Error decrypting TPIN:', error);
             decryptedTpin = 'Error decrypting TPIN';
           }
 
@@ -111,7 +111,7 @@ export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSetting
         try {
           storedTpin = customerData?.tpin ? decryptText(customerData.tpin) : '';
         } catch (error) {
-          console.error('Error decrypting stored TPIN:', error);
+          // console.error('Error decrypting stored TPIN:', error);
         }
 
         if (formData.tpin !== storedTpin) {
@@ -127,7 +127,7 @@ export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSetting
             ? decryptText(customerData.customerPassword)
             : '';
         } catch (error) {
-          console.error('Error decrypting stored password:', error);
+          // console.error('Error decrypting stored password:', error);
         }
 
         if (formData.customerPassword !== storedPassword) {

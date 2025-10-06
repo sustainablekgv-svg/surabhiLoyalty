@@ -109,7 +109,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
         setIsRefreshing(false);
       }, 1000);
     } catch (error) {
-      console.error('Error refreshing data:', error);
+      // console.error('Error refreshing data:', error);
       toast.error('Failed to refresh data');
       setIsRefreshing(false);
     }
@@ -134,7 +134,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       setNewPassword('');
       toast.success('Password updated successfully');
     } catch (error) {
-      console.error('Error updating password:', error);
+      // console.error('Error updating password:', error);
       toast.error('Failed to update password');
     } finally {
       setIsSaving(false);
@@ -160,7 +160,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       setNewTpin('');
       toast.success('TPIN updated successfully');
     } catch (error) {
-      console.error('Error updating TPIN:', error);
+      // console.error('Error updating TPIN:', error);
       toast.error('Failed to update TPIN');
     } finally {
       setIsSaving(false);

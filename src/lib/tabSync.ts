@@ -34,7 +34,7 @@ class TabSyncManager {
         this.channel.addEventListener('message', this.handleMessage.bind(this));
       }
     } catch (error) {
-      console.warn('BroadcastChannel not supported, tab sync disabled');
+      // console.warn('BroadcastChannel not supported, tab sync disabled');
     }
   }
 
@@ -148,7 +148,7 @@ class TabSyncManager {
     try {
       this.channel.postMessage(message);
     } catch (error) {
-      console.warn('Failed to broadcast message:', error);
+      // console.warn('Failed to broadcast message:', error);
     }
   }
 

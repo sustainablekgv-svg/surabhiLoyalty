@@ -17,18 +17,18 @@ const SECRET_KEY = (() => {
   }
 
   if (!envSecret) {
-    console.error('VITE_ENCRYPTION_SECRET environment variable is not set');
+    // console.error('VITE_ENCRYPTION_SECRET environment variable is not set');
     throw new Error('Encryption secret not configured');
   }
 
   if (envSecret === 'default-secret-key-change-in-production') {
-    console.error('Using default encryption secret in production is not secure');
+    // console.error('Using default encryption secret in production is not secure');
     throw new Error('Default encryption secret detected');
   }
 
   // Ensure key is exactly 32 characters for AES-256
   if (envSecret.length !== 32) {
-    console.error('Encryption secret must be exactly 32 characters');
+    // console.error('Encryption secret must be exactly 32 characters');
     throw new Error('Invalid encryption secret length');
   }
 
@@ -58,7 +58,7 @@ export const encryptText = (text: string): string => {
 
     return encrypted;
   } catch (error) {
-    console.error('Encryption error:', error);
+    // console.error('Encryption error:', error);
     throw new Error('Failed to encrypt text');
   }
 };
@@ -87,7 +87,7 @@ export const decryptText = (encryptedText: string): string => {
 
     return plainText;
   } catch (error) {
-    console.error('Decryption error:', error);
+    // console.error('Decryption error:', error);
     throw new Error('Failed to decrypt text');
   }
 };

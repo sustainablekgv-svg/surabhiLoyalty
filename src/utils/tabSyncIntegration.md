@@ -110,14 +110,14 @@ Use browser console to check system status:
 
 ```javascript
 // Check active tabs
-console.log('Active tabs:', tabSync.getActiveTabs());
+// console.log('Active tabs:', tabSync.getActiveTabs());
 
 // Check Firebase listeners
-console.log('Firebase listeners:', getListenerStats());
+// console.log('Firebase listeners:', getListenerStats());
 
 // Check session status
-console.log('Session valid:', sessionManager.validateSession());
-console.log('Is main tab:', sessionManager.isMainTab());
+// console.log('Session valid:', sessionManager.validateSession());
+// console.log('Is main tab:', sessionManager.isMainTab());
 ```
 
 ## Performance Benefits
@@ -145,7 +145,7 @@ The system provides built-in monitoring:
 ```typescript
 // Get listener statistics
 const stats = getListenerStats();
-console.log(`Active listeners: ${stats.activeListeners}`);
+// console.log(`Active listeners: ${stats.activeListeners}`);
 
 // Get tab information
 const tabInfo = {

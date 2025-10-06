@@ -43,7 +43,7 @@ export const AccountSettings = ({ userId }: AccountSettingsProps) => {
           setError('No customer data found');
         }
       } catch (err) {
-        console.error('Error fetching customer data:', err);
+        // console.error('Error fetching customer data:', err);
         setError('Failed to fetch customer data');
       } finally {
         setLoading(false);
@@ -72,7 +72,7 @@ export const AccountSettings = ({ userId }: AccountSettingsProps) => {
       setNewPassword('');
       toast.success('Password updated successfully');
     } catch (error) {
-      console.error('Error updating password:', error);
+      // console.error('Error updating password:', error);
       toast.error('Failed to update password');
     } finally {
       setIsSaving(false);
@@ -98,7 +98,7 @@ export const AccountSettings = ({ userId }: AccountSettingsProps) => {
       setNewTpin('');
       toast.success('TPIN updated successfully');
     } catch (error) {
-      console.error('Error updating TPIN:', error);
+      // console.error('Error updating TPIN:', error);
       toast.error('Failed to update TPIN');
     } finally {
       setIsSaving(false);
@@ -120,7 +120,7 @@ export const AccountSettings = ({ userId }: AccountSettingsProps) => {
     try {
       return decryptText(customerData.customerPassword);
     } catch (error) {
-      console.error('Failed to decrypt password:', error);
+      // console.error('Failed to decrypt password:', error);
       return 'Invalid Password';
     }
   };
@@ -130,7 +130,7 @@ export const AccountSettings = ({ userId }: AccountSettingsProps) => {
     try {
       return decryptText(customerData.tpin);
     } catch (error) {
-      console.error('Failed to decrypt TPIN:', error);
+      // console.error('Failed to decrypt TPIN:', error);
       return 'Invalid TPIN';
     }
   };

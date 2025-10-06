@@ -235,7 +235,7 @@ export const GoSevaPool = () => {
       setStoreSevaBalances(storeBalances);
       setStoreBalancesLoading(false);
     } catch (error) {
-      console.error('Error fetching store balances:', error);
+      // console.error('Error fetching store balances:', error);
       setStoreBalancesLoading(false);
     }
   };
@@ -260,7 +260,7 @@ export const GoSevaPool = () => {
         setStoreBalancesLoading(false);
       },
       error => {
-        console.error('Error listening to store balances:', error);
+        // console.error('Error listening to store balances:', error);
         setStoreBalancesLoading(false);
       }
     );

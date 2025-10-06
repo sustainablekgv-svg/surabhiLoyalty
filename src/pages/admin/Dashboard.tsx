@@ -43,7 +43,7 @@ const AdminDashboard = () => {
       navigate('/');
       toast.success('Logged out successfully');
     } catch (error) {
-      console.error('Logout error:', error);
+      // console.error('Logout error:', error);
       toast.error('Logout failed. Please try again.');
     }
   };
@@ -75,7 +75,6 @@ const AdminDashboard = () => {
           role: user.role as 'admin',
           storeLocation: user.storeLocation || '',
           staffPassword: '',
-          staffPin: '',
           staffStatus: 'active',
           staffSalesCount: 0,
           staffRechargesCount: 0,

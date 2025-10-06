@@ -43,7 +43,7 @@ export const CustomerDetails = () => {
           setError('Customer not found');
         }
       } catch (err) {
-        console.error('Error fetching customer:', err);
+        // console.error('Error fetching customer:', err);
         setError('Failed to load customer data');
       } finally {
         setLoading(false);

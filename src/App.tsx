@@ -6,7 +6,8 @@ import { AnalyticsProvider } from './components/AnalyticsProvider';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import AdminDashboard from './pages/admin/Dashboard';
 import CustomerDashboard from './pages/customer/Dashboard';
-import Index from './pages/Index';
+import LandingPage from './pages/LandingPage';
+import LoginPage from './pages/LoginPage';
 import NotFound from './pages/NotFound';
 import StaffDashboard from './pages/staff/Dashboard';
 
@@ -28,7 +29,8 @@ const App = () => (
           <BrowserRouter>
             <AnalyticsProvider>
               <Routes>
-                <Route path="/" element={<Index />} />
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/login" element={<LoginPage />} />
                 {/* <Route path="/create-admin" element={<CreateAdmin />} /> */}
                 <Route
                   path="/admin/dashboard"

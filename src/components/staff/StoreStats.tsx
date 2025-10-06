@@ -184,7 +184,7 @@ export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
         toast.success('Data refreshed successfully');
       }, 1000);
     } catch (error) {
-      console.error('Error refreshing data:', error);
+      // console.error('Error refreshing data:', error);
       toast.error('Failed to refresh data');
       setIsRefreshing(false);
     }

@@ -39,7 +39,7 @@ const setTabSessions = (sessions: Record<string, TabSession>): void => {
   try {
     localStorage.setItem(TAB_SESSIONS_KEY, JSON.stringify(sessions));
   } catch (error) {
-    console.warn('Failed to save tab sessions:', error);
+    // console.warn('Failed to save tab sessions:', error);
   }
 };
 

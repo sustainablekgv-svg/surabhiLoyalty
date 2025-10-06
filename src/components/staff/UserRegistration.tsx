@@ -15,7 +15,6 @@ import {
   where,
 } from 'firebase/firestore';
 import {
-  Calendar,
   CheckCircle,
   Eye,
   EyeOff,
@@ -35,6 +34,8 @@ import { encryptText } from '@/lib/encryption';
 import { auth, db } from '@/lib/firebase';
 import { CustomerType, UserRegistrationProps } from '@/types/types';
 import { Badge } from '../ui/badge';
+import { DatePicker } from '../ui/date-picker';
+import { format } from 'date-fns';
 
 export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationProps) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -51,7 +52,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
     referredBy: '',
     gender: '',
     isStudent: false,
-    dateOfBirth: '',
+    dateOfBirth: undefined as Date | undefined,
     tpin: '',
     district: '',
     city: '',
@@ -158,7 +159,6 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
     if (
       !formData.customerName ||
       !formData.customerMobile ||
-      !formData.customerEmail ||
       !formData.customerPassword ||
       !formData.tpin ||
       !formData.gender
@@ -174,7 +174,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
       return;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.customerEmail)) {
+    if (formData.customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.customerEmail)) {
       toast.error('Please enter a valid email address');
       return;
     }
@@ -202,16 +202,18 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
       const customersCollection = collection(db, 'Customers');
       // console.log('Customers collection initialized');
 
-      // Check if email already exists
-      const emailQuery = query(
-        customersCollection,
-        where('customerEmail', '==', formData.customerEmail)
-      );
-      const emailSnap = await getDocs(emailQuery);
-      if (!emailSnap.empty) {
-        toast.error('This email is already registered.', { id: toastId });
-        setIsLoading(false);
-        return;
+      // Check if email already exists (only if email is provided)
+      if (formData.customerEmail && formData.customerEmail.trim() !== '') {
+        const emailQuery = query(
+          customersCollection,
+          where('customerEmail', '==', formData.customerEmail)
+        );
+        const emailSnap = await getDocs(emailQuery);
+        if (!emailSnap.empty) {
+          toast.error('This email is already registered.', { id: toastId });
+          setIsLoading(false);
+          return;
+        }
       }
 
       // Check if mobile number already exists
@@ -227,10 +229,12 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
       }
 
       // Proceed with registration
-      // console.log('Creating Firebase user with email:', formData.customerEmail);
+      // Generate email for Firebase auth if not provided
+      const authEmail = formData.customerEmail || `${formData.customerMobile}@loyalty.local`;
+      // console.log('Creating Firebase user with email:', authEmail);
       const userCredential = await createUserWithEmailAndPassword(
         auth,
-        formData.customerEmail,
+        authEmail,
         formData.customerPassword
       );
       // console.log('Firebase user created successfully, UID:', userCredential.user.uid);
@@ -242,9 +246,9 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
         customerName: formData.customerName,
         gender: formData.gender,
         isStudent: formData.isStudent,
-        ...(formData.dateOfBirth.trim() !== '' && { dateOfBirth: formData.dateOfBirth }),
+        ...(formData.dateOfBirth && { dateOfBirth: format(formData.dateOfBirth, 'yyyy-MM-dd') }),
         customerMobile: formData.customerMobile,
-        customerEmail: formData.customerEmail,
+        ...(formData.customerEmail && { customerEmail: formData.customerEmail }),
         storeLocation,
         demoStore: demoStore || false,
         district: formData.district.trim() !== '' ? formData.district : null,
@@ -320,7 +324,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
         referredBy: '',
         gender: '',
         isStudent: false,
-        dateOfBirth: '',
+        dateOfBirth: undefined,
         tpin: '',
         district: '',
         city: '',
@@ -466,7 +470,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                     htmlFor="customerEmail"
                     className="block text-sm font-medium text-gray-700"
                   >
-                    Email <span className="text-red-500">*</span>
+                    Email (Optional)
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -477,7 +481,6 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                       value={formData.customerEmail}
                       onChange={e => setFormData({ ...formData, customerEmail: e.target.value })}
                       className="w-full pl-14 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      required
                     />
                   </div>
                 </div>
@@ -487,17 +490,12 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                   <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700">
                     Date of Birth (Optional)
                   </label>
-                  <div className="relative">
-                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      id="dateOfBirth"
-                      type="date"
-                      value={formData.dateOfBirth}
-                      onChange={e => setFormData({ ...formData, dateOfBirth: e.target.value })}
-                      className="w-full pl-14 pr-3 py-1.5 xs:py-2 h-10 xs:h-11 sm:h-12 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      onInvalid={e => e.preventDefault()}
-                    />
-                  </div>
+                  <DatePicker
+                    date={formData.dateOfBirth}
+                    onDateChange={(date) => setFormData({ ...formData, dateOfBirth: date })}
+                    placeholder="Select date of birth"
+                    className="w-full"
+                  />
                 </div>
 
                 {/* City Field */}

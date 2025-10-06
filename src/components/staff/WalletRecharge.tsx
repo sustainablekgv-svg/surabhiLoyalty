@@ -93,7 +93,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
   // console.log('The storeLocation is', user.storeLocation);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerType | null>(null);
-  console.log('THe selected Customer in wallet is', selectedCustomer);
+  // console.log('THe selected Customer in wallet is', selectedCustomer);
   const [rechargeAmount, setRechargeAmount] = useState('');
   // const [invoiceId, setInvoiceId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -512,7 +512,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
       };
 
       await addDoc(collection(db, 'CustomerTx'), customerTxData);
-      console.log('THe wallet recharge is', customerTxData);
+      // console.log('THe wallet recharge is', customerTxData);
       const accountTxData: Omit<AccountTxType, 'id'> = {
         createdAt: Timestamp.fromDate(new Date()),
         storeName: storeDetails.storeName,
@@ -768,7 +768,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
       setIsLoading(false);
     }
   };
-  console.log('THe customers data in line 427 is', selectedCustomer);
+  // console.log('THe customers data in line 427 is', selectedCustomer);
   const handleRechargeClick = () => {
     if (!selectedCustomer || !rechargeAmount) {
       toast.error('Please select a customer and enter recharge amount');
