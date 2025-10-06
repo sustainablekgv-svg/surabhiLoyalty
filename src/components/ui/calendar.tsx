@@ -26,9 +26,12 @@ function CustomCaption({
 }) {
   const currentYear = displayMonth.getFullYear();
   const currentMonth = displayMonth.getMonth();
+  const today = new Date();
+  const currentYearToday = today.getFullYear();
+  const currentMonthToday = today.getMonth();
 
-  // Generate year options (current year ± 100 years)
-  const yearOptions = Array.from({ length: 201 }, (_, i) => currentYear - 100 + i);
+  // Generate year options (current year and previous years only, no future years)
+  const yearOptions = Array.from({ length: 101 }, (_, i) => currentYearToday - i);
 
   // Month names
   const monthNames = [
@@ -63,7 +66,23 @@ function CustomCaption({
 
   const goToNextMonth = () => {
     const newDate = new Date(currentYear, currentMonth + 1, 1);
+
+    // Don't allow navigation to future months
+    const today = new Date();
+    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    if (newDate >= nextMonth) {
+      return;
+    }
+
     onMonthChange(newDate);
+  };
+
+  // Check if next month button should be disabled
+  const isNextMonthDisabled = () => {
+    const nextMonth = new Date(currentYear, currentMonth + 1, 1);
+    const today = new Date();
+    const firstDayOfNextMonthFromToday = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    return nextMonth >= firstDayOfNextMonthFromToday;
   };
 
   return (
@@ -86,7 +105,14 @@ function CustomCaption({
           </SelectTrigger>
           <SelectContent>
             {monthNames.map((month, index) => (
-              <SelectItem key={index} value={index.toString()}>
+              <SelectItem
+                key={index}
+                value={index.toString()}
+                disabled={
+                  // Disable future months in current year
+                  currentYear === currentYearToday && index > currentMonthToday
+                }
+              >
                 {month}
               </SelectItem>
             ))}
@@ -99,7 +125,11 @@ function CustomCaption({
           </SelectTrigger>
           <SelectContent className="max-h-[200px]">
             {yearOptions.map(year => (
-              <SelectItem key={year} value={year.toString()}>
+              <SelectItem
+                key={year}
+                value={year.toString()}
+                disabled={year > currentYearToday} // Disable future years
+              >
                 {year}
               </SelectItem>
             ))}
@@ -110,9 +140,11 @@ function CustomCaption({
       <button
         type="button"
         onClick={goToNextMonth}
+        disabled={isNextMonthDisabled()}
         className={cn(
           buttonVariants({ variant: 'outline' }),
-          'h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute right-1'
+          'h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute right-1',
+          isNextMonthDisabled() && 'opacity-30 cursor-not-allowed hover:opacity-30'
         )}
       >
         <ChevronRight className="h-4 w-4" />
@@ -125,11 +157,22 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
   const [month, setMonth] = React.useState<Date>(props.month || new Date());
 
   const handleMonthChange = (newMonth: Date) => {
+    const today = new Date();
+    const firstDayOfNextMonthFromToday = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+
+    // Don't allow navigation to future months
+    if (newMonth >= firstDayOfNextMonthFromToday) {
+      return;
+    }
+
     setMonth(newMonth);
     if (props.onMonthChange) {
       props.onMonthChange(newMonth);
     }
   };
+
+  // Disable future dates
+  const disabledDays = { after: new Date() };
 
   return (
     <DayPicker
@@ -137,6 +180,7 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
       onMonthChange={handleMonthChange}
       showOutsideDays={showOutsideDays}
       className={cn('p-3', className)}
+      disabled={disabledDays}
       classNames={{
         months: 'flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0',
         month: 'space-y-4',
@@ -164,7 +208,7 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         day_today: 'bg-accent text-accent-foreground',
         day_outside:
           'day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30',
-        day_disabled: 'text-muted-foreground opacity-50',
+        day_disabled: 'text-muted-foreground opacity-30 cursor-not-allowed',
         day_range_middle: 'aria-selected:bg-accent aria-selected:text-accent-foreground',
         day_hidden: 'invisible',
         ...classNames,
