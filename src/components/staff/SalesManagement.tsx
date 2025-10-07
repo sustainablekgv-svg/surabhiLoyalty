@@ -533,7 +533,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
       // );
 
       // Exclude seva balance calculations for demo stores
-      const sevaContribution = storeDetails?.demoStore ? 0 : saleCalculation.goSevaContribution;
+      const sevaContribution = saleCalculation.goSevaContribution;
       const newSevaBalance = Number(
         ((selectedCustomer.sevaBalance || 0) + sevaContribution).toFixed(2)
       );

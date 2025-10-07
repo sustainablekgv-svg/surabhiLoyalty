@@ -1,14 +1,4 @@
-import {
-  ArrowLeft,
-  Coins,
-  Eye,
-  EyeOff,
-  Lock,
-  Phone,
-  Shield,
-  UserCircle,
-  Users,
-} from 'lucide-react';
+import { ArrowLeft, Coins, Eye, EyeOff, Phone, Shield, UserCircle, Users } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -184,7 +174,7 @@ const LoginPage = () => {
                     Mobile Number
                   </Label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    {/* <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
                     <Input
                       id="mobile"
                       name="mobile"
@@ -204,7 +194,7 @@ const LoginPage = () => {
                     Password
                   </Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    {/* <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
                     <Input
                       id="password"
                       name="password"

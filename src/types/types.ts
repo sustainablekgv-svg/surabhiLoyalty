@@ -8,7 +8,7 @@ export interface CustomerType {
   isStudent: boolean;
   dateOfBirth?: string;
   customerMobile: string;
-  customerEmail: string;
+  customerEmail?: string;
   storeLocation: string;
   demoStore: boolean;
   district?: string;
