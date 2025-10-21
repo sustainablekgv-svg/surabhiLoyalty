@@ -2,15 +2,13 @@ import {
   ArrowRight,
   CheckCircle,
   Coins,
-  Gift,
+  ExternalLink,
   Heart,
   LogIn,
   Phone,
   Shield,
   Star,
-  TrendingUp,
   Users,
-  Wallet,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -27,7 +25,7 @@ const LandingPage = () => {
   const features = [
     {
       icon: Coins,
-      title: 'Surabhi Coins',
+      title: 'Digital Wallet',
       description:
         'Earn coins on every purchase and recharge. Build your wealth with every transaction.',
       color: 'from-purple-600 to-purple-700',
@@ -36,57 +34,31 @@ const LandingPage = () => {
     },
     {
       icon: Users,
-      title: 'Referral Rewards',
+      title: 'Surabhi Coins',
       description:
-        'Invite friends and family to earn bonus coins. Grow your network, grow your rewards.',
+        'Earn Surabhi Coins on every recharge and every amount spent - by you and your referrals! Redeem your coins easily on your next purchase - 1 Coin = ₹1.',
       color: 'from-amber-500 to-amber-600',
       bgColor: 'bg-amber-100',
       textColor: 'text-amber-600',
     },
     {
       icon: Heart,
-      title: 'Seva Pool',
+      title: 'Seva Coins',
       description:
-        'Contribute to community welfare and earn special recognition for your social impact.',
+        'Shop with purpose and info to Each Seva Coin represents your contribution - every coin equals one rupee given back to the community',
       color: 'from-red-500 to-red-600',
       bgColor: 'bg-red-100',
       textColor: 'text-red-600',
     },
-    {
-      icon: Wallet,
-      title: 'Digital Wallet',
-      description:
-        'Secure digital wallet for all your transactions. Easy recharge, instant payments.',
-      color: 'from-green-500 to-green-600',
-      bgColor: 'bg-green-100',
-      textColor: 'text-green-600',
-    },
-    {
-      icon: TrendingUp,
-      title: 'Quarterly Targets',
-      description: 'Achieve quarterly goals to unlock exclusive benefits and premium rewards.',
-      color: 'from-blue-500 to-blue-600',
-      bgColor: 'bg-blue-100',
-      textColor: 'text-blue-600',
-    },
-    {
-      icon: Gift,
-      title: 'Exclusive Benefits',
-      description:
-        'Access special discounts, early sales, and member-only offers throughout the year.',
-      color: 'from-indigo-500 to-indigo-600',
-      bgColor: 'bg-indigo-100',
-      textColor: 'text-indigo-600',
-    },
   ];
 
   const benefits = [
-    'Earn coins on every purchase',
-    'Get referral bonuses',
-    'Access exclusive discounts',
-    'Contribute to community welfare',
-    'Track your spending and savings',
-    'Secure digital transactions',
+    'Shop and redeem at all registered partner stores',
+    'No expiry on your Surabhi Coins - use them anytime!',
+    'Access top-quality products & services',
+    'One-time registration, lifetime rewards',
+    'Easy tracking of coins & referrals',
+    'Be part of a community that gives back - earn Seva Coins and support social causes',
   ];
 
   return (
@@ -97,11 +69,13 @@ const LandingPage = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="bg-gradient-to-br from-purple-600 to-amber-500 p-1.5 sm:p-2 rounded-lg">
-                <Coins className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                <img src="/kgv.png" alt="Sustainable KGV" className="h-8 sm:h-10" />
               </div>
               <div>
-                <h1 className="text-lg sm:text-xl font-bold text-gray-900">Surabhi Loyalty</h1>
-                <p className="text-xs sm:text-sm text-gray-600">Retail Business Platform</p>
+                <h1 className="text-lg sm:text-xl font-bold text-gray-900">Sustainable KGV</h1>
+                <p className="text-xs sm:text-sm text-gray-600">
+                  Connecting Krishi Goraksha Vanijyam
+                </p>
               </div>
             </div>
             <Button
@@ -121,7 +95,7 @@ const LandingPage = () => {
           <div className="mb-6">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-100 to-amber-100 px-4 py-2 rounded-full text-sm font-medium text-purple-700 mb-4">
               <Star className="h-4 w-4" />
-              Welcome to Surabhi Loyalty Program
+              Welcome to Surabhi Loyalty
             </div>
           </div>
 
@@ -134,8 +108,8 @@ const LandingPage = () => {
           </h1>
 
           <p className="text-lg sm:text-xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
-            Join our loyalty program and start earning Surabhi Coins, refer friends for bonuses, and
-            contribute to community welfare while shopping.
+            Join our Loyalty Program and start earning Surabhi Coins for every purchase - by you and
+            your referrals! Also earn Seva Coins when you shop and contribute to community welfare
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -160,11 +134,11 @@ const LandingPage = () => {
       <section className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-            Why Choose Surabhi Loyalty?
+            Why Choose Sustainable KGV?
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Experience a comprehensive loyalty program designed to reward your purchases and build
-            community connections.
+            Experience a comprehensive loyalty program designed to empower local businesses and
+            build stronger communities - together
           </p>
         </div>
 
@@ -216,6 +190,19 @@ const LandingPage = () => {
                 </div>
               ))}
             </div>
+
+            {/* For more info link */}
+            <div className="text-center mt-8">
+              <a
+                href="https://docs.google.com/document/d/1WFKRRGu4G5AWeK9ch6rvw_4dnmsaFwHO0BEu2fYK0HA/edit?usp=sharing"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200"
+              >
+                For more info, click here
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </div>
           </div>
         </div>
       </section>
@@ -223,7 +210,7 @@ const LandingPage = () => {
       {/* CTA Section */}
       <section className="container mx-auto px-4 py-16">
         <div className="bg-gradient-to-r from-purple-600 to-amber-500 rounded-2xl p-8 sm:p-12 text-center text-white">
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4">Ready to Start Earning?</h2>
+          <h2 className="text-3xl sm:text-4xl font-bold mb-4">Ready to start the journey?</h2>
           <p className="text-lg sm:text-xl mb-8 opacity-90 max-w-2xl mx-auto">
             Join thousands of satisfied customers who are already earning rewards with every
             purchase.
@@ -251,12 +238,11 @@ const LandingPage = () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold">Surabhi Loyalty</h3>
-                  <p className="text-sm text-gray-400">Retail Business Platform</p>
+                  {/* <p className="text-sm text-gray-400"> Simple - Secure - Transparent</p> */}
                 </div>
               </div>
               <p className="text-gray-400 text-sm leading-relaxed">
-                Building stronger communities through rewarding customer relationships and social
-                impact initiatives.
+                Connecting Local Businesses with Local Communities
               </p>
             </div>
 
@@ -271,7 +257,7 @@ const LandingPage = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <Shield className="h-4 w-4" />
-                  <span>Secure & Trusted Platform</span>
+                  <span>Simple - Secure - Transparent</span>
                 </div>
               </div>
             </div>
@@ -290,7 +276,7 @@ const LandingPage = () => {
 
           <div className="border-t border-gray-800 mt-8 pt-8 text-center">
             <p className="text-sm text-gray-400">
-              © {new Date().getFullYear()} Surabhi Loyalty Program. All rights reserved.
+              © {new Date().getFullYear()}Sustainable KGV. All rights reserved.
             </p>
           </div>
         </div>
