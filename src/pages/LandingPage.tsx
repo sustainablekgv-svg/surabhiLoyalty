@@ -25,9 +25,8 @@ const LandingPage = () => {
   const features = [
     {
       icon: Coins,
-      title: 'Digital Wallet',
-      description:
-        'Earn coins on every purchase and recharge. Build your wealth with every transaction.',
+      title: 'Surabhi Digital Wallet',
+      description: 'Pay using your digital wallet and earn extra Surabhi Coins!',
       color: 'from-purple-600 to-purple-700',
       bgColor: 'bg-purple-100',
       textColor: 'text-purple-600',
@@ -36,16 +35,16 @@ const LandingPage = () => {
       icon: Users,
       title: 'Surabhi Coins',
       description:
-        'Earn Surabhi Coins on every recharge and every amount spent - by you and your referrals! Redeem your coins easily on your next purchase - 1 Coin = ₹1.',
+        'Earn Surabhi Coins on every wallet recharge and every amount spent - by you and your referrals! Redeem your coins easily on your next purchase - 1 Coin = ₹1.',
       color: 'from-amber-500 to-amber-600',
       bgColor: 'bg-amber-100',
       textColor: 'text-amber-600',
     },
     {
       icon: Heart,
-      title: 'Seva Coins',
+      title: 'Seva Coins - Shop with Purpose',
       description:
-        'Shop with purpose and info to Each Seva Coin represents your contribution - every coin equals one rupee given back to the community',
+        'Each Seva Coin represents your contribution - every coin equals one rupee given back to the community',
       color: 'from-red-500 to-red-600',
       bgColor: 'bg-red-100',
       textColor: 'text-red-600',
