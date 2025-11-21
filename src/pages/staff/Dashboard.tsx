@@ -1,3 +1,4 @@
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import {
   History,
   ShoppingCart,
@@ -21,10 +22,8 @@ import { UserRegistration } from '@/components/staff/UserRegistration';
 import { WalletRecharge } from '@/components/staff/WalletRecharge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/auth-context';
-
 import { db } from '@/lib/firebase';
 import { StoreType } from '@/types/types';
-import { collection, getDocs, query, where } from 'firebase/firestore';
 
 const StoreDashboard = () => {
   const { user, logout, isLoading: authLoading } = useAuth();

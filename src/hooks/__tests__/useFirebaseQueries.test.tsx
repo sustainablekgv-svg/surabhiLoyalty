@@ -1,7 +1,7 @@
-import { cacheUtils } from '@/utils/memoryCache';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
+
 import {
   QUERY_KEYS,
   queryKeys,
@@ -18,6 +18,8 @@ import {
   useStores,
   useTransactions,
 } from '../useFirebaseQueries';
+
+import { cacheUtils } from '@/utils/memoryCache';
 
 // Mock Firebase
 jest.mock('firebase/firestore', () => ({

@@ -529,6 +529,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
         remarks: `Recharge for ${selectedCustomer.customerName} (${selectedCustomer.customerMobile})`,
         customerName: selectedCustomer.customerName,
         customerMobile: selectedCustomer.customerMobile,
+        // SPV fields not applicable to recharge; reverted
       };
 
       await addDoc(collection(db, 'AccountTx'), accountTxData);
@@ -752,6 +753,34 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
       toast.success(successMessage, {
         description: successDescription,
       });
+
+      // Send WhatsApp recharge confirmation
+      // try {
+      //   await whatsappService.sendRechargeConfirmation(
+      //     selectedCustomer.customerMobile,
+      //     selectedCustomer.customerName,
+      //     rechargeAmountNum,
+      //     surabhiCoinsEarned,
+      //     sevaAmountEarned
+      //   );
+      //   toast.success('Recharge confirmation sent via WhatsApp!');
+      // } catch (whatsappError) {
+      //   console.error('WhatsApp message failed:', whatsappError);
+
+      //   if (whatsappError instanceof WhatsAppError && whatsappError.isRecipientNotAllowed) {
+      //     // Show specific instructions for recipient not allowed error
+      //     toast.warning(
+      //       `WhatsApp confirmation could not be sent to ${selectedCustomer.customerMobile}. ` +
+      //       'Please add this number to your WhatsApp Business allowed list in Meta Developer Dashboard.',
+      //       { duration: 8000 }
+      //     );
+      //     console.warn('WhatsApp recipient not allowed instructions:');
+      //     console.warn(whatsappError.getInstructions());
+      //   } else {
+      //     // Generic WhatsApp error
+      //     toast.warning('WhatsApp confirmation could not be sent, but recharge was successful.');
+      //   }
+      // }
 
       // Reset form
       setRechargeAmount('');
@@ -1184,7 +1213,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
                     </div>
                     {rechargeAmountNum > 0 && rechargeAmountNum < 2000 && (
                       <p className="text-xs xs:text-sm text-red-500">
-                        Minimum recharge amount is ₹2,000
+                        Minimum recharge amount is ₹ 2000
                       </p>
                     )}
                   </div>

@@ -27,6 +27,8 @@ import {
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { PasswordDecryptor } from './PasswordDecryptor';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,7 +61,6 @@ import {
 import { encryptText } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { StaffType, StoreType } from '@/types/types';
-import { PasswordDecryptor } from './PasswordDecryptor';
 
 async function checkContactNumberExists(
   contactNumber: string,
@@ -137,6 +138,7 @@ export const StaffManagement = () => {
         surabhiCommission: Number(doc.data().surabhiCommission) || 0,
         sevaCommission: Number(doc.data().sevaCommission) || 0,
         cashOnlyCommission: Number(doc.data().cashOnlyCommission) || 0,
+        bonusPercentage: Number(doc.data().bonusPercentage) || 0,
         storeStatus: (doc.data().storeStatus as 'active' | 'inactive') || 'active',
         walletEnabled: Boolean(doc.data().walletEnabled !== false),
         demoStore: Boolean(doc.data().demoStore) || false,
@@ -436,6 +438,7 @@ export const StaffManagement = () => {
         storeCurrentBalance: Number(currentStore.storeCurrentBalance) || 0,
         storeSevaBalance: Number(currentStore.storeSevaBalance) || 0,
         cashOnlyCommission: Number(currentStore.cashOnlyCommission) || 0,
+        bonusPercentage: Number(currentStore.bonusPercentage) || 0,
         storeStatus: currentStore.storeStatus || 'active',
         walletEnabled: currentStore.walletEnabled !== false,
         demoStore: currentStore.demoStore || false,
@@ -457,6 +460,7 @@ export const StaffManagement = () => {
           adminCurrentBalance: 0,
           adminStoreProfit: 0,
           storeSevaBalance: 0,
+          bonusPercentage: Number(currentStore.bonusPercentage) || 0,
         });
         toast.success('Store created successfully');
       }
@@ -476,6 +480,7 @@ export const StaffManagement = () => {
         surabhiCommission: Number(doc.data().surabhiCommission) || 0,
         sevaCommission: Number(doc.data().sevaCommission) || 0,
         cashOnlyCommission: Number(doc.data().cashOnlyCommission) || 0,
+        bonusPercentage: Number(doc.data().bonusPercentage) || 0,
         storeStatus: (doc.data().storeStatus as 'active' | 'inactive') || 'active',
         walletEnabled: Boolean(doc.data().walletEnabled !== false),
         demoStore: Boolean(doc.data().demoStore) || false,
@@ -812,6 +817,7 @@ export const StaffManagement = () => {
                     <TableHead className="text-xs xs:text-sm">Surabhi %</TableHead>
                     <TableHead className="text-xs xs:text-sm">Cash Only %</TableHead>
                     <TableHead className="text-xs xs:text-sm">Seva %</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Bonus %</TableHead>
                     {/* <TableHead>Status</TableHead> */}
                     {/* <TableHead>Created</TableHead>
                   <TableHead>Updated</TableHead> */}
@@ -866,6 +872,7 @@ export const StaffManagement = () => {
                         {store.cashOnlyCommission}%
                       </TableCell>
                       <TableCell className="text-xs xs:text-sm">{store.sevaCommission}%</TableCell>
+                      <TableCell className="text-xs xs:text-sm">{store.bonusPercentage || 0}%</TableCell>
                       <TableCell>
                         <div className="flex flex-col xs:flex-row gap-1 xs:gap-2">
                           <Button
@@ -1403,6 +1410,22 @@ export const StaffManagement = () => {
                       setCurrentStore({
                         ...currentStore,
                         sevaCommission: Number(parseFloat(e.target.value).toFixed(2)) || 0,
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Bonus (%)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={currentStore?.bonusPercentage || 0}
+                    onChange={e =>
+                      setCurrentStore({
+                        ...currentStore,
+                        bonusPercentage: Number(parseFloat(e.target.value).toFixed(2)) || 0,
                       })
                     }
                   />

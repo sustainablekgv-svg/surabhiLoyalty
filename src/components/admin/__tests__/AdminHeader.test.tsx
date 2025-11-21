@@ -1,5 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
 import { AdminHeader } from '../AdminHeader';
+
 import { useToast } from '@/hooks/use-toast';
 
 // Mock Firebase

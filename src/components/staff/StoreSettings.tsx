@@ -14,8 +14,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
+import { encryptText, safeDecryptText } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
-import { decryptText, encryptText, safeDecryptText } from '@/lib/encryption';
 import { StaffType } from '@/types/types';
 
 interface StaffSettingsProps {

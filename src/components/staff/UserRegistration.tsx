@@ -1,3 +1,4 @@
+import { format } from 'date-fns';
 import {
   createUserWithEmailAndPassword,
   User as FirebaseUser,
@@ -30,12 +31,12 @@ import {
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { Badge } from '../ui/badge';
+import { DatePicker } from '../ui/date-picker';
+
 import { encryptText } from '@/lib/encryption';
 import { auth, db } from '@/lib/firebase';
 import { CustomerType, UserRegistrationProps } from '@/types/types';
-import { Badge } from '../ui/badge';
-import { DatePicker } from '../ui/date-picker';
-import { format } from 'date-fns';
 
 export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationProps) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -454,7 +455,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                     <input
                       id="customerMobile"
                       type="tel"
-                      placeholder="Enter 10-digit number"
+                      placeholder="Enter 10-digit mobile number"
                       value={formData.customerMobile}
                       onChange={e => setFormData({ ...formData, customerMobile: e.target.value })}
                       className="w-full pl-14 pr-3 py-1.5 xs:py-2 h-10 xs:h-11 sm:h-12 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
@@ -492,7 +493,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                   </label>
                   <DatePicker
                     date={formData.dateOfBirth}
-                    onDateChange={(date) => setFormData({ ...formData, dateOfBirth: date })}
+                    onDateChange={date => setFormData({ ...formData, dateOfBirth: date })}
                     placeholder="Select date of birth"
                     className="w-full"
                   />

@@ -2,7 +2,6 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-import { decryptText, encryptText } from '@/lib/encryption';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { decryptText, encryptText } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { CustomerType } from '@/types/types';
 

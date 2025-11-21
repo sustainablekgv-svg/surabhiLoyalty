@@ -35,6 +35,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       setIsLoading(true);
 
+      // Ensure a valid tab session exists before checking expiration
+      // Initialize a new session if missing; otherwise update activity timestamp
+      try {
+        const hasSession = !!sessionManager.getSessionToken();
+        if (!hasSession) {
+          sessionManager.initializeSession();
+        } else {
+          sessionManager.updateActivity();
+        }
+      } catch {
+        // If session init fails, proceed without clearing user state here
+      }
+
       const storedUser = storageUtils.getUser();
 
       if (!storedUser) {
@@ -43,7 +56,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
-      // Check if session is expired
+      // Check if session is expired (after ensuring/init session)
       if (sessionManager.isSessionExpired()) {
         // console.log('Session expired, clearing storage');
         storageUtils.clearAll();

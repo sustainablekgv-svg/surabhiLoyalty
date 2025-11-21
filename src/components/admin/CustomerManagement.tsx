@@ -1,7 +1,4 @@
 // src/components/CustomerManagement.tsx
-import { useDebouncedSearch } from '@/hooks/useDebounce';
-import { useActiveStores, useCustomers, useInvalidateQueries } from '@/hooks/useFirebaseQueries';
-import { useFilterPreferences } from '@/hooks/useLocalStorage';
 import { collection, getDocs, query, Timestamp, updateDoc, where } from 'firebase/firestore';
 import {
   Coins,
@@ -17,6 +14,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { useState } from 'react';
+
 import { PasswordDecryptor } from './PasswordDecryptor';
 
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +39,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
+import { useDebouncedSearch } from '@/hooks/useDebounce';
+import { useActiveStores, useCustomers, useInvalidateQueries } from '@/hooks/useFirebaseQueries';
+import { useFilterPreferences } from '@/hooks/useLocalStorage';
 import { decryptText, encryptText } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { CustomerType } from '@/types/types';
