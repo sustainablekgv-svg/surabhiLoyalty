@@ -4,6 +4,8 @@ import { Filter, Loader2, RefreshCw, ShoppingCart, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { Badge } from '../ui/badge';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -28,7 +30,6 @@ import { useDebouncedSearch } from '@/hooks/useDebounce';
 import { useInvalidateQueries, useTransactions } from '@/hooks/useFirebaseQueries';
 import { useFilterPreferences } from '@/hooks/useLocalStorage';
 import { TransactionsPageProps } from '@/types/types';
-import { Badge } from '../ui/badge';
 const formatTimestamp = (timestamp: Timestamp): string => {
   return format(timestamp.toDate(), 'dd MMM yyyy, hh:mm a');
 };
@@ -72,7 +73,7 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
 
       // Filter by search term (customer mobile or name)
       if (debouncedSearchTerm) {
-        let debouncedSearchTerm: string | null = null;
+        const debouncedSearchTerm: string | null = null;
         const searchLower =
           typeof debouncedSearchTerm === 'string' ? debouncedSearchTerm.toLowerCase() : '';
         const matchesSearch =
@@ -386,6 +387,9 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
                           Surabhi
                         </TableHead>
                         <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          SPV
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                           Seva
                         </TableHead>
                         <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
@@ -428,6 +432,9 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
                             </TableCell>
                             <TableCell>
                               {tx.surabhiUsed ? Number(tx.surabhiUsed).toFixed(2) : '0.00'}
+                            </TableCell>
+                            <TableCell>
+                              {tx.adjustedSpv ? Number(tx.adjustedSpv).toFixed(2) : '0.00'}
                             </TableCell>
                             <TableCell>
                               {tx.sevaEarned ? Number(tx.sevaEarned).toFixed(2) : '0.00'}

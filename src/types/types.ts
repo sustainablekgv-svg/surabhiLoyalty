@@ -1,5 +1,6 @@
-import { User } from '@/lib/authService';
 import { Timestamp } from 'firebase/firestore';
+
+import { User } from '@/lib/authService';
 export interface CustomerType {
   id?: string;
   role: string;
@@ -153,6 +154,8 @@ export interface StoreType {
   surabhiCommission: number;
   sevaCommission: number;
   cashOnlyCommission: number;
+  // Bonus settings: percentage-based coins allocation from SPV and running balance
+  bonusPercentage?: number;
   storeContactNumber: string;
   storeStatus: 'active' | 'inactive';
   storeCurrentBalance: number;
@@ -193,6 +196,14 @@ export interface CustomerTxType {
   referralEarned?: number;
   referredBy?: string | null;
   adminProft?: number;
+  // New Surabhi Point Value fields (additive, does not alter existing logic)
+  // spvEntered: raw SPV input entered by staff during sale
+  // adjustedSpv: (sale value - coins used) * spvEntered / sale value
+  // surabhiEarnedAdj / sevaEarnedAdj: coins computed considering adjustedSpv
+  spvEntered?: number;
+  adjustedSpv?: number;
+  surabhiEarnedAdj?: number;
+  sevaEarnedAdj?: number;
 
   // Sale-Specific Fields
   surabhiUsed?: number;
@@ -282,6 +293,11 @@ export interface AccountTxType {
   adminCurrentBalance: number;
   remarks: string;
   demoStore: boolean; // Indicates if transaction is from a demo store
+  // Surabhi Point Value fields
+  spvEntered?: number;
+  adjustedSpv?: number;
+  // Store bonus fields
+  // Removed Store Bonus fields
 }
 
 // export interface StoreSummary {

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
+
 import { SalesManagement } from '../SalesManagement';
 
 // Mock Firebase

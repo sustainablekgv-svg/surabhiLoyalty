@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
 import { onSnapshot, Query, DocumentReference, Unsubscribe } from 'firebase/firestore';
+import { useEffect, useRef, useState } from 'react';
+
 import { sessionManager } from '@/lib/sessionManager';
 import { tabSync } from '@/lib/tabSync';
 

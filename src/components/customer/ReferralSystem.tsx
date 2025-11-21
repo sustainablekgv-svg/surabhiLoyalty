@@ -13,11 +13,12 @@ import {
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { Badge } from '../ui/badge';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/auth-context';
 import { db } from '@/lib/firebase';
-import { Badge } from '../ui/badge';
 
 interface ReferralSystemProps {
   userMobile: string;

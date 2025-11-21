@@ -1,5 +1,6 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText } from 'lucide-react';
+
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export const TermsAndConditions = () => {
   return (
@@ -37,7 +38,7 @@ export const TermsAndConditions = () => {
               </span>
               <p className="text-sm xs:text-base text-gray-700 leading-relaxed">
                 You may refer others only if you have either recharged a minimum of ₹2,000 or
-                purchased products worth at least ₹2,000. For students, the minimum recharge
+                purchased products worth at least ₹ 999. For students, the minimum recharge
                 requirement remains ₹2,000, while the minimum product purchase requirement is
                 reduced to ₹500.
               </p>

@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
+
 import { CustomerManagement } from '../CustomerManagement';
 
 // Mock Firebase
@@ -94,16 +95,17 @@ jest.mock('@/components/ui/select', () => ({
   SelectValue: ({ placeholder, ...props }: any) => <span {...props}>{placeholder}</span>,
 }));
 
+const { updateDoc, collection, query, where, getDocs } = require('firebase/firestore');
+
+const { toast } = require('@/hooks/use-toast');
+const { useDebouncedSearch } = require('@/hooks/useDebounce');
 const {
   useCustomers,
   useActiveStores,
   useInvalidateQueries,
 } = require('@/hooks/useFirebaseQueries');
-
-const { useDebouncedSearch } = require('@/hooks/useDebounce');
 const { useFilterPreferences } = require('@/hooks/useLocalStorage');
-const { toast } = require('@/hooks/use-toast');
-const { updateDoc, collection, query, where, getDocs } = require('firebase/firestore');
+
 
 // Mock data
 const mockCustomers = [

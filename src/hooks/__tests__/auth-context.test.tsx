@@ -1,5 +1,6 @@
 import { render, renderHook, act, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
+
 import { AuthProvider, useAuth } from '../auth-context';
 
 // Mock Firebase Auth
@@ -46,7 +47,6 @@ const {
   signInWithFirebase,
   verifyUserExists,
 } = require('@/lib/authService');
-
 const { sessionManager } = require('@/lib/sessionManager');
 const { storageUtils } = require('@/lib/storage');
 

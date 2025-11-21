@@ -1,7 +1,8 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { StaffManagement } from '../StaffManagement';
 import { toast } from 'sonner';
+
+import { StaffManagement } from '../StaffManagement';
+
 
 // Mock Firebase
 jest.mock('firebase/firestore', () => ({

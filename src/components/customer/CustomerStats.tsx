@@ -29,6 +29,8 @@ import {
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { Badge } from '../ui/badge';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -36,7 +38,6 @@ import { useAuth } from '@/hooks/auth-context';
 import { decryptText, encryptText } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { ActivityType, CustomerType } from '@/types/types';
-import { Badge } from '../ui/badge';
 interface CustomerStatsProps {
   userId: string;
 }

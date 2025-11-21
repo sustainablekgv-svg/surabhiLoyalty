@@ -13,6 +13,8 @@ import {
 import { RefreshCw, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { Badge } from '../ui/badge';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -34,7 +36,6 @@ import {
 import { useAuth } from '@/hooks/auth-context';
 import { db } from '@/lib/firebase';
 import { CustomerTxType } from '@/types/types';
-import { Badge } from '../ui/badge';
 
 interface TransactionHistoryProps {
   userId: string;
@@ -291,6 +292,9 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
                     Surabhi Balance
                   </TableHead>
                   <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
+                    SPV
+                  </TableHead>
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Seva Credit
                   </TableHead>
                   <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
@@ -335,6 +339,9 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
                       </TableCell>
                       <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right font-medium">
                         {Number(tx.surabhiBalance).toFixed(2)}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
+                        {tx.adjustedSpv ? Number(tx.adjustedSpv).toFixed(2) : '-'}
                       </TableCell>
                       <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
                         {tx.sevaCredit ? Number(tx.sevaCredit).toFixed(2) : '-'}

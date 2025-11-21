@@ -781,6 +781,9 @@ const Accounts = () => {
                       Amount
                     </TableHead>
                     <TableHead className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
+                      SPV
+                    </TableHead>
+                    <TableHead className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
                       Credit
                     </TableHead>
                     <TableHead className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
@@ -842,6 +845,9 @@ const Accounts = () => {
                         {/* </span> */}
                       </TableCell>
                       <TableCell className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                        {tx.adjustedSpv ? Number(tx.adjustedSpv).toFixed(2) : '0.00'}
+                      </TableCell>
+                      <TableCell className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
                         <span className={tx.debit >= 0 ? 'text-green-600' : 'text-red-600'}>
                           {tx.debit >= 0 ? '+' : ''}₹{Math.abs(tx.debit).toFixed(2)}
                         </span>
@@ -859,6 +865,7 @@ const Accounts = () => {
                           ? `₹${Number(tx.adminProfit).toFixed(2)}`
                           : '-'}
                       </TableCell>
+                      {/* Removed Store Bonus Coins column */}
                       <TableCell className="text-right font-medium text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
                         ₹{tx?.currentBalance?.toFixed(2) || '0.00'}
                       </TableCell>
