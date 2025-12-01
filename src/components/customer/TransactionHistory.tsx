@@ -273,15 +273,15 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
                   <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium">
                     Location
                   </TableHead>
-                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
+                  {/* <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Wallet Credit
-                  </TableHead>
-                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
+                  </TableHead> */}
+                  {/* <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Wallet Debit
-                  </TableHead>
-                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
+                  </TableHead> */}
+                  {/* <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Wallet Balance
-                  </TableHead>
+                  </TableHead> */}
                   <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Surabhi Credit
                   </TableHead>
@@ -331,15 +331,15 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
                       <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right font-medium">
                         {formatCurrency(tx.walletBalance)}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
+                      {/* <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
                         {tx.surabhiCredit ? Number(tx.surabhiCredit).toFixed(2) : '-'}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
+                      </TableCell> */}
+                      {/* <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
                         {tx.surabhiDebit ? Number(tx.surabhiDebit).toFixed(2) : '-'}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right font-medium">
+                      </TableCell> */}
+                      {/* <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right font-medium">
                         {Number(tx.surabhiBalance).toFixed(2)}
-                      </TableCell>
+                      </TableCell> */}
                       <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
                         {tx.adjustedSpv ? Number(tx.adjustedSpv).toFixed(2) : '-'}
                       </TableCell>

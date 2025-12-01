@@ -267,6 +267,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
         // walletDebit: 0,
         walletBalanceCurrentMonth: 0,
         cumTotal: 0,
+        surabhiTotal: 0,
         surabhiBalance: 0,
         surabhiCredit: 0,
         surabhiDebit: 0,

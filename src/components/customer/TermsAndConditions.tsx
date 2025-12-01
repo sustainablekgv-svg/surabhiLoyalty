@@ -14,39 +14,36 @@ export const TermsAndConditions = () => {
       <CardContent className="px-3 xs:px-4 sm:px-6 pb-4 xs:pb-5 sm:pb-6 pt-0">
         <div className="space-y-4 xs:space-y-5 sm:space-y-6">
           <div className="space-y-3 xs:space-y-4">
-            <div className="flex items-start gap-3">
+            {/* <div className="flex items-start gap-3">
               <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
                 1
               </span>
               <p className="text-sm xs:text-base text-gray-700 leading-relaxed">
                 Each recharge transaction must have a minimum value of ₹2,000
               </p>
-            </div>
+            </div> */}
 
-            <div className="flex items-start gap-3">
+            {/* <div className="flex items-start gap-3">
               <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
                 2
               </span>
               <p className="text-sm xs:text-base text-gray-700 leading-relaxed">
                 Wallet recharge and redemption are only available at your registered store location.
               </p>
-            </div>
+            </div> */}
 
             <div className="flex items-start gap-3">
               <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
-                3
+                1
               </span>
               <p className="text-sm xs:text-base text-gray-700 leading-relaxed">
-                You may refer others only if you have either recharged a minimum of ₹2,000 or
-                purchased products worth at least ₹ 999. For students, the minimum recharge
-                requirement remains ₹2,000, while the minimum product purchase requirement is
-                reduced to ₹500.
+                You may refer others only if you have purchased aleast ₹ 999. For students, the product purchase requirement is reduced to ₹500.
               </p>
             </div>
 
             <div className="flex items-start gap-3">
               <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
-                4
+                2
               </span>
               <p className="text-sm xs:text-base text-gray-700 leading-relaxed">
                 Coins can be redeemed from the quarter of joining without any target. From the
@@ -57,7 +54,7 @@ export const TermsAndConditions = () => {
 
             <div className="flex items-start gap-3">
               <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
-                5
+                3
               </span>
               <p className="text-sm xs:text-base text-gray-700 leading-relaxed">
                 The company reserves the right to utilize Seva Coins, in full or in part, for social
@@ -67,7 +64,7 @@ export const TermsAndConditions = () => {
 
             <div className="flex items-start gap-3">
               <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
-                6
+                4
               </span>
               <p className="text-sm xs:text-base text-gray-700 leading-relaxed">
                 The company reserves the right to modify the Surabhi Loyalty Program at its
@@ -77,7 +74,7 @@ export const TermsAndConditions = () => {
 
             <div className="flex items-start gap-3">
               <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
-                7
+                5
               </span>
               <p className="text-sm xs:text-base text-gray-700 leading-relaxed">
                 Misuse of the program or violation of these terms may result in suspension of coin
@@ -87,7 +84,7 @@ export const TermsAndConditions = () => {
 
             <div className="flex items-start gap-3">
               <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
-                8
+                6
               </span>
               <p className="text-sm xs:text-base text-gray-700 leading-relaxed">
                 Decisions made by the company regarding eligibility, redemption, or disputes shall

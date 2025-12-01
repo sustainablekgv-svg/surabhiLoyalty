@@ -1,26 +1,26 @@
 import {
-  addDoc,
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  increment,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  Timestamp,
-  updateDoc,
-  where,
+    addDoc,
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    increment,
+    onSnapshot,
+    query,
+    serverTimestamp,
+    Timestamp,
+    updateDoc,
+    where,
 } from 'firebase/firestore';
 import {
-  Calculator,
-  CheckCircle,
-  HandCoins,
-  Loader2,
-  Phone,
-  RefreshCw,
-  Search,
-  ShoppingCart,
+    Calculator,
+    CheckCircle,
+    HandCoins,
+    Loader2,
+    Phone,
+    RefreshCw,
+    Search,
+    ShoppingCart,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -31,24 +31,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/auth-context';
 import { decryptText, isEncrypted } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import {
-  AccountTxType,
-  ActivityType,
-  CustomerTxType,
-  CustomerType,
-  SalesManagementProps,
-  SevaPoolType,
-  StaffType,
-  StoreType,
+    AccountTxType,
+    ActivityType,
+    CustomerTxType,
+    CustomerType,
+    SalesManagementProps,
+    SevaPoolType,
+    StaffType,
+    StoreType,
 } from '@/types/types';
 import { hasMetQuarterlyTarget, updateCustomerQuarterlyTarget } from '@/utils/quarterlyTargets';
 
@@ -565,6 +565,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
       const newSurabhiCoins = customRound(
         selectedCustomer.surabhiBalance - saleCalculation.surabhiCoinsUsed + surabhiEarnedAdj
       );
+      // const newSurbhiTotal = customRound((selectedCustomer.surbhiTotal || 0) + surabhiEarnedAdj);
       // console.log('Is it comig here in line 261', newWalletBalance, newSurabhiCoins);
       // Update customer balances
       const customerDoc = querySnapshot.docs[0];
@@ -607,6 +608,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         cumTotal: newCumTotal,
         walletBalance: newWalletBalance,
         surabhiBalance: newSurabhiCoins,
+        surabhiTotal: increment(surabhiEarnedAdj),
         sevaBalance: newSevaBalance,
         sevaTotal: newSevaTotal,
         lastTransactionDate: serverTimestamp(),
@@ -653,6 +655,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             await updateDoc(referrerDoc.ref, {
               referralSurabhi: increment(incrementAmount),
               surabhiBalance: increment(incrementAmount),
+              surabhiTotal: increment(incrementAmount),
             });
 
             // Add activity record for referrer
