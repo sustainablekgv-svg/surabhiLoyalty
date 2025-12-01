@@ -437,6 +437,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
       const updateData: any = {
         walletBalance: increment(rechargeAmountNum),
         surabhiBalance: increment(surabhiCoinsEarned),
+        surabhiTotal: increment(surabhiCoinsEarned),
         sevaBalance: increment(sevaAmountEarned),
         sevaTotal: increment(sevaAmountEarned),
         lastTransactionDate: Timestamp.fromDate(new Date()),
@@ -609,6 +610,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
           // Update referrer's Surabhi balance without modifying referredUsers
           await updateDoc(referrerDoc.ref, {
             surabhiBalance: increment(referralAmount),
+            surabhiTotal: increment(referralAmount),
             surabhiReferral: increment(referralAmount),
           });
 

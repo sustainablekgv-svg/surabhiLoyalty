@@ -23,19 +23,19 @@ const LandingPage = () => {
   };
 
   const features = [
-    {
-      icon: Coins,
-      title: 'Surabhi Digital Wallet',
-      description: 'Pay using your digital wallet and earn extra Surabhi Coins!',
-      color: 'from-purple-600 to-purple-700',
-      bgColor: 'bg-purple-100',
-      textColor: 'text-purple-600',
-    },
+    // {
+    //   icon: Coins,
+    //   title: 'Surabhi Digital Wallet',
+    //   description: 'Pay using your digital wallet and earn extra Surabhi Coins!',
+    //   color: 'from-purple-600 to-purple-700',
+    //   bgColor: 'bg-purple-100',
+    //   textColor: 'text-purple-600',
+    // },
     {
       icon: Users,
       title: 'Surabhi Coins',
       description:
-        'Earn Surabhi Coins on every wallet recharge and every amount spent - by you and your referrals! Redeem your coins easily on your next purchase - 1 Coin = ₹1.',
+        'Earn Surabhi Coins on every amount spent - by you and your referrals! Redeem your coins easily on your next purchase - 1 Coin = ₹1.',
       color: 'from-amber-500 to-amber-600',
       bgColor: 'bg-amber-100',
       textColor: 'text-amber-600',
@@ -267,7 +267,6 @@ const LandingPage = () => {
                 <li>• Surabhi Coins Rewards</li>
                 <li>• Referral System</li>
                 <li>• Seva Pool Contributions</li>
-                <li>• Digital Wallet</li>
                 <li>• Quarterly Targets</li>
               </ul>
             </div>

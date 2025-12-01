@@ -257,9 +257,9 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
 
   const stats = [
     {
-      title: 'Wallet Balance',
-      value: `₹${customerData.walletBalance.toFixed(2)}`,
-      description: 'Available for purchases at registered store only',
+      title: 'Lifetime Surabhi Coins',
+      value: `₹${(customerData.surabhiTotal || 0).toFixed(2)}`,
+      description: 'Cumulative Surabhi Coins',
       icon: Wallet,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
@@ -267,7 +267,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
     },
     {
       title: 'Surabhi Coins',
-      value: customerData.surabhiBalance.toFixed(2),
+      value: `₹${(customerData.surabhiBalance || 0).toFixed(2)}`,
       description: 'Available for purchases',
       icon: Coins,
       color: 'text-amber-600',
@@ -327,14 +327,14 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                   <h2 className="text-sm xs:text-base sm:text-lg font-bold break-words">
                     {customerData.customerName}
                   </h2>
-                  <p className="text-[9px] xs:text-[10px] sm:text-xs text-gray-600">
+                  <div className="text-[9px] xs:text-[10px] sm:text-xs text-gray-600">
                     Member since {memberSince}
                     {customerData.demoStore && (
                       <Badge className="bg-black text-white text-[6px] ml-2  xs:text-[7px] sm:text-[8px] rounded-full px-1 xs:px-1.5 sm:px-2">
                         Demo Customer
                       </Badge>
                     )}
-                  </p>
+                  </div>
                 </div>
               </div>
               <Button
@@ -605,9 +605,9 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                     Recharge Wallet
                   </h3>
                 </div>
-                <p className="text-[10px] sm:text-xs text-purple-700 mb-1 sm:mb-1.5">
+                {/* <p className="text-[10px] sm:text-xs text-purple-700 mb-1 sm:mb-1.5">
                   Earn Surabhi Coins on every recharge
-                </p>
+                </p> */}
                 <div className="text-[9px] sm:text-[10px] text-purple-600">
                   Visit store to recharge
                 </div>
