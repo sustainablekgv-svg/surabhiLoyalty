@@ -23,14 +23,7 @@ const LandingPage = () => {
   };
 
   const features = [
-    // {
-    //   icon: Coins,
-    //   title: 'Surabhi Digital Wallet',
-    //   description: 'Pay using your digital wallet and earn extra Surabhi Coins!',
-    //   color: 'from-purple-600 to-purple-700',
-    //   bgColor: 'bg-purple-100',
-    //   textColor: 'text-purple-600',
-    // },
+
     {
       icon: Users,
       title: 'Surabhi Coins',
@@ -73,7 +66,7 @@ const LandingPage = () => {
               <div>
                 <h1 className="text-lg sm:text-xl font-bold text-gray-900">Sustainable KGV</h1>
                 <p className="text-xs sm:text-sm text-gray-600">
-                  Connecting Krishi Goraksha Vanijyam
+                  Connecting Krishi Goraksya Vanijyam
                 </p>
               </div>
             </div>
@@ -94,7 +87,7 @@ const LandingPage = () => {
           <div className="mb-6">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-100 to-amber-100 px-4 py-2 rounded-full text-sm font-medium text-purple-700 mb-4">
               <Star className="h-4 w-4" />
-              Welcome to Surabhi Loyalty
+              Welcome to SLL -  Surabhi Loyalty League
             </div>
           </div>
 
@@ -141,7 +134,7 @@ const LandingPage = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 lg:gap-8">
           {features.map((feature, index) => (
             <Card
               key={index}

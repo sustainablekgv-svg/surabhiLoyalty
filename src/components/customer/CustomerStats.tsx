@@ -258,7 +258,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
   const stats = [
     {
       title: 'Lifetime Surabhi Coins',
-      value: `₹${(customerData.surabhiTotal || 0).toFixed(2)}`,
+      value: `₹${(customerData.surbhiTotal || 0).toFixed(2)}`,
       description: 'Cumulative Surabhi Coins',
       icon: Wallet,
       color: 'text-purple-600',
@@ -597,14 +597,14 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
           <CardContent className="px-2 xs:px-3 sm:px-4 pb-2 xs:pb-3 sm:pb-4 pt-0">
             <div className="space-y-1.5 xs:space-y-2 sm:space-y-3">
               <div className="p-2 sm:p-3 bg-gradient-to-r from-purple-50 to-amber-50 rounded-lg border border-purple-200">
-                <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5">
+                {/* <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5">
                   <div className="bg-purple-100 p-1 sm:p-1.5 rounded-full">
                     <Wallet className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-purple-600" />
                   </div>
                   <h3 className="font-medium text-xs sm:text-sm text-purple-900">
                     Recharge Wallet
                   </h3>
-                </div>
+                </div> */}
                 {/* <p className="text-[10px] sm:text-xs text-purple-700 mb-1 sm:mb-1.5">
                   Earn Surabhi Coins on every recharge
                 </p> */}
@@ -634,7 +634,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                   <h3 className="font-medium text-xs sm:text-sm text-green-900">Refer Friends</h3>
                 </div>
                 <p className="text-[10px] sm:text-xs text-green-700 mb-1 sm:mb-1.5">
-                  Earn surabhi coins on referral recharge and amount spent by referral during sales.
+                  Earn surabhi coins on amount spent by referral during sales.
                 </p>
                 <div className="text-[9px] sm:text-[10px] text-green-600">
                   Ask friends to use your number when signing up
@@ -651,7 +651,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                   </h3>
                 </div>
                 <p className="text-[10px] sm:text-xs text-purple-700 mb-1 sm:mb-1.5">
-                  Earn Seva Coins on every recharge and amount spent during sales
+                  Earn Seva Coins on amount spent during sales
                 </p>
                 <div className="text-[9px] sm:text-[10px] text-purple-600">Help the Community</div>
               </div>

@@ -1,31 +1,31 @@
 import {
-  addDoc,
-  collection,
-  doc,
-  FieldValue,
-  getDocs,
-  increment,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  Timestamp,
-  updateDoc,
-  where,
+    addDoc,
+    collection,
+    doc,
+    FieldValue,
+    getDocs,
+    increment,
+    onSnapshot,
+    query,
+    serverTimestamp,
+    Timestamp,
+    updateDoc,
+    where,
 } from 'firebase/firestore';
 import {
-  AlertTriangle,
-  CheckCircle,
-  Coins,
-  DollarSign,
-  HandCoins,
-  Loader2,
-  Mail,
-  MapPin,
-  Phone,
-  RefreshCw,
-  Search,
-  Shield,
-  Wallet,
+    AlertTriangle,
+    CheckCircle,
+    Coins,
+    DollarSign,
+    HandCoins,
+    Loader2,
+    Mail,
+    MapPin,
+    Phone,
+    RefreshCw,
+    Search,
+    Shield,
+    Wallet,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -40,14 +40,14 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/auth-context';
 import { db } from '@/lib/firebase';
 import {
-  AccountTxType,
-  ActivityType,
-  CustomerTxType,
-  CustomerType,
-  SevaPoolType,
-  StaffType,
-  StoreType,
-  WalletRechargeProps,
+    AccountTxType,
+    ActivityType,
+    CustomerTxType,
+    CustomerType,
+    SevaPoolType,
+    StaffType,
+    StoreType,
+    WalletRechargeProps,
 } from '@/types/types';
 
 // function getCurrentQuarterStart(): Date {
@@ -437,7 +437,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
       const updateData: any = {
         walletBalance: increment(rechargeAmountNum),
         surabhiBalance: increment(surabhiCoinsEarned),
-        surabhiTotal: increment(surabhiCoinsEarned),
+        surbhiTotal: increment(surabhiCoinsEarned),
         sevaBalance: increment(sevaAmountEarned),
         sevaTotal: increment(sevaAmountEarned),
         lastTransactionDate: Timestamp.fromDate(new Date()),
@@ -610,7 +610,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
           // Update referrer's Surabhi balance without modifying referredUsers
           await updateDoc(referrerDoc.ref, {
             surabhiBalance: increment(referralAmount),
-            surabhiTotal: increment(referralAmount),
+            surbhiTotal: increment(referralAmount),
             surabhiReferral: increment(referralAmount),
           });
 

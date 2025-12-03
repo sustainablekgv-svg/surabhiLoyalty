@@ -77,8 +77,7 @@ export const TermsAndConditions = () => {
                 5
               </span>
               <p className="text-sm xs:text-base text-gray-700 leading-relaxed">
-                Misuse of the program or violation of these terms may result in suspension of coin
-                benefits.
+                Misuse of the program or violation of these terms may result in suspension of membership.
               </p>
             </div>
 

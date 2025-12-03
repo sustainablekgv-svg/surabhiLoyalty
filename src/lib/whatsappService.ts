@@ -133,7 +133,7 @@ class WhatsAppService {
         to: formattedPhone,
         type: 'text',
         text: {
-          body: `🎉 Welcome to Surabhi Loyalty Program, ${userName}! 
+          body: `🎉 Welcome to SLL -  Surabhi Loyalty League Program, ${userName}! 
 
 Thank you for joining our loyalty program. You can now:
 • Earn points on every purchase
