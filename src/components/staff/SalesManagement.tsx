@@ -107,7 +107,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerType | null>(null);
   const [isRegisteredAtSameStore, setIsRegisteredAtSameStore] = useState<boolean>(false);
   const [saleAmount, setSaleAmount] = useState<number | undefined>(undefined);
-  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'cash' | 'mixed'>('wallet');
+  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'cash' | 'mixed'>('cash');
   const [surabhiCoinsToUse, setSurabhiCoinsToUse] = useState<number>(0);
   // New SPV input field (additive)
   const [spvEntered, setSpvEntered] = useState<number>(1);
@@ -608,7 +608,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         cumTotal: newCumTotal,
         walletBalance: newWalletBalance,
         surabhiBalance: newSurabhiCoins,
-        surabhiTotal: increment(surabhiEarnedAdj),
+        surbhiTotal: increment(surabhiEarnedAdj),
         sevaBalance: newSevaBalance,
         sevaTotal: newSevaTotal,
         lastTransactionDate: serverTimestamp(),
@@ -655,7 +655,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             await updateDoc(referrerDoc.ref, {
               referralSurabhi: increment(incrementAmount),
               surabhiBalance: increment(incrementAmount),
-              surabhiTotal: increment(incrementAmount),
+              surbhiTotal: increment(incrementAmount),
             });
 
             // Add activity record for referrer

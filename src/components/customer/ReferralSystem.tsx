@@ -304,7 +304,7 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
                     3
                   </div>
                   <p>
-                    You earn Surabhi coins on referrals recharges and amount spent by them during
+                    You earn Surabhi coins on amount spent by them during
                     sales
                   </p>
                 </div>

@@ -41,7 +41,7 @@ export interface CustomerType {
   coinsFrozen: boolean;
   currentQuarterStart: Timestamp | null;
   cumTotal: number;
-  surabhiTotal: number;
+  surbhiTotal: number;
   joinedDate: Timestamp;
   quartersPast: number;
   cummulativeTarget: number;

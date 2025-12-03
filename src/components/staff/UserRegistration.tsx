@@ -267,7 +267,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
         // walletDebit: 0,
         walletBalanceCurrentMonth: 0,
         cumTotal: 0,
-        surabhiTotal: 0,
+        surbhiTotal: 0,
         surabhiBalance: 0,
         surabhiCredit: 0,
         surabhiDebit: 0,
@@ -803,7 +803,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                 <div>
                   <h3 className="font-medium text-green-900">Refer Friends</h3>
                   <p className="text-sm text-green-700">
-                    Earn surabhi coins on referral recharge and amount spent by referral during
+                    Earn surabhi coins on amount spent by referral during
                     sales.
                   </p>
                   <p className="text-xs text-green-700">
@@ -820,7 +820,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                 <div>
                   <h3 className="font-medium text-purple-900">Seva Contribution</h3>
                   <p className="text-sm text-purple-700">
-                    Earn Seva Coins on every recharge and amount spent during sales
+                    Earn Seva Coins on amount spent during sales
                   </p>
                   <p className="text-xs text-purple-700">Help the Community</p>
                 </div>
