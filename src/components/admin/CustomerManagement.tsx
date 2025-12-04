@@ -1,17 +1,17 @@
 // src/components/CustomerManagement.tsx
 import { collection, getDocs, query, Timestamp, updateDoc, where } from 'firebase/firestore';
 import {
-  Coins,
-  Edit,
-  Eye,
-  Filter,
-  Key,
-  Loader2,
-  MapPin,
-  Phone,
-  RefreshCw,
-  Users,
-  Wallet,
+    Coins,
+    Edit,
+    Eye,
+    Filter,
+    Key,
+    Loader2,
+    MapPin,
+    Phone,
+    RefreshCw,
+    Users,
+    Wallet,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -21,22 +21,22 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { useDebouncedSearch } from '@/hooks/useDebounce';
@@ -93,7 +93,7 @@ export const CustomerManagement = () => {
     const matchesSearch =
       customer.customerName.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
       customer.customerMobile.includes(debouncedSearchTerm) ||
-      customer.customerEmail.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
+      (customer.customerEmail && customer.customerEmail.toLowerCase().includes(debouncedSearchTerm.toLowerCase()));
 
     const matchesStore = filterStore === 'all' || customer.storeLocation === filterStore;
 

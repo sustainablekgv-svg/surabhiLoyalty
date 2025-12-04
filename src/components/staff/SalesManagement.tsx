@@ -1,26 +1,26 @@
 import {
-    addDoc,
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    increment,
-    onSnapshot,
-    query,
-    serverTimestamp,
-    Timestamp,
-    updateDoc,
-    where,
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  increment,
+  onSnapshot,
+  query,
+  serverTimestamp,
+  Timestamp,
+  updateDoc,
+  where,
 } from 'firebase/firestore';
 import {
-    Calculator,
-    CheckCircle,
-    HandCoins,
-    Loader2,
-    Phone,
-    RefreshCw,
-    Search,
-    ShoppingCart,
+  Calculator,
+  CheckCircle,
+  HandCoins,
+  Loader2,
+  Phone,
+  RefreshCw,
+  Search,
+  ShoppingCart,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -31,24 +31,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/auth-context';
 import { decryptText, isEncrypted } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import {
-    AccountTxType,
-    ActivityType,
-    CustomerTxType,
-    CustomerType,
-    SalesManagementProps,
-    SevaPoolType,
-    StaffType,
-    StoreType,
+  AccountTxType,
+  ActivityType,
+  CustomerTxType,
+  CustomerType,
+  SalesManagementProps,
+  SevaPoolType,
+  StaffType,
+  StoreType,
 } from '@/types/types';
 import { hasMetQuarterlyTarget, updateCustomerQuarterlyTarget } from '@/utils/quarterlyTargets';
 
@@ -554,11 +554,9 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         paymentMethod === 'cash' || paymentMethod === 'mixed'
           ? storeDetails.cashOnlyCommission
           : storeDetails.surabhiCommission;
-      const surabhiEarnedAdj = Number((adjustedSpv * (surabhiCommissionForEarn / 100)).toFixed(2));
-      const sevaEarnedAdj = Number((adjustedSpv * (storeDetails.sevaCommission / 100)).toFixed(2));
-      const referralEarnedAdj = Number(
-        (adjustedSpv * (storeDetails.referralCommission / 100)).toFixed(2)
-      );
+      const surabhiEarnedAdj = adjustedSpv * (surabhiCommissionForEarn / 100);
+      const sevaEarnedAdj = adjustedSpv * (storeDetails.sevaCommission / 100);
+      const referralEarnedAdj = adjustedSpv * (storeDetails.referralCommission / 100);
       const newWalletBalance = customRound(
         selectedCustomer.walletBalance - saleCalculation.walletDeduction
       );
@@ -653,7 +651,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
 
             // Update referrer's data - only update Surabhi balance without modifying referredUsers
             await updateDoc(referrerDoc.ref, {
-              referralSurabhi: increment(incrementAmount),
+              surabhiReferral: increment(incrementAmount),
               surabhiBalance: increment(incrementAmount),
               surbhiTotal: increment(incrementAmount),
             });
@@ -1315,7 +1313,8 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             // Update referrer's balances - only update Surabhi balance without modifying referredUsers
             await updateDoc(referrerRef, {
               surabhiBalance: increment(referralAmount),
-              referralSurabhi: increment(referralAmount),
+              surabhiReferral: increment(referralAmount),
+              surbhiTotal: increment(referralAmount),
               updatedAt: serverTimestamp(),
             });
 

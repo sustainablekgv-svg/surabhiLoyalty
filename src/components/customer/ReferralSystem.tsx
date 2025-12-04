@@ -57,7 +57,7 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
       if (docSnap.exists()) {
         const customerData = docSnap.data();
         setUserData(customerData);
-        setReferralIncome(customerData.referralSurabhi || 0);
+        setReferralIncome(customerData.surabhiReferral || 0);
 
         // Fetch referred customers using the data directly from docSnap
         const referredCustomersQuery = query(
