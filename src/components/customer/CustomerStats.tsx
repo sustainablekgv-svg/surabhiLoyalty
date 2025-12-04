@@ -596,7 +596,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
           </CardHeader>
           <CardContent className="px-2 xs:px-3 sm:px-4 pb-2 xs:pb-3 sm:pb-4 pt-0">
             <div className="space-y-1.5 xs:space-y-2 sm:space-y-3">
-              <div className="p-2 sm:p-3 bg-gradient-to-r from-purple-50 to-amber-50 rounded-lg border border-purple-200">
+              {/* <div className="p-2 sm:p-3 bg-gradient-to-r from-purple-50 to-amber-50 rounded-lg border border-purple-200"> */}
                 {/* <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5">
                   <div className="bg-purple-100 p-1 sm:p-1.5 rounded-full">
                     <Wallet className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-purple-600" />
@@ -608,10 +608,10 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                 {/* <p className="text-[10px] sm:text-xs text-purple-700 mb-1 sm:mb-1.5">
                   Earn Surabhi Coins on every recharge
                 </p> */}
-                <div className="text-[9px] sm:text-[10px] text-purple-600">
+                {/* <div className="text-[9px] sm:text-[10px] text-purple-600">
                   Visit store to recharge
-                </div>
-              </div>
+                </div> */}
+              {/* </div> */}
 
               <div className="p-2 sm:p-3 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-purple-200">
                 <div className="flex items-center gap-1.5 sm:gap-2 mb-1 sm:mb-1.5">
