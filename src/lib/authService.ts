@@ -1,18 +1,9 @@
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 
-import { safeDecryptText, isEncrypted } from '@/lib/encryption';
+import { isEncrypted, safeDecryptText } from '@/lib/encryption';
 import { auth, db } from '@/lib/firebase';
-export interface User {
-  id: string;
-  mobile: string;
-  demoStore?: boolean;
-  role: 'admin' | 'staff' | 'customer';
-  name?: string;
-  email?: string;
-  storeLocation?: string;
-  createdAt: string;
-}
+import { CustomerType, StaffType, User } from '@/types/types';
 
 export const getCustomerByMobile = async (
   mobile: string,
@@ -25,7 +16,7 @@ export const getCustomerByMobile = async (
 
     if (!querySnapshot.empty) {
       const customerDoc = querySnapshot.docs[0];
-      const customerData = customerDoc.data();
+      const customerData = customerDoc.data() as CustomerType;
 
       // Compare password with stored password (encrypted or plain)
       if (customerData.customerPassword) {
@@ -42,13 +33,9 @@ export const getCustomerByMobile = async (
 
         if (passwordMatch) {
           return {
+            ...customerData,
             id: customerDoc.id,
-            mobile: customerData.mobile,
-            role: 'customer',
-            name: customerData.name,
-            email: customerData.email,
-            createdAt: customerData.createdAt,
-            demoStore: customerData.demoStore,
+            role: 'customer', // Ensure role is set
           };
         }
       }
@@ -77,7 +64,7 @@ export const getStaffByMobile = async (
 
     // Get the first matching document (assuming mobile is unique)
     const doc = querySnapshot.docs[0];
-    const staffData = doc.data();
+    const staffData = doc.data() as StaffType;
     // console.log('The line 36 is', staffData);
     // Compare password with stored password (encrypted or plain)
     if (staffData.staffPassword) {
@@ -126,18 +113,10 @@ export const getStaffByMobile = async (
     }
 
     // Map to User interface
-    const user: User = {
+    return {
+      ...staffData,
       id: doc.id,
-      mobile: staffData.staffMobile,
-      demoStore: staffData.demoStore,
-      role: staffData.role,
-      name: staffData.staffName,
-      email: staffData.staffEmail,
-      storeLocation: staffData.storeLocation,
-      createdAt: staffData.staffCreatedAt?.toDate().toISOString() || new Date().toISOString(),
     };
-
-    return user;
   } catch (error) {
     // console.error('Error fetching staff:', error);
     throw error; // Re-throw to preserve error message

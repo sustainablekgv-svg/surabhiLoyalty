@@ -4,27 +4,23 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
 import { encryptText, safeDecryptText } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
-import { StaffType } from '@/types/types';
+import { getUserMobile } from '@/lib/userUtils';
+import { StaffType, User } from '@/types/types';
 
 interface StaffSettingsProps {
-  user: {
-    id: string;
-    name?: string;
-    mobile: string;
-    role: string;
-  };
+  user: User;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -133,7 +129,7 @@ export const StoreSettings = ({ user, isOpen, onOpenChange }: StaffSettingsProps
             </Label>
             <Input
               id="mobile"
-              value={user.mobile}
+              value={getUserMobile(user)}
               disabled
               className="bg-gray-100 text-gray-700 font-medium h-7 xs:h-8 sm:h-10 text-xs xs:text-sm px-2 xs:px-3 rounded-md"
             />

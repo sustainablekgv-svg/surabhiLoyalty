@@ -40,6 +40,7 @@ import {
 import { useAuth } from '@/hooks/auth-context';
 import { decryptText, isEncrypted } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
+import { getUserMobile, getUserName } from '@/lib/userUtils';
 import {
   AccountTxType,
   ActivityType,
@@ -731,7 +732,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           storeName: user.storeLocation,
           createdAt: Timestamp.fromDate(new Date()),
           paymentMethod: paymentMethod,
-          processedBy: user.name,
+          processedBy: getUserName(user),
           invoiceId: txInvoiceId,
           remarks: `Sale transaction for ${selectedCustomer.customerName}`,
           // Required fields with defaults
@@ -897,7 +898,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           storeName: user.storeLocation,
           createdAt: Timestamp.fromDate(new Date()),
           paymentMethod: paymentMethod,
-          processedBy: user.name,
+          processedBy: getUserName(user),
           invoiceId: txInvoiceId,
           remarks: `Sale transaction for ${selectedCustomer.customerName}`,
           // Required fields with defaults
@@ -1125,7 +1126,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             storeName: user.storeLocation,
             createdAt: Timestamp.fromDate(new Date()),
             paymentMethod: paymentMethod,
-            processedBy: user.name,
+            processedBy: getUserName(user),
             invoiceId: txInvoiceId,
             remarks: `Sale transaction for ${selectedCustomer.customerName}`,
             // Required fields with defaults
@@ -1274,7 +1275,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
       }
 
       const staffCollection = collection(db, 'staff');
-      const staffQuery = query(staffCollection, where('staffMobile', '==', user.mobile));
+      const staffQuery = query(staffCollection, where('staffMobile', '==', getUserMobile(user)));
       const staffSnapshot = await getDocs(staffQuery);
 
       if (staffSnapshot.empty) {
@@ -1343,7 +1344,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
               storeName: referrer.storeLocation,
               createdAt: Timestamp.fromDate(new Date()),
               paymentMethod: 'admin',
-              processedBy: user.name,
+              processedBy: getUserName(user),
               invoiceId: txInvoiceId,
               remarks: `Referral bonus for referring ${selectedCustomer.customerName}`,
               amount: 0,

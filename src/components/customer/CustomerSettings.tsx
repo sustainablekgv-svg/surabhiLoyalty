@@ -5,26 +5,21 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { decryptText, encryptText } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
-import { CustomerType } from '@/types/types';
+import { CustomerType, User } from '@/types/types';
 
 interface CustomerSettingsProps {
-  user: {
-    id: string;
-    name?: string;
-    mobile: string;
-    role: string;
-  };
+  user: User;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }

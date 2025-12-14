@@ -1,0 +1,190 @@
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { isValidImageUrl } from '@/lib/image-utils';
+import { getOrders, updateOrderStatus } from '@/services/shop';
+import { Order } from '@/types/shop';
+import { Eye, Package } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+
+export const OrderManager = () => {
+    const [orders, setOrders] = useState<Order[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+    const fetchOrders = async () => {
+        setLoading(true);
+        try {
+            const fetchedOrders = await getOrders();
+            setOrders(fetchedOrders);
+        } catch (error) {
+            console.error("Error fetching orders", error);
+            toast.error("Failed to load orders");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchOrders();
+    }, []);
+
+    const handleStatusUpdate = async (orderId: string, newStatus: Order['status']) => {
+        try {
+            await updateOrderStatus(orderId, newStatus);
+            toast.success(`Order status updated to ${newStatus}`);
+            // Optimistic update
+            setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+            if (selectedOrder && selectedOrder.id === orderId) {
+                setSelectedOrder(prev => prev ? { ...prev, status: newStatus } : null);
+            }
+        } catch (error) {
+            toast.error("Failed to update status");
+        }
+    };
+
+    const getStatusColor = (status: Order['status']) => {
+        switch (status) {
+            case 'pending': return 'bg-yellow-100 text-yellow-800';
+            case 'processing': return 'bg-blue-100 text-blue-800';
+            case 'shipped': return 'bg-purple-100 text-purple-800';
+            case 'delivered': return 'bg-green-100 text-green-800';
+            case 'cancelled': return 'bg-red-100 text-red-800';
+            default: return 'bg-gray-100 text-gray-800';
+        }
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="border rounded-md">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Order ID</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Customer</TableHead>
+                            <TableHead>Items</TableHead>
+                            <TableHead>Total</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {loading ? (
+                            <TableRow><TableCell colSpan={7} className="text-center py-8">Loading...</TableCell></TableRow>
+                        ) : orders.length === 0 ? (
+                            <TableRow><TableCell colSpan={7} className="text-center py-8">No orders found</TableCell></TableRow>
+                        ) : (
+                            orders.map(order => (
+                                <TableRow key={order.id}>
+                                    <TableCell className="font-mono text-xs">{order.id.slice(0, 8)}...</TableCell>
+                                    <TableCell>
+                                        {/* Handle Firestore Timestamp */}
+                                        {order.createdAt?.toDate ? order.createdAt.toDate().toLocaleDateString() : new Date().toLocaleDateString()}
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="text-sm">
+                                            <div>{order.shippingAddress?.fullName || 'Unknown'}</div>
+                                            <div className="text-xs text-gray-500">{order.shippingAddress?.mobile}</div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>{order.items.length} items</TableCell>
+                                    <TableCell>₹{order.totalAmount}</TableCell>
+                                    <TableCell>
+                                        <Badge variant="outline" className={`border-0 ${getStatusColor(order.status)}`}>
+                                            {order.status.toUpperCase()}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <Button size="icon" variant="ghost" onClick={() => setSelectedOrder(order)}>
+                                                    <Eye className="h-4 w-4" />
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent className="max-w-2xl">
+                                                <DialogHeader>
+                                                    <DialogTitle>Order Details</DialogTitle>
+                                                </DialogHeader>
+                                                {selectedOrder && (
+                                                    <div className="space-y-6">
+                                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                                            <div>
+                                                                <h4 className="font-semibold mb-1">Shipping Address</h4>
+                                                                <p>{selectedOrder.shippingAddress.fullName}</p>
+                                                                <p>{selectedOrder.shippingAddress.street}</p>
+                                                                <p>{selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state} - {selectedOrder.shippingAddress.zipCode}</p>
+                                                                <p>Phone: {selectedOrder.shippingAddress.mobile}</p>
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <div>
+                                                                    <h4 className="font-semibold mb-1">Payment</h4>
+                                                                    <p>Method: {selectedOrder.paymentMethod.toUpperCase()}</p>
+                                                                    <p>Status: {selectedOrder.paymentStatus.toUpperCase()}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <h4 className="font-semibold mb-1">Order Status</h4>
+                                                                    <Select 
+                                                                        value={selectedOrder.status} 
+                                                                        onValueChange={(val: Order['status']) => handleStatusUpdate(selectedOrder.id, val)}
+                                                                    >
+                                                                        <SelectTrigger className="w-[180px]">
+                                                                            <SelectValue placeholder="Status" />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            <SelectItem value="pending">Pending</SelectItem>
+                                                                            <SelectItem value="processing">Processing</SelectItem>
+                                                                            <SelectItem value="shipped">Shipped</SelectItem>
+                                                                            <SelectItem value="delivered">Delivered</SelectItem>
+                                                                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div>
+                                                            <h4 className="font-semibold mb-2">Order Items</h4>
+                                                            <div className="border rounded-md divide-y">
+                                                                {selectedOrder.items.map((item, idx) => (
+                                                                    <div key={idx} className="flex justify-between p-3 items-center">
+                                                                        <div className="flex items-center gap-3">
+                                                                            {isValidImageUrl(item.image) ? (
+                                                                                <img src={item.image} alt={item.name} className="h-10 w-10 rounded object-cover" />
+                                                                            ) : (
+                                                                                <div className="h-10 w-10 bg-gray-100 rounded flex items-center justify-center">
+                                                                                    <Package className="h-5 w-5 text-gray-400" />
+                                                                                </div>
+                                                                            )}
+                                                                            <div>
+                                                                                <p className="font-medium text-sm">{item.name}</p>
+                                                                                <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="font-medium">
+                                                                            ₹{item.price * item.quantity}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                            <div className="flex justify-end mt-4 pt-4 border-t">
+                                                                <div className="text-lg font-bold">Total: ₹{selectedOrder.totalAmount}</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </DialogContent>
+                                        </Dialog>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+        </div>
+    );
+};

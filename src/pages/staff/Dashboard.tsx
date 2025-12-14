@@ -1,12 +1,12 @@
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import {
-  History,
-  ShoppingCart,
-  Store,
-  TrendingUp,
-  UserPlus,
-  Wallet,
-  WalletCards,
+    History,
+    ShoppingCart,
+    Store,
+    TrendingUp,
+    UserPlus,
+    Wallet,
+    WalletCards,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -23,6 +23,7 @@ import { WalletRecharge } from '@/components/staff/WalletRecharge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/auth-context';
 import { db } from '@/lib/firebase';
+import { getUserName } from '@/lib/userUtils';
 import { StoreType } from '@/types/types';
 
 const StoreDashboard = () => {
@@ -130,7 +131,7 @@ const StoreDashboard = () => {
               <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
                 {user?.storeLocation || 'Store Dashboard'}
               </h1>
-              <p className="text-gray-600">Welcome back, {user?.name || 'Store Member'}</p>
+              <p className="text-gray-600">Welcome back, {getUserName(user) || 'Store Member'}</p>
             </div>
           </div>
         </div>

@@ -2,16 +2,16 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import {
-  User,
-  getCustomerByMobile,
-  getStaffByMobile,
-  signInWithFirebase,
-  verifyUserExists,
+    getCustomerByMobile,
+    getStaffByMobile,
+    signInWithFirebase,
+    verifyUserExists,
 } from '@/lib/authService';
 import { auth } from '@/lib/firebase';
 import { sessionManager } from '@/lib/sessionManager';
 import { storageUtils } from '@/lib/storage';
 import { tabSync } from '@/lib/tabSync';
+import { User } from '@/types/types';
 
 interface AuthContextType {
   user: User | null;
@@ -173,9 +173,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       // Try to sign in with Firebase if email exists
-      if (userData.email) {
+      const email = userData.role === 'customer' 
+        ? (userData as import('@/types/types').CustomerType).customerEmail 
+        : (userData as import('@/types/types').StaffType).staffEmail;
+
+      if (email) {
         try {
-          await signInWithFirebase(userData.email, password);
+          await signInWithFirebase(email, password);
         } catch (error) {
           // console.warn('Firebase auth failed, continuing with custom auth');
         }

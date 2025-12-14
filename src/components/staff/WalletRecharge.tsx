@@ -1,31 +1,31 @@
 import {
-    addDoc,
-    collection,
-    doc,
-    FieldValue,
-    getDocs,
-    increment,
-    onSnapshot,
-    query,
-    serverTimestamp,
-    Timestamp,
-    updateDoc,
-    where,
+  addDoc,
+  collection,
+  doc,
+  FieldValue,
+  getDocs,
+  increment,
+  onSnapshot,
+  query,
+  serverTimestamp,
+  Timestamp,
+  updateDoc,
+  where,
 } from 'firebase/firestore';
 import {
-    AlertTriangle,
-    CheckCircle,
-    Coins,
-    DollarSign,
-    HandCoins,
-    Loader2,
-    Mail,
-    MapPin,
-    Phone,
-    RefreshCw,
-    Search,
-    Shield,
-    Wallet,
+  AlertTriangle,
+  CheckCircle,
+  Coins,
+  DollarSign,
+  HandCoins,
+  Loader2,
+  Mail,
+  MapPin,
+  Phone,
+  RefreshCw,
+  Search,
+  Shield,
+  Wallet,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -39,15 +39,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/auth-context';
 import { db } from '@/lib/firebase';
+import { getUserMobile, getUserName } from '@/lib/userUtils';
 import {
-    AccountTxType,
-    ActivityType,
-    CustomerTxType,
-    CustomerType,
-    SevaPoolType,
-    StaffType,
-    StoreType,
-    WalletRechargeProps,
+  AccountTxType,
+  ActivityType,
+  CustomerTxType,
+  CustomerType,
+  SevaPoolType,
+  StaffType,
+  StoreType,
+  WalletRechargeProps,
 } from '@/types/types';
 
 // function getCurrentQuarterStart(): Date {
@@ -478,7 +479,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
         createdAt: Timestamp.fromDate(new Date()),
         demoStore: storeDetails.demoStore || false,
         paymentMethod: 'admin',
-        processedBy: user.name,
+        processedBy: getUserName(user),
         amount: rechargeAmountNum,
         surabhiEarned: surabhiCoinsEarned,
         sevaEarned: sevaAmountEarned,
@@ -565,7 +566,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
       }
 
       const staffCollection = collection(db, 'staff');
-      const staffQuery = query(staffCollection, where('staffMobile', '==', user.mobile));
+      const staffQuery = query(staffCollection, where('staffMobile', '==', getUserMobile(user)));
       const staffSnapshot = await getDocs(staffQuery);
 
       if (staffSnapshot.empty) {
@@ -648,7 +649,7 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
             createdAt: Timestamp.fromDate(new Date()),
             demoStore: storeDetails.demoStore || false,
             paymentMethod: 'admin',
-            processedBy: user.name,
+            processedBy: getUserName(user),
             amount: referralAmount,
             surabhiEarned: referralAmount,
             sevaEarned: 0,
