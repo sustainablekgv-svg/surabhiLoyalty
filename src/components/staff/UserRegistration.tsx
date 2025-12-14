@@ -770,7 +770,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
 
             <div className="p-6 pt-0 space-y-4">
               {/* Wallet Benefit */}
-              <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              {/* <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <div className="bg-blue-100 p-2 rounded-full mt-1 flex-shrink-0">
                   <CheckCircle className="h-4 w-4 text-blue-600" />
                 </div>
@@ -779,7 +779,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                   <p className="text-sm text-blue-700">Earn Surabhi Coins on every recharge</p>
                   <p className="text-xs text-blue-700">Visit store to recharge</p>
                 </div>
-              </div>
+              </div> */}
 
               {/* Coins Benefit */}
               <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-lg border border-amber-200">

@@ -1,6 +1,7 @@
 import { Timestamp } from 'firebase/firestore';
 
-import { User } from '@/lib/authService';
+// import { User } from '@/lib/authService';
+export type User = CustomerType | StaffType;
 export interface CustomerType {
   id?: string;
   role: string;
@@ -50,13 +51,7 @@ export interface CustomerType {
 }
 
 export interface StaffHeaderProps {
-  user: {
-    id: string;
-    name?: string;
-    mobile: string;
-    role: string;
-    storeLocation?: string;
-  };
+  user: User;
   onLogout: () => void;
 }
 

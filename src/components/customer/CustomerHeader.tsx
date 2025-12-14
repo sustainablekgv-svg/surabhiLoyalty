@@ -1,18 +1,15 @@
 import { Coins, LogOut, Settings } from 'lucide-react';
 import { useState } from 'react';
 
+import { getUserMobile } from '@/lib/userUtils';
+import { User } from '@/types/types';
 import { CustomerSettings } from './CustomerSettings';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 interface CustomerHeaderProps {
-  user: {
-    id: string;
-    name?: string;
-    mobile: string;
-    role: string;
-  };
+  user: User;
   onLogout: () => void;
 }
 
@@ -64,17 +61,17 @@ export const CustomerHeader = ({ user, onLogout }: CustomerHeaderProps) => {
               <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-3">
                 <div className="text-center xs:text-right">
                   {/* <p className="text-xs xs:text-sm font-medium text-gray-900 truncate max-w-[100px] xs:max-w-[120px] md:max-w-[180px]">
-                    {user?.name || 'Customer'}
+                    {getUserName(user) || 'Customer'}
                   </p> */}
                   <div className="flex items-center justify-center xs:justify-end gap-0.5 xs:gap-1 sm:gap-2">
                     <Badge
                       variant="secondary"
                       className="text-[8px] xs:text-[10px] sm:text-xs px-1 xs:px-1.5 py-0.5"
                     >
-                      {user?.role.toUpperCase()}
+                      {user?.role?.toUpperCase()}
                     </Badge>
                     <span className="text-[8px] xs:text-[10px] sm:text-xs text-gray-600 hidden md:inline">
-                      {user?.mobile}
+                      {getUserMobile(user)}
                     </span>
                   </div>
                 </div>
@@ -112,7 +109,7 @@ export const CustomerHeader = ({ user, onLogout }: CustomerHeaderProps) => {
                     {user?.role.toUpperCase()}
                   </Badge>
                   <span className="text-xs text-gray-600 truncate max-w-[80px]">
-                    {user?.name?.split(' ')[0] || 'Customer'}
+                    {getUserName(user)?.split(' ')[0] || 'Customer'}
                   </span>
                 </div> */}
               </div>

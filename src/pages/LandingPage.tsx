@@ -1,14 +1,15 @@
 import {
-  ArrowRight,
-  CheckCircle,
-  Coins,
-  ExternalLink,
-  Heart,
-  LogIn,
-  Phone,
-  Shield,
-  Star,
-  Users,
+    ArrowRight,
+    CheckCircle,
+    Coins,
+    ExternalLink,
+    Heart,
+    LogIn,
+    Phone,
+    Shield,
+    ShoppingBag,
+    Star,
+    Users,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -70,7 +71,16 @@ const LandingPage = () => {
                 </p>
               </div>
             </div>
-            <Button
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                onClick={() => navigate('/shop')}
+                className="font-medium text-gray-700 hover:text-purple-600 transition-colors hidden sm:flex items-center gap-2"
+              >
+                <ShoppingBag className="h-4 w-4" />
+                Shop Now
+              </Button>
+              <Button
               onClick={handleLoginClick}
               className="bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2"
             >
@@ -79,7 +89,8 @@ const LandingPage = () => {
             </Button>
           </div>
         </div>
-      </header>
+      </div>
+    </header>
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-12 sm:py-20">
@@ -112,6 +123,16 @@ const LandingPage = () => {
             >
               Get Started
               <ArrowRight className="h-5 w-5" />
+            </Button>
+
+            <Button
+              onClick={() => navigate('/shop')}
+              size="lg"
+              variant="outline"
+              className="border-2 hover:bg-purple-50 text-purple-700 font-medium px-8 py-4 rounded-lg transition-all duration-200 flex items-center gap-2 text-lg"
+            >
+              <ShoppingBag className="h-5 w-5" />
+              Shop Now
             </Button>
 
             <div className="flex items-center gap-2 text-gray-600">

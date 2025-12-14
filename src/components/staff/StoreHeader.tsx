@@ -1,6 +1,7 @@
 import { Coins, LogOut, Settings } from 'lucide-react';
 import { useState } from 'react';
 
+import { getUserMobile, getUserName } from '@/lib/userUtils';
 import { StoreSettings } from './StoreSettings';
 
 import { Badge } from '@/components/ui/badge';
@@ -54,7 +55,7 @@ export const StoreHeader = ({ user, onLogout }: StaffHeaderProps) => {
             <div className="flex items-center gap-1 xs:gap-2 sm:gap-3">
               <div className="text-right hidden xs:block">
                 <p className="text-xs xs:text-sm font-medium text-gray-900 break-words">
-                  {user.name || 'Store Member'}
+                  {getUserName(user) || 'Store Member'}
                 </p>
                 <div className="flex items-center gap-1 sm:gap-2">
                   <Badge
@@ -64,7 +65,7 @@ export const StoreHeader = ({ user, onLogout }: StaffHeaderProps) => {
                     {user.role.toUpperCase() === 'STAFF' ? 'STORE' : 'CUSTOMER'}
                   </Badge>
                   <span className="text-[10px] xs:text-xs text-gray-600 hidden md:inline">
-                    {user.mobile}
+                    {getUserMobile(user)}
                   </span>
                 </div>
               </div>
@@ -101,7 +102,7 @@ export const StoreHeader = ({ user, onLogout }: StaffHeaderProps) => {
                   {user.role.toUpperCase()}
                 </Badge>
                 <span className="text-[10px] text-gray-600 break-words max-w-[80px]">
-                  {user.name?.split(' ')[0] || 'Store'}
+                  {getUserName(user)?.split(' ')[0] || 'Store'}
                 </span>
               </div>
             </div>

@@ -33,7 +33,18 @@ export const storage = getStorage(app);
 export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
 
 // Initialize Performance monitoring - only in browser environments
-export const performance = typeof window !== 'undefined' ? getPerformance(app) : null;
+// Initialize Performance monitoring - only in browser environments and PROD
+// or if explicitly enabled to avoid "invalid attribute value" crash in dev
+// with long Tailwind class names
+export const performance = 
+  typeof window !== 'undefined' && (import.meta.env.PROD || import.meta.env.VITE_ENABLE_PERFORMANCE === 'true')
+    ? getPerformance(app) 
+    : null;
+
+// Debug log to verify API key (Temporary)
+console.log('[Firebase] Initializing with API Key:', firebaseConfig.apiKey ? '***' + firebaseConfig.apiKey.slice(-5) : 'MISSING');
+console.log('[Firebase] Project ID:', firebaseConfig.projectId);
+
 
 // Helper functions for analytics
 export const logAnalyticsEvent = (eventName: string, eventParams: Record<string, any> = {}) => {

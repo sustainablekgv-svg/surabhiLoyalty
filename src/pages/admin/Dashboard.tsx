@@ -9,9 +9,11 @@ import { AdminStats } from '@/components/admin/AdminStats';
 import { CustomerManagement } from '@/components/admin/CustomerManagement';
 import { GoSevaPool } from '@/components/admin/GoSevaPool';
 import { SalesManagement } from '@/components/admin/SalesManagement';
+import { AdminShopDashboard } from '@/components/admin/shop/AdminShopDashboard';
 import { StaffManagement } from '@/components/admin/StaffManagement';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/auth-context';
+import { getUserEmail, getUserMobile, getUserName } from '@/lib/userUtils';
 
 const AdminDashboard = () => {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -68,9 +70,9 @@ const AdminDashboard = () => {
       <AdminHeader
         user={{
           id: user.id,
-          staffName: user.name || '',
-          staffEmail: user.email || '',
-          staffMobile: user.mobile || '',
+          staffName: getUserName(user) || '',
+          staffEmail: getUserEmail(user) || '',
+          staffMobile: getUserMobile(user) || '',
           demoStore: user.demoStore || false,
           role: user.role as 'admin',
           storeLocation: user.storeLocation || '',
@@ -97,7 +99,7 @@ const AdminDashboard = () => {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             {/* Tabs Navigation */}
             <div className="mb-3 xs:mb-4 sm:mb-8 sticky top-0 z-10 bg-gradient-to-br from-purple-50 via-white to-amber-50 pt-1 pb-2 overflow-x-hidden overflow-y-hidden">
-              <TabsList className="grid w-full grid-cols-6 bg-gray-100 p-0.5 rounded-lg overflow-y-hidden">
+              <TabsList className="grid w-full grid-cols-7 bg-gray-100 p-0.5 rounded-lg overflow-y-hidden">
                 {[
                   { value: 'overview', icon: TrendingUp, label: 'Overview' },
                   { value: 'staff', icon: UserPlus, label: 'Staff' },
@@ -105,6 +107,7 @@ const AdminDashboard = () => {
                   { value: 'sales', icon: ShoppingCart, label: 'Sales' },
                   { value: 'accounts', icon: DollarSign, label: 'Accounts' },
                   { value: 'goseva', icon: Heart, label: 'Seva' },
+                  { value: 'shop', icon: ShoppingCart, label: 'Shop' },
                 ].map(tab => (
                   <TabsTrigger
                     key={tab.value}
@@ -148,6 +151,10 @@ const AdminDashboard = () => {
 
               <TabsContent value="goseva" className="mt-0">
                 <GoSevaPool />
+              </TabsContent>
+
+              <TabsContent value="shop" className="mt-0">
+                <AdminShopDashboard />
               </TabsContent>
             </div>
           </Tabs>

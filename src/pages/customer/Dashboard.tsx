@@ -11,6 +11,7 @@ import { TermsAndConditions } from '@/components/customer/TermsAndConditions';
 import { TransactionHistory } from '@/components/customer/TransactionHistory';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/auth-context';
+import { getUserMobile, getUserName } from '@/lib/userUtils';
 
 const CustomerDashboard = () => {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -130,7 +131,7 @@ const CustomerDashboard = () => {
           </TabsContent>
 
           <TabsContent value="referrals" className="mt-0">
-            <ReferralSystem userId={user.id} userName={user.name || ''} userMobile={user.mobile} />
+            <ReferralSystem userId={user.id} userName={getUserName(user) || ''} userMobile={getUserMobile(user)} />
           </TabsContent>
 
           <TabsContent value="history" className="mt-0">
