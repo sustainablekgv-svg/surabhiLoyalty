@@ -13,7 +13,9 @@ interface CustomerType {
   targetMet?: boolean;
 }
 
-admin.initializeApp();
+if (admin.apps.length === 0) {
+  admin.initializeApp();
+}
 const db = admin.firestore();
 
 export const checkQuarterlyCriteria = functions.scheduler.onSchedule(
