@@ -22,34 +22,34 @@ const CartPage = () => {
             <div className="md:col-span-2 space-y-4">
               {cart.map((item) => (
 
-                <div key={item.productId} className="flex gap-4 p-4 bg-white rounded-lg shadow-sm border">
-                  <div className="h-24 w-24 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 cursor-pointer" onClick={() => navigate(`/shop/product/${item.productId}`)}>
+                <div key={item.productId} className="flex gap-3 md:gap-4 p-3 md:p-4 bg-white rounded-lg shadow-sm border relative">
+                  <div className="h-20 w-20 md:h-24 md:w-24 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 cursor-pointer" onClick={() => navigate(`/shop/product/${item.productId}`)}>
                     {isValidImageUrl(item.image) ? (
                       <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center text-gray-400">No Img</div>
+                      <div className="flex h-full w-full items-center justify-center text-gray-400 text-xs">No Img</div>
                     )}
                   </div>
                   <div className="flex-1 flex flex-col justify-between">
-                    <div>
-                      <h3 className="font-medium text-lg cursor-pointer hover:underline" onClick={() => navigate(`/shop/product/${item.productId}`)}>{item.name}</h3>
+                    <div className="pr-8">
+                      <h3 className="font-medium text-base md:text-lg cursor-pointer hover:underline line-clamp-2" onClick={() => navigate(`/shop/product/${item.productId}`)}>{item.name}</h3>
                       {/* item.product.brand is no longer available directly unless we fetch it or store it. Removing for now or we could store brand too */}
                     </div>
                     <div className="flex items-center justify-between mt-2">
-                        <div className="font-bold">₹{item.price}</div>
+                        <div className="font-bold text-sm md:text-base">₹{item.price}</div>
                         <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateQuantity(item.productId, item.quantity - 1)}>
+                            <Button variant="outline" size="icon" className="h-7 w-7 md:h-8 md:w-8" onClick={() => updateQuantity(item.productId, item.quantity - 1)}>
                                 <Minus className="h-3 w-3" />
                             </Button>
-                            <span className="w-8 text-center">{item.quantity}</span>
-                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => updateQuantity(item.productId, item.quantity + 1)}>
+                            <span className="w-6 md:w-8 text-center text-sm">{item.quantity}</span>
+                            <Button variant="outline" size="icon" className="h-7 w-7 md:h-8 md:w-8" onClick={() => updateQuantity(item.productId, item.quantity + 1)}>
                                 <Plus className="h-3 w-3" />
                             </Button>
                         </div>
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => removeFromCart(item.productId)}>
-                    <Trash2 className="h-5 w-5" />
+                  <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50 absolute top-2 right-2 md:static md:text-red-500" onClick={() => removeFromCart(item.productId)}>
+                    <Trash2 className="h-4 w-4 md:h-5 md:w-5" />
                   </Button>
                 </div>
               ))}

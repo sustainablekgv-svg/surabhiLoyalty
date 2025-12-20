@@ -20,10 +20,10 @@ export const ShopAnalytics = () => {
       setLoading(true);
       try {
         const [fetchedOrders, fetchedProducts] = await Promise.all([
-          getOrders(),
+          getOrders(1000),
           getActiveProducts()
         ]);
-        setOrders(fetchedOrders);
+        setOrders(fetchedOrders.orders);
         setProducts(fetchedProducts);
       } catch (error) {
         console.error("Error loading analytics data", error);

@@ -13,6 +13,7 @@ export interface Product {
     brandName: string; // Denormalized for easy display
     isActive: boolean;
     isFeatured?: boolean;
+    freeShipping?: boolean;
     createdAt: any; // Firestore Timestamp
     updatedAt: any; // Firestore Timestamp
 }
@@ -38,11 +39,29 @@ export interface Category {
 export interface CartItem {
     productId: string;
     quantity: number;
-    // We store minimal details to display cart without fetching every product immediately, 
-    // but typically we fetch latest price at checkout.
     name: string;
-    price: number; 
+    price: number;
     image: string;
+    maxStock: number;
+    freeShipping?: boolean;
+}
+
+export interface WishlistItem {
+    productId: string;
+    name: string;
+    price: number;
+    image: string;
+    stock: number;
+}
+
+export interface FilterOptions {
+    category?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    brand?: string;
+    inStock?: boolean;
+    sort?: 'price_asc' | 'price_desc' | 'newest';
+    includeInactive?: boolean;
 }
 
 export interface Address {

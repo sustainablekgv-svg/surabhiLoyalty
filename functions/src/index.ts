@@ -31,6 +31,9 @@
 //   response.send("Hello from Firebase!");
 // });
 
+import * as ecommerce from './ecommerce';
 import * as quarterly from './quartleryCheck';
 
 export const checkQuarterlyCriteria = quarterly.checkQuarterlyCriteria;
+export const createRazorpayOrder = ecommerce.createRazorpayOrder;
+export const verifyRazorpayPayment = ecommerce.verifyRazorpayPayment;

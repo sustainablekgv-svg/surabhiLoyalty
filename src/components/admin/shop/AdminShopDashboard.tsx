@@ -16,29 +16,30 @@ export const AdminShopDashboard = () => {
 
             <Tabs defaultValue="products" className="space-y-4">
                 <TabsList>
-                    <TabsTrigger value="products" className="flex items-center gap-2">
-                        <Package className="h-4 w-4" />
-                        Products
+                    <TabsTrigger value="analytics" className="flex items-center gap-2">
+                        <LayoutDashboard className="h-4 w-4" />
+                        Analytics
                     </TabsTrigger>
-                    <TabsTrigger value="brands" className="flex items-center gap-2">
-                        <Tag className="h-4 w-4" />
-                        Brands
-                    </TabsTrigger>
-                    <TabsTrigger value="categories" className="flex items-center gap-2">
+                     <TabsTrigger value="categories" className="flex items-center gap-2">
                         <Tag className="h-4 w-4" />
                         Categories
                     </TabsTrigger>
-                    <TabsTrigger value="orders" className="flex items-center gap-2">
-                        <ShoppingBag className="h-4 w-4" />
-                        Orders
+                     <TabsTrigger value="brands" className="flex items-center gap-2">
+                        <Tag className="h-4 w-4" />
+                        Brands
+                    </TabsTrigger>
+
+                    <TabsTrigger value="products" className="flex items-center gap-2">
+                        <Package className="h-4 w-4" />
+                        Products
                     </TabsTrigger>
                     <TabsTrigger value="inventory" className="flex items-center gap-2">
                         <Layers className="h-4 w-4" />
                         Inventory
                     </TabsTrigger>
-                    <TabsTrigger value="analytics" className="flex items-center gap-2">
-                        <LayoutDashboard className="h-4 w-4" />
-                        Analytics
+                    <TabsTrigger value="orders" className="flex items-center gap-2">
+                        <ShoppingBag className="h-4 w-4" />
+                        Orders
                     </TabsTrigger>
                 </TabsList>
                 <TabsContent value="products" className="space-y-4">

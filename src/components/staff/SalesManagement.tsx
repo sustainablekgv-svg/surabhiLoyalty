@@ -1,26 +1,26 @@
 import {
-  addDoc,
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  increment,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  Timestamp,
-  updateDoc,
-  where,
+    addDoc,
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    increment,
+    onSnapshot,
+    query,
+    serverTimestamp,
+    Timestamp,
+    updateDoc,
+    where,
 } from 'firebase/firestore';
 import {
-  Calculator,
-  CheckCircle,
-  HandCoins,
-  Loader2,
-  Phone,
-  RefreshCw,
-  Search,
-  ShoppingCart,
+    Calculator,
+    CheckCircle,
+    HandCoins,
+    Loader2,
+    Phone,
+    RefreshCw,
+    Search,
+    ShoppingCart,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -31,25 +31,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/auth-context';
 import { decryptText, isEncrypted } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { getUserMobile, getUserName } from '@/lib/userUtils';
 import {
-  AccountTxType,
-  ActivityType,
-  CustomerTxType,
-  CustomerType,
-  SalesManagementProps,
-  SevaPoolType,
-  StaffType,
-  StoreType,
+    AccountTxType,
+    ActivityType,
+    CustomerTxType,
+    CustomerType,
+    SalesManagementProps,
+    SevaPoolType,
+    StaffType,
+    StoreType,
 } from '@/types/types';
 import { hasMetQuarterlyTarget, updateCustomerQuarterlyTarget } from '@/utils/quarterlyTargets';
 
@@ -1352,6 +1352,13 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
               sevaEarned: 0,
               referralEarned: referralAmount,
               referredBy: '',
+              
+              // SPV fields
+              spvEntered: Number((spvEntered || 0).toFixed(2)),
+              adjustedSpv: Number(adjustedSpv.toFixed(2)),
+              surabhiEarnedAdj: 0,
+              sevaEarnedAdj: 0,
+
               surabhiUsed: 0,
               walletDeduction: 0,
               cashPayment: 0,

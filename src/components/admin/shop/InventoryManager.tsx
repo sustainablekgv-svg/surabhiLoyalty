@@ -13,11 +13,27 @@ export const InventoryManager = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [stockUpdates, setStockUpdates] = useState<Record<string, number>>({});
 
-    const fetchProducts = async () => {
+    // Pagination
+    const [lastDoc, setLastDoc] = useState<any>(null);
+    const [paginationStack, setPaginationStack] = useState<any[]>([]);
+    const [page, setPage] = useState(1);
+    const PAGE_SIZE = 10;
+    const [hasMore, setHasMore] = useState(true);
+
+    const fetchProducts = async (startAfterDoc?: any) => {
         setLoading(true);
         try {
-            const fetchedProducts = await getProducts();
-            setProducts(fetchedProducts);
+            if (searchTerm && searchTerm.length > 2) {
+                 const result = await getProducts({ includeInactive: true }, null, 500);
+                 const filtered = result.products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+                 setProducts(filtered);
+                 setHasMore(false);
+            } else {
+                const result = await getProducts({ includeInactive: true }, startAfterDoc, PAGE_SIZE);
+                setProducts(result.products);
+                setLastDoc(result.lastDoc);
+                setHasMore(result.products.length >= PAGE_SIZE);
+            }
         } catch (error) {
             console.error("Error fetching products", error);
         } finally {
@@ -26,8 +42,31 @@ export const InventoryManager = () => {
     };
 
     useEffect(() => {
-        fetchProducts();
-    }, []);
+        const timer = setTimeout(() => {
+            setPage(1);
+            setPaginationStack([]);
+            setLastDoc(null);
+            fetchProducts(null);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    const loadNext = () => {
+        if (!lastDoc) return;
+        setPaginationStack(prev => [...prev, lastDoc]);
+        setPage(prev => prev + 1);
+        fetchProducts(lastDoc);
+    };
+
+    const loadPrev = () => {
+        if (page <= 1) return;
+        const newStack = [...paginationStack];
+        newStack.pop();
+        const prevDoc = newStack[newStack.length - 1] || null;
+        setPaginationStack(newStack);
+        setPage(prev => prev - 1);
+        fetchProducts(prevDoc);
+    };
 
     const handleStockChange = (productId: string, val: string) => {
         const num = parseInt(val);
@@ -54,10 +93,6 @@ export const InventoryManager = () => {
         }
     };
 
-    const filteredProducts = products.filter(p =>
-        p.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
     return (
         <div className="space-y-4">
              <div className="relative w-72">
@@ -83,10 +118,10 @@ export const InventoryManager = () => {
                     <TableBody>
                         {loading ? (
                             <TableRow><TableCell colSpan={4} className="text-center py-8">Loading...</TableCell></TableRow>
-                        ) : filteredProducts.length === 0 ? (
+                        ) : products.length === 0 ? (
                             <TableRow><TableCell colSpan={4} className="text-center py-8">No products found</TableCell></TableRow>
                         ) : (
-                            filteredProducts.map(product => (
+                            products.map(product => (
                                 <TableRow key={product.id}>
                                     <TableCell className="font-medium">{product.name}</TableCell>
                                     <TableCell>{product.stock}</TableCell>
@@ -113,6 +148,28 @@ export const InventoryManager = () => {
                         )}
                     </TableBody>
                 </Table>
+            </div>
+            {/* Pagination Controls */}
+             <div className="flex items-center justify-between px-2">
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={loadPrev} 
+                    disabled={page <= 1 || loading}
+                >
+                    Previous
+                </Button>
+                <div className="text-sm text-gray-500">
+                    Page {page}
+                </div>
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={loadNext} 
+                    disabled={!hasMore || loading}
+                >
+                    Next
+                </Button>
             </div>
         </div>
     );

@@ -1,6 +1,8 @@
+import { Button } from '@/components/ui/button';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import {
     History,
+    Home,
     ShoppingCart,
     Store,
     TrendingUp,
@@ -133,6 +135,14 @@ const StoreDashboard = () => {
               </h1>
               <p className="text-gray-600">Welcome back, {getUserName(user) || 'Store Member'}</p>
             </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate('/')}>
+              <Home className="h-4 w-4 mr-2" /> Home
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/shop')}>
+              <ShoppingCart className="h-4 w-4 mr-2" /> Shop
+            </Button>
           </div>
         </div>
 

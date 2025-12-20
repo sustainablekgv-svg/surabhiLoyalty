@@ -1,4 +1,5 @@
-import { FileText, History, Settings, Share2, TrendingUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { FileText, History, Home, Settings, Share2, ShoppingBag, TrendingUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -75,13 +76,23 @@ const CustomerDashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50">
       <CustomerHeader user={user} onLogout={handleLogout} />
       <div className="container mx-auto px-2 xs:px-3 sm:px-4 lg:px-6 py-2 xs:py-3 sm:py-4">
-        <div className="mb-2 xs:mb-3 sm:mb-4">
-          <h1 className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900 mb-0.5 xs:mb-1">
-            My Rewards Dashboard
-          </h1>
-          <p className="text-[10px] xs:text-xs sm:text-sm text-gray-600">
-            Track your coins, referrals, and transaction history
-          </p>
+        <div className="mb-2 xs:mb-3 sm:mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-lg xs:text-xl sm:text-2xl font-bold text-gray-900 mb-0.5 xs:mb-1">
+              My Rewards Dashboard
+            </h1>
+            <p className="text-[10px] xs:text-xs sm:text-sm text-gray-600">
+              Track your coins, referrals, and transaction history
+            </p>
+          </div>
+          <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => navigate('/')}>
+                <Home className="h-4 w-4 mr-2" /> Home
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate('/shop')}>
+                <ShoppingBag className="h-4 w-4 mr-2" /> Shop
+              </Button>
+          </div>
         </div>
         <Tabs
           value={activeTab}

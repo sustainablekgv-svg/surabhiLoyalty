@@ -1,4 +1,5 @@
-import { DollarSign, Heart, ShoppingCart, TrendingUp, UserPlus, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { DollarSign, Heart, Home, ShoppingCart, TrendingUp, UserPlus, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -86,13 +87,23 @@ const AdminDashboard = () => {
       />
 
       <div className="container mx-auto px-2 xs:px-4 sm:px-6 lg:px-8 py-3 xs:py-4 sm:py-6 overflow-x-hidden">
-        <div className="mb-3 xs:mb-4 sm:mb-8">
-          <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900 mb-0.5 xs:mb-1 sm:mb-2">
-            Admin Dashboard
-          </h1>
-          <p className="text-xs xs:text-sm sm:text-base text-gray-600">
-            Manage your loyalty program and monitor performance
-          </p>
+        <div className="mb-3 xs:mb-4 sm:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900 mb-0.5 xs:mb-1 sm:mb-2">
+              Admin Dashboard
+            </h1>
+            <p className="text-xs xs:text-sm sm:text-base text-gray-600">
+              Manage your loyalty program and monitor performance
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate('/')}>
+              <Home className="h-4 w-4 mr-2" /> Home
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/shop')}>
+              <ShoppingCart className="h-4 w-4 mr-2" /> Shop
+            </Button>
+          </div>
         </div>
 
         <div className="w-full">
