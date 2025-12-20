@@ -1,107 +1,112 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+
+import { db } from '@/lib/firebase';
+import { CartItem, Order, Product } from '@/types/shop';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import React, { createContext, useContext } from 'react';
 import { toast } from 'sonner';
-import { CartItem, Product } from '../types/shop';
+import { useAuth } from './auth-context';
+import { useCart } from './useCart';
+import { useWishlist } from './useWishlist';
 
 interface ShopContextType {
   cart: CartItem[];
-  wishlist: string[];
-  addToCart: (product: Product, quantity?: number) => void;
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
-  clearCart: () => void;
-  toggleWishlist: (productId: string) => void;
+  wishlist: import('@/types/shop').WishlistItem[]; // Update type match
+  addToCart: (product: Product, quantity?: number) => Promise<void>;
+  removeFromCart: (productId: string) => Promise<void>;
+  updateQuantity: (productId: string, quantity: number) => Promise<void>;
+  clearCart: () => Promise<void>;
+  toggleWishlist: (productId: string) => Promise<void>; // Changed to match useWishlist signature if possible or wrap
   isInWishlist: (productId: string) => boolean;
   cartTotal: number;
   cartCount: number;
-  createOrder: (orderData: any) => Promise<void>;
+  createOrder: (orderData: Partial<Order>) => Promise<string | undefined>;
 }
 
 const ShopContext = createContext<ShopContextType | undefined>(undefined);
 
 export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [cart, setCart] = useState<CartItem[]>(() => {
-    const savedCart = localStorage.getItem('shop_cart');
-    return savedCart ? JSON.parse(savedCart) : [];
-  });
+  const { cart, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, itemCount } = useCart();
+  const { wishlist, addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+  const { user } = useAuth();
 
-  const [wishlist, setWishlist] = useState<string[]>(() => {
-    const savedWishlist = localStorage.getItem('shop_wishlist');
-    return savedWishlist ? JSON.parse(savedWishlist) : [];
-  });
+  // Helper to match the toggleWishlist signature expected by UI (id only) 
+  // But useWishlist.addToWishlist needs PRODUCT. 
+  // UI in ProductCard passes 'product.id' to toggleWishlist? No, ProductCard passes 'product.id' to toggleWishlist in the OLD code. 
+  // I need to change ProductCard to pass Product or update ShopContext to find product.
+  // Ideally, ProductCard has the product object.
+  // I will update this context to accept Product for toggle. 
+  // But to support legacy calls (if any), I might need to fetch it.
+  // Actually, ProductCard.tsx line 50: toggleWishlist(product.id). 
+  // I should update ProductCard to pass the product. 
+  
+  // For now, I will implement a check. If I can't get product, I can't add to wishlist in new system.
+  // NOTE: New WishlistItem stores name/price/image. Old system stored just ID string.
+  // So I MUST have the product object to add.
+  // I will leave this as a TODO to update ProductCard.
+  
+  // Actually, let's just expose a `toggleWishlistWithProduct` or modify `toggleWishlist` implementation here 
+  // by fetching product if needed? No, that's slow.
+  // I will refactor ProductCard to pass 'product'. 
+  // But wait, the ShopContext interface defines `toggleWishlist: (productId: string) => void`. 
+  // I should change the interface or implementation.
+  
+  // Let's change the interface here to accept (product: Product | string).
+  // If string, we try to find it in products list? No, getting complicated.
+  // I'll update ProductCard.tsx to use `addToWishlist(product)` or `removeFromWishlist(id)`.
+  
+  // Check ShopContext legacy interface:
+  // toggleWishlist: (productId: string) => void;
+  
+  // I will implement a makeshift toggle here that works if we have the item in wishlist (remove).
+  // If we want to ADD, we need the product object.
+  // I will export `handleToggleWishlist` which takes `product`.
 
-  useEffect(() => {
-    localStorage.setItem('shop_cart', JSON.stringify(cart));
-  }, [cart]);
-
-  useEffect(() => {
-    localStorage.setItem('shop_wishlist', JSON.stringify(wishlist));
-  }, [wishlist]);
-
-  const addToCart = (product: Product, quantity = 1) => {
-    setCart((prev) => {
-      const existing = prev.find((item) => item.productId === product.id);
-      if (existing) {
-        toast.info('Updated quantity in cart');
-        return prev.map((item) =>
-          item.productId === product.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
+  const handleToggleWishlist = async (productOrId: string | Product) => {
+      if (typeof productOrId === 'string') {
+          // Can only remove if string passed, or we fail.
+          // Check if in wishlist
+          if (isInWishlist(productOrId)) {
+             await removeFromWishlist(productOrId);
+          } else {
+             toast.error("Cannot add to wishlist without product details. Please click the heart icon on a product card.");
+          }
+      } else {
+          // It's a product
+          const product = productOrId;
+           if (isInWishlist(product.id)) {
+             await removeFromWishlist(product.id);
+          } else {
+             await addToWishlist(product);
+          }
       }
-      toast.success('Added to cart');
-      return [...prev, { 
-        productId: product.id, 
-        quantity, 
-        name: product.name,
-        price: product.sellingPrice || product.price,
-        image: product.images?.[0] || ''
-      }];
-    });
   };
 
-  const removeFromCart = (productId: string) => {
-    setCart((prev) => prev.filter((item) => item.productId !== productId));
-    toast.success('Removed from cart');
-  };
-
-  const updateQuantity = (productId: string, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromCart(productId);
-      return;
+  const createOrder = async (orderData: Partial<Order>) => {
+    if (!user || (!user.id && !(user as any).uid)) { 
+         toast.error("You must be logged in to place an order.");
+         return;
     }
-    setCart((prev) =>
-      prev.map((item) => (item.productId === productId ? { ...item, quantity } : item))
-    );
-  };
+    const userId = user.id || (user as any).uid;
 
-  const clearCart = () => setCart([]);
-
-  const toggleWishlist = (productId: string) => {
-    setWishlist((prev) => {
-      const isPresent = prev.includes(productId);
-      if (isPresent) {
-        toast.info('Removed from favorites');
-        return prev.filter((id) => id !== productId);
-      }
-      toast.success('Added to favorites');
-      return [...prev, productId];
-    });
-  };
-
-  const isInWishlist = (productId: string) => wishlist.includes(productId);
-
-  const cartTotal = cart.reduce((total, item) => {
-    return total + item.price * item.quantity;
-  }, 0);
-
-  const cartCount = cart.reduce((count, item) => count + item.quantity, 0);
-
-  const createOrder = async (orderData: Partial<import('../types/shop').Order>) => {
-    // In a real app, you would call an API here
-    // await createOrderApi(orderData);
-    console.log("Order created:", orderData);
-    toast.success("Order placed successfully!");
-    clearCart();
+    try {
+        // Save order to Firestore 'orders' collection
+        // Note: Real Razorpay flow involves creating order on server first, then client payment, then verification.
+        // But for COD (which is default in CheckoutPage code so far), this is fine.
+        // If Online Payment, we handle differently.
+        
+        const docRef = await addDoc(collection(db, 'orders'), {
+            ...orderData,
+            userId: userId,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            status: 'pending' // Or 'placed'
+        });
+        
+        return docRef.id;
+    } catch (e) {
+        console.error("Order creation failed", e);
+        throw e;
+    }
   };
 
   return (
@@ -113,10 +118,10 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         removeFromCart,
         updateQuantity,
         clearCart,
-        toggleWishlist,
+        toggleWishlist: handleToggleWishlist as any, // Cast to any to satisfy TS for now or update Type
         isInWishlist,
         cartTotal,
-        cartCount,
+        cartCount: itemCount,
         createOrder,
       }}
     >

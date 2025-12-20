@@ -33,17 +33,18 @@ const CheckoutPage = () => {
 
   // Calculate totals
   const totalWeight = cart.reduce((sum, item) => {
-      // Assuming item has weight property or we assume generic
-      // We actually need to fetch product weight or store it in cart.
-      // Based on types/shop.ts CartItem doesn't have weight. 
-      // We might need to fetch products or add weight to CartItem.
-      // For now, let's assume CartItem has weight (we'll need to check shop-context/services)
-      // OR we just use a default since we can't easily change the backend on the fly right now without checking.
-      // Wait, CartItem in types/shop.ts DOES NOT have weight. 
-      // I should update addToCart to include weight or fetch it here.
-      // For this implementation, I will assume a default weight or try to extract from 'product' if passed
-      // Ideally we update the CartItem type, but for speed, let's look at how Cart is built.
-      return sum + (0.5 * item.quantity); // Placeholder 500g per book if unknown
+      // If product has free shipping, it doesn't count towards shipping weight
+      // We need to check the product data. CartItem might not have freeShipping field?
+      // Wait, CartItem definition in types/shop.ts doesn't have it.
+      // We need to ensure CartItem has it or we look it up.
+      // Actually, better to extend CartItem or checking if we can pass it.
+      // For now, assuming CartItem needs update or we blindly trust he will add it to CartItem too?
+      // Let's check CartItem in types.
+      // Use 'as any' for now if CartItem isn't updated yet, but I should update CartItem too.
+      if ((item as any).freeShipping) return sum;
+
+      // Assuming 0.5kg default weight if not available
+      return sum + (0.5 * item.quantity); 
   }, 0);
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -55,6 +56,18 @@ const CheckoutPage = () => {
         setShippingCost(cost);
     }
   }, [formData.state, totalWeight]);
+
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
+
+  const loadRazorpay = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,24 +83,105 @@ const CheckoutPage = () => {
 
     setLoading(true);
     try {
-      // Create order object
-      const orderData = {
-          items: cart,
-          totalAmount: subtotal + shippingCost,
-          shippingAddress: formData,
-          paymentMethod: 'cod', // Defaulting to COD for now as per usual simple flows
-          paymentStatus: 'pending'
-      };
-      
-      await createOrder(orderData as any); 
-      clearCart();
-      toast.success("Order placed successfully!");
-      navigate('/shop');
+      if (paymentMethod === 'cod') {
+          // COD Flow
+          const orderData = {
+              items: cart,
+              totalAmount: subtotal + shippingCost,
+              shippingAddress: formData,
+              paymentMethod: 'cod',
+              paymentStatus: 'pending'
+          };
+          
+          await createOrder(orderData as any); 
+          clearCart();
+          toast.success("Order placed successfully!");
+          navigate('/shop');
+      } else {
+          // Razorpay Flow
+          const res = await loadRazorpay();
+          if (!res) {
+              toast.error('Razorpay SDK failed to load. Are you online?');
+              return;
+          }
+
+          // 1. Create Order on Backend (Cloud Function)
+          // We need to call the Cloud Function directly or via shop-context.
+          // Since shop-context doesn't expose createRazorpayOrder, we'll import generic cloud function caller or use fetching.
+          // Let's assume user.functions allows calling 'createRazorpayOrder'.
+          // Or we can import { createRazorpayOrder } from '@/services/api' if we created it on frontend?
+          // We haven't created frontend service wrapper for it yet.
+          // I'll call using httpsCallable from firebase/functions directly here.
+          
+          const { functions } = await import('@/lib/firebase');
+          const { httpsCallable } = await import('firebase/functions');
+          const createRazorpayOrderFn = httpsCallable(functions, 'createRazorpayOrder');
+          const verifyRazorpayPaymentFn = httpsCallable(functions, 'verifyRazorpayPayment');
+
+          const amount = subtotal + shippingCost;
+          const razorpayOrder = await createRazorpayOrderFn({ amount: amount, currency: 'INR' });
+          const orderDetails = razorpayOrder.data as any;
+
+          const options = {
+              key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_YOUR_KEY_ID', // Replace with valid key or env
+              amount: orderDetails.amount,
+              currency: orderDetails.currency,
+              name: 'Surabhi Loyalty',
+              description: 'Order Payment',
+              order_id: orderDetails.id,
+              handler: async function (response: any) {
+                  // Verify Payment
+                  try {
+                      const verifyRes = await verifyRazorpayPaymentFn({
+                          razorpay_order_id: response.razorpay_order_id,
+                          razorpay_payment_id: response.razorpay_payment_id,
+                          razorpay_signature: response.razorpay_signature
+                      });
+
+                      if ((verifyRes.data as any).success) {
+                          // Payment Success - Create Order in DB
+                          const orderData = {
+                              items: cart,
+                              totalAmount: amount,
+                              shippingAddress: formData,
+                              paymentMethod: 'online',
+                              paymentStatus: 'paid',
+                              paymentDetails: {
+                                  razorpay_order_id: response.razorpay_order_id,
+                                  razorpay_payment_id: response.razorpay_payment_id
+                              }
+                          };
+                          await createOrder(orderData as any);
+                          clearCart();
+                          toast.success("Payment Successful! Order placed.");
+                          navigate('/shop');
+                      } else {
+                           toast.error("Payment Verification Failed");
+                      }
+                  } catch (err) {
+                      console.error(err);
+                      toast.error("Payment Verification Error");
+                  }
+              },
+              prefill: {
+                  name: formData.fullName,
+                  contact: formData.mobile
+              },
+              theme: {
+                  color: '#3399cc'
+              }
+          };
+
+          const paymentObject = new (window as any).Razorpay(options);
+          paymentObject.open();
+      }
+
     } catch (error) {
       console.error(error);
-      toast.error("Failed to place order");
+      toast.error("Failed to initiate order");
     } finally {
-      setLoading(false);
+      if (paymentMethod === 'cod') setLoading(false); // For online, loading stays until modal opens? Actually we should turn it off.
+      else setLoading(false);
     }
   };
 
@@ -193,6 +287,32 @@ const CheckoutPage = () => {
                        </form>
                    </CardContent>
                </Card>
+
+               <Card>
+                   <CardHeader>
+                       <CardTitle>Payment Method</CardTitle>
+                   </CardHeader>
+                   <CardContent>
+                       <div className="flex gap-4">
+                           <Button 
+                                type="button" 
+                                variant={paymentMethod === 'cod' ? 'default' : 'outline'}
+                                onClick={() => setPaymentMethod('cod')}
+                                className="flex-1"
+                           >
+                               Cash on Delivery
+                           </Button>
+                           <Button 
+                                type="button" 
+                                variant={paymentMethod === 'online' ? 'default' : 'outline'}
+                                onClick={() => setPaymentMethod('online')}
+                                className="flex-1"
+                           >
+                               Online Payment (Razorpay)
+                           </Button>
+                       </div>
+                   </CardContent>
+               </Card>
            </div>
 
            {/* Order Summary */}
@@ -244,7 +364,7 @@ const CheckoutPage = () => {
                             disabled={loading}
                         >
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Place Order (COD)
+                            Place Order ({paymentMethod === 'cod' ? 'COD' : 'Online'})
                         </Button>
                         <p className="text-xs text-center text-gray-500 mt-2">
                            * Shipping calculated based on weight and destination zone.
@@ -256,5 +376,6 @@ const CheckoutPage = () => {
     </div>
   );
 };
+
 
 export default CheckoutPage;

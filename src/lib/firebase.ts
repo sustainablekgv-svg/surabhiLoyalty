@@ -3,6 +3,7 @@ import { getAnalytics, logEvent } from 'firebase/analytics';
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getFunctions } from 'firebase/functions';
 import { getPerformance, trace } from 'firebase/performance';
 import { getStorage } from 'firebase/storage';
 // Firebase v11 imports for monitoring and analytics
@@ -28,6 +29,7 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+export const functions = getFunctions(app);
 
 // Initialize Analytics - only in browser environments
 export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;

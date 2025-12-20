@@ -9,6 +9,8 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { AuthProvider } from '@/hooks/auth-context';
 import { ShopProvider } from '@/hooks/shop-context';
+import { CartProvider } from '@/hooks/useCart';
+import { WishlistProvider } from '@/hooks/useWishlist';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import AdminDashboard from './pages/admin/Dashboard';
 import CustomerDashboard from './pages/customer/Dashboard';
@@ -30,8 +32,10 @@ const App = () => {
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ShopProvider>
-        <TooltipProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <ShopProvider>
+              <TooltipProvider>
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -82,7 +86,9 @@ const App = () => {
             </AnalyticsProvider>
           </BrowserRouter>
         </TooltipProvider>
-        </ShopProvider>
+            </ShopProvider>
+          </WishlistProvider>
+        </CartProvider>
       </AuthProvider>
     </QueryClientProvider>
   </ErrorBoundary>

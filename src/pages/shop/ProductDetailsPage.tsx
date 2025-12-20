@@ -117,7 +117,7 @@ const ProductDetailsPage = () => {
                                         {product.brandName || "Brand"}
                                     </Badge>
                                 )}
-                                <h1 className="text-3xl font-bold text-gray-900">{product.name}</h1>
+                                <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{product.name}</h1>
                             </div>
                             <Button variant="ghost" size="icon" onClick={() => {
                                 navigator.clipboard.writeText(window.location.href);

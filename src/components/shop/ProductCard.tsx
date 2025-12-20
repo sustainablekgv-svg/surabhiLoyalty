@@ -47,7 +47,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           )}
           onClick={(e) => {
             e.stopPropagation();
-            toggleWishlist(product.id);
+            toggleWishlist(product as any);
           }}
         >
           <Heart className={cn("h-4 w-4", isWishlisted && "fill-current")} />

@@ -1,12 +1,13 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { isValidImageUrl } from '@/lib/image-utils';
 import { getOrders, updateOrderStatus } from '@/services/shop';
 import { Order } from '@/types/shop';
-import { Eye, Package } from 'lucide-react';
+import { Eye, Package, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -15,11 +16,30 @@ export const OrderManager = () => {
     const [loading, setLoading] = useState(true);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
-    const fetchOrders = async () => {
+    // Filters & Pagination
+    const [statusFilter, setStatusFilter] = useState<Order['status'] | 'all'>('all');
+    const [searchTerm, setSearchTerm] = useState('');
+    
+    const [lastDoc, setLastDoc] = useState<any>(null);
+    const [paginationStack, setPaginationStack] = useState<any[]>([]);
+    const [page, setPage] = useState(1);
+    const PAGE_SIZE = 10;
+    const [hasMore, setHasMore] = useState(true);
+
+    const fetchOrders = async (startAfterDoc?: any) => {
         setLoading(true);
         try {
-            const fetchedOrders = await getOrders();
-            setOrders(fetchedOrders);
+            const result = await getOrders(
+                PAGE_SIZE, 
+                startAfterDoc, 
+                statusFilter === 'all' ? undefined : statusFilter, 
+                searchTerm
+            );
+            setOrders(result.orders);
+            setLastDoc(result.lastDoc);
+            setHasMore(result.orders.length >= PAGE_SIZE || (!!searchTerm && result.orders.length > 0)); 
+            // Note: with client-side search approximation inside getOrders, hasMore logic might be tricky.
+            // If getOrders returns fewer than PAGE_SIZE, typically means end of list.
         } catch (error) {
             console.error("Error fetching orders", error);
             toast.error("Failed to load orders");
@@ -29,8 +49,31 @@ export const OrderManager = () => {
     };
 
     useEffect(() => {
-        fetchOrders();
-    }, []);
+        const timer = setTimeout(() => {
+            setPage(1);
+            setPaginationStack([]);
+            setLastDoc(null);
+            fetchOrders(null);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm, statusFilter]);
+
+    const loadNext = () => {
+        if (!lastDoc) return;
+        setPaginationStack(prev => [...prev, lastDoc]);
+        setPage(prev => prev + 1);
+        fetchOrders(lastDoc);
+    };
+
+    const loadPrev = () => {
+        if (page <= 1) return;
+        const newStack = [...paginationStack];
+        newStack.pop();
+        const prevDoc = newStack[newStack.length - 1] || null;
+        setPaginationStack(newStack);
+        setPage(prev => prev - 1);
+        fetchOrders(prevDoc);
+    };
 
     const handleStatusUpdate = async (orderId: string, newStatus: Order['status']) => {
         try {
@@ -59,6 +102,31 @@ export const OrderManager = () => {
 
     return (
         <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4 justify-between">
+                <div className="relative w-full sm:w-72">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                    <Input
+                        placeholder="Search Order ID, Name, Phone..."
+                        className="pl-8"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+                <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as any)}>
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Filter by Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="processing">Processing</SelectItem>
+                        <SelectItem value="shipped">Shipped</SelectItem>
+                        <SelectItem value="delivered">Delivered</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+
             <div className="border rounded-md">
                 <Table>
                     <TableHeader>
@@ -184,6 +252,28 @@ export const OrderManager = () => {
                         )}
                     </TableBody>
                 </Table>
+            </div>
+            {/* Pagination Controls */}
+             <div className="flex items-center justify-between px-2">
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={loadPrev} 
+                    disabled={page <= 1 || loading}
+                >
+                    Previous
+                </Button>
+                <div className="text-sm text-gray-500">
+                    Page {page}
+                </div>
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={loadNext} 
+                    disabled={!hasMore || loading}
+                >
+                    Next
+                </Button>
             </div>
         </div>
     );

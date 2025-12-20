@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { isValidImageUrl } from '@/lib/image-utils';
 import { uploadImageToCloudinary } from '@/services/cloudinary';
-import { createBrand, deleteBrand, getBrands, updateBrand } from '@/services/shop';
+import { createBrand, deleteBrand, getBrands, getBrandsPaginated, updateBrand } from '@/services/shop';
 import { Brand } from '@/types/shop';
 import { Edit, Plus, Search, Trash2, Upload } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
@@ -16,6 +16,14 @@ export const BrandManager = () => {
     const [brands, setBrands] = useState<Brand[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    
+    // Pagination
+    const [lastDoc, setLastDoc] = useState<any>(null);
+    const [paginationStack, setPaginationStack] = useState<any[]>([]);
+    const [page, setPage] = useState(1);
+    const PAGE_SIZE = 10;
+    const [hasMore, setHasMore] = useState(true);
+
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
     const [uploading, setUploading] = useState(false);
@@ -27,11 +35,24 @@ export const BrandManager = () => {
         logo: ''
     });
 
-    const fetchBrands = async () => {
+    const fetchBrands = async (startAfterDoc?: any) => {
         setLoading(true);
         try {
-            const fetchedBrands = await getBrands();
-            setBrands(fetchedBrands);
+            if (searchTerm && searchTerm.length > 2) {
+                // Search Mode
+                // Using basic getBrands that fetches all (assuming not excessive for search filtering) or large batch
+                // Since I reverted getBrands signature to Brand[], I'll check its implementation.
+                // It fetches ALL ordered by name. This is fine for client filtering if dataset < 1000.
+                const fetchedBrands = await getBrands();
+                const filtered = fetchedBrands.filter(b => b.name.toLowerCase().includes(searchTerm.toLowerCase()));
+                setBrands(filtered);
+                setHasMore(false);
+            } else {
+                const result = await getBrandsPaginated(PAGE_SIZE, startAfterDoc);
+                setBrands(result.brands);
+                setLastDoc(result.lastDoc);
+                setHasMore(result.brands.length >= PAGE_SIZE);
+            }
         } catch (error) {
             console.error("Error fetching brands", error);
             toast.error("Failed to load brands");
@@ -41,8 +62,31 @@ export const BrandManager = () => {
     };
 
     useEffect(() => {
-        fetchBrands();
-    }, []);
+        const timer = setTimeout(() => {
+            setPage(1);
+            setPaginationStack([]);
+            setLastDoc(null);
+            fetchBrands(null);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    const loadNext = () => {
+        if (!lastDoc) return;
+        setPaginationStack(prev => [...prev, lastDoc]);
+        setPage(prev => prev + 1);
+        fetchBrands(lastDoc);
+    };
+
+    const loadPrev = () => {
+        if (page <= 1) return;
+        const newStack = [...paginationStack];
+        newStack.pop();
+        const prevDoc = newStack[newStack.length - 1] || null;
+        setPaginationStack(newStack);
+        setPage(prev => prev - 1);
+        fetchBrands(prevDoc);
+    };
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -81,7 +125,7 @@ export const BrandManager = () => {
             setIsDialogOpen(false);
             setEditingBrand(null);
             resetForm();
-            fetchBrands();
+            fetchBrands(paginationStack[paginationStack.length - 1]);
         } catch (error) {
             toast.error('Error saving brand');
             console.error(error);
@@ -93,7 +137,7 @@ export const BrandManager = () => {
         try {
             await deleteBrand(id);
             toast.success('Brand deleted');
-            fetchBrands();
+            fetchBrands(paginationStack[paginationStack.length - 1]);
         } catch (error) {
             toast.error('Error deleting brand');
         }
@@ -116,10 +160,6 @@ export const BrandManager = () => {
         });
         setIsDialogOpen(true);
     };
-
-    const filteredBrands = brands.filter(b =>
-        b.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
 
     return (
         <div className="space-y-4">
@@ -201,10 +241,10 @@ export const BrandManager = () => {
                     <TableBody>
                         {loading ? (
                             <TableRow><TableCell colSpan={4} className="text-center py-8">Loading...</TableCell></TableRow>
-                        ) : filteredBrands.length === 0 ? (
+                        ) : brands.length === 0 ? (
                             <TableRow><TableCell colSpan={4} className="text-center py-8">No brands found</TableCell></TableRow>
                         ) : (
-                            filteredBrands.map(brand => (
+                            brands.map(brand => (
                                 <TableRow key={brand.id}>
                                     <TableCell>
                                         {isValidImageUrl(brand.logo) ? (
@@ -230,6 +270,29 @@ export const BrandManager = () => {
                         )}
                     </TableBody>
                 </Table>
+            </div>
+
+            {/* Pagination Controls */}
+             <div className="flex items-center justify-between px-2">
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={loadPrev} 
+                    disabled={page <= 1 || loading}
+                >
+                    Previous
+                </Button>
+                <div className="text-sm text-gray-500">
+                    Page {page}
+                </div>
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={loadNext} 
+                    disabled={!hasMore || loading}
+                >
+                    Next
+                </Button>
             </div>
         </div>
     );

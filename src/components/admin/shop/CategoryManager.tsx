@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { uploadImageToCloudinary } from '@/services/cloudinary';
-import { createCategory, deleteCategory, getCategories, updateCategory } from '@/services/shop';
+import { createCategory, deleteCategory, getCategories, getCategoriesPaginated, updateCategory } from '@/services/shop';
 import { Category } from '@/types/shop';
 import { Edit, Plus, Search, Trash2, Upload } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
@@ -14,6 +14,14 @@ export const CategoryManager = () => {
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    
+    // Pagination
+    const [lastDoc, setLastDoc] = useState<any>(null);
+    const [paginationStack, setPaginationStack] = useState<any[]>([]);
+    const [page, setPage] = useState(1);
+    const PAGE_SIZE = 10;
+    const [hasMore, setHasMore] = useState(true);
+
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
     const [uploading, setUploading] = useState(false);
@@ -26,11 +34,22 @@ export const CategoryManager = () => {
         isActive: true
     });
 
-    const fetchCategories = async () => {
+    const fetchCategories = async (startAfterDoc?: any) => {
         setLoading(true);
         try {
-            const fetchedCategories = await getCategories();
-            setCategories(fetchedCategories);
+            if (searchTerm && searchTerm.length > 2) {
+                // Search Mode - fetch all relevant (simple client-side filter approximation for now as Firestore lacks partial search)
+                 // Or fetch many and filter.
+                 const result = await getCategories(200); // reuse existing or new simple fetcher with limit
+                 const filtered = result.categories.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+                 setCategories(filtered);
+                 setHasMore(false);
+            } else {
+                const result = await getCategoriesPaginated(PAGE_SIZE, startAfterDoc);
+                setCategories(result.categories);
+                setLastDoc(result.lastDoc);
+                setHasMore(result.categories.length >= PAGE_SIZE);
+            }
         } catch (error) {
             console.error("Error fetching categories", error);
             toast.error("Failed to load categories");
@@ -40,8 +59,31 @@ export const CategoryManager = () => {
     };
 
     useEffect(() => {
-        fetchCategories();
-    }, []);
+        const timer = setTimeout(() => {
+            setPage(1);
+            setPaginationStack([]);
+            setLastDoc(null);
+            fetchCategories(null);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    const loadNext = () => {
+        if (!lastDoc) return;
+        setPaginationStack(prev => [...prev, lastDoc]);
+        setPage(prev => prev + 1);
+        fetchCategories(lastDoc);
+    };
+
+    const loadPrev = () => {
+        if (page <= 1) return;
+        const newStack = [...paginationStack];
+        newStack.pop();
+        const prevDoc = newStack[newStack.length - 1] || null;
+        setPaginationStack(newStack);
+        setPage(prev => prev - 1);
+        fetchCategories(prevDoc);
+    };
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -98,7 +140,7 @@ export const CategoryManager = () => {
             setIsDialogOpen(false);
             setEditingCategory(null);
             resetForm();
-            fetchCategories();
+            fetchCategories(paginationStack[paginationStack.length - 1]);
         } catch (error) {
             toast.error('Error saving category');
             console.error(error);
@@ -110,7 +152,7 @@ export const CategoryManager = () => {
         try {
             await deleteCategory(id);
             toast.success('Category deleted');
-            fetchCategories();
+            fetchCategories(paginationStack[paginationStack.length - 1]);
         } catch (error) {
             toast.error('Error deleting category');
         }
@@ -135,10 +177,6 @@ export const CategoryManager = () => {
         });
         setIsDialogOpen(true);
     };
-
-    const filteredCategories = categories.filter(c =>
-        c.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
 
     return (
         <div className="space-y-4">
@@ -221,10 +259,10 @@ export const CategoryManager = () => {
                         <TableBody>
                             {loading ? (
                                 <TableRow><TableCell colSpan={4} className="text-center py-8">Loading...</TableCell></TableRow>
-                            ) : filteredCategories.length === 0 ? (
+                            ) : categories.length === 0 ? (
                                 <TableRow><TableCell colSpan={4} className="text-center py-8">No categories found</TableCell></TableRow>
                             ) : (
-                                filteredCategories.map(category => (
+                                categories.map(category => (
                                     <TableRow key={category.id}>
                                         <TableCell>
                                             {category.image ? (
@@ -251,6 +289,29 @@ export const CategoryManager = () => {
                         </TableBody>
                     </Table>
                 </div>
+            </div>
+
+            {/* Pagination Controls */}
+             <div className="flex items-center justify-between px-2">
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={loadPrev} 
+                    disabled={page <= 1 || loading}
+                >
+                    Previous
+                </Button>
+                <div className="text-sm text-gray-500">
+                    Page {page}
+                </div>
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={loadNext} 
+                    disabled={!hasMore || loading}
+                >
+                    Next
+                </Button>
             </div>
         </div>
     );
