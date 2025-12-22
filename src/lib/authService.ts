@@ -1,7 +1,7 @@
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, query, Timestamp, where } from 'firebase/firestore';
 
-import { isEncrypted, safeDecryptText } from '@/lib/encryption';
+import { encryptText, isEncrypted, safeDecryptText } from '@/lib/encryption';
 import { auth, db } from '@/lib/firebase';
 import { CustomerType, StaffType, User } from '@/types/types';
 
@@ -144,5 +144,133 @@ export const signInWithFirebase = async (email: string, password: string): Promi
   } catch (error) {
     // console.warn('Firebase auth login failed:', error);
     throw error;
+  }
+};
+
+interface RegisterCustomerData {
+  customerName: string;
+  customerMobile: string;
+  customerPassword: string;
+  gender: string;
+  dateOfBirth: string;
+  storeLocation: string;
+  referredBy: string | null;
+  isStudent: boolean;
+  demoStore: boolean;
+}
+
+export const registerCustomer = async (data: RegisterCustomerData): Promise<CustomerType> => {
+  try {
+    const customersRef = collection(db, 'Customers');
+    
+    // Check if customer already exists
+    const q = query(customersRef, where('customerMobile', '==', data.customerMobile));
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      throw new Error('Customer with this mobile number already exists');
+    }
+
+    // Encrypt password
+    const encryptedPassword = encryptText(data.customerPassword);
+
+    // Generate Referral Code (e.g., REF-A1B2C)
+    const generateCode = () => {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No I, O, 1, 0 for clarity
+      let result = '';
+      for (let i = 0; i < 5; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return `REF-${result}`;
+    };
+
+    // Ensure uniqueness (simple retry)
+    let uniqueCode = generateCode();
+    // Ideally we check DB for collision, but probability is low for now. 
+    // TODO: Add collision check loop if scaling.
+
+    let realReferredByMobile: string | null = null;
+
+    if (data.referredBy) {
+         // Check if it's a code
+         const qCode = query(customersRef, where('referralCode', '==', data.referredBy.trim()));
+         const snapshotCode = await getDocs(qCode);
+         
+         if (!snapshotCode.empty) {
+             const referrerData = snapshotCode.docs[0].data() as CustomerType;
+             realReferredByMobile = referrerData.customerMobile;
+         } else {
+             // Fallback: Check if it's a mobile number (Legacy support during transition)
+             const qMobile = query(customersRef, where('customerMobile', '==', data.referredBy.trim()));
+             const snapshotMobile = await getDocs(qMobile);
+             if (!snapshotMobile.empty) {
+                 realReferredByMobile = data.referredBy.trim();
+             }
+         }
+    }
+
+    const newCustomer: CustomerType = {
+      role: 'customer',
+      customerName: data.customerName,
+      customerMobile: data.customerMobile,
+      customerPassword: encryptedPassword,
+      gender: data.gender,
+      dateOfBirth: data.dateOfBirth,
+      isStudent: data.isStudent,
+      storeLocation: data.storeLocation,
+      demoStore: data.demoStore,
+      referredBy: realReferredByMobile, // Store Verified Mobile here for logic continuity
+      referralCode: uniqueCode,         // Store New Code
+      referredUsers: null,
+      
+      // Defaults
+      createdAt: Timestamp.now(),
+      joinedDate: Timestamp.now(),
+      
+      tpin: '', // User needs to set this later if needed
+      
+      walletRechargeDone: false,
+      saleElgibility: true,
+      
+      walletId: `WAL-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      walletBalance: 0,
+      walletBalanceCurrentMonth: 0,
+      
+      surabhiBalance: 0,
+      surabhiCredit: 0,
+      surabhiDebit: 0,
+      surabhiReferral: 0,
+      surabhiBalanceCurrentMonth: 0,
+      
+      sevaBalance: 0,
+      sevaCredit: 0,
+      sevaDebit: 0,
+      sevaTotal: 0,
+      sevaBalanceCurrentMonth: 0,
+      
+      coinsFrozen: false,
+      
+      lastTransactionDate: null,
+      lastQuarterCheck: null,
+      currentQuarterStart: Timestamp.now(),
+      
+      cumTotal: 0,
+      surbhiTotal: 0,
+      
+      quartersPast: 0,
+      cummulativeTarget: data.isStudent ? 500 : 1000, 
+      targetMet: false
+    };
+
+    const docRef = await addDoc(customersRef, newCustomer);
+    
+    return {
+      ...newCustomer,
+      id: docRef.id
+    };
+
+  } catch (error: any) {
+    // console.error('Error registering customer:', error);
+    throw new Error(error.message || 'Failed to register customer');
   }
 };

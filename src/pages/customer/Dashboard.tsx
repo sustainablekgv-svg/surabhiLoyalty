@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { AccountSettings } from '@/components/customer/AccountSettings';
 import { CustomerHeader } from '@/components/customer/CustomerHeader';
 import { CustomerStats } from '@/components/customer/CustomerStats';
+import { CustomerOrderHistory } from '@/components/customer/OrderHistory';
 import { ReferralSystem } from '@/components/customer/ReferralSystem';
 import { TermsAndConditions } from '@/components/customer/TermsAndConditions';
 import { TransactionHistory } from '@/components/customer/TransactionHistory';
@@ -99,7 +100,7 @@ const CustomerDashboard = () => {
           onValueChange={setActiveTab}
           className="w-full space-y-2 xs:space-y-3 sm:space-y-4"
         >
-          <TabsList className="grid w-full grid-cols-5 mb-2 xs:mb-3 sm:mb-4 h-10">
+          <TabsList className="grid w-full grid-cols-6 mb-2 xs:mb-3 sm:mb-4 h-10">
             <TabsTrigger
               value="overview"
               className="flex items-center justify-center p-2"
@@ -120,6 +121,13 @@ const CustomerDashboard = () => {
               title="History"
             >
               <History className="h-4 w-4" />
+            </TabsTrigger>
+             <TabsTrigger
+              value="orders"
+              className="flex items-center justify-center p-2"
+              title="Orders"
+            >
+              <ShoppingBag className="h-4 w-4" />
             </TabsTrigger>
             <TabsTrigger
               value="settings"
@@ -147,6 +155,10 @@ const CustomerDashboard = () => {
 
           <TabsContent value="history" className="mt-0">
             <TransactionHistory userId={user.id} demoStore={user.demoStore} />
+          </TabsContent>
+
+          <TabsContent value="orders" className="mt-0">
+            <CustomerOrderHistory />
           </TabsContent>
 
           <TabsContent value="settings" className="mt-0">

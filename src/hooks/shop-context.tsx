@@ -109,16 +109,24 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const handleAddToCart = async (product: Product, quantity?: number) => {
+    const success = await addToCart(product, quantity);
+    if (success && isInWishlist(product.id)) {
+        await removeFromWishlist(product.id);
+        toast.info("Moved to cart from wishlist");
+    }
+  };
+
   return (
     <ShopContext.Provider
       value={{
         cart,
         wishlist,
-        addToCart,
+        addToCart: handleAddToCart,
         removeFromCart,
         updateQuantity,
         clearCart,
-        toggleWishlist: handleToggleWishlist as any, // Cast to any to satisfy TS for now or update Type
+        toggleWishlist: handleToggleWishlist as any,
         isInWishlist,
         cartTotal,
         cartCount: itemCount,

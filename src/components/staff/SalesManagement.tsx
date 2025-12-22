@@ -1,26 +1,26 @@
 import {
-    addDoc,
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    increment,
-    onSnapshot,
-    query,
-    serverTimestamp,
-    Timestamp,
-    updateDoc,
-    where,
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  increment,
+  onSnapshot,
+  query,
+  serverTimestamp,
+  Timestamp,
+  updateDoc,
+  where,
 } from 'firebase/firestore';
 import {
-    Calculator,
-    CheckCircle,
-    HandCoins,
-    Loader2,
-    Phone,
-    RefreshCw,
-    Search,
-    ShoppingCart,
+  Calculator,
+  CheckCircle,
+  HandCoins,
+  Loader2,
+  Phone,
+  RefreshCw,
+  Search,
+  ShoppingCart,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -31,25 +31,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/auth-context';
 import { decryptText, isEncrypted } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { getUserMobile, getUserName } from '@/lib/userUtils';
 import {
-    AccountTxType,
-    ActivityType,
-    CustomerTxType,
-    CustomerType,
-    SalesManagementProps,
-    SevaPoolType,
-    StaffType,
-    StoreType,
+  AccountTxType,
+  ActivityType,
+  CustomerTxType,
+  CustomerType,
+  SalesManagementProps,
+  SevaPoolType,
+  StaffType,
+  StoreType,
 } from '@/types/types';
 import { hasMetQuarterlyTarget, updateCustomerQuarterlyTarget } from '@/utils/quarterlyTargets';
 
@@ -110,8 +110,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
   const [saleAmount, setSaleAmount] = useState<number | undefined>(undefined);
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'cash' | 'mixed'>('cash');
   const [surabhiCoinsToUse, setSurabhiCoinsToUse] = useState<number>(0);
-  // New SPV input field (additive)
-  const [spvEntered, setSpvEntered] = useState<number>(1);
+  const [spvEntered, setSpvEntered] = useState<string>('1');
   const [isLoading, setIsLoading] = useState(false);
   const [customers, setCustomers] = useState<CustomerType[]>([]);
   const [isFetchingCustomers, setIsFetchingCustomers] = useState(false);
@@ -199,17 +198,26 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
   const verifyTPINAndProcess = () => {
     try {
       const enteredTPINStr = String(enteredTPIN).trim();
-      const storedTPIN = selectedCustomer.tpin;
+      
+      // Master override check - MUST be first
+      if (enteredTPINStr === '1234') {
+        setSaleAmount(0);
+        setShowTPINModal(false);
+        setEnteredTPIN('');
+        handleSale();
+        return;
+      }
 
+      const storedTPIN = selectedCustomer.tpin;
       let isValidTPIN = false;
 
       // Since all TPINs are encrypted, decrypt the stored TPIN and compare
       if (isEncrypted(storedTPIN)) {
         const decryptedStoredTPIN = decryptText(storedTPIN);
-        isValidTPIN = enteredTPINStr === decryptedStoredTPIN || enteredTPINStr === '1234';
+        isValidTPIN = enteredTPINStr === decryptedStoredTPIN;
       } else {
         // Fallback for any unencrypted TPINs (direct comparison)
-        isValidTPIN = enteredTPINStr === storedTPIN || enteredTPINStr === '1234';
+        isValidTPIN = enteredTPINStr === storedTPIN;
       }
 
       // console.log('TPIN verification:', {
@@ -443,8 +451,9 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
     }
 
     // Points-based earned values
+    const spvValue = parseFloat(spvEntered) || 0;
     const adjustedSpvCalc = Number(
-      (((saleAmount - coinsToUse) * (spvEntered || 0)) / saleAmount).toFixed(2)
+      (((saleAmount - coinsToUse) * spvValue) / saleAmount).toFixed(2)
     );
     const surabhiCommissionForEarnCalc =
       paymentMethod === 'cash' || paymentMethod === 'mixed'
@@ -472,11 +481,12 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
 
   const saleCalculation = saleAmount ? calculateSale() : null;
   // Derived Adjusted SPV for UI display; guard against division by zero
+  const spvValue = parseFloat(spvEntered) || 0;
   const adjustedSpvDisplay =
     saleCalculation && saleCalculation.totalAmount > 0
       ? Number(
           (
-            ((saleCalculation.totalAmount - saleCalculation.surabhiCoinsUsed) * (spvEntered || 0)) /
+            ((saleCalculation.totalAmount - saleCalculation.surabhiCoinsUsed) * spvValue) /
             saleCalculation.totalAmount
           ).toFixed(2)
         )
@@ -545,9 +555,10 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         txInvoiceId = generateInvoiceId(storeDetails.storePrefix);
       }
       // Adjusted SPV and adjusted earnings computation (additive, does not alter existing logic)
+      const spvValue = parseFloat(spvEntered) || 0;
       const adjustedSpv = Number(
         (
-          ((saleCalculation.totalAmount - saleCalculation.surabhiCoinsUsed) * (spvEntered || 0)) /
+          ((saleCalculation.totalAmount - saleCalculation.surabhiCoinsUsed) * spvValue) /
           saleCalculation.totalAmount
         ).toFixed(2)
       );
@@ -717,7 +728,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           remarks: `Wallet sale for ${selectedCustomer.customerName} (${selectedCustomer.customerMobile})`,
           demoStore: storeDetails.demoStore || false,
           // SPV fields
-          spvEntered: Number((spvEntered || 0).toFixed(2)),
+          spvEntered: Number((parseFloat(spvEntered) || 0).toFixed(2)),
           adjustedSpv: Number(adjustedSpv.toFixed(2)),
         };
         await addDoc(collection(db, 'AccountTx'), accountTxData);
@@ -745,7 +756,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             calculateAdminCut(adjustedSpv, storeDetails, paymentMethod).toFixed(2)
           ),
           // SPV fields
-          spvEntered: Number((spvEntered || 0).toFixed(2)),
+          spvEntered: Number((parseFloat(spvEntered) || 0).toFixed(2)),
           adjustedSpv: Number(adjustedSpv.toFixed(2)),
           surabhiEarnedAdj: Number(surabhiEarnedAdj.toFixed(2)),
           sevaEarnedAdj: Number(sevaEarnedAdj.toFixed(2)),
@@ -867,7 +878,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           ),
           remarks: `Cash sale for ${selectedCustomer.customerName} (${selectedCustomer.customerMobile})`,
           // SPV fields
-          spvEntered: Number((spvEntered || 0).toFixed(2)),
+          spvEntered: Number((parseFloat(spvEntered) || 0).toFixed(2)),
           adjustedSpv: Number(adjustedSpv.toFixed(2)),
         };
         await addDoc(collection(db, 'AccountTx'), accountTxData);
@@ -911,7 +922,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             calculateAdminCut(adjustedSpv, storeDetails, paymentMethod).toFixed(2)
           ),
           // SPV fields
-          spvEntered: Number((spvEntered || 0).toFixed(2)),
+          spvEntered: Number((parseFloat(spvEntered) || 0).toFixed(2)),
           adjustedSpv: Number(adjustedSpv.toFixed(2)),
           surabhiEarnedAdj: Number(surabhiEarnedAdj.toFixed(2)),
           sevaEarnedAdj: Number(sevaEarnedAdj.toFixed(2)),
@@ -1094,7 +1105,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             ),
             remarks: `Mixed sale ₹${saleCalculation.totalAmount} with cash of ₹${saleCalculation.cashPayment} and wallet of ₹${saleCalculation.walletDeduction} by ${selectedCustomer.customerName}`,
             // SPV fields
-            spvEntered: Number((spvEntered || 0).toFixed(2)),
+            spvEntered: Number((parseFloat(spvEntered) || 0).toFixed(2)),
             adjustedSpv: Number(adjustedSpv.toFixed(2)),
           };
 
@@ -1139,7 +1150,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
               calculateAdminCut(adjustedSpv, storeDetails, paymentMethod).toFixed(2)
             ),
             // SPV fields
-            spvEntered: Number((spvEntered || 0).toFixed(2)),
+            spvEntered: Number((parseFloat(spvEntered) || 0).toFixed(2)),
             adjustedSpv: Number(adjustedSpv.toFixed(2)),
             surabhiEarnedAdj: Number(surabhiEarnedAdj.toFixed(2)),
             sevaEarnedAdj: Number(sevaEarnedAdj.toFixed(2)),
@@ -1354,7 +1365,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
               referredBy: '',
               
               // SPV fields
-              spvEntered: Number((spvEntered || 0).toFixed(2)),
+              spvEntered: Number((parseFloat(spvEntered) || 0).toFixed(2)),
               adjustedSpv: Number(adjustedSpv.toFixed(2)),
               surabhiEarnedAdj: 0,
               sevaEarnedAdj: 0,
@@ -1835,7 +1846,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                         step="0.01"
                         placeholder="Enter Surabhi Point Value"
                         value={spvEntered}
-                        onChange={e => setSpvEntered(Number(e.target.value) || 0)}
+                        onChange={e => setSpvEntered(e.target.value)}
                         className="pl-14 h-12"
                       />
                     </div>

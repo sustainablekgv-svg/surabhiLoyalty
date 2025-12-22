@@ -15,6 +15,7 @@ export interface CustomerType {
   demoStore: boolean;
   district?: string;
   city?: string;
+  referralCode?: string;
   referredBy: string | null;
   referredUsers: { customerMobile: string; customerName: string; createdAt: Timestamp }[] | null;
   customerPassword: string;

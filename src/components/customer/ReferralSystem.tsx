@@ -1,14 +1,14 @@
 import { collection, doc, getDoc, getDocs, query, Timestamp, where } from 'firebase/firestore';
 import {
-  Calendar,
-  Coins,
-  Copy,
-  CreditCard,
-  Phone,
-  RefreshCw,
-  Share2,
-  Store,
-  Users,
+    Calendar,
+    Coins,
+    Copy,
+    CreditCard,
+    Phone,
+    RefreshCw,
+    Share2,
+    Store,
+    Users,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -56,6 +56,25 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
 
       if (docSnap.exists()) {
         const customerData = docSnap.data();
+        
+        // Lazy Migration: Generate Code if missing
+        if (!customerData.referralCode) {
+           const generateCode = () => {
+              const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+              let result = '';
+              for (let i = 0; i < 5; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+              }
+              return `REF-${result}`;
+           };
+           const newCode = generateCode();
+           await import('firebase/firestore').then(({ updateDoc }) => {
+              updateDoc(docRef, { referralCode: newCode });
+           });
+           
+           customerData.referralCode = newCode; // Update local state immediately
+        }
+
         setUserData(customerData);
         setReferralIncome(customerData.surabhiReferral || 0);
 
@@ -124,30 +143,37 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
   // }, 0);
   // console.log('The referaals are', referredCustomers);
 
-  const copyReferralNumber = async () => {
+  const getShareableLink = () => {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/signup?ref=${userData?.referralCode}`;
+  };
+
+  const copyReferralLink = async () => {
     try {
-      await navigator.clipboard.writeText(userMobile);
-      toast.success('Referral number copied to clipboard!');
+      await navigator.clipboard.writeText(getShareableLink());
+      toast.success('Referral link copied to clipboard!');
     } catch (err) {
-      toast.error('Failed to copy referral number');
+      toast.error('Failed to copy referral link');
     }
   };
 
   const shareReferral = async () => {
-    const shareText = `Join ${userName}'s network on our loyalty program! Use my referral number ${userMobile} when signing up to get benefits. I've earned ${referralIncome} Surabhi Coins in referral bonuses so far!`;
+    const shareUrl = getShareableLink();
+    const shareText = `Join ${userName}'s network on our loyalty program! Sign up here: ${shareUrl}`;
 
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Join Our Rewards Program',
+          title: 'Join Surabhi Loyalty',
           text: shareText,
+          url: shareUrl,
         });
       } catch (err) {
-        // Fallback to copying
-        copyReferralNumber();
+        // Fallback to copying if share cancelled or failed
+        // copyReferralLink(); 
       }
     } else {
-      copyReferralNumber();
+      copyReferralLink();
     }
   };
 
@@ -267,14 +293,14 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
               <div className="flex items-center justify-between">
                 <div className="overflow-x-auto">
                   <p className="text-xs xs:text-sm text-gray-600 mb-0.5 xs:mb-1">
-                    Your Referral Number
+                    Your Referral Code
                   </p>
-                  <p className="text-lg xs:text-xl sm:text-2xl font-bold text-green-900 font-mono">
-                    {userData?.customerMobile}
+                  <p className="text-lg xs:text-xl sm:text-2xl font-bold text-green-900 font-mono tracking-wider">
+                    {userData?.referralCode || 'Generating...'}
                   </p>
                 </div>
                 <Button
-                  onClick={copyReferralNumber}
+                  onClick={copyReferralLink}
                   variant="outline"
                   size="sm"
                   className="border-green-300 text-green-600 hover:bg-green-50 h-7 xs:h-8 sm:h-9 w-7 xs:w-8 sm:w-9 p-0"
@@ -311,13 +337,13 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
               </div>
             </div>
 
-            {/* <Button
+            <Button
               onClick={shareReferral}
               className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
             >
               <Share2 className="h-4 w-4 mr-2" />
-              Share Referral Number
-            </Button> */}
+              Share Referral Link
+            </Button>
           </CardContent>
         </Card>
 
@@ -372,7 +398,7 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
                       </div>
                       <div className="flex items-center gap-1">
                         <CreditCard className="h-2.5 xs:h-3 w-2.5 xs:w-3" />
-                        <span>₹{customer?.walletBalance.toFixed(2)}</span>
+                        <span>₹{(customer?.walletBalance || 0).toFixed(2)}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Coins className="h-2.5 xs:h-3 w-2.5 xs:w-3" />

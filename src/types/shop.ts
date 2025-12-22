@@ -14,6 +14,9 @@ export interface Product {
     isActive: boolean;
     isFeatured?: boolean;
     freeShipping?: boolean;
+    unitsOfMeasure?: string;
+    variantType?: string;
+    isVisible?: boolean;
     createdAt: any; // Firestore Timestamp
     updatedAt: any; // Firestore Timestamp
 }
@@ -79,10 +82,16 @@ export interface Order {
     userId: string;
     items: CartItem[];
     totalAmount: number;
-    status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+    status: 'payment_pending' | 'received' | 'confirmed' | 'in_transit' | 'delivered' | 'cancelled';
     paymentMethod: 'cod' | 'online';
     paymentStatus: 'pending' | 'paid' | 'failed';
     shippingAddress: Address;
+    timeline: {
+        status: string;
+        timestamp: any;
+        note?: string;
+    }[];
+    cancelReason?: string;
     createdAt: any;
     updatedAt: any;
 }

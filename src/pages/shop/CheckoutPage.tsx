@@ -1,3 +1,4 @@
+import { Footer } from '@/components/shop/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/auth-context';
 import { useShop } from '@/hooks/shop-context';
 import { calculateShippingCost, getZoneForState, INDIAN_STATES } from '@/services/shipping';
-import { Loader2, Truck } from 'lucide-react';
+import { ArrowLeft, Loader2, Truck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -41,7 +42,7 @@ const CheckoutPage = () => {
       // For now, assuming CartItem needs update or we blindly trust he will add it to CartItem too?
       // Let's check CartItem in types.
       // Use 'as any' for now if CartItem isn't updated yet, but I should update CartItem too.
-      if ((item as any).freeShipping) return sum;
+      if (item.freeShipping) return sum;
 
       // Assuming 0.5kg default weight if not available
       return sum + (0.5 * item.quantity); 
@@ -196,8 +197,14 @@ const CheckoutPage = () => {
   }
 
   return (
-    <div className="container mx-auto p-4 py-8 max-w-6xl">
-       <h1 className="text-3xl font-bold mb-8">Checkout</h1>
+    <div className="min-h-screen flex flex-col bg-gray-50/50">
+    <div className="container mx-auto p-4 py-8 max-w-6xl flex-1">   
+       <div className="flex items-center gap-4 mb-8">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/shop')}>
+            <ArrowLeft className="h-6 w-6" />
+          </Button>
+          <h1 className="text-3xl font-bold">Checkout</h1>
+       </div>
        
        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
            {/* Address Form */}
@@ -373,6 +380,8 @@ const CheckoutPage = () => {
                 </Card>
            </div>
        </div>
+    </div>
+    <Footer />
     </div>
   );
 };
