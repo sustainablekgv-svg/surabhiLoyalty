@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { isValidImageUrl } from '@/lib/image-utils';
@@ -39,11 +40,14 @@ export const ProductManager = () => {
         price: '',
         sellingPrice: '',
         weight: '',
+        unitsOfMeasure: '',
         stock: '',
         category: '',
         brandId: '',
         imageUrl: '',
-        freeShipping: false
+        freeShipping: false,
+        variantType: '',
+        isVisible: true
     });
 
     const fetchData = async (startAfterDoc?: any) => {
@@ -160,6 +164,7 @@ export const ProductManager = () => {
                 price: Number(formData.price),
                 sellingPrice: formData.sellingPrice ? Number(formData.sellingPrice) : Number(formData.price),
                 weight: formData.weight,
+                unitsOfMeasure: formData.unitsOfMeasure,
                 stock: Number(formData.stock),
                 categoryId: formData.category, 
                 categoryName: categoryName,
@@ -167,6 +172,8 @@ export const ProductManager = () => {
                 brandName: brandName,
                 images: formData.imageUrl ? [formData.imageUrl] : [],
                 freeShipping: formData.freeShipping,
+                variantType: formData.variantType,
+                isVisible: formData.isVisible,
                 isActive: true,
             };
 
@@ -208,11 +215,14 @@ export const ProductManager = () => {
             price: '',
             sellingPrice: '',
             weight: '',
+            unitsOfMeasure: '',
             stock: '',
             category: '',
             brandId: '',
             imageUrl: '',
-            freeShipping: false
+            freeShipping: false,
+            variantType: '',
+            isVisible: true
         });
     };
 
@@ -224,11 +234,14 @@ export const ProductManager = () => {
             price: product.price.toString(),
             sellingPrice: product.sellingPrice?.toString() || '',
             weight: product.weight || '',
+            unitsOfMeasure: product.unitsOfMeasure || '',
             stock: product.stock.toString(),
             category: product.categoryName || product.categoryId || '',
             brandId: product.brandId || '',
             imageUrl: product.images?.[0] || '',
-            freeShipping: product.freeShipping || false
+            freeShipping: product.freeShipping || false,
+            variantType: product.variantType || '',
+            isVisible: product.isVisible ?? true
         });
         setIsDialogOpen(true);
     };
@@ -288,7 +301,7 @@ export const ProductManager = () => {
                                 <Label>Description</Label>
                                 <Textarea required value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                     <Label>Category</Label>
                                     <Select 
@@ -308,8 +321,26 @@ export const ProductManager = () => {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Weight / Unit</Label>
+                                    <Label>Weight</Label>
                                     <Input required value={formData.weight} onChange={e => setFormData({ ...formData, weight: e.target.value })} placeholder="e.g. 500g, 1kg" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Units of Measure</Label>
+                                    <Select 
+                                        value={formData.unitsOfMeasure} 
+                                        onValueChange={(value) => setFormData({ ...formData, unitsOfMeasure: value })}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select Unit" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {['kg', 'g', 'ltr', 'ml', 'pcs', 'dozen', 'box', 'pack'].map(unit => (
+                                                <SelectItem key={unit} value={unit}>
+                                                    {unit}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             </div>
                             <div className="grid grid-cols-3 gap-4">
@@ -326,17 +357,36 @@ export const ProductManager = () => {
                                     <Input type="number" required value={formData.stock} onChange={e => setFormData({ ...formData, stock: e.target.value })} />
                                 </div>
                             </div>
+
+                            <div className="space-y-2">
+                                <Label>Variant Type (Optional)</Label>
+                                <Input value={formData.variantType} onChange={e => setFormData({ ...formData, variantType: e.target.value })} placeholder="e.g. Color, Size" />
+                            </div>
                             
-                            <div className="flex items-center space-x-2 border p-3 rounded-md">
-                                <Checkbox 
-                                    id="freeShipping" 
-                                    checked={formData.freeShipping} 
-                                    onCheckedChange={(checked) => setFormData({...formData, freeShipping: checked === true})}
-                                />
-                                <Label htmlFor="freeShipping">Free Shipping</Label>
-                                <p className="text-xs text-muted-foreground ml-2">
-                                    If checked, shipping cost will not apply to this item.
-                                </p>
+                            <div className="flex gap-4">
+                                <div className="flex items-center space-x-2 border p-3 rounded-md flex-1">
+                                    <Checkbox 
+                                        id="freeShipping" 
+                                        checked={formData.freeShipping} 
+                                        onCheckedChange={(checked) => setFormData({...formData, freeShipping: checked === true})}
+                                    />
+                                    <Label htmlFor="freeShipping">Free Shipping</Label>
+                                    <p className="text-xs text-muted-foreground ml-2">
+                                        Exclude from shipping cost.
+                                    </p>
+                                </div>
+
+                                <div className="flex items-center space-x-2 border p-3 rounded-md flex-1">
+                                    <Switch
+                                        id="isVisible"
+                                        checked={formData.isVisible}
+                                        onCheckedChange={(checked) => setFormData({...formData, isVisible: checked})}
+                                    />
+                                    <Label htmlFor="isVisible">Show in Shop</Label>
+                                    <p className="text-xs text-muted-foreground ml-2">
+                                        Toggle visibility for customers.
+                                    </p>
+                                </div>
                             </div>
 
                             <div className="space-y-2">
@@ -381,14 +431,15 @@ export const ProductManager = () => {
                             <TableHead>Brand</TableHead>
                             <TableHead>Price</TableHead>
                             <TableHead>Stock</TableHead>
+                            <TableHead>Visibility</TableHead>
                             <TableHead>Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
-                            <TableRow><TableCell colSpan={7} className="text-center py-8">Loading...</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={8} className="text-center py-8">Loading...</TableCell></TableRow>
                         ) : products.length === 0 ? (
-                            <TableRow><TableCell colSpan={7} className="text-center py-8">No products found</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={8} className="text-center py-8">No products found</TableCell></TableRow>
                         ) : (
                             products.map(product => (
                                 <TableRow key={product.id}>
@@ -419,6 +470,11 @@ export const ProductManager = () => {
                                     <TableCell>
                                         <span className={product.stock < 10 ? "text-red-500 font-bold" : ""}>
                                             {product.stock}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell>
+                                        <span className={`px-2 py-1 rounded text-xs ${product.isVisible !== false ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                                            {product.isVisible !== false ? 'Visible' : 'Hidden'}
                                         </span>
                                     </TableCell>
                                     <TableCell>

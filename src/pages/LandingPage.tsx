@@ -1,18 +1,17 @@
 import {
     ArrowRight,
     CheckCircle,
-    Coins,
     ExternalLink,
     Heart,
     LogIn,
     Phone,
-    Shield,
     ShoppingBag,
     Star,
-    Users,
+    Users
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+import { Footer } from '@/components/shop/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -241,58 +240,7 @@ const LandingPage = () => {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="bg-gradient-to-br from-purple-600 to-amber-500 p-2 rounded-lg">
-                  <Coins className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold">Surabhi Loyalty</h3>
-                  {/* <p className="text-sm text-gray-400"> Simple - Secure - Transparent</p> */}
-                </div>
-              </div>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                Connecting Local Businesses with Local Communities
-              </p>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-4">Contact Information</h4>
-              <div className="space-y-2 text-sm text-gray-400">
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4" />
-                  <a href="tel:9606979530" className="hover:text-white transition-colors">
-                    9606979530
-                  </a>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
-                  <span>Simple - Secure - Transparent</span>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-4">Program Features</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li>• Surabhi Coins Rewards</li>
-                <li>• Referral System</li>
-                <li>• Seva Pool Contributions</li>
-                <li>• Quarterly Targets</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center">
-            <p className="text-sm text-gray-400">
-              © {new Date().getFullYear()}Sustainable KGV. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

@@ -5,15 +5,16 @@ import { useShop } from '@/hooks/shop-context';
 import { isValidImageUrl } from '@/lib/image-utils';
 import { cn } from '@/lib/utils';
 import { Product } from '@/types/shop';
-import { Heart, ShoppingCart } from 'lucide-react';
+import { Heart, ShoppingCart, Trash2 } from 'lucide-react';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
 interface ProductCardProps {
   product: Product;
+  variant?: 'default' | 'wishlist';
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'default' }) => {
   const { addToCart, toggleWishlist, isInWishlist } = useShop();
   const navigate = useNavigate();
   const isWishlisted = isInWishlist(product.id);
@@ -43,25 +44,30 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           size="icon"
           className={cn(
             "absolute right-2 top-2 h-8 w-8 rounded-full opacity-0 transition-all duration-300 group-hover:opacity-100",
-            isWishlisted && "opacity-100 text-red-500 hover:text-red-600"
+            (isWishlisted || variant === 'wishlist') && "opacity-100",
+            variant === 'wishlist' ? "text-red-500 hover:text-red-700 bg-white" : "text-red-500 hover:text-red-600"
           )}
           onClick={(e) => {
             e.stopPropagation();
             toggleWishlist(product as any);
           }}
         >
-          <Heart className={cn("h-4 w-4", isWishlisted && "fill-current")} />
+          {variant === 'wishlist' ? (
+             <Trash2 className="h-4 w-4" />
+          ) : (
+             <Heart className={cn("h-4 w-4", isWishlisted && "fill-current")} />
+          )}
         </Button>
       </div>
       <CardContent className="p-4">
         <div 
-          className="mb-2 text-sm text-gray-500 cursor-pointer hover:underline"
+          className="mb-2 text-sm text-gray-600 cursor-pointer hover:underline font-medium"
           onClick={() => navigate(`/shop?category=${product.categoryName}`)}
         >
           {product.categoryName}
         </div>
         <h3 
-          className="font-medium leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors mb-2"
+          className="font-semibold leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors mb-2 text-gray-900"
           onClick={() => navigate(`/shop/product/${product.id}`)}
         >
           {product.name}
@@ -69,8 +75,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         <div className="flex items-center gap-2">
           {product.sellingPrice && product.sellingPrice < product.price ? (
             <>
-              <span className="font-bold text-lg">₹{product.sellingPrice}</span>
-              <span className="text-sm text-gray-400 line-through">₹{product.price}</span>
+              <span className="font-bold text-lg text-gray-900">₹{product.sellingPrice}</span>
+              <span className="text-sm text-gray-500 line-through">₹{product.price}</span>
             </>
           ) : (
             <span className="font-bold text-lg">₹{product.price}</span>

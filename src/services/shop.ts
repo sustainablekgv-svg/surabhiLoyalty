@@ -73,7 +73,11 @@ export const getProducts = async (
 };
 
 export const getActiveProducts = async (): Promise<Product[]> => {
-  const q = query(collection(db, 'products'), where('isActive', '==', true));
+  const q = query(
+      collection(db, 'products'), 
+      where('isActive', '==', true),
+      where('isVisible', '==', true)
+  );
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
 };
@@ -241,10 +245,14 @@ export const deleteBrand = async (id: string): Promise<void> => {
 
 // --- Orders ---
 
-export const createOrder = async (order: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'status'>) => {
+export const createOrder = async (order: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'timeline'>) => {
+    const timestamp = new Date();
     const docRef = await addDoc(collection(db, 'orders'), {
         ...order,
-        status: 'pending',
+        status: 'received',
+        timeline: [
+            { status: 'received', timestamp, note: 'Order placed successfully' }
+        ],
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
     });
@@ -294,10 +302,63 @@ export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
 };
 
-export const updateOrderStatus = async (orderId: string, status: Order['status']) => {
+export const updateOrderStatus = async (orderId: string, status: Order['status'], note?: string) => {
     const docRef = doc(db, 'orders', orderId);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) throw new Error("Order not found");
+    
+    const currentOrder = docSnap.data() as Order;
+    const newTimeline = [
+        ...(currentOrder.timeline || []),
+        { status, timestamp: new Date(), note: note || `Status updated to ${status}` }
+    ];
+
     await updateDoc(docRef, {
         status,
+        timeline: newTimeline,
+        updatedAt: serverTimestamp()
+    });
+};
+
+export const cancelOrder = async (orderId: string, reason: string) => {
+    const docRef = doc(db, 'orders', orderId);
+    
+    // Fetch to get current timeline
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) throw new Error("Order not found");
+    
+    const currentOrder = docSnap.data() as Order;
+    
+    if (currentOrder.status !== 'received') {
+        throw new Error("Order cannot be cancelled at this stage");
+    }
+
+    const newTimeline = [
+        ...(currentOrder.timeline || []),
+        { status: 'cancelled', timestamp: new Date(), note: `Cancelled by user: ${reason}` }
+    ];
+
+    await updateDoc(docRef, {
+        status: 'cancelled',
+        cancelReason: reason,
+        timeline: newTimeline,
+        updatedAt: serverTimestamp()
+    });
+};
+
+export const updateOrderAddress = async (orderId: string, newAddress: import('@/types/shop').Address) => {
+     const docRef = doc(db, 'orders', orderId);
+     const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) throw new Error("Order not found");
+    
+    const currentOrder = docSnap.data() as Order;
+     if (currentOrder.status !== 'received') {
+        throw new Error("Order details cannot be edited at this stage");
+    }
+
+    await updateDoc(docRef, {
+        shippingAddress: newAddress,
         updatedAt: serverTimestamp()
     });
 };

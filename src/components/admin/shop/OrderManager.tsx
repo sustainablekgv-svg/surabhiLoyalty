@@ -91,9 +91,10 @@ export const OrderManager = () => {
 
     const getStatusColor = (status: Order['status']) => {
         switch (status) {
-            case 'pending': return 'bg-yellow-100 text-yellow-800';
-            case 'processing': return 'bg-blue-100 text-blue-800';
-            case 'shipped': return 'bg-purple-100 text-purple-800';
+            case 'payment_pending': return 'bg-orange-100 text-orange-800';
+            case 'received': return 'bg-blue-100 text-blue-800';
+            case 'confirmed': return 'bg-yellow-100 text-yellow-800';
+            case 'in_transit': return 'bg-purple-100 text-purple-800';
             case 'delivered': return 'bg-green-100 text-green-800';
             case 'cancelled': return 'bg-red-100 text-red-800';
             default: return 'bg-gray-100 text-gray-800';
@@ -118,9 +119,10 @@ export const OrderManager = () => {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="processing">Processing</SelectItem>
-                        <SelectItem value="shipped">Shipped</SelectItem>
+                        <SelectItem value="payment_pending">Payment Pending</SelectItem>
+                        <SelectItem value="received">Received</SelectItem>
+                        <SelectItem value="confirmed">Confirmed</SelectItem>
+                        <SelectItem value="in_transit">In Transit</SelectItem>
                         <SelectItem value="delivered">Delivered</SelectItem>
                         <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
@@ -163,7 +165,7 @@ export const OrderManager = () => {
                                     <TableCell>₹{order.totalAmount}</TableCell>
                                     <TableCell>
                                         <Badge variant="outline" className={`border-0 ${getStatusColor(order.status)}`}>
-                                            {order.status.toUpperCase()}
+                                            {order.status.toUpperCase().replace('_', ' ')}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
@@ -173,7 +175,7 @@ export const OrderManager = () => {
                                                     <Eye className="h-4 w-4" />
                                                 </Button>
                                             </DialogTrigger>
-                                            <DialogContent className="max-w-2xl">
+                                            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                                                 <DialogHeader>
                                                     <DialogTitle>Order Details</DialogTitle>
                                                 </DialogHeader>
@@ -203,14 +205,33 @@ export const OrderManager = () => {
                                                                             <SelectValue placeholder="Status" />
                                                                         </SelectTrigger>
                                                                         <SelectContent>
-                                                                            <SelectItem value="pending">Pending</SelectItem>
-                                                                            <SelectItem value="processing">Processing</SelectItem>
-                                                                            <SelectItem value="shipped">Shipped</SelectItem>
+                                                                            <SelectItem value="payment_pending">Payment Pending</SelectItem>
+                                                                            <SelectItem value="received">Received</SelectItem>
+                                                                            <SelectItem value="confirmed">Confirmed</SelectItem>
+                                                                            <SelectItem value="in_transit">In Transit</SelectItem>
                                                                             <SelectItem value="delivered">Delivered</SelectItem>
                                                                             <SelectItem value="cancelled">Cancelled</SelectItem>
                                                                         </SelectContent>
                                                                     </Select>
                                                                 </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Timeline */}
+                                                        <div>
+                                                            <h4 className="font-semibold mb-2">Order Timeline</h4>
+                                                            <div className="space-y-2">
+                                                                {selectedOrder.timeline?.map((event, idx) => (
+                                                                    <div key={idx} className="flex gap-2 text-sm border-l-2 border-gray-200 pl-3">
+                                                                        <div className="w-24 text-gray-500 text-xs shrink-0">
+                                                                            {event.timestamp?.toDate ? event.timestamp.toDate().toLocaleString() : new Date().toLocaleString()}
+                                                                        </div>
+                                                                        <div>
+                                                                            <div className="font-medium">{event.status.toUpperCase().replace('_', ' ')}</div>
+                                                                            {event.note && <div className="text-xs text-gray-500">{event.note}</div>}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
                                                             </div>
                                                         </div>
 

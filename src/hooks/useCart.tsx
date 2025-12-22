@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 interface CartContextType {
   cart: CartItem[];
-  addToCart: (product: Product, quantity?: number) => Promise<void>;
+  addToCart: (product: Product, quantity?: number) => Promise<boolean>;
   removeFromCart: (productId: string) => Promise<void>;
   updateQuantity: (productId: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -39,10 +39,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, [user]);
 
-  const addToCart = async (product: Product, quantity = 1) => {
+  const addToCart = async (product: Product, quantity = 1): Promise<boolean> => {
     if (!user || !user.id) {
       toast.error('Please login to add items to cart');
-      return;
+      return false;
     }
 
     const updatedCart = [...cart];
@@ -52,7 +52,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const newQuantity = updatedCart[existingItemIndex].quantity + quantity;
       if (newQuantity > product.stock) {
         toast.error(`Only ${product.stock} items available in stock`);
-        return;
+        return false;
       }
       updatedCart[existingItemIndex].quantity = newQuantity;
     } else {
@@ -63,15 +63,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         price: product.sellingPrice,
         image: product.images[0],
         maxStock: product.stock,
+        freeShipping: product.freeShipping,
       });
     }
 
     try {
       await setDoc(doc(db, 'users', user.id, 'cart', 'items'), { items: updatedCart });
       toast.success('Added to cart');
+      return true;
     } catch (error) {
       console.error('Error adding to cart:', error);
       toast.error('Failed to add to cart');
+      return false;
     }
   };
 

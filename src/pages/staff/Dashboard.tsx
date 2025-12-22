@@ -152,7 +152,9 @@ const StoreDashboard = () => {
             {/* Tabs Navigation */}
             <div className="mb-4 sm:mb-6 md:mb-8 overflow-x-hidden overflow-y-hidden">
               <TabsList
-                className={`grid w-full grid-cols-${walletEnabled ? 6 : 5} bg-gray-100 p-0.5 rounded-lg overflow-y-hidden`}
+                className={`grid w-full bg-gray-100 p-0.5 rounded-lg overflow-y-hidden ${
+                  walletEnabled ? 'grid-cols-6' : 'grid-cols-5'
+                }`}
               >
                 {[
                   { value: 'overview', icon: TrendingUp, label: 'Overview' },
