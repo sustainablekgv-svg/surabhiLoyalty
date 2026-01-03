@@ -4,9 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { uploadImageToCloudinary } from '@/services/cloudinary';
-import { createCategory, deleteCategory, getCategories, getCategoriesPaginated, updateCategory } from '@/services/shop';
+import { createCategory, deleteCategory, getCategories, getCategoriesPaginated, initializeDisplayOrder, reorderCategory, updateCategory } from '@/services/shop';
 import { Category } from '@/types/shop';
-import { Edit, Plus, Search, Trash2, Upload } from 'lucide-react';
+import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Search, Trash2, Upload } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -158,6 +158,31 @@ export const CategoryManager = () => {
         }
     };
 
+    const handleReorder = async (category: Category, direction: 'up' | 'down') => {
+        try {
+            await reorderCategory(category.id, category.displayOrder || 0, direction);
+            // Refresh
+            fetchCategories(paginationStack[paginationStack.length - 1]);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to reorder");
+        }
+    };
+
+    const handleInitializeOrder = async () => {
+        if (!confirm("This will reset the order of all categories. Continue?")) return;
+        setLoading(true);
+        try {
+            await initializeDisplayOrder('categories');
+            toast.success("Order initialized");
+            fetchCategories(null);
+        } catch (error) {
+            toast.error("Failed to initialize");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const resetForm = () => {
         setFormData({
             name: '',
@@ -200,6 +225,9 @@ export const CategoryManager = () => {
                     <DialogTrigger asChild>
                         <Button className="w-full sm:w-auto"><Plus className="h-4 w-4 mr-2" /> Add Category</Button>
                     </DialogTrigger>
+                    <Button variant="outline" onClick={handleInitializeOrder} title="Fix missing orders">
+                        <ListOrdered className="h-4 w-4" />
+                    </Button>
                     <DialogContent className="sm:max-w-[425px]">
                         <DialogHeader>
                             <DialogTitle>{editingCategory ? 'Edit Category' : 'Add New Category'}</DialogTitle>
@@ -281,6 +309,14 @@ export const CategoryManager = () => {
                                                 <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => handleDelete(category.id)}>
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
+                                                <div className="flex flex-col gap-0.5">
+                                                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleReorder(category, 'up')}>
+                                                        <ArrowUp className="h-3 w-3" />
+                                                    </Button>
+                                                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleReorder(category, 'down')}>
+                                                        <ArrowDown className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
                                             </div>
                                         </TableCell>
                                     </TableRow>

@@ -2,13 +2,14 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { isValidImageUrl } from '@/lib/image-utils';
 import { uploadImageToCloudinary } from '@/services/cloudinary';
-import { createBrand, deleteBrand, getBrands, getBrandsPaginated, updateBrand } from '@/services/shop';
-import { Brand } from '@/types/shop';
-import { Edit, Plus, Search, Trash2, Upload } from 'lucide-react';
+import { createBrand, deleteBrand, getBrands, getBrandsFiltered, getCategories, initializeDisplayOrder, reorderBrand, updateBrand } from '@/services/shop';
+import { Brand, Category } from '@/types/shop';
+import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Search, Trash2, Upload } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -16,6 +17,8 @@ export const BrandManager = () => {
     const [brands, setBrands] = useState<Brand[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
     
     // Pagination
     const [lastDoc, setLastDoc] = useState<any>(null);
@@ -32,7 +35,9 @@ export const BrandManager = () => {
     const [formData, setFormData] = useState({
         name: '',
         description: '',
-        logo: ''
+        logo: '',
+        categoryId: '',
+        categoryIds: [] as string[]
     });
 
     const fetchBrands = async (startAfterDoc?: any) => {
@@ -41,14 +46,12 @@ export const BrandManager = () => {
             if (searchTerm && searchTerm.length > 2) {
                 // Search Mode
                 // Using basic getBrands that fetches all (assuming not excessive for search filtering) or large batch
-                // Since I reverted getBrands signature to Brand[], I'll check its implementation.
-                // It fetches ALL ordered by name. This is fine for client filtering if dataset < 1000.
                 const fetchedBrands = await getBrands();
                 const filtered = fetchedBrands.filter(b => b.name.toLowerCase().includes(searchTerm.toLowerCase()));
                 setBrands(filtered);
                 setHasMore(false);
             } else {
-                const result = await getBrandsPaginated(PAGE_SIZE, startAfterDoc);
+                const result = await getBrandsFiltered(PAGE_SIZE, startAfterDoc, undefined, filterCategoryId);
                 setBrands(result.brands);
                 setLastDoc(result.lastDoc);
                 setHasMore(result.brands.length >= PAGE_SIZE);
@@ -69,7 +72,17 @@ export const BrandManager = () => {
             fetchBrands(null);
         }, 500);
         return () => clearTimeout(timer);
-    }, [searchTerm]);
+    }, [searchTerm, filterCategoryId]);
+
+    useEffect(() => {
+        const loadCats = async () => {
+             try {
+                const data = await getCategories(200);
+                setCategories(data.categories);
+             } catch(e) { console.error("Failed to load categories", e); }
+        };
+        loadCats();
+    }, []);
 
     const loadNext = () => {
         if (!lastDoc) return;
@@ -106,12 +119,21 @@ export const BrandManager = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (formData.categoryIds.length === 0) {
+            toast.error("Please select at least one category");
+            return;
+        }
+
         try {
-            const brandData = {
+            const brandData: any = {
                 name: formData.name,
                 description: formData.description,
                 logo: formData.logo,
                 isActive: true,
+                categoryId: formData.categoryIds[0], // Primary category for legacy support
+                categoryIds: formData.categoryIds,
+                categoryName: categories.find(c => c.id === formData.categoryIds[0])?.name || ''
             };
 
             if (editingBrand) {
@@ -143,11 +165,49 @@ export const BrandManager = () => {
         }
     };
 
+    const handleReorder = async (brand: Brand, direction: 'up' | 'down') => {
+        // If filtering by specific category, use it. Otherwise, assume global reorder (if supported) or warn.
+        // User requested "totally independent" Brand Order. This implies a global order.
+        // We will pass undefined or a specific flag for global order.
+        
+        try {
+            const contextId = filterCategoryId !== 'all' ? filterCategoryId : undefined;
+            const currentOrder = contextId ? (brand.categoryOrders?.[contextId] ?? 0) : (brand.displayOrder ?? 0);
+            
+            await reorderBrand(brand.id, currentOrder, direction, contextId);
+            fetchBrands(paginationStack[paginationStack.length - 1]);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to reorder");
+        }
+    };
+
+    const handleInitializeOrder = async () => {
+        if (!confirm("This will reset the order of all brands. Continue?")) return;
+        setLoading(true);
+        try {
+            if (filterCategoryId === 'all') {
+                if(!confirm("Reset ALL brands globally?")) return;
+                await initializeDisplayOrder('brands');
+            } else {
+                await initializeDisplayOrder('brands', { field: 'categoryId', value: filterCategoryId });
+            }
+            toast.success("Order initialized");
+            fetchBrands(null);
+        } catch (error) {
+            toast.error("Failed to initialize");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const resetForm = () => {
         setFormData({
             name: '',
             description: '',
-            logo: ''
+            logo: '',
+            categoryId: '',
+            categoryIds: []
         });
     };
 
@@ -156,7 +216,9 @@ export const BrandManager = () => {
         setFormData({
             name: brand.name,
             description: brand.description || '',
-            logo: brand.logo || ''
+            logo: brand.logo || '',
+            categoryId: brand.categoryId || '',
+            categoryIds: brand.categoryIds || (brand.categoryId ? [brand.categoryId] : [])
         });
         setIsDialogOpen(true);
     };
@@ -173,6 +235,19 @@ export const BrandManager = () => {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
+                <div className="w-[200px]">
+                    <Select value={filterCategoryId} onValueChange={setFilterCategoryId}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Filter Category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Categories</SelectItem>
+                            {categories.map(c => (
+                                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
                 <Dialog open={isDialogOpen} onOpenChange={(open) => {
                     setIsDialogOpen(open);
                     if (!open) {
@@ -183,6 +258,9 @@ export const BrandManager = () => {
                     <DialogTrigger asChild>
                         <Button><Plus className="h-4 w-4 mr-2" /> Add Brand</Button>
                     </DialogTrigger>
+                    <Button variant="outline" onClick={handleInitializeOrder} title="Fix missing orders" className="ml-2">
+                        <ListOrdered className="h-4 w-4" />
+                    </Button>
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>{editingBrand ? 'Edit Brand' : 'Add New Brand'}</DialogTitle>
@@ -191,6 +269,34 @@ export const BrandManager = () => {
                             <div className="space-y-2">
                                 <Label>Brand Name</Label>
                                 <Input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                                <Input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Categories</Label>
+                                <div className="border rounded-md p-3 h-48 overflow-y-auto space-y-2">
+                                    {categories.map(c => (
+                                        <div key={c.id} className="flex items-center space-x-2">
+                                            <input 
+                                                type="checkbox"
+                                                id={`cat-${c.id}`}
+                                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                checked={formData.categoryIds.includes(c.id)}
+                                                onChange={(e) => {
+                                                    const checked = e.target.checked;
+                                                    setFormData(prev => {
+                                                        const current = prev.categoryIds;
+                                                        if (checked) return { ...prev, categoryIds: [...current, c.id] };
+                                                        return { ...prev, categoryIds: current.filter(id => id !== c.id) };
+                                                    });
+                                                }}
+                                            />
+                                            <Label htmlFor={`cat-${c.id}`} className="font-normal cursor-pointer text-sm">
+                                                {c.name}
+                                            </Label>
+                                        </div>
+                                    ))}
+                                </div>
+                                <p className="text-xs text-muted-foreground">Select all categories this brand belongs to.</p>
                             </div>
                             <div className="space-y-2">
                                 <Label>Description</Label>
@@ -263,6 +369,14 @@ export const BrandManager = () => {
                                             <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => handleDelete(brand.id)}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
+                                            <div className="flex flex-col gap-0.5">
+                                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleReorder(brand, 'up')}>
+                                                    <ArrowUp className="h-3 w-3" />
+                                                </Button>
+                                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleReorder(brand, 'down')}>
+                                                    <ArrowDown className="h-3 w-3" />
+                                                </Button>
+                                            </div>
                                         </div>
                                     </TableCell>
                                 </TableRow>

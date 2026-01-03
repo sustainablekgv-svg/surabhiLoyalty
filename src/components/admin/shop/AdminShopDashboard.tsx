@@ -1,6 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Layers, LayoutDashboard, Package, ShoppingBag, Tag } from 'lucide-react';
+import { Layers, LayoutDashboard, ListOrdered, Package, ShoppingBag, Tag } from 'lucide-react';
 import { BrandManager } from './BrandManager';
+import { CatalogManager } from './CatalogManager';
 import { CategoryManager } from './CategoryManager';
 import { InventoryManager } from './InventoryManager';
 import { OrderManager } from './OrderManager';
@@ -19,6 +20,10 @@ export const AdminShopDashboard = () => {
                     <TabsTrigger value="analytics" className="flex items-center gap-2">
                         <LayoutDashboard className="h-4 w-4" />
                         Analytics
+                    </TabsTrigger>
+                     <TabsTrigger value="catalog" className="flex items-center gap-2">
+                        <ListOrdered className="h-4 w-4" />
+                        Ordering
                     </TabsTrigger>
                      <TabsTrigger value="categories" className="flex items-center gap-2">
                         <Tag className="h-4 w-4" />
@@ -59,6 +64,9 @@ export const AdminShopDashboard = () => {
                 </TabsContent>
                 <TabsContent value="analytics" className="space-y-4">
                     <ShopAnalytics />
+                </TabsContent>
+                <TabsContent value="catalog" className="space-y-4">
+                    <CatalogManager />
                 </TabsContent>
             </Tabs>
         </div>

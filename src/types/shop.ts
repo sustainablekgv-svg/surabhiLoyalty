@@ -14,6 +14,10 @@ export interface Product {
     isActive: boolean;
     isFeatured?: boolean;
     freeShipping?: boolean;
+    unitsOfMeasure?: string;
+    variantType?: string;
+    isVisible?: boolean;
+    displayOrder?: number;
     createdAt: any; // Firestore Timestamp
     updatedAt: any; // Firestore Timestamp
 }
@@ -23,7 +27,12 @@ export interface Brand {
     name: string;
     description?: string;
     logo: string;
+    categoryId?: string; // @deprecated - use categoryIds
+    categoryName?: string; // @deprecated
+    categoryIds?: string[]; // New: List of category IDs this brand belongs to
+    categoryOrders?: { [categoryId: string]: number }; // New: Map of CategoryID -> OrderIndex
     isActive: boolean;
+    displayOrder?: number; // @deprecated - use categoryOrders for specific contexts
     createdAt: any;
     updatedAt: any;
 }
@@ -34,6 +43,7 @@ export interface Category {
     slug: string;
     image?: string;
     isActive: boolean;
+    displayOrder?: number;
 }
 
 export interface CartItem {
@@ -60,7 +70,7 @@ export interface FilterOptions {
     maxPrice?: number;
     brand?: string;
     inStock?: boolean;
-    sort?: 'price_asc' | 'price_desc' | 'newest';
+    sort?: 'price_asc' | 'price_desc' | 'newest' | 'order';
     includeInactive?: boolean;
 }
 
@@ -79,10 +89,16 @@ export interface Order {
     userId: string;
     items: CartItem[];
     totalAmount: number;
-    status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+    status: 'payment_pending' | 'received' | 'confirmed' | 'in_transit' | 'delivered' | 'cancelled';
     paymentMethod: 'cod' | 'online';
     paymentStatus: 'pending' | 'paid' | 'failed';
     shippingAddress: Address;
+    timeline: {
+        status: string;
+        timestamp: any;
+        note?: string;
+    }[];
+    cancelReason?: string;
     createdAt: any;
     updatedAt: any;
 }

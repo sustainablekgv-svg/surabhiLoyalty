@@ -160,7 +160,7 @@ const ProductDetailsPage = () => {
                         <div className="p-3 bg-gray-50 rounded-lg">
                              <span className="block text-gray-500 mb-1">Stock Status</span>
                              {product.stock > 0 ? (
-                                <span className="font-medium text-green-600">In Stock ({product.stock})</span>
+                                <span className="font-medium text-green-600">In Stock </span>
                              ) : (
                                 <span className="font-medium text-red-600">Out of Stock</span>
                              )}

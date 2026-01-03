@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 interface CartContextType {
   cart: CartItem[];
-  addToCart: (product: Product, quantity?: number) => Promise<void>;
+  addToCart: (product: Product, quantity?: number) => Promise<boolean>;
   removeFromCart: (productId: string) => Promise<void>;
   updateQuantity: (productId: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -27,7 +27,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    const cartRef = doc(db, 'users', user.id!, 'cart', 'items');
+    const cartRef = doc(db, 'Customers', user.id!, 'cart', 'items');
     const unsubscribe = onSnapshot(cartRef, (doc) => {
       if (doc.exists()) {
         setCart(doc.data().items || []);
@@ -39,10 +39,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, [user]);
 
-  const addToCart = async (product: Product, quantity = 1) => {
+  const addToCart = async (product: Product, quantity = 1): Promise<boolean> => {
     if (!user || !user.id) {
       toast.error('Please login to add items to cart');
-      return;
+      return false;
     }
 
     const updatedCart = [...cart];
@@ -52,7 +52,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const newQuantity = updatedCart[existingItemIndex].quantity + quantity;
       if (newQuantity > product.stock) {
         toast.error(`Only ${product.stock} items available in stock`);
-        return;
+        return false;
       }
       updatedCart[existingItemIndex].quantity = newQuantity;
     } else {
@@ -63,22 +63,25 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         price: product.sellingPrice,
         image: product.images[0],
         maxStock: product.stock,
+        freeShipping: product.freeShipping,
       });
     }
 
     try {
-      await setDoc(doc(db, 'users', user.id, 'cart', 'items'), { items: updatedCart });
+      await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), { items: updatedCart });
       toast.success('Added to cart');
+      return true;
     } catch (error) {
       console.error('Error adding to cart:', error);
       toast.error('Failed to add to cart');
+      return false;
     }
   };
 
   const removeFromCart = async (productId: string) => {
     if (!user || !user.id) return;
     const updatedCart = cart.filter((item) => item.productId !== productId);
-    await setDoc(doc(db, 'users', user.id, 'cart', 'items'), { items: updatedCart });
+    await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), { items: updatedCart });
     toast.success('Removed from cart');
   };
 
@@ -104,12 +107,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const item = updatedCart.find(i => i.productId === productId);
     if(item && item.quantity !== quantity) return; // Update validation failed (stock)
 
-    await setDoc(doc(db, 'users', user.id, 'cart', 'items'), { items: updatedCart });
+    await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), { items: updatedCart });
   };
 
   const clearCart = async () => {
     if (!user || !user.id) return;
-    await setDoc(doc(db, 'users', user.id, 'cart', 'items'), { items: [] });
+    await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), { items: [] });
   };
 
   const cartTotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);

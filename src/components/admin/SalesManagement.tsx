@@ -1,14 +1,14 @@
 import { format } from 'date-fns';
 import {
-  ChevronLeft,
-  ChevronRight,
-  DollarSign,
-  Loader2,
-  RefreshCw,
-  Search,
-  ShoppingCart,
-  TrendingUp,
-  Wallet,
+    ChevronLeft,
+    ChevronRight,
+    DollarSign,
+    Loader2,
+    RefreshCw,
+    Search,
+    ShoppingCart,
+    TrendingUp,
+    Wallet,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -17,19 +17,19 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/ui/select';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
@@ -165,6 +165,7 @@ export const SalesManagement = () => {
     ),
     totalCashPayments: filteredTransactions.reduce((sum, t) => sum + (t.cashPayment || 0), 0),
     totalRecharges: filteredRecharges.reduce((sum, r) => sum + r.amount, 0),
+    totalSurabhiCoinsEarned: filteredTransactions.reduce((sum, t) => sum + (t.surabhiEarned || 0), 0),
   };
 
   // Check if wallet is enabled for the selected store
@@ -208,7 +209,7 @@ export const SalesManagement = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card className="bg-green-50 border-green-200">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
@@ -253,6 +254,18 @@ export const SalesManagement = () => {
             </div>
             <p className="text-xl font-bold text-amber-900">
               {totalStats.totalSurabhiCoinsUsed.toFixed(2).toLocaleString()}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-green-50 border-green-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="h-4 w-4 text-green-600" />
+              <span className="text-xs font-medium text-green-600">Coins Earned</span>
+            </div>
+            <p className="text-xl font-bold text-green-900">
+              {totalStats.totalSurabhiCoinsEarned.toFixed(2).toLocaleString()}
             </p>
           </CardContent>
         </Card>
@@ -394,7 +407,10 @@ export const SalesManagement = () => {
                             Wallet
                           </TableHead>
                           <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
-                            Coins
+                            Coins Used
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            Coins Earned
                           </TableHead>
                           <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                             Cash
@@ -427,7 +443,7 @@ export const SalesManagement = () => {
                             </TableCell>
                             <TableCell>{transaction.customerMobile || 'N/A'}</TableCell>
                             <TableCell className="font-bold">
-                              ₹{transaction.amount.toFixed(2)}
+                              ₹{(transaction.amount || 0).toFixed(2)}
                             </TableCell>
                             <TableCell>
                               <Badge
@@ -448,6 +464,9 @@ export const SalesManagement = () => {
                             <TableCell className="text-amber-600">
                               {(transaction.surabhiUsed || 0).toFixed(2)}
                             </TableCell>
+                            <TableCell className="text-green-600">
+                              {(transaction.surabhiEarned || 0).toFixed(2)}
+                            </TableCell>
                             <TableCell className="text-gray-600">
                               ₹{(transaction.cashPayment || 0).toFixed(2)}
                             </TableCell>
@@ -464,7 +483,9 @@ export const SalesManagement = () => {
                               )}
                             </TableCell> */}
                             <TableCell>
-                              {format(transaction.createdAt.toDate(), 'dd MMM yyyy, hh:mm a')}
+                              {transaction.createdAt
+                                ? format(transaction.createdAt.toDate(), 'dd MMM yyyy, hh:mm a')
+                                : 'N/A'}
                             </TableCell>
                             <TableCell>{transaction.processedBy || 'N/A'}</TableCell>
                           </TableRow>
@@ -690,7 +711,9 @@ export const SalesManagement = () => {
                               )}
                             </TableCell> */}
                             <TableCell>
-                              {format(recharge.createdAt.toDate(), 'dd MMM yyyy, hh:mm a')}
+                              {recharge.createdAt
+                                ? format(recharge.createdAt.toDate(), 'dd MMM yyyy, hh:mm a')
+                                : 'N/A'}
                             </TableCell>
                             <TableCell>{recharge.processedBy || 'N/A'}</TableCell>
                           </TableRow>

@@ -1,3 +1,4 @@
+import { Footer } from '@/components/shop/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -6,8 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/auth-context';
 import { useShop } from '@/hooks/shop-context';
+import { addAddress, getAddresses } from '@/lib/addressService';
+import { db } from '@/lib/firebase';
+import { processSaleTransaction } from '@/services/sales';
 import { calculateShippingCost, getZoneForState, INDIAN_STATES } from '@/services/shipping';
-import { Loader2, Truck } from 'lucide-react';
+import { Address } from '@/types/shop';
+import { CustomerType, StoreType } from '@/types/types';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { ArrowLeft, Loader2, Plus, Truck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -19,7 +26,29 @@ const CheckoutPage = () => {
   
   const [loading, setLoading] = useState(false);
   
-  const [formData, setFormData] = useState({
+  // Address Management
+  const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
+  const [selectedAddressIndex, setSelectedAddressIndex] = useState<number | null>(null);
+  const [isAddingNewAddress, setIsAddingNewAddress] = useState(false);
+  const [saveNewAddress, setSaveNewAddress] = useState(false);
+
+  useEffect(() => {
+    // Load addresses if user is a customer
+    if (user && 'role' in user && user.role === 'customer' && user.id) {
+       getAddresses(user.id).then(addresses => {
+           setSavedAddresses(addresses);
+           if (addresses.length > 0) {
+               setSavedAddresses(addresses);
+               setSelectedAddressIndex(0);
+               setFormData(addresses[0]);
+           } else {
+               setIsAddingNewAddress(true);
+           }
+       }).catch(console.error);
+    }
+  }, [user]);
+
+  const [formData, setFormData] = useState<Address>({
     fullName: user ? ('customerName' in user ? user.customerName : (user as any).staffName) : '',
     mobile: user ? ('customerMobile' in user ? user.customerMobile : (user as any).staffMobile) : '',
     street: '',
@@ -41,7 +70,7 @@ const CheckoutPage = () => {
       // For now, assuming CartItem needs update or we blindly trust he will add it to CartItem too?
       // Let's check CartItem in types.
       // Use 'as any' for now if CartItem isn't updated yet, but I should update CartItem too.
-      if ((item as any).freeShipping) return sum;
+      if (item.freeShipping) return sum;
 
       // Assuming 0.5kg default weight if not available
       return sum + (0.5 * item.quantity); 
@@ -94,6 +123,12 @@ const CheckoutPage = () => {
           };
           
           await createOrder(orderData as any); 
+          
+          // Save new address if requested
+          if (saveNewAddress && user && user.id) {
+              await addAddress(user.id, formData);
+          }
+
           clearCart();
           toast.success("Order placed successfully!");
           navigate('/shop');
@@ -152,6 +187,53 @@ const CheckoutPage = () => {
                               }
                           };
                           await createOrder(orderData as any);
+
+                          // Process Sales Logic (Coins, Referrals, etc.)
+                          try {
+                              if (user && 'role' in user && user.role === 'customer' && user.storeLocation) {
+                                  // 1. Fetch Store Details
+                                  const storeQ = query(collection(db, 'stores'), where('storeName', '==', user.storeLocation));
+                                  const storeSnap = await getDocs(storeQ);
+                                  
+                                  // 2. Fetch Latest Customer Details
+                                  // We use mobile as key identifier typically
+                                  const customerMobile = (user as any).customerMobile;
+                                  const custQ = query(collection(db, 'Customers'), where('customerMobile', '==', customerMobile));
+                                  const custSnap = await getDocs(custQ);
+
+                                  if (!storeSnap.empty && !custSnap.empty) {
+                                      const storeDetails = { id: storeSnap.docs[0].id, ...storeSnap.docs[0].data() } as StoreType;
+                                      const customerDetails = { id: custSnap.docs[0].id, ...custSnap.docs[0].data() } as CustomerType;
+
+                                      await processSaleTransaction({
+                                          orderId: response.razorpay_order_id, // Use Razorpay ID as Order Ref
+                                          invoiceId: response.razorpay_order_id,
+                                          amount: amount,
+                                          customer: customerDetails,
+                                          storeDetails: storeDetails,
+                                          user: user,
+                                          paymentMethod: 'online',
+                                          paymentDetails: {
+                                              razorpay_payment_id: response.razorpay_payment_id
+                                          }
+                                      });
+                                      toast.success("Coins earned and transaction recorded!");
+                                  } else {
+                                      console.error("Could not find store or customer details for sales processing");
+                                  }
+                              }
+                          } catch (salesError) {
+                              console.error("Error processing sales logic:", salesError);
+                              // Don't fail the order flow, just log it. 
+                              // Ideally we should have a retry mechanism or alert admin.
+                              toast.warning("Order placed, but points calculation failed. Please contact support.");
+                          }
+                          
+                          // Save new address if requested
+                          if (saveNewAddress && user && user.id) {
+                              await addAddress(user.id, formData);
+                          }
+
                           clearCart();
                           toast.success("Payment Successful! Order placed.");
                           navigate('/shop');
@@ -196,97 +278,178 @@ const CheckoutPage = () => {
   }
 
   return (
-    <div className="container mx-auto p-4 py-8 max-w-6xl">
-       <h1 className="text-3xl font-bold mb-8">Checkout</h1>
+    <div className="min-h-screen flex flex-col bg-gray-50/50">
+    <div className="container mx-auto p-4 py-8 max-w-6xl flex-1">   
+       <div className="flex items-center gap-4 mb-8">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/shop')}>
+            <ArrowLeft className="h-6 w-6" />
+          </Button>
+          <h1 className="text-3xl font-bold">Checkout</h1>
+       </div>
        
        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-           {/* Address Form */}
-           <div className="lg:col-span-2 space-y-6">
-               <Card>
-                   <CardHeader>
-                       <CardTitle className="flex items-center gap-2">
-                           <Truck className="h-5 w-5" /> Shipping Address
-                       </CardTitle>
-                   </CardHeader>
-                   <CardContent>
-                       <form id="checkout-form" onSubmit={handlePlaceOrder} className="space-y-4">
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                               <div className="space-y-2">
-                                   <Label>Full Name</Label>
-                                   <Input 
-                                      required 
-                                      value={formData.fullName} 
-                                      onChange={e => setFormData({...formData, fullName: e.target.value})} 
-                                   />
-                               </div>
-                               <div className="space-y-2">
-                                   <Label>Mobile Number</Label>
-                                   <Input 
-                                      required 
-                                      type="tel"
-                                      value={formData.mobile} 
-                                      onChange={e => setFormData({...formData, mobile: e.target.value})} 
-                                   />
-                               </div>
-                           </div>
+          {/* Address Selection */}
+          <div className="lg:col-span-2 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Truck className="h-5 w-5" /> Shipping Address
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {/* Saved Addresses Selection */}
+                <div className="mb-6 space-y-4">
+                    <Label className="text-base font-semibold">Select Shipping Address</Label>
+                    
+                    {savedAddresses.length > 0 ? (
+                        <Select 
+                            value={isAddingNewAddress ? "new" : selectedAddressIndex !== null ? selectedAddressIndex.toString() : ""} 
+                            onValueChange={(val) => {
+                                if (val === "new") {
+                                    setIsAddingNewAddress(true);
+                                    setSelectedAddressIndex(null);
+                                    setFormData({
+                                        fullName: user ? ('customerName' in user ? user.customerName : (user as any).staffName) : '',
+                                        mobile: user ? ('customerMobile' in user ? user.customerMobile : (user as any).staffMobile) : '',
+                                        street: '',
+                                        city: '',
+                                        state: '',
+                                        zipCode: '',
+                                        landmark: ''
+                                    } as Address);
+                                } else {
+                                    const idx = parseInt(val);
+                                    setIsAddingNewAddress(false);
+                                    setSelectedAddressIndex(idx);
+                                    setFormData(savedAddresses[idx]);
+                                }
+                            }}
+                        >
+                            <SelectTrigger className="w-full h-auto py-3">
+                                <SelectValue placeholder="Select an address" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {savedAddresses.map((addr, idx) => (
+                                    <SelectItem key={idx} value={idx.toString()}>
+                                        <div className="flex flex-col text-left">
+                                            <span className="font-semibold">{addr.fullName}</span>
+                                            <span className="text-sm text-gray-500 ellipsis">{addr.street}, {addr.city}</span>
+                                        </div>
+                                    </SelectItem>
+                                ))}
+                                <Separator className="my-2"/>
+                                <SelectItem value="new">
+                                    <div className="flex items-center text-primary font-medium">
+                                        <Plus className="h-4 w-4 mr-2" /> Add New Address
+                                    </div>
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    ) : (
+                         <div className="text-sm text-gray-500 italic">
+                             No saved addresses found. Please enter your details below.
+                         </div>
+                    )}
+                </div>
+                
+                {/* Manual Address Form - Always Visible */}
+                <div className="space-y-4">                     
+                    <form id="checkout-form" onSubmit={handlePlaceOrder} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Full Name</Label>
+                                <Input 
+                                    required 
+                                    value={formData.fullName} 
+                                    onChange={e => setFormData({...formData, fullName: e.target.value})} 
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Mobile Number</Label>
+                                <Input 
+                                    required 
+                                    type="tel"
+                                    value={formData.mobile} 
+                                    onChange={e => setFormData({...formData, mobile: e.target.value})} 
+                                />
+                            </div>
+                        </div>
 
-                           <div className="space-y-2">
-                               <Label>Street Address</Label>
-                               <Input 
-                                  required 
-                                  value={formData.street} 
-                                  onChange={e => setFormData({...formData, street: e.target.value})} 
-                                  placeholder="House No, Street Name"
-                               />
-                           </div>
+                        <div className="space-y-2">
+                            <Label>Street Address</Label>
+                            <Input 
+                                required 
+                                value={formData.street} 
+                                onChange={e => setFormData({...formData, street: e.target.value})} 
+                                placeholder="House No, Street Name"
+                            />
+                        </div>
 
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                               <div className="space-y-2">
-                                   <Label>City</Label>
-                                   <Input 
-                                      required 
-                                      value={formData.city} 
-                                      onChange={e => setFormData({...formData, city: e.target.value})} 
-                                   />
-                               </div>
-                               <div className="space-y-2">
-                                   <Label>State</Label>
-                                   <Select 
-                                      value={formData.state} 
-                                      onValueChange={val => setFormData({...formData, state: val})}
-                                   >
-                                       <SelectTrigger>
-                                           <SelectValue placeholder="Select State" />
-                                       </SelectTrigger>
-                                       <SelectContent className="h-64">
-                                           {INDIAN_STATES.map(state => (
-                                               <SelectItem key={state} value={state}>{state}</SelectItem>
-                                           ))}
-                                       </SelectContent>
-                                   </Select>
-                               </div>
-                           </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>City</Label>
+                                <Input 
+                                    required 
+                                    value={formData.city} 
+                                    onChange={e => setFormData({...formData, city: e.target.value})} 
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>State</Label>
+                                <Select 
+                                    value={formData.state} 
+                                    onValueChange={val => setFormData({...formData, state: val})}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select State" />
+                                    </SelectTrigger>
+                                    <SelectContent className="h-64">
+                                        {INDIAN_STATES.map(state => (
+                                            <SelectItem key={state} value={state}>{state}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
 
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                               <div className="space-y-2">
-                                   <Label>Pincode</Label>
-                                   <Input 
-                                      required 
-                                      value={formData.zipCode} 
-                                      onChange={e => setFormData({...formData, zipCode: e.target.value})} 
-                                   />
-                               </div>
-                               <div className="space-y-2">
-                                   <Label>Landmark (Optional)</Label>
-                                   <Input 
-                                      value={formData.landmark} 
-                                      onChange={e => setFormData({...formData, landmark: e.target.value})} 
-                                   />
-                               </div>
-                           </div>
-                       </form>
-                   </CardContent>
-               </Card>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Pincode</Label>
+                                <Input 
+                                    required 
+                                    value={formData.zipCode} 
+                                    onChange={e => setFormData({...formData, zipCode: e.target.value})} 
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Landmark (Optional)</Label>
+                                <Input 
+                                    value={formData.landmark} 
+                                    onChange={e => setFormData({...formData, landmark: e.target.value})} 
+                                />
+                            </div>
+                        </div>
+                        
+                        {/* Option to save address */}
+                        {(isAddingNewAddress || savedAddresses.length === 0) && user && 'role' in user && (user as any).role === 'customer' && (
+                            <div className="flex items-center space-x-2 pt-2">
+                                <input 
+                                    type="checkbox" 
+                                    id="save-address" 
+                                    checked={saveNewAddress}
+                                    onChange={(e) => setSaveNewAddress(e.target.checked)}
+                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                                <Label htmlFor="save-address" className="font-normal text-sm cursor-pointer">
+                                    Save this address for future use
+                                </Label>
+                            </div>
+                        )}
+
+                    </form>
+                </div>
+              </CardContent>
+            </Card>
 
                <Card>
                    <CardHeader>
@@ -373,6 +536,8 @@ const CheckoutPage = () => {
                 </Card>
            </div>
        </div>
+    </div>
+    <Footer />
     </div>
   );
 };

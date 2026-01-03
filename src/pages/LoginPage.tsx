@@ -1,6 +1,6 @@
 import { ArrowLeft, Coins, Eye, EyeOff, Phone, Shield, UserCircle, Users } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -8,16 +8,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/auth-context';
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
 
   const [formData, setFormData] = useState({
@@ -65,13 +66,19 @@ const LoginPage = () => {
 
       toast.success('Login successful!');
 
-      // Navigate based on role
-      const redirectPath =
-        formData.role === 'admin'
-          ? '/admin/dashboard'
-          : formData.role === 'staff'
-            ? '/staff/dashboard'
-            : '/customer/dashboard';
+      // Navigate based on role and previous location
+      let redirectPath;
+
+      if (formData.role === 'customer' && location.state?.from?.pathname) {
+          redirectPath = location.state.from.pathname;
+      } else {
+          redirectPath =
+            formData.role === 'admin'
+              ? '/admin/dashboard'
+              : formData.role === 'staff'
+                ? '/staff/dashboard'
+                : '/customer/dashboard';
+      }
 
       navigate(redirectPath, { replace: true });
     } catch (error) {
@@ -234,6 +241,20 @@ const LoginPage = () => {
                 >
                   {isLoading ? 'Signing In...' : 'Sign In'}
                 </Button>
+
+                {/* Sign Up Link */}
+                <div className="text-center mt-4">
+                  <p className="text-sm text-gray-600">
+                    Don't have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => navigate('/signup')}
+                      className="text-purple-600 hover:text-purple-700 font-medium hover:underline"
+                    >
+                      Sign up
+                    </button>
+                  </p>
+                </div>
               </form>
             ) : (
               /* Forgot Password Section */

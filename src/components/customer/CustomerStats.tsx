@@ -35,7 +35,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/auth-context';
-import { decryptText, encryptText } from '@/lib/encryption';
+import { encryptText, safeDecryptText } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { ActivityType, CustomerType } from '@/types/types';
 interface CustomerStatsProps {
@@ -275,7 +275,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       borderColor: 'border-amber-200',
     },
     {
-      title: 'Cumulative Purchase',
+      title: 'Cumulative Amount Spent',
       value: `₹${(customerData.cumTotal || 0).toFixed(2)}`,
       description: 'Total amount spent since joining',
       icon: TrendingUp,
@@ -284,7 +284,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       borderColor: 'border-blue-200',
     },
     {
-      title: 'Cummulative Target',
+      title: 'Cummulative Target Spent',
       value: `₹${(customerData.cummulativeTarget || 0).toFixed(2)}`,
       description: customerData.targetMet ? 'Target achieved!' : 'Target to be achieved',
       icon: Target,
@@ -294,7 +294,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
     },
     {
       title: 'Seva Contribution',
-      value: `₹${customerData.sevaTotal.toFixed(2)}`,
+      value: `₹${(customerData.sevaTotal || 0).toFixed(2)}`,
       description: 'Community welfare fund',
       icon: Heart,
       color: 'text-red-600',
@@ -387,7 +387,8 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                   <div className="flex items-center gap-1">
                     <p className="text-xs xs:text-sm sm:text-base font-bold">
                       {customerData.customerPassword
-                        ? decryptText(customerData.customerPassword)
+                        ? safeDecryptText(customerData.customerPassword) ||
+                          customerData.customerPassword
                         : 'N/A'}
                     </p>
                     <Button
@@ -442,7 +443,9 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                 ) : (
                   <div className="flex items-center gap-1">
                     <p className="text-xs xs:text-sm sm:text-base font-bold">
-                      {customerData.tpin ? decryptText(customerData.tpin) : 'N/A'}
+                      {customerData.tpin
+                        ? safeDecryptText(customerData.tpin) || customerData.tpin
+                        : 'N/A'}
                     </p>
                     <Button
                       size="sm"

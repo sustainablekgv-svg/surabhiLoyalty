@@ -41,6 +41,16 @@ export const AdminRecentActivity = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Helper for safe date parsing
+    const getSafeDate = (val: any): Date => {
+        if (!val) return new Date();
+        if (val instanceof Timestamp) return val.toDate();
+        if (val instanceof Date) return val;
+        if (typeof val === 'string') return new Date(val); // Try parsing string
+        if (val?.seconds) return new Date(val.seconds * 1000); // Check for seconds prop
+        return new Date();
+    };
+    
     const fetchInitialData = async () => {
       setIsLoading(true);
       try {
@@ -61,9 +71,12 @@ export const AdminRecentActivity = () => {
           storeStatus: doc.data().storeStatus || 'active',
           adminCurrentBalance: Number(doc.data().adminCurrentBalance) || 0,
           adminStoreProfit: Number(doc.data().adminStoreProfit) || 0,
-          storeCreatedAt: doc.data().storeCreatedAt?.toDate() || new Date(),
-          storeUpdatedAt: doc.data().storeUpdatedAt?.toDate() || new Date(),
+          storeCreatedAt: Timestamp.fromDate(getSafeDate(doc.data().storeCreatedAt)),
+          storeUpdatedAt: Timestamp.fromDate(getSafeDate(doc.data().storeUpdatedAt)),
           demoStore: doc.data().demoStore || false,
+          storePrefix: doc.data().storePrefix || '',
+          storeSevaBalance: Number(doc.data().storeSevaBalance) || 0,
+          walletEnabled: doc.data().walletEnabled !== false,
         })) as StoreType[];
         setStores(storesData);
 
@@ -116,7 +129,7 @@ export const AdminRecentActivity = () => {
             customerName: data.customerName,
             customerMobile: data.customerMobile,
             storeLocation: data.storeLocation,
-            createdAt: data.createdAt,
+            createdAt: data.createdAt, // We will handle this in formatTimestamp
             demoStore: data.demoStore,
           } as ActivityType;
         });
@@ -239,10 +252,25 @@ export const AdminRecentActivity = () => {
     };
   }, []);
 
-  const formatTimestamp = (firestoreTimestamp: Timestamp) => {
-    if (!firestoreTimestamp?.seconds) return 'Just now';
+  const formatTimestamp = (val: any) => {
+    // Robust date parsing
+    let date: Date;
+    if (!val) {
+        return 'Just now';
+    } else if (val instanceof Timestamp) {
+        date = val.toDate();
+    } else if (val instanceof Date) {
+        date = val;
+    } else if (val?.seconds) {
+        date = new Date(val.seconds * 1000);
+    } else if (typeof val === 'string') {
+        date = new Date(val);
+    } else {
+        return 'Just now';
+    }
 
-    const date = firestoreTimestamp.toDate();
+    if (isNaN(date.getTime())) return 'Just now';
+
     const now = new Date();
     const diffInSeconds = Number(((now.getTime() - date.getTime()) / 1000).toFixed(2));
 
@@ -450,12 +478,12 @@ export const AdminRecentActivity = () => {
                     <p
                       className={`font-bold ${index % 2 === 0 ? 'text-blue-600' : 'text-purple-600'}`}
                     >
-                      ₹{store.sales.toFixed(2)}
+                      ₹{(store.sales || 0).toFixed(2)}
                     </p>
                     <div className="flex gap-2 text-xs text-gray-600">
-                      <span>Coins: {store.surabhiCoinsUsed.toFixed(2)}</span>
-                      <span>Wallet: ₹{store.walletDeduction.toFixed(2)}</span>
-                      <span>Cash: ₹{store.cashPayment.toFixed(2)}</span>
+                      <span>Coins: {(store.surabhiCoinsUsed || 0).toFixed(2)}</span>
+                      <span>Wallet: ₹{(store.walletDeduction || 0).toFixed(2)}</span>
+                      <span>Cash: ₹{(store.cashPayment || 0).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>

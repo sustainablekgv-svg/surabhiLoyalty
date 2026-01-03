@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { DollarSign, Heart, Home, ShoppingCart, TrendingUp, UserPlus, Users } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Component, ErrorInfo, ReactNode, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -12,12 +12,45 @@ import { GoSevaPool } from '@/components/admin/GoSevaPool';
 import { SalesManagement } from '@/components/admin/SalesManagement';
 import { AdminShopDashboard } from '@/components/admin/shop/AdminShopDashboard';
 import { StaffManagement } from '@/components/admin/StaffManagement';
+import { SEO } from '@/components/SEO';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/auth-context';
 import { getUserEmail, getUserMobile, getUserName } from '@/lib/userUtils';
 
+
+
+// Simple Error Boundary Component for Debugging
+class ErrorBoundary extends Component<{ children: ReactNode; name: string }, { hasError: boolean; error: Error | null }> {
+  constructor(props: { children: ReactNode; name: string }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error(`Error in component ${this.props.name}:`, error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-4 border border-red-500 bg-red-50 rounded m-2">
+          <h3 className="text-red-700 font-bold">Error in {this.props.name}</h3>
+          <p className="text-sm text-red-600">{this.state.error?.message}</p>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 const AdminDashboard = () => {
   const { user, logout, isLoading: authLoading } = useAuth();
+  console.log('AdminDashboard Render. User:', user?.role, user?.id);
   // console.log('THe user data is', user);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
@@ -68,6 +101,7 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50 overflow-x-hidden">
+      <SEO title="Admin Dashboard" description="Surabhi Admin Dashboard" />
       <AdminHeader
         user={{
           id: user.id,
@@ -141,31 +175,45 @@ const AdminDashboard = () => {
             {/* Tab Content */}
             <div className="bg-white rounded-lg shadow-sm p-2 xs:p-3 sm:p-4 md:p-6 mt-2 xs:mt-3 sm:mt-4 overflow-x-hidden">
               <TabsContent value="overview" className="space-y-4 xs:space-y-5 sm:space-y-6 mt-0">
-                <AdminStats />
+                <ErrorBoundary name="AdminStats">
+                  <AdminStats />
+                </ErrorBoundary>
               </TabsContent>
 
               <TabsContent value="staff" className="mt-0">
-                <StaffManagement />
+                <ErrorBoundary name="StaffManagement">
+                  <StaffManagement />
+                </ErrorBoundary>
               </TabsContent>
 
               <TabsContent value="users" className="mt-0">
-                <CustomerManagement />
+                <ErrorBoundary name="CustomerManagement">
+                  <CustomerManagement />
+                </ErrorBoundary>
               </TabsContent>
 
               <TabsContent value="sales" className="mt-0">
-                <SalesManagement />
+                <ErrorBoundary name="SalesManagement">
+                  <SalesManagement />
+                </ErrorBoundary>
               </TabsContent>
 
               <TabsContent value="accounts" className="mt-0">
-                <Accounts />
+                <ErrorBoundary name="Accounts">
+                  <Accounts />
+                </ErrorBoundary>
               </TabsContent>
 
               <TabsContent value="goseva" className="mt-0">
-                <GoSevaPool />
+                <ErrorBoundary name="GoSevaPool">
+                  <GoSevaPool />
+                </ErrorBoundary>
               </TabsContent>
 
               <TabsContent value="shop" className="mt-0">
-                <AdminShopDashboard />
+                <ErrorBoundary name="AdminShopDashboard">
+                  <AdminShopDashboard />
+                </ErrorBoundary>
               </TabsContent>
             </div>
           </Tabs>
