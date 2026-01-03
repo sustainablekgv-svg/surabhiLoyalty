@@ -7,6 +7,8 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Footer } from './Footer';
 
+import { SEO } from '@/components/SEO';
+
 interface ShopLayoutProps {
   children: React.ReactNode;
   title?: string;
@@ -21,6 +23,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({ children, title = 'Shop'
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
+      <SEO title={title} description="Browse our collection of premium products." />
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-4">

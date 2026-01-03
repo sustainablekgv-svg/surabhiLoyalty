@@ -59,8 +59,13 @@ interface AdminDeck {
 }
 
 const formatTradeTimestamp = (timestamp: Date | Timestamp): string => {
-  const date = timestamp instanceof Timestamp ? timestamp.toDate() : timestamp;
-  return format(date, 'MMM dd, yyyy HH:mm');
+  if (!timestamp) return 'Invalid Date';
+  try {
+    const date = timestamp instanceof Timestamp ? timestamp.toDate() : timestamp;
+    return format(date, 'MMM dd, yyyy HH:mm');
+  } catch (error) {
+    return 'Invalid Date';
+  }
 };
 
 const Accounts = () => {
@@ -113,10 +118,16 @@ const Accounts = () => {
       const transactions: AccountTxType[] = [];
       txSnapshot.forEach(doc => {
         const txData = doc.data();
-        const txDate =
-          txData.createdAt instanceof Timestamp
-            ? txData.createdAt.toDate()
-            : new Date(txData.createdAt);
+        let txDate = new Date();
+        try {
+          if (txData.createdAt instanceof Timestamp) {
+            txDate = txData.createdAt.toDate();
+          } else if (txData.createdAt) {
+            txDate = new Date(txData.createdAt);
+          }
+        } catch (e) {
+          // Fallback to current date if parsing fails
+        }
 
         const tx: AccountTxType = {
           id: doc.id,

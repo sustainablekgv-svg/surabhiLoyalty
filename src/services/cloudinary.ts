@@ -22,6 +22,7 @@ export const uploadImageToCloudinary = async (file: File): Promise<string> => {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('upload_preset', UPLOAD_PRESET);
+  formData.append('folder', 'surabhi'); // Upload to 'surabhi' folder as requested
 
   try {
     const response = await axios.post(

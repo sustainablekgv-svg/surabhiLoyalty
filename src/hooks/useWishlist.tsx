@@ -24,7 +24,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return;
     }
 
-    const wishlistRef = doc(db, 'users', user.id!, 'wishlist', 'items');
+    const wishlistRef = doc(db, 'Customers', user.id!, 'wishlist', 'items');
     const unsubscribe = onSnapshot(wishlistRef, (doc) => {
       if (doc.exists()) {
         setWishlist(doc.data().items || []);
@@ -56,7 +56,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }];
 
     try {
-      await setDoc(doc(db, 'users', user.id, 'wishlist', 'items'), { items: updatedWishlist });
+      await setDoc(doc(db, 'Customers', user.id, 'wishlist', 'items'), { items: updatedWishlist });
       toast.success('Added to wishlist');
     } catch (error) {
       console.error('Error adding to wishlist:', error);
@@ -67,7 +67,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const removeFromWishlist = async (productId: string) => {
     if (!user || !user.id) return;
     const updatedWishlist = wishlist.filter((item) => item.productId !== productId);
-    await setDoc(doc(db, 'users', user.id, 'wishlist', 'items'), { items: updatedWishlist });
+    await setDoc(doc(db, 'Customers', user.id, 'wishlist', 'items'), { items: updatedWishlist });
     toast.success('Removed from wishlist');
   };
 

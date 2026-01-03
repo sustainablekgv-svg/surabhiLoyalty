@@ -27,7 +27,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
           <img
             src={product.images[0]}
             alt={product.name}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-gray-400">
@@ -35,17 +35,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
           </div>
         )}
         {product.sellingPrice && product.sellingPrice < product.price && (
-          <Badge className="absolute left-2 top-2 bg-red-500 hover:bg-red-600">
-            Sale
+          <Badge className="absolute left-2 top-2 bg-red-600 hover:bg-red-700 font-bold px-2 py-1">
+             {Math.round(((product.price - product.sellingPrice) / product.price) * 100)}% OFF
           </Badge>
         )}
         <Button
           variant="secondary"
           size="icon"
           className={cn(
-            "absolute right-2 top-2 h-8 w-8 rounded-full opacity-0 transition-all duration-300 group-hover:opacity-100",
+            "absolute right-2 top-2 h-8 w-8 rounded-full opacity-0 transition-opacity duration-300 group-hover:opacity-100 shadow-md",
             (isWishlisted || variant === 'wishlist') && "opacity-100",
-            variant === 'wishlist' ? "text-red-500 hover:text-red-700 bg-white" : "text-red-500 hover:text-red-600"
+            variant === 'wishlist' ? "text-red-500 hover:text-red-700 bg-white" : "text-red-500 hover:text-red-600 bg-white/90"
           )}
           onClick={(e) => {
             e.stopPropagation();

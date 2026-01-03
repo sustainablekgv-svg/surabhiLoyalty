@@ -1,17 +1,17 @@
 // src/components/CustomerManagement.tsx
 import { collection, getDocs, query, Timestamp, updateDoc, where } from 'firebase/firestore';
 import {
-    Coins,
-    Edit,
-    Eye,
-    Filter,
-    Key,
-    Loader2,
-    MapPin,
-    Phone,
-    RefreshCw,
-    Users,
-    Wallet,
+  Coins,
+  Edit,
+  Eye,
+  Filter,
+  Key,
+  Loader2,
+  MapPin,
+  Phone,
+  RefreshCw,
+  Users,
+  Wallet,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -21,22 +21,22 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { useDebouncedSearch } from '@/hooks/useDebounce';
@@ -115,13 +115,13 @@ export const CustomerManagement = () => {
       .length,
     totalWalletBalance: filteredCustomers
       .filter(cust => cust.demoStore === false)
-      .reduce((sum, c) => sum + c.walletBalance, 0),
+      .reduce((sum, c) => sum + (c.walletBalance || 0), 0),
     totalSurabhiCoins: filteredCustomers
       .filter(cust => cust.demoStore === false)
-      .reduce((sum, c) => sum + c.surabhiBalance, 0),
+      .reduce((sum, c) => sum + (c.surabhiBalance || 0), 0),
     totalSevaCoins: filteredCustomers
       .filter(cust => cust.demoStore === false)
-      .reduce((sum, c) => sum + c.sevaTotal, 0),
+      .reduce((sum, c) => sum + (c.sevaTotal || 0), 0),
     totalReferrals: filteredCustomers
       .filter(cust => cust.demoStore === false)
       .reduce((sum, c) => sum + (c.referredUsers?.length || 0), 0),
@@ -349,27 +349,27 @@ export const CustomerManagement = () => {
                   <div className="space-y-2 mt-2 text-sm">
                     <p>
                       <span className="text-muted-foreground">Wallet Balance:</span> ₹
-                      {selectedCustomer.walletBalance.toFixed(2)}
+                      {(selectedCustomer.walletBalance || 0).toFixed(2)}
                     </p>
                     <p>
                       <span className="text-muted-foreground">This Month:</span> ₹
-                      {selectedCustomer.walletBalanceCurrentMonth.toFixed(2)}
+                      {(selectedCustomer.walletBalanceCurrentMonth || 0).toFixed(2)}
                     </p>
                     <p>
                       <span className="text-muted-foreground">Surabhi Balance:</span>{' '}
-                      {selectedCustomer.surabhiBalance.toFixed(2)}
+                      {(selectedCustomer.surabhiBalance || 0).toFixed(2)}
                     </p>
                     <p>
                       <span className="text-muted-foreground">This Month:</span>{' '}
-                      {selectedCustomer.surabhiBalanceCurrentMonth.toFixed(2)}
+                      {(selectedCustomer.surabhiBalanceCurrentMonth || 0).toFixed(2)}
                     </p>
                     <p>
                       <span className="text-muted-foreground">Seva Balance:</span>{' '}
-                      {selectedCustomer.sevaTotal.toFixed(2)}
+                      {(selectedCustomer.sevaTotal || 0).toFixed(2)}
                     </p>
                     <p>
                       <span className="text-muted-foreground">This Month:</span>{' '}
-                      {selectedCustomer.sevaBalanceCurrentMonth.toFixed(2)}
+                      {(selectedCustomer.sevaBalanceCurrentMonth || 0).toFixed(2)}
                     </p>
                   </div>
                 </div>

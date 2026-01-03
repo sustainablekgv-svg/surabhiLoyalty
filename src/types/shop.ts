@@ -17,6 +17,7 @@ export interface Product {
     unitsOfMeasure?: string;
     variantType?: string;
     isVisible?: boolean;
+    displayOrder?: number;
     createdAt: any; // Firestore Timestamp
     updatedAt: any; // Firestore Timestamp
 }
@@ -26,7 +27,12 @@ export interface Brand {
     name: string;
     description?: string;
     logo: string;
+    categoryId?: string; // @deprecated - use categoryIds
+    categoryName?: string; // @deprecated
+    categoryIds?: string[]; // New: List of category IDs this brand belongs to
+    categoryOrders?: { [categoryId: string]: number }; // New: Map of CategoryID -> OrderIndex
     isActive: boolean;
+    displayOrder?: number; // @deprecated - use categoryOrders for specific contexts
     createdAt: any;
     updatedAt: any;
 }
@@ -37,6 +43,7 @@ export interface Category {
     slug: string;
     image?: string;
     isActive: boolean;
+    displayOrder?: number;
 }
 
 export interface CartItem {
@@ -63,7 +70,7 @@ export interface FilterOptions {
     maxPrice?: number;
     brand?: string;
     inStock?: boolean;
-    sort?: 'price_asc' | 'price_desc' | 'newest';
+    sort?: 'price_asc' | 'price_desc' | 'newest' | 'order';
     includeInactive?: boolean;
 }
 

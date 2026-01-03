@@ -157,6 +157,7 @@ interface RegisterCustomerData {
   referredBy: string | null;
   isStudent: boolean;
   demoStore: boolean;
+  tpin: string;
 }
 
 export const registerCustomer = async (data: RegisterCustomerData): Promise<CustomerType> => {
@@ -174,14 +175,14 @@ export const registerCustomer = async (data: RegisterCustomerData): Promise<Cust
     // Encrypt password
     const encryptedPassword = encryptText(data.customerPassword);
 
-    // Generate Referral Code (e.g., REF-A1B2C)
+    // Generate Referral Code (e.g., A1B2C)
     const generateCode = () => {
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No I, O, 1, 0 for clarity
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No I, O, 0, 1 for clarity
       let result = '';
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 6; i++) { // Increased length slightly for uniqueness since prefix is gone
         result += chars.charAt(Math.floor(Math.random() * chars.length));
       }
-      return `REF-${result}`;
+      return result;
     };
 
     // Ensure uniqueness (simple retry)
@@ -227,7 +228,7 @@ export const registerCustomer = async (data: RegisterCustomerData): Promise<Cust
       createdAt: Timestamp.now(),
       joinedDate: Timestamp.now(),
       
-      tpin: '', // User needs to set this later if needed
+      tpin: data.tpin,
       
       walletRechargeDone: false,
       saleElgibility: true,

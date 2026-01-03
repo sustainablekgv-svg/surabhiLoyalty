@@ -9,25 +9,28 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { isValidImageUrl } from '@/lib/image-utils';
 import { uploadImageToCloudinary } from '@/services/cloudinary';
-import { createProduct, deleteProduct, getBrands, getCategories, getProducts, updateProduct } from '@/services/shop';
+import { createProduct, deleteProduct, getBrands, getCategories, getProducts, initializeDisplayOrder, reorderProduct, updateProduct } from '@/services/shop';
 import { Brand, Category, Product } from '@/types/shop';
-import { Edit, Plus, Search, Trash2, Upload } from 'lucide-react';
+import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Trash2, Upload } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export const ProductManager = () => {
-    const [products, setProducts] = useState<Product[]>([]);
+    // Client-side pagination state
+    const [allProducts, setAllProducts] = useState<Product[]>([]);
+    const [page, setPage] = useState(1);
+    const PAGE_SIZE = 10;
+
     const [brands, setBrands] = useState<Brand[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [filterBrandId, setFilterBrandId] = useState<string>('all');
     
-    // Pagination
-    const [lastDoc, setLastDoc] = useState<any>(null);
-    const [paginationStack, setPaginationStack] = useState<any[]>([]); // To handle "Previous"
-    const [page, setPage] = useState(1);
-    const PAGE_SIZE = 10;
-    const [hasMore, setHasMore] = useState(true);
+    // Legacy pagination state removed
+    // const [lastDoc, setLastDoc] = useState<any>(null);
+    // const [paginationStack, setPaginationStack] = useState<any[]>([]);
+    // const [hasMore, setHasMore] = useState(true);
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -50,10 +53,9 @@ export const ProductManager = () => {
         isVisible: true
     });
 
-    const fetchData = async (startAfterDoc?: any) => {
+    const fetchData = async () => {
         setLoading(true);
         try {
-            // Fetch brands and categories only once if empty
             if (brands.length === 0 || categories.length === 0) {
                  const [fetchedBrands, fetchedCategories] = await Promise.all([
                     getBrands(),
@@ -63,33 +65,9 @@ export const ProductManager = () => {
                 setCategories(fetchedCategories.categories);
             }
 
-            // Client side search is not effective with pagination unless we index everything or specific search service.
-            // For now, if searching, we fetch all active (upto a limit) and filter.
-            // But getProducts handles some logic.
-            
-            // To support search properly without Algolia, we either:
-            // 1. Fetch ALL products (expensive if many) -> filter client side => Good for 100-500 products.
-            // 2. Search only matches exact ID or basic filter if supported by Firestore (it isn't for substring).
-            
-            // Let's implement: If search term > 3 chars, fetch ALL active products and filter client side.
-            // Else use pagination.
-            
-            if (searchTerm && searchTerm.length > 2) {
-                // Search Mode (No pagination, limited to top X matches)
-                const result = await getProducts({ includeInactive: true }, null, 500);
-                const filtered = result.products.filter(p => 
-                    p.name.toLowerCase().includes(searchTerm.toLowerCase())
-                );
-                setProducts(filtered);
-                setHasMore(false);
-            } else {
-                // Pagination Mode
-                const result = await getProducts({ includeInactive: true }, startAfterDoc, PAGE_SIZE);
-                setProducts(result.products);
-                setLastDoc(result.lastDoc);
-                setHasMore(result.products.length >= PAGE_SIZE);
-            }
-
+            // Fetch ALL active/inactive products (limit 1000)
+            const result = await getProducts({ includeInactive: true }, null, 1000);
+            setAllProducts(result.products);
         } catch (error) {
             console.error("Error fetching data", error);
             toast.error("Failed to load data");
@@ -99,33 +77,41 @@ export const ProductManager = () => {
     };
 
     useEffect(() => {
-        // Debounce search
-        const timer = setTimeout(() => {
-            setPage(1);
-            setPaginationStack([]);
-            setLastDoc(null);
-            fetchData(null);
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [searchTerm]);
+        fetchData();
+    }, []);
 
-    const loadNext = () => {
-        if (!lastDoc) return;
-        setPaginationStack(prev => [...prev, lastDoc]);
-        setPage(prev => prev + 1);
-        fetchData(lastDoc);
-    };
+    // Client-side filtering and pagination logic
+    const filteredProducts = React.useMemo(() => {
+        let result = [...allProducts];
 
-    const loadPrev = () => {
-        if (page <= 1) return;
-        const newStack = [...paginationStack];
-        newStack.pop(); // Remove current page's start
-        const prevDoc = newStack[newStack.length - 1] || null;
-        
-        setPaginationStack(newStack);
-        setPage(prev => prev - 1);
-        fetchData(prevDoc);
-    };
+        if (searchTerm) {
+            const lower = searchTerm.toLowerCase();
+            result = result.filter(p => p.name.toLowerCase().includes(lower));
+        }
+
+        if (filterBrandId !== 'all') {
+            result = result.filter(p => p.brandId === filterBrandId);
+            result.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+        } else {
+             result.sort((a, b) => (a.displayOrder || 9999) - (b.displayOrder || 9999));
+        }
+        return result;
+    }, [allProducts, searchTerm, filterBrandId]);
+
+    const products = React.useMemo(() => {
+        const start = (page - 1) * PAGE_SIZE;
+        return filteredProducts.slice(start, start + PAGE_SIZE);
+    }, [filteredProducts, page]);
+
+    const hasMore = (page * PAGE_SIZE) < filteredProducts.length;
+
+    const loadNext = () => setPage(p => p + 1);
+    const loadPrev = () => setPage(p => Math.max(1, p - 1));
+
+    // Reset page on filter change
+    useEffect(() => {
+        setPage(1);
+    }, [searchTerm, filterBrandId]);
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -189,7 +175,7 @@ export const ProductManager = () => {
             setEditingProduct(null);
             resetForm();
             // Refresh current view
-            fetchData(paginationStack[paginationStack.length - 1]);
+            fetchData();
         } catch (error) {
             toast.error('Error saving product');
             console.error(error);
@@ -202,10 +188,36 @@ export const ProductManager = () => {
             await deleteProduct(id);
             toast.success('Product deleted');
             // Refresh current view
-            fetchData(paginationStack[paginationStack.length - 1]);
+            fetchData();
         } catch (error) {
             toast.error('Error deleting product');
         }
+    };
+
+    const handleReorder = async (product: Product, direction: 'up' | 'down') => {
+        try {
+            const contextId = filterBrandId !== 'all' ? filterBrandId : undefined;
+            await reorderProduct(product.id, product.displayOrder || 0, direction, contextId);
+            fetchData();
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to reorder");
+        }
+    };
+    
+    const handleInitializeOrder = async () => {
+        if (filterBrandId === 'all') {
+             if (!confirm("This will reset order for ALL products globally (by creation date)? It's safer to do per brand.")) {
+                 if(!confirm("Are you REALLY sure you want to init all?")) return;
+             }
+             // For safety, maybe block global init or allow generic init
+             await initializeDisplayOrder('products');
+        } else {
+             if (!confirm(`Reset order for products in this brand?`)) return;
+             await initializeDisplayOrder('products', { field: 'brandId', value: filterBrandId });
+        }
+        toast.success("Order initialized");
+        fetchData();
     };
 
     const resetForm = () => {
@@ -250,13 +262,26 @@ export const ProductManager = () => {
         <div className="space-y-4">
             <div className="flex justify-between items-center">
                 <div className="relative w-72">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                    {/* <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" /> */}
                     <Input
                         placeholder="Search products..."
                         className="pl-8"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
+                </div>
+                <div className="w-[200px]">
+                    <Select value={filterBrandId} onValueChange={setFilterBrandId}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Filter Brand" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Brands</SelectItem>
+                            {brands.map(b => (
+                                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
                 <Dialog open={isDialogOpen} onOpenChange={(open) => {
                     setIsDialogOpen(open);
@@ -268,6 +293,11 @@ export const ProductManager = () => {
                     <DialogTrigger asChild>
                         <Button><Plus className="h-4 w-4 mr-2" /> Add Product</Button>
                     </DialogTrigger>
+                    {filterBrandId !== 'all' && (
+                        <Button variant="outline" onClick={handleInitializeOrder} title="Fix orders for this brand" className="ml-2">
+                            <ListOrdered className="h-4 w-4" />
+                        </Button>
+                    )}
                     <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
@@ -485,6 +515,14 @@ export const ProductManager = () => {
                                             <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => handleDelete(product.id)}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
+                                                <div className="flex flex-col gap-0.5">
+                                                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleReorder(product, 'up')}>
+                                                        <ArrowUp className="h-3 w-3" />
+                                                    </Button>
+                                                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleReorder(product, 'down')}>
+                                                        <ArrowDown className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
                                         </div>
                                     </TableCell>
                                 </TableRow>

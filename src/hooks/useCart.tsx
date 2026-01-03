@@ -27,7 +27,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    const cartRef = doc(db, 'users', user.id!, 'cart', 'items');
+    const cartRef = doc(db, 'Customers', user.id!, 'cart', 'items');
     const unsubscribe = onSnapshot(cartRef, (doc) => {
       if (doc.exists()) {
         setCart(doc.data().items || []);
@@ -68,7 +68,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      await setDoc(doc(db, 'users', user.id, 'cart', 'items'), { items: updatedCart });
+      await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), { items: updatedCart });
       toast.success('Added to cart');
       return true;
     } catch (error) {
@@ -81,7 +81,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const removeFromCart = async (productId: string) => {
     if (!user || !user.id) return;
     const updatedCart = cart.filter((item) => item.productId !== productId);
-    await setDoc(doc(db, 'users', user.id, 'cart', 'items'), { items: updatedCart });
+    await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), { items: updatedCart });
     toast.success('Removed from cart');
   };
 
@@ -107,12 +107,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const item = updatedCart.find(i => i.productId === productId);
     if(item && item.quantity !== quantity) return; // Update validation failed (stock)
 
-    await setDoc(doc(db, 'users', user.id, 'cart', 'items'), { items: updatedCart });
+    await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), { items: updatedCart });
   };
 
   const clearCart = async () => {
     if (!user || !user.id) return;
-    await setDoc(doc(db, 'users', user.id, 'cart', 'items'), { items: [] });
+    await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), { items: [] });
   };
 
   const cartTotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);

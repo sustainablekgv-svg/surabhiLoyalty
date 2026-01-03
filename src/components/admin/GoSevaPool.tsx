@@ -151,10 +151,17 @@ export const GoSevaPool = () => {
     if (!user || user.role !== 'admin') return;
 
     try {
+      const userMobile = (user as StaffType).staffMobile || (user as any).mobile;
+
+      if (!userMobile) {
+        console.error('User mobile not found');
+        return;
+      }
+
       const staffRef = collection(db, 'staff');
       const q = query(
         staffRef,
-        where('staffMobile', '==', user.mobile),
+        where('staffMobile', '==', userMobile),
         where('role', '==', 'admin')
       );
       const querySnapshot = await getDocs(q);
@@ -771,7 +778,7 @@ export const GoSevaPool = () => {
                         {tx.storeName || tx.storeLocation}
                       </td>
                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
-                        ₹{tx.amount.toFixed(2)}
+                        ₹{(tx.amount || 0).toFixed(2)}
                       </td>
                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-green-600">
                         ₹{(tx.sevaEarned || 0).toFixed(2)}

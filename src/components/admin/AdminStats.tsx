@@ -1,4 +1,4 @@
-import { collection, doc, onSnapshot, query } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, Timestamp } from 'firebase/firestore';
 import {
   Coins,
   DollarSign,
@@ -152,21 +152,21 @@ export const AdminStats = () => {
           },
           {
             title: 'Total Wallet Balance ATM',
-            value: `₹${totalWallet.toFixed(2)}`,
+            value: `₹${(totalWallet || 0).toFixed(2)}`,
             icon: DollarSign,
             color: 'text-green-600',
             bgColor: 'bg-green-50',
           },
           {
             title: 'Total Surabhi Coins ATM',
-            value: totalSurabhiCoins.toFixed(2),
+            value: (totalSurabhiCoins || 0).toFixed(2),
             icon: Coins,
             color: 'text-purple-600',
             bgColor: 'bg-purple-50',
           },
           {
             title: 'Seva Pool',
-            value: `₹${totalSevaPool.toFixed(2)}`,
+            value: `₹${(totalSevaPool || 0).toFixed(2)}`,
             icon: Heart,
             color: 'text-red-600',
             bgColor: 'bg-red-50',
@@ -193,7 +193,17 @@ export const AdminStats = () => {
 
         snapshot.forEach(doc => {
           const sale = doc.data();
-          const saleDate = sale.date?.toDate?.().toISOString().split('T')[0];
+          let saleDate = '';
+          
+          if (sale.date instanceof Timestamp) {
+            saleDate = sale.date.toDate().toISOString().split('T')[0];
+          } else if (sale.date?.toDate) {
+             saleDate = sale.date.toDate().toISOString().split('T')[0];
+          } else if (typeof sale.date === 'string') {
+             saleDate = sale.date.split('T')[0]; // Assuming ISO string
+          } else if (sale.date instanceof Date) {
+             saleDate = sale.date.toISOString().split('T')[0];
+          }
 
           if (saleDate === today) {
             if (sale.storeLocation === 'Downtown Branch') {

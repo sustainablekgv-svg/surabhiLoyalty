@@ -1,4 +1,5 @@
 import { Timestamp } from 'firebase/firestore';
+import { Address } from './shop';
 
 // import { User } from '@/lib/authService';
 export type User = CustomerType | StaffType;
@@ -11,6 +12,7 @@ export interface CustomerType {
   dateOfBirth?: string;
   customerMobile: string;
   customerEmail?: string;
+  addresses?: Address[];
   storeLocation: string;
   demoStore: boolean;
   district?: string;
@@ -182,7 +184,7 @@ export interface CustomerTxType {
   storeName: string; // Only for recharge
   createdAt: Timestamp;
   demoStore: boolean; // Indicates if transaction is from a demo store
-  paymentMethod?: 'cash' | 'wallet' | 'mixed' | 'admin';
+  paymentMethod?: 'cash' | 'wallet' | 'mixed' | 'admin' | 'online' | 'cod';
   processedBy: string; // Used in sale
   remarks: string; // Description of the transaction
 

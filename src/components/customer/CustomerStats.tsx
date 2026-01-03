@@ -275,7 +275,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       borderColor: 'border-amber-200',
     },
     {
-      title: 'Cumulative Purchase',
+      title: 'Cumulative Amount Spent',
       value: `₹${(customerData.cumTotal || 0).toFixed(2)}`,
       description: 'Total amount spent since joining',
       icon: TrendingUp,
@@ -284,7 +284,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       borderColor: 'border-blue-200',
     },
     {
-      title: 'Cummulative Target',
+      title: 'Cummulative Target Spent',
       value: `₹${(customerData.cummulativeTarget || 0).toFixed(2)}`,
       description: customerData.targetMet ? 'Target achieved!' : 'Target to be achieved',
       icon: Target,
