@@ -5,16 +5,16 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { decryptText, encryptText } from '@/lib/encryption';
+import { decryptText, encryptText, isEncrypted } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { CustomerType, User } from '@/types/types';
 
@@ -48,14 +48,18 @@ export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSetting
           let decryptedTpin = '';
 
           try {
-            decryptedPassword = data.customerPassword ? decryptText(data.customerPassword) : '';
+            decryptedPassword = data.customerPassword
+              ? isEncrypted(data.customerPassword)
+                ? decryptText(data.customerPassword)
+                : data.customerPassword
+              : '';
           } catch (error) {
             // console.error('Error decrypting password:', error);
             decryptedPassword = 'Error decrypting password';
           }
 
           try {
-            decryptedTpin = data.tpin ? decryptText(data.tpin) : '';
+            decryptedTpin = data.tpin ? (isEncrypted(data.tpin) ? decryptText(data.tpin) : data.tpin) : '';
           } catch (error) {
             // console.error('Error decrypting TPIN:', error);
             decryptedTpin = 'Error decrypting TPIN';
@@ -104,7 +108,11 @@ export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSetting
         // Decrypt stored TPIN to compare with current input
         let storedTpin = '';
         try {
-          storedTpin = customerData?.tpin ? decryptText(customerData.tpin) : '';
+          storedTpin = customerData?.tpin
+            ? isEncrypted(customerData.tpin)
+              ? decryptText(customerData.tpin)
+              : customerData.tpin
+            : '';
         } catch (error) {
           // console.error('Error decrypting stored TPIN:', error);
         }
@@ -119,7 +127,9 @@ export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSetting
         let storedPassword = '';
         try {
           storedPassword = customerData?.customerPassword
-            ? decryptText(customerData.customerPassword)
+            ? isEncrypted(customerData.customerPassword)
+              ? decryptText(customerData.customerPassword)
+              : customerData.customerPassword
             : '';
         } catch (error) {
           // console.error('Error decrypting stored password:', error);

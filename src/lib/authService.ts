@@ -228,7 +228,7 @@ export const registerCustomer = async (data: RegisterCustomerData): Promise<Cust
       createdAt: Timestamp.now(),
       joinedDate: Timestamp.now(),
       
-      tpin: data.tpin,
+      tpin: encryptText(data.tpin),
       
       walletRechargeDone: false,
       saleElgibility: true,

@@ -50,7 +50,8 @@ export const ProductManager = () => {
         imageUrl: '',
         freeShipping: false,
         variantType: '',
-        isVisible: true
+        isVisible: true,
+        spv: ''
     });
 
     const fetchData = async () => {
@@ -161,6 +162,7 @@ export const ProductManager = () => {
                 variantType: formData.variantType,
                 isVisible: formData.isVisible,
                 isActive: true,
+                spv: Number(formData.spv || 0),
             };
 
             if (editingProduct) {
@@ -234,7 +236,8 @@ export const ProductManager = () => {
             imageUrl: '',
             freeShipping: false,
             variantType: '',
-            isVisible: true
+            isVisible: true,
+            spv: ''
         });
     };
 
@@ -253,7 +256,8 @@ export const ProductManager = () => {
             imageUrl: product.images?.[0] || '',
             freeShipping: product.freeShipping || false,
             variantType: product.variantType || '',
-            isVisible: product.isVisible ?? true
+            isVisible: product.isVisible ?? true,
+            spv: product.spv?.toString() || ''
         });
         setIsDialogOpen(true);
     };
@@ -385,6 +389,10 @@ export const ProductManager = () => {
                                 <div className="space-y-2">
                                     <Label>Stock Quantity</Label>
                                     <Input type="number" required value={formData.stock} onChange={e => setFormData({ ...formData, stock: e.target.value })} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>SPV</Label>
+                                    <Input type="number" value={formData.spv} onChange={e => setFormData({ ...formData, spv: e.target.value })} placeholder="0" />
                                 </div>
                             </div>
 
