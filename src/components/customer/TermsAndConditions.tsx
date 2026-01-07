@@ -48,7 +48,7 @@ export const TermsAndConditions = () => {
               <p className="text-sm xs:text-base text-gray-700 leading-relaxed">
                 Coins can be redeemed from the quarter of joining without any target. From the
                 following quarter onwards, coins will remain frozen until the cumulative purchase
-                target is achieved, with ₹2,000 added to the target value each quarter.
+                spent is achieved, with ₹2,000 added to the target value each quarter.
               </p>
             </div>
 

@@ -15,6 +15,7 @@ const ProductDetailsPage = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { addToCart, toggleWishlist, isInWishlist } = useShop();
+    const { user } = useAuth();
     
     const [product, setProduct] = useState<Product | null>(null);
     const [loading, setLoading] = useState(true);
@@ -142,6 +143,13 @@ const ProductDetailsPage = () => {
                                 </>
                             )}
                         </div>
+                        {user && user.role === 'customer' && product.spv && product.spv > 0 && (
+                            <div className="mt-2">
+                                <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">
+                                    SPV: {product.spv}
+                                </Badge>
+                            </div>
+                        )}
                     </div>
 
                     <div className="prose prose-sm text-gray-600 max-w-none">

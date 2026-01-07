@@ -16,6 +16,7 @@ interface ProductCardProps {
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'default' }) => {
   const { addToCart, toggleWishlist, isInWishlist } = useShop();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const isWishlisted = isInWishlist(product.id);
 
@@ -82,6 +83,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
             <span className="font-bold text-lg">₹{product.price}</span>
           )}
         </div>
+        {user && user.role === 'customer' && product.spv && product.spv > 0 && (
+          <div className="mt-1">
+             <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+               SPV: {product.spv}
+             </span>
+          </div>
+        )}
       </CardContent>
       <CardFooter className="p-4 pt-0">
         <Button 

@@ -99,7 +99,10 @@ export const decryptText = (encryptedText: string): string => {
  */
 export const safeDecryptText = (text: string): string | null => {
   try {
-    const decrypted = CryptoJS.AES.decrypt(text, SECRET_KEY);
+    const decrypted = CryptoJS.AES.decrypt(text, SECRET_KEY, {
+      mode: CryptoJS.mode.CBC,
+      padding: CryptoJS.pad.Pkcs7,
+    });
     const plainText = decrypted.toString(CryptoJS.enc.Utf8);
     return plainText || null;
   } catch {

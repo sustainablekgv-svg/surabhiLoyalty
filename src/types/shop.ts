@@ -20,6 +20,7 @@ export interface Product {
     displayOrder?: number;
     createdAt: any; // Firestore Timestamp
     updatedAt: any; // Firestore Timestamp
+    spv?: number; // Sales Point Value
 }
 
 export interface Brand {

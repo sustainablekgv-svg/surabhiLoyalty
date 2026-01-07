@@ -1,17 +1,17 @@
 // src/components/CustomerManagement.tsx
 import { collection, getDocs, query, Timestamp, updateDoc, where } from 'firebase/firestore';
 import {
-  Coins,
-  Edit,
-  Eye,
-  Filter,
-  Key,
-  Loader2,
-  MapPin,
-  Phone,
-  RefreshCw,
-  Users,
-  Wallet,
+    Coins,
+    Edit,
+    Eye,
+    Filter,
+    Key,
+    Loader2,
+    MapPin,
+    Phone,
+    RefreshCw,
+    Users,
+    Wallet,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -21,28 +21,28 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { useDebouncedSearch } from '@/hooks/useDebounce';
 import { useActiveStores, useCustomers, useInvalidateQueries } from '@/hooks/useFirebaseQueries';
 import { useFilterPreferences } from '@/hooks/useLocalStorage';
-import { decryptText, encryptText } from '@/lib/encryption';
+import { decryptText, encryptText, isEncrypted } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { CustomerType } from '@/types/types';
 
@@ -157,8 +157,8 @@ export const CustomerManagement = () => {
       surabhiBalance: customer.surabhiBalance,
       sevaTotal: customer.sevaTotal,
       walletRechargeDone: customer.walletRechargeDone,
-      tpin: customer.tpin ? decryptText(customer.tpin) : '',
-      customerPassword: customer.customerPassword ? decryptText(customer.customerPassword) : '',
+      tpin: customer.tpin ? (isEncrypted(customer.tpin) ? decryptText(customer.tpin) : customer.tpin) : '',
+      customerPassword: customer.customerPassword ? (isEncrypted(customer.customerPassword) ? decryptText(customer.customerPassword) : customer.customerPassword) : '',
     });
     setIsEditDialogOpen(true);
   };
@@ -441,12 +441,12 @@ export const CustomerManagement = () => {
                     <p>
                       <span className="text-muted-foreground">Login Password:</span>{' '}
                       {selectedCustomer.customerPassword
-                        ? decryptText(selectedCustomer.customerPassword)
+                        ? (isEncrypted(selectedCustomer.customerPassword) ? decryptText(selectedCustomer.customerPassword) : selectedCustomer.customerPassword)
                         : 'N/A'}
                     </p>
                     <p>
                       <span className="text-muted-foreground">TPIN:</span>{' '}
-                      {selectedCustomer.tpin ? decryptText(selectedCustomer.tpin) : 'N/A'}
+                      {selectedCustomer.tpin ? (isEncrypted(selectedCustomer.tpin) ? decryptText(selectedCustomer.tpin) : selectedCustomer.tpin) : 'N/A'}
                     </p>
                   </div>
                 </div>
