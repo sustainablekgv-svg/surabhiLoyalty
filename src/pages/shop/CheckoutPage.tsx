@@ -1,4 +1,5 @@
 import { Footer } from '@/components/shop/Footer';
+import { ShopLayout } from '@/components/shop/ShopLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,7 +15,7 @@ import { calculateShippingCost, getZoneForState, INDIAN_STATES } from '@/service
 import { Address } from '@/types/shop';
 import { CustomerType, StoreType } from '@/types/types';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { ArrowLeft, Loader2, Plus, Truck } from 'lucide-react';
+import { ArrowLeft, Loader2, Plus, ShoppingCart, Truck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -59,6 +60,17 @@ const CheckoutPage = () => {
   });
 
   const [shippingCost, setShippingCost] = useState(0);
+  const [shippingConfig, setShippingConfig] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      const { getShippingConfig } = await import('@/services/shipping');
+      const config = await getShippingConfig();
+      setShippingConfig(config);
+    };
+    fetchConfig();
+  }, []);
+
 
   // Calculate totals
   const totalWeight = cart.reduce((sum, item) => {
@@ -81,10 +93,10 @@ const CheckoutPage = () => {
   // Re-calculate shipping when state changes
   useEffect(() => {
     if (formData.state) {
-        const cost = calculateShippingCost(totalWeight, formData.state);
+        const cost = calculateShippingCost(totalWeight, formData.state, shippingConfig || undefined);
         setShippingCost(cost);
     }
-  }, [formData.state, totalWeight]);
+  }, [formData.state, totalWeight, shippingConfig]);
 
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
 
@@ -297,11 +309,21 @@ const CheckoutPage = () => {
 
   if (cart.length === 0) {
       return (
-          <div className="container mx-auto p-4 py-8 text-center">
-              <h1 className="text-2xl font-bold mb-4">Checkout</h1>
-              <p className="text-gray-500 mb-4">Your cart is empty</p>
-              <Button onClick={() => navigate('/shop')}>Go to Shop</Button>
-          </div>
+          <ShopLayout title="Checkout">
+              <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+                  <div className="bg-white p-8 rounded-full shadow-sm mb-6">
+                      <ShoppingCart className="h-16 w-16 text-gray-300" />
+                  </div>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">Your cart is empty</h1>
+                  <p className="text-gray-500 mb-8 max-w-md">
+                      Looks like you haven't added anything to your cart yet. 
+                      Go back to the shop to discover our amazing products.
+                  </p>
+                  <Button size="lg" onClick={() => navigate('/shop')} className="rounded-full px-8">
+                      Back to Shop
+                  </Button>
+              </div>
+          </ShopLayout>
       );
   }
 
