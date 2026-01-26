@@ -98,6 +98,9 @@ const CheckoutPage = () => {
     });
   };
 
+  // Calculate total SPV
+  const totalSpv = cart.reduce((sum, item) => sum + ((item.spv || item.price) * item.quantity), 0);
+
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length === 0) {
@@ -124,9 +127,33 @@ const CheckoutPage = () => {
           
           await createOrder(orderData as any); 
           
-          // Save new address if requested
-          if (saveNewAddress && user && user.id) {
-              await addAddress(user.id, formData);
+          // Process Sales Logic (Coins, Referrals, etc.) for COD
+          try {
+              if (user && 'role' in user && user.role === 'customer' && user.storeLocation) {
+                  const storeQ = query(collection(db, 'stores'), where('storeName', '==', user.storeLocation));
+                  const storeSnap = await getDocs(storeQ);
+                  const customerMobile = (user as any).customerMobile;
+                  const custQ = query(collection(db, 'Customers'), where('customerMobile', '==', customerMobile));
+                  const custSnap = await getDocs(custQ);
+
+                  if (!storeSnap.empty && !custSnap.empty) {
+                      const storeDetails = { id: storeSnap.docs[0].id, ...storeSnap.docs[0].data() } as StoreType;
+                      const customerDetails = { id: custSnap.docs[0].id, ...custSnap.docs[0].data() } as CustomerType;
+
+                      await processSaleTransaction({
+                          orderId: `COD-${Date.now()}`,
+                          invoiceId: `COD-${Date.now()}`,
+                          amount: subtotal + shippingCost,
+                          customer: customerDetails,
+                          storeDetails: storeDetails,
+                          user: user,
+                          paymentMethod: 'cod',
+                          totalSpv: totalSpv
+                      });
+                  }
+              }
+          } catch (salesError) {
+              console.error("Error processing COD sales logic:", salesError);
           }
 
           clearCart();
@@ -215,7 +242,8 @@ const CheckoutPage = () => {
                                           paymentMethod: 'online',
                                           paymentDetails: {
                                               razorpay_payment_id: response.razorpay_payment_id
-                                          }
+                                          },
+                                          totalSpv: totalSpv
                                       });
                                       toast.success("Coins earned and transaction recorded!");
                                   } else {

@@ -79,16 +79,16 @@ export const calculateSale = (
   customer: CustomerType,
   storeDetails: StoreType,
   paymentMethod: 'wallet' | 'cash' | 'mixed',
-  // surabhiCoinsToUse: number = 0 // Removed as unused in online flow
+  totalSpv?: number
 ): SaleCalculation => {
   const totalAmount = Number(amount);
   let walletDeduction = 0;
   let surabhiCoinsUsed = 0;
-  let cashPayment = totalAmount; // Default for Online is full payment
+  let cashPayment = totalAmount; // Default for Online/COD is full payment
 
   // SPV Calculation (Surabhi Point Value)
-  // Currently assuming SPV = Sale Amount.
-  const spv = amount; 
+  // Use passed totalSpv or fallback to amount
+  const spv = totalSpv !== undefined ? totalSpv : amount; 
 
   // Commissions
   const selectedCommission = storeDetails.cashOnlyCommission || 0; 
@@ -119,24 +119,23 @@ export const processSaleTransaction = async (params: {
     storeDetails: StoreType,
     user: any, 
     paymentMethod: 'online' | 'cod', // Input type
-    paymentDetails?: any
+    paymentDetails?: any,
+    totalSpv?: number
 }) => {
-    const { orderId, invoiceId, amount, customer, storeDetails, user, paymentMethod, paymentDetails } = params;
+    const { orderId, invoiceId, amount, customer, storeDetails, user, paymentMethod, paymentDetails, totalSpv } = params;
     
-    // We only process sales logic (coins/ledger) for ONLINE payments right now.
-    // COD is treated as "Pending" until delivery/payment confirmation (future task).
-    if (paymentMethod === 'cod') {
-        return;
-    }
-
-    // Treat 'online' as 'cash' for calculation logic (External Money)
+    // Process both online and COD. 
+    // COD in shop is treated as "placed" with pending collection, 
+    // but the user requested same kind of coins transfer as SalesManagement.
+    
+    // Treat 'online' and 'cod' as 'cash' for calculation logic (External Money)
     const methodForCalc = 'cash'; 
     
     // 1. Calculate Sale details
-    const saleCalculation = calculateSale(amount, customer, storeDetails, methodForCalc);
+    const saleCalculation = calculateSale(amount, customer, storeDetails, methodForCalc, totalSpv);
     
-    const spvEntered = amount;
-    const adjustedSpv = amount; 
+    const spvEntered = totalSpv !== undefined ? totalSpv : amount;
+    const adjustedSpv = totalSpv !== undefined ? totalSpv : amount; 
     const surabhiEarnedAdj = saleCalculation.surabhiCoinsEarned;
     const sevaEarnedAdj = saleCalculation.goSevaContribution;
     const sevaContribution = saleCalculation.goSevaContribution;
