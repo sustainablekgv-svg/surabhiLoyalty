@@ -55,6 +55,7 @@ export interface CartItem {
     image: string;
     maxStock: number;
     freeShipping?: boolean;
+    spv?: number;
 }
 
 export interface WishlistItem {

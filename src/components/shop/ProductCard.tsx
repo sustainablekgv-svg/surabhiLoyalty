@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { useAuth } from '@/hooks/auth-context';
 import { useShop } from '@/hooks/shop-context';
 import { isValidImageUrl } from '@/lib/image-utils';
 import { cn } from '@/lib/utils';

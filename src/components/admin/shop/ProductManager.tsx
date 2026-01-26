@@ -468,6 +468,7 @@ export const ProductManager = () => {
                             <TableHead>Category</TableHead>
                             <TableHead>Brand</TableHead>
                             <TableHead>Price</TableHead>
+                            <TableHead>SPV</TableHead>
                             <TableHead>Stock</TableHead>
                             <TableHead>Visibility</TableHead>
                             <TableHead>Actions</TableHead>
@@ -504,6 +505,11 @@ export const ProductManager = () => {
                                                 <span className="text-xs text-muted-foreground line-through">₹{product.price}</span>
                                             )}
                                         </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <span className="font-medium text-blue-600">
+                                            {product.spv || 0}
+                                        </span>
                                     </TableCell>
                                     <TableCell>
                                         <span className={product.stock < 10 ? "text-red-500 font-bold" : ""}>

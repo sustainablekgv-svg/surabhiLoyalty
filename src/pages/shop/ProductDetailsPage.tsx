@@ -2,6 +2,7 @@ import { ShopLayout } from '@/components/shop/ShopLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/hooks/auth-context';
 import { useShop } from '@/hooks/shop-context';
 import { db } from '@/lib/firebase';
 import { Product } from '@/types/shop';
