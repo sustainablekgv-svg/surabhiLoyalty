@@ -28,6 +28,7 @@ const ShopPage = () => {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
     const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
+    const [spvRange, setSpvRange] = useState<[number, number]>([0, 5000]);
     const [sortBy, setSortBy] = useState<string>('order');
 
     // Debounce search query
@@ -103,11 +104,21 @@ const ShopPage = () => {
         // Price
         result = result.filter(p => p.sellingPrice >= priceRange[0] && p.sellingPrice <= priceRange[1]);
 
+        // SPV
+        result = result.filter(p => {
+            const val = p.spv || 0;
+            return val >= spvRange[0] && val <= spvRange[1];
+        });
+
         // Sort
         if (sortBy === 'price_asc') {
             result.sort((a, b) => a.sellingPrice - b.sellingPrice);
         } else if (sortBy === 'price_desc') {
             result.sort((a, b) => b.sellingPrice - a.sellingPrice);
+        } else if (sortBy === 'spv_asc') {
+            result.sort((a, b) => (a.spv || 0) - (b.spv || 0));
+        } else if (sortBy === 'spv_desc') {
+            result.sort((a, b) => (b.spv || 0) - (a.spv || 0));
         } else {
              // Default (Admin Order)
              result.sort((a, b) => {
@@ -123,7 +134,8 @@ const ShopPage = () => {
         }
 
         return result;
-    }, [allProducts, debouncedSearch, selectedCategory, selectedBrand, priceRange, sortBy]);
+        return result;
+    }, [allProducts, debouncedSearch, selectedCategory, selectedBrand, priceRange, spvRange, sortBy]);
 
     // Pagination
     const displayedProducts = useMemo(() => {
@@ -139,14 +151,16 @@ const ShopPage = () => {
     // Reset pagination when filters change
     useEffect(() => {
         setPage(1);
-    }, [debouncedSearch, selectedCategory, selectedBrand, priceRange, sortBy]);
+    }, [debouncedSearch, selectedCategory, selectedBrand, priceRange, spvRange, sortBy]);
     
 
     const resetFilters = () => {
         setSearchQuery('');
         setSelectedCategory(null);
         setSelectedBrand(null);
+        setSelectedBrand(null);
         setPriceRange([0, 10000]);
+        setSpvRange([0, 5000]);
         setSortBy('order');
         // Do NOT switch back to landing view automatically
     };
@@ -204,6 +218,18 @@ const ShopPage = () => {
                     className="mt-4"
                 />
             </div>
+
+            <div>
+                <h3 className="mb-2 text-sm font-medium">SPV Range (Coins: {spvRange[0]} - {spvRange[1]})</h3>
+                 <Slider
+                    defaultValue={[0, 5000]}
+                    max={5000}
+                    step={50}
+                    value={spvRange}
+                    onValueChange={(val) => setSpvRange(val as [number, number])}
+                    className="mt-4"
+                />
+            </div>
              <Button variant="outline" className="w-full" onClick={resetFilters}>
                 <X className="mr-2 h-4 w-4" /> Reset Filters
             </Button>
@@ -258,6 +284,8 @@ const ShopPage = () => {
                                     <SelectItem value="order">Default</SelectItem>
                                     <SelectItem value="price_asc">Price: Low to High</SelectItem>
                                     <SelectItem value="price_desc">Price: High to Low</SelectItem>
+                                    <SelectItem value="spv_asc">SPV: Low to High</SelectItem>
+                                    <SelectItem value="spv_desc">SPV: High to Low</SelectItem>
                                 </SelectContent>
                             </Select>
                         )}

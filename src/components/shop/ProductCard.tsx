@@ -21,6 +21,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
   const navigate = useNavigate();
   const isWishlisted = isInWishlist(product.id);
 
+  // Inventory Logic: If trackInventory is false (or undefined per legacy), we ignore stock check for adding to cart
+  const trackInventory = product.trackInventory === true; // Default false if undefined, as per user request for NEW behavior.
+  // Actually, user said "False by default".
+  
+  const isOutOfStock = trackInventory && product.stock <= 0;
+  const canAddToCart = !isOutOfStock;
+
   return (
     <Card className="group overflow-hidden border-0 bg-transparent shadow-none hover:shadow-lg transition-all duration-300 rounded-xl bg-white">
 
@@ -84,22 +91,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
             <span className="font-bold text-lg">₹{product.price}</span>
           )}
         </div>
-        {user && user.role === 'customer' && product.spv && product.spv > 0 && (
-          <div className="mt-1">
+        
+        {/* Product Details (Weight / SPV) */}
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          {product.weight && (
+             <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+               {product.weight} {product.unitsOfMeasure}
+             </span>
+          )}
+          
+          {user && user.role === 'customer' && product.spv && product.spv >= 0 && ( /* Show SPV even if 0 if specifically set, or just > 0 */
              <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
                SPV: {product.spv}
              </span>
-          </div>
-        )}
+          )}
+        </div>
+
       </CardContent>
       <CardFooter className="p-4 pt-0">
         <Button 
           className="w-full gap-2 rounded-full" 
           onClick={() => addToCart(product)}
-          disabled={product.stock <= 0}
+          disabled={!canAddToCart}
         >
           <ShoppingCart className="h-4 w-4" />
-          {product.stock <= 0 ? 'Out of Stock' : 'Add to Cart'}
+          {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
         </Button>
       </CardFooter>
     </Card>

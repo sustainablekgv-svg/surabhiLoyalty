@@ -32,7 +32,7 @@ const RATE_TABLE: Record<string, number[]> = {
     'E': [85, 110, 165, 195, 260]
 };
 
-const EXTRA_PER_KG_AFTER_5KG: Record<string, number> = {
+const EXTRA_PER_KG_AFTER_5KG: Record<string, number> = {            
     'A': 40, 'B': 45, 'C': 50, 'D': 55, 'E': 60
 };
 

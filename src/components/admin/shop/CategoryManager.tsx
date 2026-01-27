@@ -1,10 +1,11 @@
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { uploadImageToCloudinary } from '@/services/cloudinary';
-import { createCategory, deleteCategory, getCategories, getCategoriesPaginated, initializeDisplayOrder, reorderCategory, updateCategory } from '@/services/shop';
+import { createCategory, deleteCategory, getCategories, initializeDisplayOrder, reorderCategory, updateCategory } from '@/services/shop';
 import { Category } from '@/types/shop';
 import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Search, Trash2, Upload } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
@@ -45,7 +46,7 @@ export const CategoryManager = () => {
                  setCategories(filtered);
                  setHasMore(false);
             } else {
-                const result = await getCategoriesPaginated(PAGE_SIZE, startAfterDoc);
+                const result = await getCategories(PAGE_SIZE, startAfterDoc);
                 setCategories(result.categories);
                 setLastDoc(result.lastDoc);
                 setHasMore(result.categories.length >= PAGE_SIZE);
@@ -122,10 +123,17 @@ export const CategoryManager = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            if (!formData.name?.trim()) { toast.error("Category name is required"); return; }
+            if (!formData.slug?.trim()) { toast.error("Slug is required"); return; }
+            if (!formData.image && (!editingCategory || !editingCategory.image)) { 
+                toast.error("Category image is required"); 
+                return; 
+            }
+
             const categoryData = {
-                name: formData.name,
-                slug: formData.slug,
-                image: formData.image,
+                name: formData.name.trim(),
+                slug: formData.slug.trim(),
+                image: formData.image || (editingCategory?.image || ''),
                 isActive: formData.isActive,
             };
 
@@ -170,7 +178,7 @@ export const CategoryManager = () => {
     };
 
     const handleInitializeOrder = async () => {
-        if (!confirm("This will reset the order of all categories. Continue?")) return;
+        // if (!confirm("This will reset the order of all categories. Continue?")) return; // Removed native confirm
         setLoading(true);
         try {
             await initializeDisplayOrder('categories');
@@ -225,9 +233,26 @@ export const CategoryManager = () => {
                     <DialogTrigger asChild>
                         <Button className="w-full sm:w-auto"><Plus className="h-4 w-4 mr-2" /> Add Category</Button>
                     </DialogTrigger>
-                    <Button variant="outline" onClick={handleInitializeOrder} title="Fix missing orders">
-                        <ListOrdered className="h-4 w-4" />
-                    </Button>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="outline" title="Fix missing orders">
+                                <ListOrdered className="h-4 w-4" />
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Initialize Category Order?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This will reset the order of all categories based on creation date.
+                                    This action cannot be undone.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleInitializeOrder}>Continue</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                     <DialogContent className="sm:max-w-[425px]">
                         <DialogHeader>
                             <DialogTitle>{editingCategory ? 'Edit Category' : 'Add New Category'}</DialogTitle>

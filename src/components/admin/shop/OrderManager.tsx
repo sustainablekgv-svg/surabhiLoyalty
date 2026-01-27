@@ -5,9 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { isValidImageUrl } from '@/lib/image-utils';
-import { getOrders, updateOrderStatus } from '@/services/shop';
+import { getOrders, updateOrderStatus, updateOrderTotal } from '@/services/shop';
 import { Order } from '@/types/shop';
-import { Eye, Package, Search } from 'lucide-react';
+import { Check, Eye, Package, Pencil, Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -15,6 +15,8 @@ export const OrderManager = () => {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [isEditingTotal, setIsEditingTotal] = useState(false);
+    const [newTotal, setNewTotal] = useState('');
 
     // Filters & Pagination
     const [statusFilter, setStatusFilter] = useState<Order['status'] | 'all'>('all');
@@ -73,6 +75,27 @@ export const OrderManager = () => {
         setPaginationStack(newStack);
         setPage(prev => prev - 1);
         fetchOrders(prevDoc);
+    };
+
+    const handleUpdateTotal = async () => {
+        if (!selectedOrder || !newTotal) return;
+        try {
+            const amount = parseFloat(newTotal);
+            if (isNaN(amount)) {
+                toast.error("Invalid amount");
+                return;
+            }
+            await updateOrderTotal(selectedOrder.id, amount);
+            toast.success("Order total updated");
+            
+            // Local update
+            setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, totalAmount: amount } : o));
+            setSelectedOrder({ ...selectedOrder, totalAmount: amount });
+            setIsEditingTotal(false);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to update total");
+        }
     };
 
     const handleStatusUpdate = async (orderId: string, newStatus: Order['status']) => {
@@ -259,8 +282,44 @@ export const OrderManager = () => {
                                                                     </div>
                                                                 ))}
                                                             </div>
-                                                            <div className="flex justify-end mt-4 pt-4 border-t">
-                                                                <div className="text-lg font-bold">Total: ₹{selectedOrder.totalAmount}</div>
+                                                            <div className="flex justify-end mt-4 pt-4 border-t items-center gap-2">
+                                                                <div className="font-bold flex items-center gap-2">
+                                                                    Total: 
+                                                                    {isEditingTotal ? (
+                                                                        <div className="flex items-center gap-1">
+                                                                            <Input 
+                                                                                type="number" 
+                                                                                value={newTotal} 
+                                                                                onChange={(e) => setNewTotal(e.target.value)}
+                                                                                className="w-24 h-8"
+                                                                            />
+                                                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleUpdateTotal}>
+                                                                                <Check className="h-4 w-4" />
+                                                                            </Button>
+                                                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={() => setIsEditingTotal(false)}>
+                                                                                <X className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span onClick={() => {
+                                                                            if (selectedOrder.status !== 'confirmed' && selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled') {
+                                                                                setNewTotal(selectedOrder.totalAmount.toString());
+                                                                                setIsEditingTotal(true);
+                                                                            }
+                                                                        }} className={selectedOrder.status !== 'confirmed' && selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled' ? "cursor-pointer hover:underline decoration-dashed" : ""}>
+                                                                            ₹{selectedOrder.totalAmount}
+                                                                        </span>
+                                                                    )}
+                                                                    
+                                                                    {!isEditingTotal && selectedOrder.status !== 'confirmed' && selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled' && (
+                                                                        <Button size="icon" variant="ghost" className="h-6 w-6 text-gray-400 hover:text-gray-900" onClick={() => {
+                                                                             setNewTotal(selectedOrder.totalAmount.toString());
+                                                                             setIsEditingTotal(true);
+                                                                        }}>
+                                                                            <Pencil className="h-3 w-3" />
+                                                                        </Button>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>

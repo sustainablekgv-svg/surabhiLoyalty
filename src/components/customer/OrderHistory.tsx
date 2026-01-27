@@ -232,7 +232,7 @@ export const CustomerOrderHistory = () => {
                                                 </DialogContent>
                                             </Dialog>
 
-                                            {order.status === 'received' && (
+                                            {(order.status === 'received' || order.status === 'payment_pending') && (
                                                 <>
                                                     <Button variant="outline" size="sm" onClick={() => openEditAddressDialog(order)}>
                                                         Edit Address
