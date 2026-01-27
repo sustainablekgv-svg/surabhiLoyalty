@@ -1,3 +1,4 @@
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -51,7 +52,8 @@ export const ProductManager = () => {
         freeShipping: false,
         variantType: '',
         isVisible: true,
-        spv: ''
+        spv: '',
+        trackInventory: false
     });
 
     const fetchData = async () => {
@@ -67,7 +69,7 @@ export const ProductManager = () => {
             }
 
             // Fetch ALL active/inactive products (limit 1000)
-            const result = await getProducts({ includeInactive: true }, null, 1000);
+            const result = await getProducts({ includeInactive: true, sort: 'order' }, null, 1000);
             setAllProducts(result.products);
         } catch (error) {
             console.error("Error fetching data", error);
@@ -94,7 +96,11 @@ export const ProductManager = () => {
             result = result.filter(p => p.brandId === filterBrandId);
             result.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
         } else {
-             result.sort((a, b) => (a.displayOrder || 9999) - (b.displayOrder || 9999));
+             result.sort((a, b) => {
+                const diff = (a.displayOrder || 999999) - (b.displayOrder || 999999);
+                if (diff !== 0) return diff;
+                return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+             });
         }
         return result;
     }, [allProducts, searchTerm, filterBrandId]);
@@ -139,30 +145,50 @@ export const ProductManager = () => {
             const selectedCategory = categories.find(c => c.id === formData.category);
             const categoryName = selectedCategory ? selectedCategory.name : formData.category;
 
-            // Basic validation
-            if (!formData.brandId) {
-                toast.error("Please select a brand");
-                return;
+            // detailed validation
+            if (!formData.name?.trim()) { toast.error("Product name is required"); return; }
+            if (!formData.description?.trim()) { toast.error("Description is required"); return; }
+            if (!formData.brandId) { toast.error("Brand is required"); return; }
+            if (!formData.category) { toast.error("Category is required"); return; }
+            
+            if (!formData.weight?.trim()) { toast.error("Weight is required"); return; }
+            if (!formData.unitsOfMeasure) { toast.error("Unit of measure is required"); return; }
+
+            const price = Number(formData.price);
+            const sellingPrice = formData.sellingPrice ? Number(formData.sellingPrice) : price;
+            const stock = Number(formData.stock);
+            const spv = Number(formData.spv || 0);
+
+            if (isNaN(price) || price <= 0) { toast.error("MRP must be valid and greater than 0"); return; }
+            if (isNaN(sellingPrice) || sellingPrice <= 0) { toast.error("Selling price must be valid and greater than 0"); return; }
+            if (sellingPrice > price) { toast.error("Selling price cannot be greater than MRP"); return; }
+            if (isNaN(stock) || stock < 0) { toast.error("Stock cannot be negative"); return; }
+            if (isNaN(spv) || spv < 0) { toast.error("SPV cannot be negative"); return; }
+
+            if (!formData.imageUrl && !editingProduct?.images?.length) { 
+                toast.error("Product image is required"); 
+                return; 
             }
 
             const productData: any = {
-                name: formData.name,
-                description: formData.description,
-                price: Number(formData.price),
-                sellingPrice: formData.sellingPrice ? Number(formData.sellingPrice) : Number(formData.price),
-                weight: formData.weight,
+                name: formData.name.trim(),
+                description: formData.description.trim(),
+                price,
+                sellingPrice,
+                weight: formData.weight.trim(),
                 unitsOfMeasure: formData.unitsOfMeasure,
-                stock: Number(formData.stock),
+                stock,
                 categoryId: formData.category, 
                 categoryName: categoryName,
                 brandId: formData.brandId,
                 brandName: brandName,
-                images: formData.imageUrl ? [formData.imageUrl] : [],
+                images: formData.imageUrl ? [formData.imageUrl] : (editingProduct?.images || []),
                 freeShipping: formData.freeShipping,
                 variantType: formData.variantType,
                 isVisible: formData.isVisible,
                 isActive: true,
-                spv: Number(formData.spv || 0),
+                spv,
+                trackInventory: formData.trackInventory
             };
 
             if (editingProduct) {
@@ -222,6 +248,10 @@ export const ProductManager = () => {
         fetchData();
     };
 
+    const handleInitializeOrderConfirm = async () => {
+        await handleInitializeOrder();
+    };
+
     const resetForm = () => {
         setFormData({
             name: '',
@@ -235,9 +265,10 @@ export const ProductManager = () => {
             brandId: '',
             imageUrl: '',
             freeShipping: false,
+            spv:'',
             variantType: '',
             isVisible: true,
-            spv: ''
+            trackInventory: false
         });
     };
 
@@ -257,7 +288,8 @@ export const ProductManager = () => {
             freeShipping: product.freeShipping || false,
             variantType: product.variantType || '',
             isVisible: product.isVisible ?? true,
-            spv: product.spv?.toString() || ''
+            spv: product.spv?.toString() || '',
+            trackInventory: product.trackInventory || false
         });
         setIsDialogOpen(true);
     };
@@ -298,9 +330,26 @@ export const ProductManager = () => {
                         <Button><Plus className="h-4 w-4 mr-2" /> Add Product</Button>
                     </DialogTrigger>
                     {filterBrandId !== 'all' && (
-                        <Button variant="outline" onClick={handleInitializeOrder} title="Fix orders for this brand" className="ml-2">
-                            <ListOrdered className="h-4 w-4" />
-                        </Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="outline" title="Fix orders for this brand" className="ml-2">
+                                    <ListOrdered className="h-4 w-4" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Initialize Display Order?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will reset the display order for all products in this brand based on creation date. 
+                                        This action cannot be undone.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleInitializeOrderConfirm}>Continue</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     )}
                     <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
@@ -399,6 +448,20 @@ export const ProductManager = () => {
                             <div className="space-y-2">
                                 <Label>Variant Type (Optional)</Label>
                                 <Input value={formData.variantType} onChange={e => setFormData({ ...formData, variantType: e.target.value })} placeholder="e.g. Color, Size" />
+                            </div>
+                            
+                            <div className="flex gap-4">
+                                <div className="flex items-center space-x-2 border p-3 rounded-md flex-1">
+                                    <Switch
+                                        id="trackInventory"
+                                        checked={formData.trackInventory}
+                                        onCheckedChange={(checked) => setFormData({...formData, trackInventory: checked})}
+                                    />
+                                    <Label htmlFor="trackInventory">Track Inventory</Label>
+                                    <p className="text-xs text-muted-foreground ml-2">
+                                        Enable stock count logic.
+                                    </p>
+                                </div>
                             </div>
                             
                             <div className="flex gap-4">

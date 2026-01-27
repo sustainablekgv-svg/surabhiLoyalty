@@ -1,3 +1,4 @@
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -7,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { isValidImageUrl } from '@/lib/image-utils';
 import { uploadImageToCloudinary } from '@/services/cloudinary';
-import { createBrand, deleteBrand, getBrands, getBrandsFiltered, getCategories, initializeDisplayOrder, reorderBrand, updateBrand } from '@/services/shop';
+import { createBrand, deleteBrand, getBrands, getCategories, initializeDisplayOrder, reorderBrand, updateBrand } from '@/services/shop';
 import { Brand, Category } from '@/types/shop';
 import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Search, Trash2, Upload } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
@@ -21,11 +22,9 @@ export const BrandManager = () => {
     const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
     
     // Pagination
-    const [lastDoc, setLastDoc] = useState<any>(null);
-    const [paginationStack, setPaginationStack] = useState<any[]>([]);
+    const [allBrands, setAllBrands] = useState<Brand[]>([]);
     const [page, setPage] = useState(1);
     const PAGE_SIZE = 10;
-    const [hasMore, setHasMore] = useState(true);
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
@@ -40,22 +39,12 @@ export const BrandManager = () => {
         categoryIds: [] as string[]
     });
 
-    const fetchBrands = async (startAfterDoc?: any) => {
+    const fetchBrands = async () => {
         setLoading(true);
         try {
-            if (searchTerm && searchTerm.length > 2) {
-                // Search Mode
-                // Using basic getBrands that fetches all (assuming not excessive for search filtering) or large batch
-                const fetchedBrands = await getBrands();
-                const filtered = fetchedBrands.filter(b => b.name.toLowerCase().includes(searchTerm.toLowerCase()));
-                setBrands(filtered);
-                setHasMore(false);
-            } else {
-                const result = await getBrandsFiltered(PAGE_SIZE, startAfterDoc, undefined, filterCategoryId);
-                setBrands(result.brands);
-                setLastDoc(result.lastDoc);
-                setHasMore(result.brands.length >= PAGE_SIZE);
-            }
+            const categoryArg = filterCategoryId === 'all' ? undefined : filterCategoryId;
+            const fetchedBrands = await getBrands(categoryArg);
+            setAllBrands(fetchedBrands);
         } catch (error) {
             console.error("Error fetching brands", error);
             toast.error("Failed to load brands");
@@ -65,14 +54,28 @@ export const BrandManager = () => {
     };
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setPage(1);
-            setPaginationStack([]);
-            setLastDoc(null);
-            fetchBrands(null);
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [searchTerm, filterCategoryId]);
+        setPage(1);
+        fetchBrands();
+    }, [filterCategoryId]);
+
+    // Client-side filtering
+    const filteredBrands = React.useMemo(() => {
+        let result = [...allBrands];
+        if (searchTerm) {
+             result = result.filter(b => b.name.toLowerCase().includes(searchTerm.toLowerCase()));
+        }
+        return result;
+    }, [allBrands, searchTerm]);
+
+    const displayBrands = React.useMemo(() => {
+        const start = (page - 1) * PAGE_SIZE;
+        return filteredBrands.slice(start, start + PAGE_SIZE);
+    }, [filteredBrands, page]);
+
+    const hasMore = (page * PAGE_SIZE) < filteredBrands.length;
+    
+    const loadNext = () => setPage(p => p + 1);
+    const loadPrev = () => setPage(p => Math.max(1, p - 1));
 
     useEffect(() => {
         const loadCats = async () => {
@@ -84,22 +87,7 @@ export const BrandManager = () => {
         loadCats();
     }, []);
 
-    const loadNext = () => {
-        if (!lastDoc) return;
-        setPaginationStack(prev => [...prev, lastDoc]);
-        setPage(prev => prev + 1);
-        fetchBrands(lastDoc);
-    };
 
-    const loadPrev = () => {
-        if (page <= 1) return;
-        const newStack = [...paginationStack];
-        newStack.pop();
-        const prevDoc = newStack[newStack.length - 1] || null;
-        setPaginationStack(newStack);
-        setPage(prev => prev - 1);
-        fetchBrands(prevDoc);
-    };
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -120,16 +108,26 @@ export const BrandManager = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
+        if (!formData.name?.trim()) {
+            toast.error("Brand name is required");
+            return;
+        }
+
         if (formData.categoryIds.length === 0) {
             toast.error("Please select at least one category");
             return;
         }
 
+        if (!formData.logo && (!editingBrand || !editingBrand.logo)) {
+             toast.error("Brand logo is required");
+             return;
+        }
+
         try {
             const brandData: any = {
-                name: formData.name,
+                name: formData.name.trim(),
                 description: formData.description,
-                logo: formData.logo,
+                logo: formData.logo || (editingBrand?.logo || ''),
                 isActive: true,
                 categoryId: formData.categoryIds[0], // Primary category for legacy support
                 categoryIds: formData.categoryIds,
@@ -147,7 +145,7 @@ export const BrandManager = () => {
             setIsDialogOpen(false);
             setEditingBrand(null);
             resetForm();
-            fetchBrands(paginationStack[paginationStack.length - 1]);
+            fetchBrands();
         } catch (error) {
             toast.error('Error saving brand');
             console.error(error);
@@ -159,7 +157,7 @@ export const BrandManager = () => {
         try {
             await deleteBrand(id);
             toast.success('Brand deleted');
-            fetchBrands(paginationStack[paginationStack.length - 1]);
+            fetchBrands();
         } catch (error) {
             toast.error('Error deleting brand');
         }
@@ -175,7 +173,7 @@ export const BrandManager = () => {
             const currentOrder = contextId ? (brand.categoryOrders?.[contextId] ?? 0) : (brand.displayOrder ?? 0);
             
             await reorderBrand(brand.id, currentOrder, direction, contextId);
-            fetchBrands(paginationStack[paginationStack.length - 1]);
+            fetchBrands();
         } catch (error) {
             console.error(error);
             toast.error("Failed to reorder");
@@ -183,17 +181,17 @@ export const BrandManager = () => {
     };
 
     const handleInitializeOrder = async () => {
-        if (!confirm("This will reset the order of all brands. Continue?")) return;
+        // if (!confirm("This will reset the order of all brands. Continue?")) return;
         setLoading(true);
         try {
             if (filterCategoryId === 'all') {
-                if(!confirm("Reset ALL brands globally?")) return;
+                // if(!confirm("Reset ALL brands globally?")) return;
                 await initializeDisplayOrder('brands');
             } else {
                 await initializeDisplayOrder('brands', { field: 'categoryId', value: filterCategoryId });
             }
             toast.success("Order initialized");
-            fetchBrands(null);
+            fetchBrands();
         } catch (error) {
             toast.error("Failed to initialize");
         } finally {
@@ -258,9 +256,26 @@ export const BrandManager = () => {
                     <DialogTrigger asChild>
                         <Button><Plus className="h-4 w-4 mr-2" /> Add Brand</Button>
                     </DialogTrigger>
-                    <Button variant="outline" onClick={handleInitializeOrder} title="Fix missing orders" className="ml-2">
-                        <ListOrdered className="h-4 w-4" />
-                    </Button>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="outline" title="Fix missing orders" className="ml-2">
+                                <ListOrdered className="h-4 w-4" />
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Initialize Brand Order?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This will reset the order of displayed brands.
+                                    {filterCategoryId === 'all' ? " This will affect ALL brands globally." : " This will affect brands in the selected category."}
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleInitializeOrder}>Continue</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>{editingBrand ? 'Edit Brand' : 'Add New Brand'}</DialogTitle>
@@ -268,7 +283,6 @@ export const BrandManager = () => {
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="space-y-2">
                                 <Label>Brand Name</Label>
-                                <Input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
                                 <Input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
                             </div>
                             <div className="space-y-2">
@@ -347,10 +361,10 @@ export const BrandManager = () => {
                     <TableBody>
                         {loading ? (
                             <TableRow><TableCell colSpan={4} className="text-center py-8">Loading...</TableCell></TableRow>
-                        ) : brands.length === 0 ? (
+                        ) : displayBrands.length === 0 ? (
                             <TableRow><TableCell colSpan={4} className="text-center py-8">No brands found</TableCell></TableRow>
                         ) : (
-                            brands.map(brand => (
+                            displayBrands.map(brand => (
                                 <TableRow key={brand.id}>
                                     <TableCell>
                                         {isValidImageUrl(brand.logo) ? (

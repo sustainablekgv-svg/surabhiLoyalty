@@ -1,6 +1,7 @@
 
 import { db } from '@/lib/firebase';
 import { Brand, Category, Order, Product } from '@/types/shop';
+import { CustomerType, StoreType } from '@/types/types';
 import {
     addDoc,
     collection,
@@ -17,6 +18,7 @@ import {
     where,
     writeBatch
 } from 'firebase/firestore';
+import { processSaleTransaction } from './sales';
 
 // --- Display Order Helper ---
 const swapDisplayOrder = async (collectionName: string, id1: string, order1: number, id2: string, order2: number) => {
@@ -31,20 +33,39 @@ const swapDisplayOrder = async (collectionName: string, id1: string, order1: num
 export const initializeDisplayOrder = async (collectionName: string, parentField?: { field: string, value: string }) => {
     let q;
     if (parentField) {
-        // e.g., reorder all products for a specific brand
-        q = query(collection(db, collectionName), where(parentField.field, '==', parentField.value), orderBy('createdAt', 'asc'));
+        q = query(collection(db, collectionName), where(parentField.field, '==', parentField.value));
     } else {
-        q = query(collection(db, collectionName), orderBy('createdAt', 'asc'));
+        q = query(collection(db, collectionName));
     }
     
     const snapshot = await getDocs(q);
-    const batch = writeBatch(db);
-    
-    snapshot.docs.forEach((doc, index) => {
-        batch.update(doc.ref, { displayOrder: index + 1 });
+    const docs = snapshot.docs.map(d => ({ id: d.id, ref: d.ref, data: d.data() as any }));
+
+    // Sort in memory to ensure everything gets an order, even if createdAt is missing
+    docs.sort((a, b) => {
+        const timeA = a.data.createdAt?.seconds || 0;
+        const timeB = b.data.createdAt?.seconds || 0;
+        if (timeA === timeB) {
+            return a.id.localeCompare(b.id); // Stable fallback
+        }
+        return timeA - timeB;
     });
-    
-    await batch.commit();
+
+    // Batch update in chunks of 500
+    const chunks = [];
+    const workingDocs = [...docs];
+    while (workingDocs.length > 0) {
+        chunks.push(workingDocs.splice(0, 500));
+    }
+
+    let globalIndex = 1;
+    for (const chunk of chunks) {
+        const batch = writeBatch(db);
+        chunk.forEach((doc) => {
+            batch.update(doc.ref, { displayOrder: globalIndex++, updatedAt: serverTimestamp() });
+        });
+        await batch.commit();
+    }
 };
 
 // --- Products ---
@@ -571,6 +592,48 @@ export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
 };
 
+export const updateOrderTotal = async (orderId: string, newTotal: number) => {
+    const docRef = doc(db, 'orders', orderId);
+    await updateDoc(docRef, {
+        totalAmount: newTotal,
+        updatedAt: serverTimestamp()
+    });
+};
+
+const getStoreByLocation = async (location: string): Promise<StoreType | null> => {
+    try {
+        const q = query(collection(db, 'stores'), where('storeLocation', '==', location));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+            return { id: snap.docs[0].id, ...snap.docs[0].data() } as StoreType;
+        }
+        // Fallback to Main Store or Demo Store if not found
+        const q2 = query(collection(db, 'stores'), limit(1)); // Just get first one? Or strict?
+        const snap2 = await getDocs(q2);
+        if(!snap2.empty) return { id: snap2.docs[0].id, ...snap2.docs[0].data() } as StoreType;
+        return null;
+    } catch (e) {
+        console.error("Error fetching store", e);
+        return null;
+    }
+};
+
+const getCustomerById = async (userId: string): Promise<CustomerType | null> => {
+    try {
+        const docRef = doc(db, 'Customers', userId);
+        const snap = await getDoc(docRef);
+        if (snap.exists()) return { id: snap.id, ...snap.data() } as CustomerType;
+        
+        // Fallback search by userId as customerMobile? No, userId should be doc ID.
+        // But if auth is via phone, generic userId might not match docId if different auth system.
+        // Assuming userId IS Customer Doc ID (as per AuthContext).
+        return null;
+    } catch (e) {
+        console.error("Error fetching customer", e);
+        return null;
+    }
+};
+
 export const updateOrderStatus = async (orderId: string, status: Order['status'], note?: string) => {
     const docRef = doc(db, 'orders', orderId);
     const docSnap = await getDoc(docRef);
@@ -583,11 +646,50 @@ export const updateOrderStatus = async (orderId: string, status: Order['status']
         { status, timestamp: new Date(), note: note || `Status updated to ${status}` }
     ];
 
-    await updateDoc(docRef, {
+    const updates: any = {
         status,
         timeline: newTimeline,
         updatedAt: serverTimestamp()
-    });
+    };
+
+    // Trigger Rewards processing on Confirmation
+    if (status === 'confirmed' && !(currentOrder as any).rewardsProcessed) {
+        try {
+            const customer = await getCustomerById(currentOrder.userId);
+            if (customer) {
+                // Determine Store
+                // Use customer store location, or fallback
+                const storeLocation = customer.storeLocation || 'Main Store'; 
+                const store = await getStoreByLocation(storeLocation);
+                
+                if (store) {
+                    await processSaleTransaction({
+                        orderId: currentOrder.id,
+                        invoiceId: `INV-${currentOrder.id.slice(0,6).toUpperCase()}`,
+                        amount: currentOrder.totalAmount,
+                        customer: customer,
+                        storeDetails: store,
+                        user: { staffName: 'Online Admin', role: 'admin' },
+                        paymentMethod: currentOrder.paymentMethod || 'online',
+                        totalSpv: currentOrder.items.reduce((acc, item) => acc + (Number(item.spv || 0) * item.quantity), 0) // Calculate Total SPV from items
+                    });
+                    updates.rewardsProcessed = true;
+                    // Note: Activity log is added by processSaleTransaction
+                } else {
+                    console.error("Store not found for rewards processing");
+                    updates.rewardsError = "Store not found";
+                }
+            } else {
+                console.error("Customer not found for rewards processing");
+                updates.rewardsError = "Customer not found";
+            }
+        } catch (error) {
+            console.error("Error processing rewards", error);
+            updates.rewardsError = "Processing Failed";
+        }
+    }
+
+    await updateDoc(docRef, updates);
 };
 
 export const cancelOrder = async (orderId: string, reason: string) => {

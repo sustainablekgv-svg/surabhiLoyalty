@@ -21,6 +21,7 @@ export interface Product {
     createdAt: any; // Firestore Timestamp
     updatedAt: any; // Firestore Timestamp
     spv?: number; // Sales Point Value
+    trackInventory?: boolean;
 }
 
 export interface Brand {
