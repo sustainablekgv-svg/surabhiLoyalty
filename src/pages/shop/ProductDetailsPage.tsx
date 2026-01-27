@@ -144,11 +144,11 @@ const ProductDetailsPage = () => {
                                 </>
                             )}
                         </div>
-                        {user && user.role === 'customer' && product.spv && product.spv > 0 && (
+                        {(product.spv || 0) > 0 && (
                             <div className="mt-2">
-                                <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">
+                                <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full border border-blue-200">
                                     SPV: {product.spv}
-                                </Badge>
+                                </span>
                             </div>
                         )}
                     </div>

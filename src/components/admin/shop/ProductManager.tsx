@@ -27,6 +27,18 @@ export const ProductManager = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterBrandId, setFilterBrandId] = useState<string>('all');
+    const [sortConfig, setSortConfig] = useState<{ key: keyof Product, direction: 'asc' | 'desc' } | null>(null);
+
+    const handleSort = (key: keyof Product) => {
+        setSortConfig(current => {
+            if (current?.key === key) {
+                return current.direction === 'asc' 
+                    ? { key, direction: 'desc' } 
+                    : null;
+            }
+            return { key, direction: 'asc' };
+        });
+    };
     
     // Legacy pagination state removed
     // const [lastDoc, setLastDoc] = useState<any>(null);
@@ -94,16 +106,37 @@ export const ProductManager = () => {
 
         if (filterBrandId !== 'all') {
             result = result.filter(p => p.brandId === filterBrandId);
-            result.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+        }
+
+        if (sortConfig) {
+            result.sort((a, b) => {
+                const aValue = a[sortConfig.key];
+                const bValue = b[sortConfig.key];
+
+                if (aValue === bValue) return 0;
+                
+                // Handle mixed types (e.g. number vs undefined)
+                if (aValue === undefined || aValue === null) return 1;
+                if (bValue === undefined || bValue === null) return -1;
+                
+                if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
         } else {
-             result.sort((a, b) => {
-                const diff = (a.displayOrder || 999999) - (b.displayOrder || 999999);
-                if (diff !== 0) return diff;
-                return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
-             });
+             // Default Sort
+             if (filterBrandId !== 'all') {
+                 result.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+             } else {
+                result.sort((a, b) => {
+                    const diff = (a.displayOrder || 999999) - (b.displayOrder || 999999);
+                    if (diff !== 0) return diff;
+                    return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+                });
+             }
         }
         return result;
-    }, [allProducts, searchTerm, filterBrandId]);
+    }, [allProducts, searchTerm, filterBrandId, sortConfig]);
 
     const products = React.useMemo(() => {
         const start = (page - 1) * PAGE_SIZE;
@@ -129,8 +162,8 @@ export const ProductManager = () => {
             const url = await uploadImageToCloudinary(file);
             setFormData(prev => ({ ...prev, imageUrl: url }));
             toast.success("Image uploaded");
-        } catch (error) {
-            toast.error("Upload failed");
+        } catch (error: any) {
+            toast.error(error.message || "Upload failed");
         } finally {
             setUploading(false);
         }
@@ -530,9 +563,15 @@ export const ProductManager = () => {
                             <TableHead>Name</TableHead>
                             <TableHead>Category</TableHead>
                             <TableHead>Brand</TableHead>
-                            <TableHead>Price</TableHead>
-                            <TableHead>SPV</TableHead>
-                            <TableHead>Stock</TableHead>
+                            <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort('sellingPrice')}>
+                                Price {sortConfig?.key === 'sellingPrice' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                            </TableHead>
+                            <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort('spv')}>
+                                SPV {sortConfig?.key === 'spv' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                            </TableHead>
+                            <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort('stock')}>
+                                Stock {sortConfig?.key === 'stock' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                            </TableHead>
                             <TableHead>Visibility</TableHead>
                             <TableHead>Actions</TableHead>
                         </TableRow>

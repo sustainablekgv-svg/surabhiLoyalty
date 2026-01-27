@@ -102,6 +102,7 @@ export interface Order {
         note?: string;
     }[];
     cancelReason?: string;
+    surabhiCoinsUsed?: number;
     createdAt: any;
     updatedAt: any;
 }

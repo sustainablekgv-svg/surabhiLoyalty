@@ -9,12 +9,8 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/auth-context';
 import { useShop } from '@/hooks/shop-context';
 import { addAddress, getAddresses } from '@/lib/addressService';
-import { db } from '@/lib/firebase';
-import { processSaleTransaction } from '@/services/sales';
 import { calculateShippingCost, getZoneForState, INDIAN_STATES } from '@/services/shipping';
 import { Address } from '@/types/shop';
-import { CustomerType, StoreType } from '@/types/types';
-import { collection, getDocs, query, where } from 'firebase/firestore';
 import { ArrowLeft, Loader2, Plus, ShoppingCart, Truck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -139,34 +135,8 @@ const CheckoutPage = () => {
           
           await createOrder(orderData as any); 
           
-          // Process Sales Logic (Coins, Referrals, etc.) for COD
-          try {
-              if (user && 'role' in user && user.role === 'customer' && user.storeLocation) {
-                  const storeQ = query(collection(db, 'stores'), where('storeName', '==', user.storeLocation));
-                  const storeSnap = await getDocs(storeQ);
-                  const customerMobile = (user as any).customerMobile;
-                  const custQ = query(collection(db, 'Customers'), where('customerMobile', '==', customerMobile));
-                  const custSnap = await getDocs(custQ);
-
-                  if (!storeSnap.empty && !custSnap.empty) {
-                      const storeDetails = { id: storeSnap.docs[0].id, ...storeSnap.docs[0].data() } as StoreType;
-                      const customerDetails = { id: custSnap.docs[0].id, ...custSnap.docs[0].data() } as CustomerType;
-
-                      await processSaleTransaction({
-                          orderId: `COD-${Date.now()}`,
-                          invoiceId: `COD-${Date.now()}`,
-                          amount: subtotal + shippingCost,
-                          customer: customerDetails,
-                          storeDetails: storeDetails,
-                          user: user,
-                          paymentMethod: 'cod',
-                          totalSpv: totalSpv
-                      });
-                  }
-              }
-          } catch (salesError) {
-              console.error("Error processing COD sales logic:", salesError);
-          }
+          // Sales processing deferred to Admin Confirmation
+          // Coins and Referrals will be calculated when order status is set to 'confirmed'
 
           clearCart();
           toast.success("Order placed successfully!");
@@ -227,47 +197,8 @@ const CheckoutPage = () => {
                           };
                           await createOrder(orderData as any);
 
-                          // Process Sales Logic (Coins, Referrals, etc.)
-                          try {
-                              if (user && 'role' in user && user.role === 'customer' && user.storeLocation) {
-                                  // 1. Fetch Store Details
-                                  const storeQ = query(collection(db, 'stores'), where('storeName', '==', user.storeLocation));
-                                  const storeSnap = await getDocs(storeQ);
-                                  
-                                  // 2. Fetch Latest Customer Details
-                                  // We use mobile as key identifier typically
-                                  const customerMobile = (user as any).customerMobile;
-                                  const custQ = query(collection(db, 'Customers'), where('customerMobile', '==', customerMobile));
-                                  const custSnap = await getDocs(custQ);
-
-                                  if (!storeSnap.empty && !custSnap.empty) {
-                                      const storeDetails = { id: storeSnap.docs[0].id, ...storeSnap.docs[0].data() } as StoreType;
-                                      const customerDetails = { id: custSnap.docs[0].id, ...custSnap.docs[0].data() } as CustomerType;
-
-                                      await processSaleTransaction({
-                                          orderId: response.razorpay_order_id, // Use Razorpay ID as Order Ref
-                                          invoiceId: response.razorpay_order_id,
-                                          amount: amount,
-                                          customer: customerDetails,
-                                          storeDetails: storeDetails,
-                                          user: user,
-                                          paymentMethod: 'online',
-                                          paymentDetails: {
-                                              razorpay_payment_id: response.razorpay_payment_id
-                                          },
-                                          totalSpv: totalSpv
-                                      });
-                                      toast.success("Coins earned and transaction recorded!");
-                                  } else {
-                                      console.error("Could not find store or customer details for sales processing");
-                                  }
-                              }
-                          } catch (salesError) {
-                              console.error("Error processing sales logic:", salesError);
-                              // Don't fail the order flow, just log it. 
-                              // Ideally we should have a retry mechanism or alert admin.
-                              toast.warning("Order placed, but points calculation failed. Please contact support.");
-                          }
+                          // Sales processing deferred to Admin Confirmation
+                          // Coins and Referrals will be calculated when order status is set to 'confirmed'
                           
                           // Save new address if requested
                           if (saveNewAddress && user && user.id) {
