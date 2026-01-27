@@ -79,11 +79,12 @@ export const calculateSale = (
   customer: CustomerType,
   storeDetails: StoreType,
   paymentMethod: 'wallet' | 'cash' | 'mixed',
-  totalSpv?: number
+  totalSpv?: number,
+  coinsUsedForCalc?: number // NEW: Amount paid via coins
 ): SaleCalculation => {
   const totalAmount = Number(amount);
   let walletDeduction = 0;
-  let surabhiCoinsUsed = 0;
+  let surabhiCoinsUsed = coinsUsedForCalc || 0;
   let cashPayment = totalAmount; // Default for Online/COD is full payment
 
   // SPV Calculation (Surabhi Point Value)
@@ -96,9 +97,12 @@ export const calculateSale = (
   const referralCommission = storeDetails.referralCommission || 0;
 
   // Calculate earnings
-  const surabhiCoinsEarned = customRound((Number(spv) * selectedCommission) / 100);
-  const goSevaContribution = customRound((Number(spv) * sevaCommission) / 100);
-  const referrerSurabhiCoinsEarned = customRound((Number(spv) * referralCommission) / 100);
+  // NEW LOGIC: Base = SPV - surabhiCoinsUsed
+  const netSpv = Math.max(0, Number(spv) - surabhiCoinsUsed);
+
+  const surabhiCoinsEarned = customRound((netSpv * selectedCommission) / 100);
+  const goSevaContribution = customRound((netSpv * sevaCommission) / 100);
+  const referrerSurabhiCoinsEarned = customRound((netSpv * referralCommission) / 100);
 
   return {
     totalAmount,
@@ -120,9 +124,10 @@ export const processSaleTransaction = async (params: {
     user: any, 
     paymentMethod: 'online' | 'cod', // Input type
     paymentDetails?: any,
-    totalSpv?: number
+    totalSpv?: number,
+    surabhiCoinsUsed?: number // NEW param
 }) => {
-    const { orderId, invoiceId, amount, customer, storeDetails, user, paymentMethod, paymentDetails, totalSpv } = params;
+    const { orderId, invoiceId, amount, customer, storeDetails, user, paymentMethod, paymentDetails, totalSpv, surabhiCoinsUsed } = params;
     
     // Process both online and COD. 
     // COD in shop is treated as "placed" with pending collection, 
@@ -132,7 +137,7 @@ export const processSaleTransaction = async (params: {
     const methodForCalc = 'cash'; 
     
     // 1. Calculate Sale details
-    const saleCalculation = calculateSale(amount, customer, storeDetails, methodForCalc, totalSpv);
+    const saleCalculation = calculateSale(amount, customer, storeDetails, methodForCalc, totalSpv, surabhiCoinsUsed);
     
     const spvEntered = totalSpv !== undefined ? totalSpv : amount;
     const adjustedSpv = totalSpv !== undefined ? totalSpv : amount; 

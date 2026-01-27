@@ -671,7 +671,8 @@ export const updateOrderStatus = async (orderId: string, status: Order['status']
                         storeDetails: store,
                         user: { staffName: 'Online Admin', role: 'admin' },
                         paymentMethod: currentOrder.paymentMethod || 'online',
-                        totalSpv: currentOrder.items.reduce((acc, item) => acc + (Number(item.spv || 0) * item.quantity), 0) // Calculate Total SPV from items
+                        totalSpv: currentOrder.items.reduce((acc, item) => acc + (Number(item.spv || 0) * item.quantity), 0), // Calculate Total SPV from items
+                        surabhiCoinsUsed: currentOrder.surabhiCoinsUsed || 0
                     });
                     updates.rewardsProcessed = true;
                     // Note: Activity log is added by processSaleTransaction

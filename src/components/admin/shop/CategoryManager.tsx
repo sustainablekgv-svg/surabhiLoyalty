@@ -95,8 +95,8 @@ export const CategoryManager = () => {
             const url = await uploadImageToCloudinary(file);
             setFormData(prev => ({ ...prev, image: url }));
             toast.success("Image uploaded");
-        } catch (error) {
-            toast.error("Upload failed");
+        } catch (error: any) {
+            toast.error(error.message || "Upload failed");
         } finally {
             setUploading(false);
         }

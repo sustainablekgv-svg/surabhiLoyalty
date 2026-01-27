@@ -100,8 +100,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
              </span>
           )}
           
-          {user && user.role === 'customer' && product.spv && product.spv >= 0 && ( /* Show SPV even if 0 if specifically set, or just > 0 */
-             <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+          {(product.spv || 0) > 0 && (
+             <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full border border-blue-200">
                SPV: {product.spv}
              </span>
           )}
@@ -115,7 +115,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
           disabled={!canAddToCart}
         >
           <ShoppingCart className="h-4 w-4" />
-          {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+          Add to Cart
         </Button>
       </CardFooter>
     </Card>

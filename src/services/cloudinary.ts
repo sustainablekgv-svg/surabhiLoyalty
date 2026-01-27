@@ -33,6 +33,6 @@ export const uploadImageToCloudinary = async (file: File): Promise<string> => {
   } catch (error: any) {
     console.error('Error uploading image to Cloudinary:', error);
     const msg = error.response?.data?.error?.message || error.message || "Unknown Upload Error";
-    throw new Error(`Image upload failed: ${msg}`);
+    throw new Error(`Cloudinary Error: ${msg}`);
   }
 };
