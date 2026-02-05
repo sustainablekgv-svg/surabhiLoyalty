@@ -38,4 +38,4 @@ import * as quarterly from './quartleryCheck';
 export const checkQuarterlyCriteria = quarterly.checkQuarterlyCriteria;
 export const createRazorpayOrder = ecommerce.createRazorpayOrder;
 export const verifyRazorpayPayment = ecommerce.verifyRazorpayPayment;
-export const generateUploadUrl = cloudflare.generateUploadUrl;
+export const createR2UploadUrl = cloudflare.createR2UploadUrl;
