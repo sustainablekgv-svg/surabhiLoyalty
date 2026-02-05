@@ -2,10 +2,18 @@ import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import * as functions from 'firebase-functions/v2';
 
-export const generateUploadUrl = functions.https.onCall({ 
-    cors: true 
+export const createR2UploadUrl = functions.https.onCall({ 
+    cors: [
+        'http://localhost:5173', 
+        'http://localhost:3000', 
+        'https://surabhi-loyalty.web.app', 
+        'https://surabhiloyalty.web.app',
+        'https://surabhiloyalty.firebaseapp.com',
+        'https://sustainablekgv.com',
+        'https://www.sustainablekgv.com'
+    ]
 }, async (request) => {
-  console.log("generateUploadUrl called with data:", request.data);
+  console.log("createR2UploadUrl called with data:", request.data);
 
   if (!request.auth) {
     console.warn("Unauthenticated attempt");
