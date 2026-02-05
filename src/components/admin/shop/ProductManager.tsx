@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { isValidImageUrl } from '@/lib/image-utils';
-import { uploadImageToCloudinary } from '@/services/cloudinary';
+import { uploadImageToR2 } from '@/services/cloudflare';
 import { createProduct, deleteProduct, getBrands, getCategories, getProducts, initializeDisplayOrder, reorderProduct, updateProduct } from '@/services/shop';
 import { Brand, Category, Product } from '@/types/shop';
 import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Trash2, Upload } from 'lucide-react';
@@ -152,14 +152,13 @@ export const ProductManager = () => {
     useEffect(() => {
         setPage(1);
     }, [searchTerm, filterBrandId]);
-
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         setUploading(true);
         try {
-            const url = await uploadImageToCloudinary(file);
+            const url = await uploadImageToR2(file);
             setFormData(prev => ({ ...prev, imageUrl: url }));
             toast.success("Image uploaded");
         } catch (error: any) {

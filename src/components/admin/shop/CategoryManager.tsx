@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { uploadImageToCloudinary } from '@/services/cloudinary';
+import { uploadImageToR2 } from '@/services/cloudflare';
 import { createCategory, deleteCategory, getCategories, initializeDisplayOrder, reorderCategory, updateCategory } from '@/services/shop';
 import { Category } from '@/types/shop';
 import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Search, Trash2, Upload } from 'lucide-react';
@@ -85,14 +85,13 @@ export const CategoryManager = () => {
         setPage(prev => prev - 1);
         fetchCategories(prevDoc);
     };
-
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         setUploading(true);
         try {
-            const url = await uploadImageToCloudinary(file);
+            const url = await uploadImageToR2(file);
             setFormData(prev => ({ ...prev, image: url }));
             toast.success("Image uploaded");
         } catch (error: any) {
