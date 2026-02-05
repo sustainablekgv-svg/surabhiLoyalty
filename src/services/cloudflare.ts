@@ -24,13 +24,13 @@ export const uploadImageToR2 = async (file: File): Promise<string> => {
 
     try {
         // 1. Get Signed URL from Backend
-        const generateUploadUrl = httpsCallable<{ filename: string; contentType: string }, UploadResponse>(
+        const createR2UploadUrl = httpsCallable<{ filename: string; contentType: string }, UploadResponse>(
             functions, 
-            'generateUploadUrl'
+            'createR2UploadUrl'
         );
         
         console.log(`Requesting signed URL for ${file.name} (${file.type})...`);
-        const { data } = await generateUploadUrl({
+        const { data } = await createR2UploadUrl({
             filename: file.name,
             contentType: file.type
         });
