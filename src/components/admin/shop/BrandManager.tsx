@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { isValidImageUrl } from '@/lib/image-utils';
-import { uploadImageToCloudinary } from '@/services/cloudinary';
+import { uploadImageToR2 } from '@/services/cloudflare';
 import { createBrand, deleteBrand, getBrands, getCategories, initializeDisplayOrder, reorderBrand, updateBrand } from '@/services/shop';
 import { Brand, Category } from '@/types/shop';
 import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Search, Trash2, Upload } from 'lucide-react';
@@ -95,7 +95,7 @@ export const BrandManager = () => {
 
         setUploading(true);
         try {
-            const url = await uploadImageToCloudinary(file);
+            const url = await uploadImageToR2(file);
             setFormData(prev => ({ ...prev, logo: url }));
             toast.success("Logo uploaded");
         } catch (error: any) {
