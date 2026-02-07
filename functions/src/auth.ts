@@ -8,7 +8,12 @@ if (admin.apps.length === 0) {
   admin.initializeApp();
 }
 
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 const SECRET_KEY = process.env.VITE_ENCRYPTION_SECRET || 'default-test-secret-key-32-chars';
+logger.info(`Auth Sync initialized. Secret Key starts with: ${SECRET_KEY.substring(0, 4)}... length: ${SECRET_KEY.length}`);
+
 
 const decryptText = (encryptedText: string): string => {
   try {

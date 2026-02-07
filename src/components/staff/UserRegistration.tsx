@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
 import {
   createUserWithEmailAndPassword,
+  fetchSignInMethodsForEmail,
   User as FirebaseUser,
   onAuthStateChanged,
 } from 'firebase/auth';
@@ -232,6 +233,12 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
       // Proceed with registration
       // Generate email for Firebase auth if not provided
       const authEmail = formData.customerEmail || `${formData.customerMobile}@loyalty.local`;
+      const existingMethods = await fetchSignInMethodsForEmail(auth, authEmail);
+      if (existingMethods.length > 0) {
+        toast.error('This email is already registered in Firebase Auth.', { id: toastId });
+        setIsLoading(false);
+        return;
+      }
       // console.log('Creating Firebase user with email:', authEmail);
       const userCredential = await createUserWithEmailAndPassword(
         auth,

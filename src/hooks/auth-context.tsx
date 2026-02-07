@@ -22,7 +22,18 @@ interface AuthContextType {
   isInitialized: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const DEFAULT_AUTH_CONTEXT: AuthContextType = {
+  user: null,
+  login: async () => {
+    throw new Error('AuthProvider is not mounted');
+  },
+  logout: async () => {},
+  isLoading: false,
+  isAuthenticated: false,
+  isInitialized: false,
+};
+
+const AuthContext = createContext<AuthContextType>(DEFAULT_AUTH_CONTEXT);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -263,9 +274,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  // console.log('The line 190 is', context);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+  if (context === DEFAULT_AUTH_CONTEXT && import.meta.env.DEV) {
+    console.error('useAuth used outside AuthProvider. Check provider wiring.');
   }
   return context;
 };

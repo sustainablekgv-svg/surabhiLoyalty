@@ -1,4 +1,7 @@
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword
+} from 'firebase/auth';
 import { addDoc, collection, doc, getDoc, getDocs, query, Timestamp, where } from 'firebase/firestore';
 
 import { encryptText, isEncrypted, safeDecryptText } from '@/lib/encryption';
@@ -156,9 +159,16 @@ export const ensureFirebaseAuth = async (
     await signInWithEmailAndPassword(auth, email, password);
   } catch (error: any) {
     const code = error?.code as string | undefined;
+
+    // If password mismatch but Firestore verified, and we allow tolerance, let it pass.
+    // This allows users to login even if Auth is out of sync, enabling them to update password later.
+    if (options.tolerateFailure && (code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/missing-password')) {
+         console.warn(`Bypassing Firebase Auth login error (${code}) as tolerateFailure is true.`);
+         return;
+    }
+
+    // Only try to create if the user definitely doesn't exist
     const shouldTryCreate = options.allowCreate && code === 'auth/user-not-found';
-    const isCredentialMismatch =
-      code === 'auth/invalid-credential' || code === 'auth/wrong-password';
 
     if (shouldTryCreate) {
       try {
@@ -166,27 +176,19 @@ export const ensureFirebaseAuth = async (
         return;
       } catch (createError: any) {
         console.error('Error creating Firebase user:', createError);
+        
+        // If creating failed because user exists (race condition or confusion), tolerate it if requested
         if (createError?.code === 'auth/email-already-in-use') {
-          if (options.tolerateFailure) {
-            return;
-          }
-          throw new Error(
-            'Firebase Auth user exists with a different password. Reset the Firebase password or update the staff password to match.'
-          );
-        }
-        if (options.tolerateFailure) {
-          return;
+           if (options.tolerateFailure) {
+               console.warn('Bypassing user creation error (email-already-in-use) as tolerateFailure is true.');
+               return; 
+           }
+           throw new Error(
+            'Firebase Auth user exists but login failed. Password mismatch suspected.'
+           );
         }
         throw createError;
       }
-    }
-
-    if (isCredentialMismatch && options.tolerateFailure) {
-      return;
-    }
-
-    if (options.tolerateFailure && code === 'auth/email-already-in-use') {
-      return;
     }
 
     throw error;
