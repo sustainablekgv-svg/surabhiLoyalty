@@ -4,12 +4,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PreviewableImage } from '@/components/ui/previewable-image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { isValidImageUrl } from '@/lib/image-utils';
-import { uploadImageToR2 } from '@/services/cloudflare';
+import { deleteImageFromR2, uploadImageToR2 } from '@/services/cloudflare';
 import { createProduct, deleteProduct, getBrands, getCategories, getProducts, initializeDisplayOrder, reorderProduct, updateProduct } from '@/services/shop';
 import { Brand, Category, Product } from '@/types/shop';
 import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Trash2, Upload } from 'lucide-react';
@@ -40,11 +41,6 @@ export const ProductManager = () => {
         });
     };
     
-    // Legacy pagination state removed
-    // const [lastDoc, setLastDoc] = useState<any>(null);
-    // const [paginationStack, setPaginationStack] = useState<any[]>([]);
-    // const [hasMore, setHasMore] = useState(true);
-
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [uploading, setUploading] = useState(false);
@@ -152,13 +148,14 @@ export const ProductManager = () => {
     useEffect(() => {
         setPage(1);
     }, [searchTerm, filterBrandId]);
+
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         setUploading(true);
         try {
-            const url = await uploadImageToR2(file);
+            const url = await uploadImageToR2(file, 'products');
             setFormData(prev => ({ ...prev, imageUrl: url }));
             toast.success("Image uploaded");
         } catch (error: any) {
@@ -224,6 +221,14 @@ export const ProductManager = () => {
             };
 
             if (editingProduct) {
+                // Check if image has changed and delete old one
+                const oldImage = editingProduct.images?.[0];
+                const newImage = productData.images?.[0];
+                
+                if (oldImage && newImage && oldImage !== newImage) {
+                    await deleteImageFromR2(oldImage);
+                }
+
                 await updateProduct(editingProduct.id, productData);
                 toast.success('Product updated successfully');
             } else {
@@ -242,10 +247,13 @@ export const ProductManager = () => {
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async (product: Product) => {
         if (!confirm('Are you sure?')) return;
         try {
-            await deleteProduct(id);
+            if (product.images?.[0]) {
+                await deleteImageFromR2(product.images[0]);
+            }
+            await deleteProduct(product.id);
             toast.success('Product deleted');
             // Refresh current view
             fetchData();
@@ -526,7 +534,7 @@ export const ProductManager = () => {
                                 <Label>Product Image</Label>
                                 <div className="flex items-center gap-4">
                                     {isValidImageUrl(formData.imageUrl) && (
-                                        <img src={formData.imageUrl} alt="Preview" className="h-16 w-16 object-cover border rounded" />
+                                        <PreviewableImage src={formData.imageUrl} alt="Preview" className="h-16 w-16 object-cover border rounded" />
                                     )}
                                     <div className="relative flex-1">
                                         <Input
@@ -585,7 +593,7 @@ export const ProductManager = () => {
                                 <TableRow key={product.id}>
                                     <TableCell>
                                         {isValidImageUrl(product.images?.[0]) ? (
-                                            <img src={product.images[0]} alt={product.name} className="h-10 w-10 object-cover rounded" />
+                                            <PreviewableImage src={product.images[0]} alt={product.name} className="h-10 w-10 object-cover rounded" />
                                         ) : (
                                             <div className="h-10 w-10 bg-gray-100 rounded flex items-center justify-center text-xs">No</div>
                                         )}
@@ -627,7 +635,7 @@ export const ProductManager = () => {
                                             <Button size="icon" variant="ghost" onClick={() => handleEdit(product)}>
                                                 <Edit className="h-4 w-4" />
                                             </Button>
-                                            <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => handleDelete(product.id)}>
+                                            <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => handleDelete(product)}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                                 <div className="flex flex-col gap-0.5">

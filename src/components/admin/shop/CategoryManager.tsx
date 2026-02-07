@@ -3,8 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PreviewableImage } from '@/components/ui/previewable-image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { uploadImageToR2 } from '@/services/cloudflare';
+import { deleteImageFromR2, uploadImageToR2 } from '@/services/cloudflare';
 import { createCategory, deleteCategory, getCategories, initializeDisplayOrder, reorderCategory, updateCategory } from '@/services/shop';
 import { Category } from '@/types/shop';
 import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Search, Trash2, Upload } from 'lucide-react';
@@ -91,7 +92,7 @@ export const CategoryManager = () => {
 
         setUploading(true);
         try {
-            const url = await uploadImageToR2(file);
+            const url = await uploadImageToR2(file, 'categories');
             setFormData(prev => ({ ...prev, image: url }));
             toast.success("Image uploaded");
         } catch (error: any) {
@@ -137,6 +138,13 @@ export const CategoryManager = () => {
             };
 
             if (editingCategory) {
+                const oldImage = editingCategory.image;
+                const newImage = categoryData.image;
+
+                if (oldImage && newImage && oldImage !== newImage) {
+                    await deleteImageFromR2(oldImage);
+                }
+
                 await updateCategory(editingCategory.id, categoryData);
                 toast.success('Category updated successfully');
             } else {
@@ -154,10 +162,13 @@ export const CategoryManager = () => {
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async (category: Category) => {
         if (!confirm('Are you sure? Deleting a category might affect products linked to it.')) return;
         try {
-            await deleteCategory(id);
+            if (category.image) {
+                await deleteImageFromR2(category.image);
+            }
+            await deleteCategory(category.id);
             toast.success('Category deleted');
             fetchCategories(paginationStack[paginationStack.length - 1]);
         } catch (error) {
@@ -269,7 +280,7 @@ export const CategoryManager = () => {
                                 <Label>Image</Label>
                                 <div className="flex items-center gap-4">
                                     {formData.image && (
-                                        <img src={formData.image} alt="Preview" className="h-12 w-12 object-contain border rounded" />
+                                        <PreviewableImage src={formData.image} alt="Preview" className="h-12 w-12 object-contain border rounded" />
                                     )}
                                     <div className="relative flex-1">
                                         <Input
@@ -318,7 +329,7 @@ export const CategoryManager = () => {
                                     <TableRow key={category.id}>
                                         <TableCell>
                                             {category.image ? (
-                                                <img src={category.image} alt={category.name} className="h-8 w-8 object-contain" />
+                                                <PreviewableImage src={category.image} alt={category.name} className="h-8 w-8 object-contain" />
                                             ) : (
                                                 <div className="h-8 w-8 bg-gray-100 rounded flex items-center justify-center text-xs text-muted-foreground">No</div>
                                             )}
@@ -330,7 +341,7 @@ export const CategoryManager = () => {
                                                 <Button size="icon" variant="ghost" onClick={() => handleEdit(category)}>
                                                     <Edit className="h-4 w-4" />
                                                 </Button>
-                                                <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => handleDelete(category.id)}>
+                                                <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => handleDelete(category)}>
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
                                                 <div className="flex flex-col gap-0.5">

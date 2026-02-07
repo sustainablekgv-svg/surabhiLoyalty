@@ -19,6 +19,9 @@ import { getUserEmail, getUserMobile, getUserName } from '@/lib/userUtils';
 
 
 
+import { ImagePreviewModal } from '@/components/ui/image-preview-modal';
+import { ImagePreviewProvider } from '@/contexts/ImagePreviewContext';
+
 // Simple Error Boundary Component for Debugging
 class ErrorBoundary extends Component<{ children: ReactNode; name: string }, { hasError: boolean; error: Error | null }> {
   constructor(props: { children: ReactNode; name: string }) {
@@ -100,126 +103,129 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50 overflow-x-hidden">
-      <SEO title="Admin Dashboard" description="Surabhi Admin Dashboard" />
-      <AdminHeader
-        user={{
-          id: user.id,
-          staffName: getUserName(user) || '',
-          staffEmail: getUserEmail(user) || '',
-          staffMobile: getUserMobile(user) || '',
-          demoStore: user.demoStore || false,
-          role: user.role as 'admin',
-          storeLocation: user.storeLocation || '',
-          staffPassword: '',
-          staffStatus: 'active',
-          staffSalesCount: 0,
-          staffRechargesCount: 0,
-          createdAt: new Date() as any,
-        }}
-        onLogout={handleLogout}
-      />
+    <ImagePreviewProvider>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50 overflow-x-hidden">
+        <SEO title="Admin Dashboard" description="Surabhi Admin Dashboard" />
+        <ImagePreviewModal />
+        <AdminHeader
+          user={{
+            id: user.id,
+            staffName: getUserName(user) || '',
+            staffEmail: getUserEmail(user) || '',
+            staffMobile: getUserMobile(user) || '',
+            demoStore: user.demoStore || false,
+            role: user.role as 'admin',
+            storeLocation: user.storeLocation || '',
+            staffPassword: '',
+            staffStatus: 'active',
+            staffSalesCount: 0,
+            staffRechargesCount: 0,
+            createdAt: new Date() as any,
+          }}
+          onLogout={handleLogout}
+        />
 
-      <div className="container mx-auto px-2 xs:px-4 sm:px-6 lg:px-8 py-3 xs:py-4 sm:py-6 overflow-x-hidden">
-        <div className="mb-3 xs:mb-4 sm:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900 mb-0.5 xs:mb-1 sm:mb-2">
-              Admin Dashboard
-            </h1>
-            <p className="text-xs xs:text-sm sm:text-base text-gray-600">
-              Manage your loyalty program and monitor performance
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigate('/')}>
-              <Home className="h-4 w-4 mr-2" /> Home
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate('/shop')}>
-              <ShoppingCart className="h-4 w-4 mr-2" /> Shop
-            </Button>
-          </div>
-        </div>
-
-        <div className="w-full">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            {/* Tabs Navigation */}
-            <div className="mb-3 xs:mb-4 sm:mb-8 sticky top-0 z-10 bg-gradient-to-br from-purple-50 via-white to-amber-50 pt-1 pb-2 overflow-x-hidden overflow-y-hidden">
-              <TabsList className="grid w-full grid-cols-7 bg-gray-100 p-0.5 rounded-lg overflow-y-hidden">
-                {[
-                  { value: 'overview', icon: TrendingUp, label: 'Overview' },
-                  { value: 'staff', icon: UserPlus, label: 'Staff' },
-                  { value: 'users', icon: Users, label: 'Users' },
-                  { value: 'sales', icon: ShoppingCart, label: 'Sales' },
-                  { value: 'accounts', icon: DollarSign, label: 'Accounts' },
-                  { value: 'goseva', icon: Heart, label: 'Seva' },
-                  { value: 'shop', icon: ShoppingCart, label: 'Shop' },
-                ].map(tab => (
-                  <TabsTrigger
-                    key={tab.value}
-                    value={tab.value}
-                    className={`flex flex-col items-center gap-0.5 py-1 px-0.5 rounded-md transition-all min-w-0 overflow-y-hidden ${
-                      activeTab === tab.value
-                        ? 'bg-white shadow-sm text-purple-600 font-medium'
-                        : 'text-gray-600 hover:text-purple-500'
-                    }`}
-                  >
-                    <tab.icon className="h-2 w-2 xs:h-2.5 xs:w-2.5 sm:h-4 sm:w-4" />
-                    <span className="text-[6px] xs:text-[7px] sm:text-xs md:text-sm truncate w-full text-center leading-tight">
-                      {tab.label}
-                    </span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+        <div className="container mx-auto px-2 xs:px-4 sm:px-6 lg:px-8 py-3 xs:py-4 sm:py-6 overflow-x-hidden">
+          <div className="mb-3 xs:mb-4 sm:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-gray-900 mb-0.5 xs:mb-1 sm:mb-2">
+                Admin Dashboard
+              </h1>
+              <p className="text-xs xs:text-sm sm:text-base text-gray-600">
+                Manage your loyalty program and monitor performance
+              </p>
             </div>
-
-            {/* Tab Content */}
-            <div className="bg-white rounded-lg shadow-sm p-2 xs:p-3 sm:p-4 md:p-6 mt-2 xs:mt-3 sm:mt-4 overflow-x-hidden">
-              <TabsContent value="overview" className="space-y-4 xs:space-y-5 sm:space-y-6 mt-0">
-                <ErrorBoundary name="AdminStats">
-                  <AdminStats />
-                </ErrorBoundary>
-              </TabsContent>
-
-              <TabsContent value="staff" className="mt-0">
-                <ErrorBoundary name="StaffManagement">
-                  <StaffManagement />
-                </ErrorBoundary>
-              </TabsContent>
-
-              <TabsContent value="users" className="mt-0">
-                <ErrorBoundary name="CustomerManagement">
-                  <CustomerManagement />
-                </ErrorBoundary>
-              </TabsContent>
-
-              <TabsContent value="sales" className="mt-0">
-                <ErrorBoundary name="SalesManagement">
-                  <SalesManagement />
-                </ErrorBoundary>
-              </TabsContent>
-
-              <TabsContent value="accounts" className="mt-0">
-                <ErrorBoundary name="Accounts">
-                  <Accounts />
-                </ErrorBoundary>
-              </TabsContent>
-
-              <TabsContent value="goseva" className="mt-0">
-                <ErrorBoundary name="GoSevaPool">
-                  <GoSevaPool />
-                </ErrorBoundary>
-              </TabsContent>
-
-              <TabsContent value="shop" className="mt-0">
-                <ErrorBoundary name="AdminShopDashboard">
-                  <AdminShopDashboard />
-                </ErrorBoundary>
-              </TabsContent>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => navigate('/')}>
+                <Home className="h-4 w-4 mr-2" /> Home
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate('/shop')}>
+                <ShoppingCart className="h-4 w-4 mr-2" /> Shop
+              </Button>
             </div>
-          </Tabs>
+          </div>
+
+          <div className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              {/* Tabs Navigation */}
+              <div className="mb-3 xs:mb-4 sm:mb-8 sticky top-0 z-10 bg-gradient-to-br from-purple-50 via-white to-amber-50 pt-1 pb-2 overflow-x-hidden overflow-y-hidden">
+                <TabsList className="grid w-full grid-cols-7 bg-gray-100 p-0.5 rounded-lg overflow-y-hidden">
+                  {[
+                    { value: 'overview', icon: TrendingUp, label: 'Overview' },
+                    { value: 'staff', icon: UserPlus, label: 'Staff' },
+                    { value: 'users', icon: Users, label: 'Users' },
+                    { value: 'sales', icon: ShoppingCart, label: 'Sales' },
+                    { value: 'accounts', icon: DollarSign, label: 'Accounts' },
+                    { value: 'goseva', icon: Heart, label: 'Seva' },
+                    { value: 'shop', icon: ShoppingCart, label: 'Shop' },
+                  ].map(tab => (
+                    <TabsTrigger
+                      key={tab.value}
+                      value={tab.value}
+                      className={`flex flex-col items-center gap-0.5 py-1 px-0.5 rounded-md transition-all min-w-0 overflow-y-hidden ${
+                        activeTab === tab.value
+                          ? 'bg-white shadow-sm text-purple-600 font-medium'
+                          : 'text-gray-600 hover:text-purple-500'
+                      }`}
+                    >
+                      <tab.icon className="h-2 w-2 xs:h-2.5 xs:w-2.5 sm:h-4 sm:w-4" />
+                      <span className="text-[6px] xs:text-[7px] sm:text-xs md:text-sm truncate w-full text-center leading-tight">
+                        {tab.label}
+                      </span>
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
+
+              {/* Tab Content */}
+              <div className="bg-white rounded-lg shadow-sm p-2 xs:p-3 sm:p-4 md:p-6 mt-2 xs:mt-3 sm:mt-4 overflow-x-hidden">
+                <TabsContent value="overview" className="space-y-4 xs:space-y-5 sm:space-y-6 mt-0">
+                  <ErrorBoundary name="AdminStats">
+                    <AdminStats />
+                  </ErrorBoundary>
+                </TabsContent>
+
+                <TabsContent value="staff" className="mt-0">
+                  <ErrorBoundary name="StaffManagement">
+                    <StaffManagement />
+                  </ErrorBoundary>
+                </TabsContent>
+
+                <TabsContent value="users" className="mt-0">
+                  <ErrorBoundary name="CustomerManagement">
+                    <CustomerManagement />
+                  </ErrorBoundary>
+                </TabsContent>
+
+                <TabsContent value="sales" className="mt-0">
+                  <ErrorBoundary name="SalesManagement">
+                    <SalesManagement />
+                  </ErrorBoundary>
+                </TabsContent>
+
+                <TabsContent value="accounts" className="mt-0">
+                  <ErrorBoundary name="Accounts">
+                    <Accounts />
+                  </ErrorBoundary>
+                </TabsContent>
+
+                <TabsContent value="goseva" className="mt-0">
+                  <ErrorBoundary name="GoSevaPool">
+                    <GoSevaPool />
+                  </ErrorBoundary>
+                </TabsContent>
+
+                <TabsContent value="shop" className="mt-0">
+                  <ErrorBoundary name="AdminShopDashboard">
+                    <AdminShopDashboard />
+                  </ErrorBoundary>
+                </TabsContent>
+              </div>
+            </Tabs>
+          </div>
         </div>
       </div>
-    </div>
+    </ImagePreviewProvider>
   );
 };
 

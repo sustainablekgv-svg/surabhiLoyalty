@@ -156,10 +156,26 @@ export const ensureFirebaseAuth = async (
     await signInWithEmailAndPassword(auth, email, password);
   } catch (error: any) {
     const code = error?.code as string | undefined;
-    if (options.allowCreate && code === 'auth/user-not-found') {
-      await createUserWithEmailAndPassword(auth, email, password);
-      return;
+    const shouldTryCreate =
+      options.allowCreate &&
+      (code === 'auth/user-not-found' ||
+        code === 'auth/invalid-credential' ||
+        code === 'auth/wrong-password');
+
+    if (shouldTryCreate) {
+      try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        return;
+      } catch (createError: any) {
+        if (createError?.code === 'auth/email-already-in-use') {
+          throw new Error(
+            'Firebase Auth user exists with a different password. Reset the Firebase password or update the staff password to match.'
+          );
+        }
+        throw createError;
+      }
     }
+
     throw error;
   }
 };

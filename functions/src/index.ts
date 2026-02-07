@@ -39,3 +39,4 @@ export const checkQuarterlyCriteria = quarterly.checkQuarterlyCriteria;
 export const createRazorpayOrder = ecommerce.createRazorpayOrder;
 export const verifyRazorpayPayment = ecommerce.verifyRazorpayPayment;
 export const createR2UploadUrl = cloudflare.createR2UploadUrl;
+export const deleteImageFromR2 = cloudflare.deleteImageFromR2;
