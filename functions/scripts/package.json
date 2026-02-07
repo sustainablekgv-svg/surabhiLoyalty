@@ -1,0 +1,13 @@
+{
+  "name": "r2-cors-config",
+  "version": "1.0.0",
+  "description": "Script to configure Cloudflare R2 CORS",
+  "main": "configure-r2-cors.js",
+  "scripts": {
+    "configure-cors": "node configure-r2-cors.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.982.0",
+    "dotenv": "^17.2.4"
+  }
+}
