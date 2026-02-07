@@ -172,14 +172,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw new Error('Invalid credentials');
       }
 
+      const isValidEmail = (value: string) => {
+        const trimmed = value.trim();
+        if (!trimmed) {
+          return false;
+        }
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+      };
+
       // Try to sign in with Firebase if email exists
       const email = userData.role === 'customer' 
         ? (userData as import('@/types/types').CustomerType).customerEmail 
         : (userData as import('@/types/types').StaffType).staffEmail;
 
-      if (email) {
+      const normalizedEmail = email?.trim();
+      const shouldAttemptFirebaseAuth =
+        !!normalizedEmail && isValidEmail(normalizedEmail) && password.length >= 6;
+
+      if (shouldAttemptFirebaseAuth) {
         // Ensure Firebase auth so callable functions work (e.g. R2 upload URL)
-        await ensureFirebaseAuth(email, password, { allowCreate: role !== 'customer' });
+        await ensureFirebaseAuth(normalizedEmail!, password, {
+          allowCreate: role !== 'customer',
+          tolerateFailure: true,
+        });
       }
 
       // Set user state and storage

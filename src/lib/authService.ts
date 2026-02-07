@@ -150,17 +150,15 @@ export const signInWithFirebase = async (email: string, password: string): Promi
 export const ensureFirebaseAuth = async (
   email: string,
   password: string,
-  options: { allowCreate?: boolean } = {}
+  options: { allowCreate?: boolean; tolerateFailure?: boolean } = {}
 ): Promise<void> => {
   try {
     await signInWithEmailAndPassword(auth, email, password);
   } catch (error: any) {
     const code = error?.code as string | undefined;
-    const shouldTryCreate =
-      options.allowCreate &&
-      (code === 'auth/user-not-found' ||
-        code === 'auth/invalid-credential' ||
-        code === 'auth/wrong-password');
+    const shouldTryCreate = options.allowCreate && code === 'auth/user-not-found';
+    const isCredentialMismatch =
+      code === 'auth/invalid-credential' || code === 'auth/wrong-password';
 
     if (shouldTryCreate) {
       try {
@@ -169,12 +167,26 @@ export const ensureFirebaseAuth = async (
       } catch (createError: any) {
         console.error('Error creating Firebase user:', createError);
         if (createError?.code === 'auth/email-already-in-use') {
+          if (options.tolerateFailure) {
+            return;
+          }
           throw new Error(
             'Firebase Auth user exists with a different password. Reset the Firebase password or update the staff password to match.'
           );
         }
+        if (options.tolerateFailure) {
+          return;
+        }
         throw createError;
       }
+    }
+
+    if (isCredentialMismatch && options.tolerateFailure) {
+      return;
+    }
+
+    if (options.tolerateFailure && code === 'auth/email-already-in-use') {
+      return;
     }
 
     throw error;
