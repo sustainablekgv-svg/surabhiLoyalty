@@ -1,4 +1,5 @@
 import { Footer } from '@/components/shop/Footer';
+import { ShopLayout } from '@/components/shop/ShopLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,8 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/auth-context';
 import { useShop } from '@/hooks/shop-context';
+import { addAddress, getAddresses } from '@/lib/addressService';
 import { calculateShippingCost, getZoneForState, INDIAN_STATES } from '@/services/shipping';
-import { ArrowLeft, Loader2, Truck } from 'lucide-react';
+import { Address } from '@/types/shop';
+import { ArrowLeft, Loader2, Plus, ShoppingCart, Truck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -20,7 +23,29 @@ const CheckoutPage = () => {
   
   const [loading, setLoading] = useState(false);
   
-  const [formData, setFormData] = useState({
+  // Address Management
+  const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
+  const [selectedAddressIndex, setSelectedAddressIndex] = useState<number | null>(null);
+  const [isAddingNewAddress, setIsAddingNewAddress] = useState(false);
+  const [saveNewAddress, setSaveNewAddress] = useState(false);
+
+  useEffect(() => {
+    // Load addresses if user is a customer
+    if (user && 'role' in user && user.role === 'customer' && user.id) {
+       getAddresses(user.id).then(addresses => {
+           setSavedAddresses(addresses);
+           if (addresses.length > 0) {
+               setSavedAddresses(addresses);
+               setSelectedAddressIndex(0);
+               setFormData(addresses[0]);
+           } else {
+               setIsAddingNewAddress(true);
+           }
+       }).catch(console.error);
+    }
+  }, [user]);
+
+  const [formData, setFormData] = useState<Address>({
     fullName: user ? ('customerName' in user ? user.customerName : (user as any).staffName) : '',
     mobile: user ? ('customerMobile' in user ? user.customerMobile : (user as any).staffMobile) : '',
     street: '',
@@ -31,6 +56,17 @@ const CheckoutPage = () => {
   });
 
   const [shippingCost, setShippingCost] = useState(0);
+  const [shippingConfig, setShippingConfig] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      const { getShippingConfig } = await import('@/services/shipping');
+      const config = await getShippingConfig();
+      setShippingConfig(config);
+    };
+    fetchConfig();
+  }, []);
+
 
   // Calculate totals
   const totalWeight = cart.reduce((sum, item) => {
@@ -53,10 +89,10 @@ const CheckoutPage = () => {
   // Re-calculate shipping when state changes
   useEffect(() => {
     if (formData.state) {
-        const cost = calculateShippingCost(totalWeight, formData.state);
+        const cost = calculateShippingCost(totalWeight, formData.state, shippingConfig || undefined);
         setShippingCost(cost);
     }
-  }, [formData.state, totalWeight]);
+  }, [formData.state, totalWeight, shippingConfig]);
 
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
 
@@ -69,6 +105,9 @@ const CheckoutPage = () => {
       document.body.appendChild(script);
     });
   };
+
+  // Calculate total SPV
+  const totalSpv = cart.reduce((sum, item) => sum + ((item.spv || item.price) * item.quantity), 0);
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,6 +134,10 @@ const CheckoutPage = () => {
           };
           
           await createOrder(orderData as any); 
+          
+          // Sales processing deferred to Admin Confirmation
+          // Coins and Referrals will be calculated when order status is set to 'confirmed'
+
           clearCart();
           toast.success("Order placed successfully!");
           navigate('/shop');
@@ -153,6 +196,15 @@ const CheckoutPage = () => {
                               }
                           };
                           await createOrder(orderData as any);
+
+                          // Sales processing deferred to Admin Confirmation
+                          // Coins and Referrals will be calculated when order status is set to 'confirmed'
+                          
+                          // Save new address if requested
+                          if (saveNewAddress && user && user.id) {
+                              await addAddress(user.id, formData);
+                          }
+
                           clearCart();
                           toast.success("Payment Successful! Order placed.");
                           navigate('/shop');
@@ -188,11 +240,21 @@ const CheckoutPage = () => {
 
   if (cart.length === 0) {
       return (
-          <div className="container mx-auto p-4 py-8 text-center">
-              <h1 className="text-2xl font-bold mb-4">Checkout</h1>
-              <p className="text-gray-500 mb-4">Your cart is empty</p>
-              <Button onClick={() => navigate('/shop')}>Go to Shop</Button>
-          </div>
+          <ShopLayout title="Checkout">
+              <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+                  <div className="bg-white p-8 rounded-full shadow-sm mb-6">
+                      <ShoppingCart className="h-16 w-16 text-gray-300" />
+                  </div>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">Your cart is empty</h1>
+                  <p className="text-gray-500 mb-8 max-w-md">
+                      Looks like you haven't added anything to your cart yet. 
+                      Go back to the shop to discover our amazing products.
+                  </p>
+                  <Button size="lg" onClick={() => navigate('/shop')} className="rounded-full px-8">
+                      Back to Shop
+                  </Button>
+              </div>
+          </ShopLayout>
       );
   }
 
@@ -207,93 +269,168 @@ const CheckoutPage = () => {
        </div>
        
        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-           {/* Address Form */}
-           <div className="lg:col-span-2 space-y-6">
-               <Card>
-                   <CardHeader>
-                       <CardTitle className="flex items-center gap-2">
-                           <Truck className="h-5 w-5" /> Shipping Address
-                       </CardTitle>
-                   </CardHeader>
-                   <CardContent>
-                       <form id="checkout-form" onSubmit={handlePlaceOrder} className="space-y-4">
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                               <div className="space-y-2">
-                                   <Label>Full Name</Label>
-                                   <Input 
-                                      required 
-                                      value={formData.fullName} 
-                                      onChange={e => setFormData({...formData, fullName: e.target.value})} 
-                                   />
-                               </div>
-                               <div className="space-y-2">
-                                   <Label>Mobile Number</Label>
-                                   <Input 
-                                      required 
-                                      type="tel"
-                                      value={formData.mobile} 
-                                      onChange={e => setFormData({...formData, mobile: e.target.value})} 
-                                   />
-                               </div>
-                           </div>
+          {/* Address Selection */}
+          <div className="lg:col-span-2 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Truck className="h-5 w-5" /> Shipping Address
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {/* Saved Addresses Selection */}
+                <div className="mb-6 space-y-4">
+                    <Label className="text-base font-semibold">Select Shipping Address</Label>
+                    
+                    {savedAddresses.length > 0 ? (
+                        <Select 
+                            value={isAddingNewAddress ? "new" : selectedAddressIndex !== null ? selectedAddressIndex.toString() : ""} 
+                            onValueChange={(val) => {
+                                if (val === "new") {
+                                    setIsAddingNewAddress(true);
+                                    setSelectedAddressIndex(null);
+                                    setFormData({
+                                        fullName: user ? ('customerName' in user ? user.customerName : (user as any).staffName) : '',
+                                        mobile: user ? ('customerMobile' in user ? user.customerMobile : (user as any).staffMobile) : '',
+                                        street: '',
+                                        city: '',
+                                        state: '',
+                                        zipCode: '',
+                                        landmark: ''
+                                    } as Address);
+                                } else {
+                                    const idx = parseInt(val);
+                                    setIsAddingNewAddress(false);
+                                    setSelectedAddressIndex(idx);
+                                    setFormData(savedAddresses[idx]);
+                                }
+                            }}
+                        >
+                            <SelectTrigger className="w-full h-auto py-3">
+                                <SelectValue placeholder="Select an address" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {savedAddresses.map((addr, idx) => (
+                                    <SelectItem key={idx} value={idx.toString()}>
+                                        <div className="flex flex-col text-left">
+                                            <span className="font-semibold">{addr.fullName}</span>
+                                            <span className="text-sm text-gray-500 ellipsis">{addr.street}, {addr.city}</span>
+                                        </div>
+                                    </SelectItem>
+                                ))}
+                                <Separator className="my-2"/>
+                                <SelectItem value="new">
+                                    <div className="flex items-center text-primary font-medium">
+                                        <Plus className="h-4 w-4 mr-2" /> Add New Address
+                                    </div>
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    ) : (
+                         <div className="text-sm text-gray-500 italic">
+                             No saved addresses found. Please enter your details below.
+                         </div>
+                    )}
+                </div>
+                
+                {/* Manual Address Form - Always Visible */}
+                <div className="space-y-4">                     
+                    <form id="checkout-form" onSubmit={handlePlaceOrder} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Full Name</Label>
+                                <Input 
+                                    required 
+                                    value={formData.fullName} 
+                                    onChange={e => setFormData({...formData, fullName: e.target.value})} 
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Mobile Number</Label>
+                                <Input 
+                                    required 
+                                    type="tel"
+                                    value={formData.mobile} 
+                                    onChange={e => setFormData({...formData, mobile: e.target.value})} 
+                                />
+                            </div>
+                        </div>
 
-                           <div className="space-y-2">
-                               <Label>Street Address</Label>
-                               <Input 
-                                  required 
-                                  value={formData.street} 
-                                  onChange={e => setFormData({...formData, street: e.target.value})} 
-                                  placeholder="House No, Street Name"
-                               />
-                           </div>
+                        <div className="space-y-2">
+                            <Label>Street Address</Label>
+                            <Input 
+                                required 
+                                value={formData.street} 
+                                onChange={e => setFormData({...formData, street: e.target.value})} 
+                                placeholder="House No, Street Name"
+                            />
+                        </div>
 
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                               <div className="space-y-2">
-                                   <Label>City</Label>
-                                   <Input 
-                                      required 
-                                      value={formData.city} 
-                                      onChange={e => setFormData({...formData, city: e.target.value})} 
-                                   />
-                               </div>
-                               <div className="space-y-2">
-                                   <Label>State</Label>
-                                   <Select 
-                                      value={formData.state} 
-                                      onValueChange={val => setFormData({...formData, state: val})}
-                                   >
-                                       <SelectTrigger>
-                                           <SelectValue placeholder="Select State" />
-                                       </SelectTrigger>
-                                       <SelectContent className="h-64">
-                                           {INDIAN_STATES.map(state => (
-                                               <SelectItem key={state} value={state}>{state}</SelectItem>
-                                           ))}
-                                       </SelectContent>
-                                   </Select>
-                               </div>
-                           </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>City</Label>
+                                <Input 
+                                    required 
+                                    value={formData.city} 
+                                    onChange={e => setFormData({...formData, city: e.target.value})} 
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>State</Label>
+                                <Select 
+                                    value={formData.state} 
+                                    onValueChange={val => setFormData({...formData, state: val})}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select State" />
+                                    </SelectTrigger>
+                                    <SelectContent className="h-64">
+                                        {INDIAN_STATES.map(state => (
+                                            <SelectItem key={state} value={state}>{state}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
 
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                               <div className="space-y-2">
-                                   <Label>Pincode</Label>
-                                   <Input 
-                                      required 
-                                      value={formData.zipCode} 
-                                      onChange={e => setFormData({...formData, zipCode: e.target.value})} 
-                                   />
-                               </div>
-                               <div className="space-y-2">
-                                   <Label>Landmark (Optional)</Label>
-                                   <Input 
-                                      value={formData.landmark} 
-                                      onChange={e => setFormData({...formData, landmark: e.target.value})} 
-                                   />
-                               </div>
-                           </div>
-                       </form>
-                   </CardContent>
-               </Card>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Pincode</Label>
+                                <Input 
+                                    required 
+                                    value={formData.zipCode} 
+                                    onChange={e => setFormData({...formData, zipCode: e.target.value})} 
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Landmark (Optional)</Label>
+                                <Input 
+                                    value={formData.landmark} 
+                                    onChange={e => setFormData({...formData, landmark: e.target.value})} 
+                                />
+                            </div>
+                        </div>
+                        
+                        {/* Option to save address */}
+                        {(isAddingNewAddress || savedAddresses.length === 0) && user && 'role' in user && (user as any).role === 'customer' && (
+                            <div className="flex items-center space-x-2 pt-2">
+                                <input 
+                                    type="checkbox" 
+                                    id="save-address" 
+                                    checked={saveNewAddress}
+                                    onChange={(e) => setSaveNewAddress(e.target.checked)}
+                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                                <Label htmlFor="save-address" className="font-normal text-sm cursor-pointer">
+                                    Save this address for future use
+                                </Label>
+                            </div>
+                        )}
+
+                    </form>
+                </div>
+              </CardContent>
+            </Card>
 
                <Card>
                    <CardHeader>

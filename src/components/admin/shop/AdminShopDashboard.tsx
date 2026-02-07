@@ -1,10 +1,12 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Layers, LayoutDashboard, Package, ShoppingBag, Tag } from 'lucide-react';
+import { Layers, LayoutDashboard, ListOrdered, Package, ShoppingBag, Tag, Truck } from 'lucide-react';
 import { BrandManager } from './BrandManager';
+import { CatalogManager } from './CatalogManager';
 import { CategoryManager } from './CategoryManager';
 import { InventoryManager } from './InventoryManager';
 import { OrderManager } from './OrderManager';
 import { ProductManager } from './ProductManager';
+import { ShippingManager } from './ShippingManager';
 import { ShopAnalytics } from './ShopAnalytics';
 
 export const AdminShopDashboard = () => {
@@ -19,6 +21,10 @@ export const AdminShopDashboard = () => {
                     <TabsTrigger value="analytics" className="flex items-center gap-2">
                         <LayoutDashboard className="h-4 w-4" />
                         Analytics
+                    </TabsTrigger>
+                     <TabsTrigger value="catalog" className="flex items-center gap-2">
+                        <ListOrdered className="h-4 w-4" />
+                        Ordering
                     </TabsTrigger>
                      <TabsTrigger value="categories" className="flex items-center gap-2">
                         <Tag className="h-4 w-4" />
@@ -41,6 +47,10 @@ export const AdminShopDashboard = () => {
                         <ShoppingBag className="h-4 w-4" />
                         Orders
                     </TabsTrigger>
+                    <TabsTrigger value="shipping" className="flex items-center gap-2">
+                        <Truck className="h-4 w-4" />
+                        Shipping
+                    </TabsTrigger>
                 </TabsList>
                 <TabsContent value="products" className="space-y-4">
                     <ProductManager />
@@ -59,6 +69,12 @@ export const AdminShopDashboard = () => {
                 </TabsContent>
                 <TabsContent value="analytics" className="space-y-4">
                     <ShopAnalytics />
+                </TabsContent>
+                <TabsContent value="catalog" className="space-y-4">
+                    <CatalogManager />
+                </TabsContent>
+                <TabsContent value="shipping" className="space-y-4">
+                    <ShippingManager />
                 </TabsContent>
             </Tabs>
         </div>

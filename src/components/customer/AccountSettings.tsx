@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordStrengthIndicator } from '@/components/ui/password-strength';
 import { useAuth } from '@/hooks/auth-context';
 import { decryptText, encryptText } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
@@ -57,6 +58,16 @@ export const AccountSettings = ({ userId }: AccountSettingsProps) => {
     if (!customerData || !newPassword.trim()) {
       toast.error('Please enter a valid password');
       return;
+    }
+    
+    // Manual check for strength logic used in component
+    const hasNumber = /\d/.test(newPassword);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(newPassword);
+    const hasUpper = /[A-Z]/.test(newPassword);
+    
+    if (newPassword.length < 6 || !(hasNumber || hasSpecial || hasUpper)) {
+        toast.error("Password must be at least 6 characters and include a number, special char, or uppercase letter.");
+        return;
     }
 
     setIsSaving(true);
@@ -227,32 +238,40 @@ export const AccountSettings = ({ userId }: AccountSettingsProps) => {
             <Label className="text-sm font-medium text-gray-700">Password</Label>
             <div className="md:col-span-2">
               {isEditingPassword ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="text"
-                    value={newPassword}
-                    onChange={e => setNewPassword(e.target.value)}
-                    placeholder="Enter new password"
-                    disabled={isSaving}
-                    className="flex-1"
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="text"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      placeholder="Enter new password"
+                      disabled={isSaving}
+                      className="flex-1"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleSavePassword}
+                      disabled={isSaving}
+                      className="px-3"
+                    >
+                      <Save className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleCancelPasswordEdit}
+                      disabled={isSaving}
+                      className="px-3"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <PasswordStrengthIndicator 
+                    password={newPassword}
+                    onValidationChange={(isValid) => {
+                        // Logic to block save can be added here
+                    }}
                   />
-                  <Button
-                    size="sm"
-                    onClick={handleSavePassword}
-                    disabled={isSaving}
-                    className="px-3"
-                  >
-                    <Save className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleCancelPasswordEdit}
-                    disabled={isSaving}
-                    className="px-3"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">

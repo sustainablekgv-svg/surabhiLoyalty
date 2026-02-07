@@ -1,3 +1,11 @@
+import { db } from '@/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+
+export interface ShippingConfig {
+    zones: Record<string, string[]>;
+    rateTable: Record<string, number[]>;
+    extraPerKg: Record<string, number>;
+}
 
 export const SHIPPING_ZONES: Record<string, string[]> = {
     'A': ['Telangana', 'Andhra Pradesh'],
@@ -24,15 +32,39 @@ const RATE_TABLE: Record<string, number[]> = {
     'E': [85, 110, 165, 195, 260]
 };
 
-const EXTRA_PER_KG_AFTER_5KG: Record<string, number> = {
+const EXTRA_PER_KG_AFTER_5KG: Record<string, number> = {            
     'A': 40, 'B': 45, 'C': 50, 'D': 55, 'E': 60
 };
 
-export const getZoneForState = (state: string): string => {
+export const calculateShippingCost = (totalWeightKg: number, state: string, config?: ShippingConfig): number => {
+    const zones = config?.zones || SHIPPING_ZONES;
+    const rateTable = config?.rateTable || RATE_TABLE;
+    const extraPerKg = config?.extraPerKg || EXTRA_PER_KG_AFTER_5KG;
+
+    const zone = getZoneForState(state, zones);
+    
+    // Minimum 0.5kg charged
+    const weight = Math.max(totalWeightKg, 0.5);
+
+    if (weight <= 0.5) return rateTable[zone][0];
+    if (weight <= 1) return rateTable[zone][1];
+    if (weight <= 2) return rateTable[zone][2];
+    if (weight <= 3) return rateTable[zone][3];
+    if (weight <= 5) return rateTable[zone][4];
+
+    // Above 5kg
+    const basePrice = rateTable[zone][4]; // Cost for 5kg
+    const extraWeight = Math.ceil(weight - 5); // Round up to next kg
+    const extraCost = extraWeight * extraPerKg[zone];
+    
+    return basePrice + extraCost;
+};
+
+export const getZoneForState = (state: string, zones: Record<string, string[]> = SHIPPING_ZONES): string => {
     // Normalize state name for comparison
     const normalizedState = state.toLowerCase().trim();
     
-    for (const [zone, states] of Object.entries(SHIPPING_ZONES)) {
+    for (const [zone, states] of Object.entries(zones)) {
         if (states.some(s => s.toLowerCase() === normalizedState)) {
             return zone;
         }
@@ -41,37 +73,28 @@ export const getZoneForState = (state: string): string => {
     return 'E'; 
 };
 
-export const parseWeight = (weightStr: string): number => {
-    if (!weightStr) return 0.5; // Default weight
-    
-    const str = weightStr.toLowerCase().trim();
-    if (str.includes('kg')) {
-        return parseFloat(str.replace('kg', ''));
-    } else if (str.includes('g') && !str.includes('kg')) {
-        return parseFloat(str.replace('g', '')) / 1000;
+export const getShippingConfig = async (): Promise<ShippingConfig> => {
+    try {
+        const docRef = doc(db, 'settings', 'shipping');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            return docSnap.data() as ShippingConfig;
+        }
+    } catch (error) {
+        console.error("Error fetching shipping config:", error);
     }
-    return parseFloat(str) || 0.5;
+    return {
+        zones: SHIPPING_ZONES,
+        rateTable: RATE_TABLE,
+        extraPerKg: EXTRA_PER_KG_AFTER_5KG
+    };
 };
 
-export const calculateShippingCost = (totalWeightKg: number, state: string): number => {
-    const zone = getZoneForState(state);
-    
-    // Minimum 0.5kg charged
-    const weight = Math.max(totalWeightKg, 0.5);
-
-    if (weight <= 0.5) return RATE_TABLE[zone][0];
-    if (weight <= 1) return RATE_TABLE[zone][1];
-    if (weight <= 2) return RATE_TABLE[zone][2];
-    if (weight <= 3) return RATE_TABLE[zone][3];
-    if (weight <= 5) return RATE_TABLE[zone][4];
-
-    // Above 5kg
-    const basePrice = RATE_TABLE[zone][4]; // Cost for 5kg
-    const extraWeight = Math.ceil(weight - 5); // Round up to next kg
-    const extraCost = extraWeight * EXTRA_PER_KG_AFTER_5KG[zone];
-    
-    return basePrice + extraCost;
+export const saveShippingConfig = async (config: ShippingConfig) => {
+    const docRef = doc(db, 'settings', 'shipping');
+    await setDoc(docRef, config);
 };
+
 
 export const INDIAN_STATES = [
     "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", 

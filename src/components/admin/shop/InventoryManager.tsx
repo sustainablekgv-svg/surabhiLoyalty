@@ -96,7 +96,7 @@ export const InventoryManager = () => {
     return (
         <div className="space-y-4">
              <div className="relative w-72">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                {/* <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" /> */}
                 <Input
                     placeholder="Search products..."
                     className="pl-8"

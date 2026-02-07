@@ -4,9 +4,9 @@ import { CartItem, Order, Product } from '@/types/shop';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import React, { createContext, useContext } from 'react';
 import { toast } from 'sonner';
-import { useAuth } from './auth-context';
-import { useCart } from './useCart';
-import { useWishlist } from './useWishlist';
+import { useAuth } from '@/hooks/auth-context';
+import { useCart } from '@/hooks/useCart';
+import { useWishlist } from '@/hooks/useWishlist';
 
 interface ShopContextType {
   cart: CartItem[];

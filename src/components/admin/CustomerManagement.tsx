@@ -42,7 +42,7 @@ import { toast } from '@/hooks/use-toast';
 import { useDebouncedSearch } from '@/hooks/useDebounce';
 import { useActiveStores, useCustomers, useInvalidateQueries } from '@/hooks/useFirebaseQueries';
 import { useFilterPreferences } from '@/hooks/useLocalStorage';
-import { decryptText, encryptText } from '@/lib/encryption';
+import { decryptText, encryptText, isEncrypted } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { CustomerType } from '@/types/types';
 
@@ -115,13 +115,13 @@ export const CustomerManagement = () => {
       .length,
     totalWalletBalance: filteredCustomers
       .filter(cust => cust.demoStore === false)
-      .reduce((sum, c) => sum + c.walletBalance, 0),
+      .reduce((sum, c) => sum + (c.walletBalance || 0), 0),
     totalSurabhiCoins: filteredCustomers
       .filter(cust => cust.demoStore === false)
-      .reduce((sum, c) => sum + c.surabhiBalance, 0),
+      .reduce((sum, c) => sum + (c.surabhiBalance || 0), 0),
     totalSevaCoins: filteredCustomers
       .filter(cust => cust.demoStore === false)
-      .reduce((sum, c) => sum + c.sevaTotal, 0),
+      .reduce((sum, c) => sum + (c.sevaTotal || 0), 0),
     totalReferrals: filteredCustomers
       .filter(cust => cust.demoStore === false)
       .reduce((sum, c) => sum + (c.referredUsers?.length || 0), 0),
@@ -157,8 +157,8 @@ export const CustomerManagement = () => {
       surabhiBalance: customer.surabhiBalance,
       sevaTotal: customer.sevaTotal,
       walletRechargeDone: customer.walletRechargeDone,
-      tpin: customer.tpin ? decryptText(customer.tpin) : '',
-      customerPassword: customer.customerPassword ? decryptText(customer.customerPassword) : '',
+      tpin: customer.tpin ? (isEncrypted(customer.tpin) ? decryptText(customer.tpin) : customer.tpin) : '',
+      customerPassword: customer.customerPassword ? (isEncrypted(customer.customerPassword) ? decryptText(customer.customerPassword) : customer.customerPassword) : '',
     });
     setIsEditDialogOpen(true);
   };
@@ -349,27 +349,27 @@ export const CustomerManagement = () => {
                   <div className="space-y-2 mt-2 text-sm">
                     <p>
                       <span className="text-muted-foreground">Wallet Balance:</span> ₹
-                      {selectedCustomer.walletBalance.toFixed(2)}
+                      {(selectedCustomer.walletBalance || 0).toFixed(2)}
                     </p>
                     <p>
                       <span className="text-muted-foreground">This Month:</span> ₹
-                      {selectedCustomer.walletBalanceCurrentMonth.toFixed(2)}
+                      {(selectedCustomer.walletBalanceCurrentMonth || 0).toFixed(2)}
                     </p>
                     <p>
                       <span className="text-muted-foreground">Surabhi Balance:</span>{' '}
-                      {selectedCustomer.surabhiBalance.toFixed(2)}
+                      {(selectedCustomer.surabhiBalance || 0).toFixed(2)}
                     </p>
                     <p>
                       <span className="text-muted-foreground">This Month:</span>{' '}
-                      {selectedCustomer.surabhiBalanceCurrentMonth.toFixed(2)}
+                      {(selectedCustomer.surabhiBalanceCurrentMonth || 0).toFixed(2)}
                     </p>
                     <p>
                       <span className="text-muted-foreground">Seva Balance:</span>{' '}
-                      {selectedCustomer.sevaTotal.toFixed(2)}
+                      {(selectedCustomer.sevaTotal || 0).toFixed(2)}
                     </p>
                     <p>
                       <span className="text-muted-foreground">This Month:</span>{' '}
-                      {selectedCustomer.sevaBalanceCurrentMonth.toFixed(2)}
+                      {(selectedCustomer.sevaBalanceCurrentMonth || 0).toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -441,12 +441,12 @@ export const CustomerManagement = () => {
                     <p>
                       <span className="text-muted-foreground">Login Password:</span>{' '}
                       {selectedCustomer.customerPassword
-                        ? decryptText(selectedCustomer.customerPassword)
+                        ? (isEncrypted(selectedCustomer.customerPassword) ? decryptText(selectedCustomer.customerPassword) : selectedCustomer.customerPassword)
                         : 'N/A'}
                     </p>
                     <p>
                       <span className="text-muted-foreground">TPIN:</span>{' '}
-                      {selectedCustomer.tpin ? decryptText(selectedCustomer.tpin) : 'N/A'}
+                      {selectedCustomer.tpin ? (isEncrypted(selectedCustomer.tpin) ? decryptText(selectedCustomer.tpin) : selectedCustomer.tpin) : 'N/A'}
                     </p>
                   </div>
                 </div>

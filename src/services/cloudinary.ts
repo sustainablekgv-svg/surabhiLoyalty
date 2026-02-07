@@ -16,12 +16,13 @@ export const uploadImageToCloudinary = async (file: File): Promise<string> => {
   // Check for credentials
   if (CLOUD_NAME === 'demo' || UPLOAD_PRESET === 'unsigned_preset') {
       console.error("Cloudinary credentials missing! CLOUD_NAME:", CLOUD_NAME, "PRESET:", UPLOAD_PRESET);
-      throw new Error("Cloudinary credentials not configured in .env file. Please set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET.");
+      throw new Error(`Cloudinary configuration missing. Please set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET in your .env file. Current: ${CLOUD_NAME}`);
   }
 
   const formData = new FormData();
   formData.append('file', file);
   formData.append('upload_preset', UPLOAD_PRESET);
+  formData.append('folder', 'surabhi');
 
   try {
     const response = await axios.post(
@@ -29,8 +30,9 @@ export const uploadImageToCloudinary = async (file: File): Promise<string> => {
       formData
     );
     return response.data.secure_url;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error uploading image to Cloudinary:', error);
-    throw new Error('Image upload failed');
+    const msg = error.response?.data?.error?.message || error.message || "Unknown Upload Error";
+    throw new Error(`Cloudinary Error: ${msg}`);
   }
 };

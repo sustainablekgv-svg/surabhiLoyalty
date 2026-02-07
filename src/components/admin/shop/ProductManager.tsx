@@ -1,34 +1,46 @@
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PreviewableImage } from '@/components/ui/previewable-image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { isValidImageUrl } from '@/lib/image-utils';
-import { uploadImageToCloudinary } from '@/services/cloudinary';
-import { createProduct, deleteProduct, getBrands, getCategories, getProducts, updateProduct } from '@/services/shop';
+import { deleteImageFromR2, uploadImageToR2 } from '@/services/cloudflare';
+import { createProduct, deleteProduct, getBrands, getCategories, getProducts, initializeDisplayOrder, reorderProduct, updateProduct } from '@/services/shop';
 import { Brand, Category, Product } from '@/types/shop';
-import { Edit, Plus, Search, Trash2, Upload } from 'lucide-react';
+import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Trash2, Upload } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export const ProductManager = () => {
-    const [products, setProducts] = useState<Product[]>([]);
+    // Client-side pagination state
+    const [allProducts, setAllProducts] = useState<Product[]>([]);
+    const [page, setPage] = useState(1);
+    const PAGE_SIZE = 10;
+
     const [brands, setBrands] = useState<Brand[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    
-    // Pagination
-    const [lastDoc, setLastDoc] = useState<any>(null);
-    const [paginationStack, setPaginationStack] = useState<any[]>([]); // To handle "Previous"
-    const [page, setPage] = useState(1);
-    const PAGE_SIZE = 10;
-    const [hasMore, setHasMore] = useState(true);
+    const [filterBrandId, setFilterBrandId] = useState<string>('all');
+    const [sortConfig, setSortConfig] = useState<{ key: keyof Product, direction: 'asc' | 'desc' } | null>(null);
 
+    const handleSort = (key: keyof Product) => {
+        setSortConfig(current => {
+            if (current?.key === key) {
+                return current.direction === 'asc' 
+                    ? { key, direction: 'desc' } 
+                    : null;
+            }
+            return { key, direction: 'asc' };
+        });
+    };
+    
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [uploading, setUploading] = useState(false);
@@ -47,13 +59,14 @@ export const ProductManager = () => {
         imageUrl: '',
         freeShipping: false,
         variantType: '',
-        isVisible: true
+        isVisible: true,
+        spv: '',
+        trackInventory: false
     });
 
-    const fetchData = async (startAfterDoc?: any) => {
+    const fetchData = async () => {
         setLoading(true);
         try {
-            // Fetch brands and categories only once if empty
             if (brands.length === 0 || categories.length === 0) {
                  const [fetchedBrands, fetchedCategories] = await Promise.all([
                     getBrands(),
@@ -63,33 +76,9 @@ export const ProductManager = () => {
                 setCategories(fetchedCategories.categories);
             }
 
-            // Client side search is not effective with pagination unless we index everything or specific search service.
-            // For now, if searching, we fetch all active (upto a limit) and filter.
-            // But getProducts handles some logic.
-            
-            // To support search properly without Algolia, we either:
-            // 1. Fetch ALL products (expensive if many) -> filter client side => Good for 100-500 products.
-            // 2. Search only matches exact ID or basic filter if supported by Firestore (it isn't for substring).
-            
-            // Let's implement: If search term > 3 chars, fetch ALL active products and filter client side.
-            // Else use pagination.
-            
-            if (searchTerm && searchTerm.length > 2) {
-                // Search Mode (No pagination, limited to top X matches)
-                const result = await getProducts({ includeInactive: true }, null, 500);
-                const filtered = result.products.filter(p => 
-                    p.name.toLowerCase().includes(searchTerm.toLowerCase())
-                );
-                setProducts(filtered);
-                setHasMore(false);
-            } else {
-                // Pagination Mode
-                const result = await getProducts({ includeInactive: true }, startAfterDoc, PAGE_SIZE);
-                setProducts(result.products);
-                setLastDoc(result.lastDoc);
-                setHasMore(result.products.length >= PAGE_SIZE);
-            }
-
+            // Fetch ALL active/inactive products (limit 1000)
+            const result = await getProducts({ includeInactive: true, sort: 'order' }, null, 1000);
+            setAllProducts(result.products);
         } catch (error) {
             console.error("Error fetching data", error);
             toast.error("Failed to load data");
@@ -99,33 +88,66 @@ export const ProductManager = () => {
     };
 
     useEffect(() => {
-        // Debounce search
-        const timer = setTimeout(() => {
-            setPage(1);
-            setPaginationStack([]);
-            setLastDoc(null);
-            fetchData(null);
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [searchTerm]);
+        fetchData();
+    }, []);
 
-    const loadNext = () => {
-        if (!lastDoc) return;
-        setPaginationStack(prev => [...prev, lastDoc]);
-        setPage(prev => prev + 1);
-        fetchData(lastDoc);
-    };
+    // Client-side filtering and pagination logic
+    const filteredProducts = React.useMemo(() => {
+        let result = [...allProducts];
 
-    const loadPrev = () => {
-        if (page <= 1) return;
-        const newStack = [...paginationStack];
-        newStack.pop(); // Remove current page's start
-        const prevDoc = newStack[newStack.length - 1] || null;
-        
-        setPaginationStack(newStack);
-        setPage(prev => prev - 1);
-        fetchData(prevDoc);
-    };
+        if (searchTerm) {
+            const lower = searchTerm.toLowerCase();
+            result = result.filter(p => p.name.toLowerCase().includes(lower));
+        }
+
+        if (filterBrandId !== 'all') {
+            result = result.filter(p => p.brandId === filterBrandId);
+        }
+
+        if (sortConfig) {
+            result.sort((a, b) => {
+                const aValue = a[sortConfig.key];
+                const bValue = b[sortConfig.key];
+
+                if (aValue === bValue) return 0;
+                
+                // Handle mixed types (e.g. number vs undefined)
+                if (aValue === undefined || aValue === null) return 1;
+                if (bValue === undefined || bValue === null) return -1;
+                
+                if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        } else {
+             // Default Sort
+             if (filterBrandId !== 'all') {
+                 result.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+             } else {
+                result.sort((a, b) => {
+                    const diff = (a.displayOrder || 999999) - (b.displayOrder || 999999);
+                    if (diff !== 0) return diff;
+                    return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+                });
+             }
+        }
+        return result;
+    }, [allProducts, searchTerm, filterBrandId, sortConfig]);
+
+    const products = React.useMemo(() => {
+        const start = (page - 1) * PAGE_SIZE;
+        return filteredProducts.slice(start, start + PAGE_SIZE);
+    }, [filteredProducts, page]);
+
+    const hasMore = (page * PAGE_SIZE) < filteredProducts.length;
+
+    const loadNext = () => setPage(p => p + 1);
+    const loadPrev = () => setPage(p => Math.max(1, p - 1));
+
+    // Reset page on filter change
+    useEffect(() => {
+        setPage(1);
+    }, [searchTerm, filterBrandId]);
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -133,11 +155,11 @@ export const ProductManager = () => {
 
         setUploading(true);
         try {
-            const url = await uploadImageToCloudinary(file);
+            const url = await uploadImageToR2(file, 'products');
             setFormData(prev => ({ ...prev, imageUrl: url }));
             toast.success("Image uploaded");
-        } catch (error) {
-            toast.error("Upload failed");
+        } catch (error: any) {
+            toast.error(error.message || "Upload failed");
         } finally {
             setUploading(false);
         }
@@ -152,32 +174,61 @@ export const ProductManager = () => {
             const selectedCategory = categories.find(c => c.id === formData.category);
             const categoryName = selectedCategory ? selectedCategory.name : formData.category;
 
-            // Basic validation
-            if (!formData.brandId) {
-                toast.error("Please select a brand");
-                return;
+            // detailed validation
+            if (!formData.name?.trim()) { toast.error("Product name is required"); return; }
+            if (!formData.description?.trim()) { toast.error("Description is required"); return; }
+            if (!formData.brandId) { toast.error("Brand is required"); return; }
+            if (!formData.category) { toast.error("Category is required"); return; }
+            
+            if (!formData.weight?.trim()) { toast.error("Weight is required"); return; }
+            if (!formData.unitsOfMeasure) { toast.error("Unit of measure is required"); return; }
+
+            const price = Number(formData.price);
+            const sellingPrice = formData.sellingPrice ? Number(formData.sellingPrice) : price;
+            const stock = Number(formData.stock);
+            const spv = Number(formData.spv || 0);
+
+            if (isNaN(price) || price <= 0) { toast.error("MRP must be valid and greater than 0"); return; }
+            if (isNaN(sellingPrice) || sellingPrice <= 0) { toast.error("Selling price must be valid and greater than 0"); return; }
+            if (sellingPrice > price) { toast.error("Selling price cannot be greater than MRP"); return; }
+            if (isNaN(stock) || stock < 0) { toast.error("Stock cannot be negative"); return; }
+            if (isNaN(spv) || spv < 0) { toast.error("SPV cannot be negative"); return; }
+
+            if (!formData.imageUrl && !editingProduct?.images?.length) { 
+                toast.error("Product image is required"); 
+                return; 
             }
 
             const productData: any = {
-                name: formData.name,
-                description: formData.description,
-                price: Number(formData.price),
-                sellingPrice: formData.sellingPrice ? Number(formData.sellingPrice) : Number(formData.price),
-                weight: formData.weight,
+                name: formData.name.trim(),
+                description: formData.description.trim(),
+                price,
+                sellingPrice,
+                weight: formData.weight.trim(),
                 unitsOfMeasure: formData.unitsOfMeasure,
-                stock: Number(formData.stock),
+                stock,
                 categoryId: formData.category, 
                 categoryName: categoryName,
                 brandId: formData.brandId,
                 brandName: brandName,
-                images: formData.imageUrl ? [formData.imageUrl] : [],
+                images: formData.imageUrl ? [formData.imageUrl] : (editingProduct?.images || []),
                 freeShipping: formData.freeShipping,
                 variantType: formData.variantType,
                 isVisible: formData.isVisible,
                 isActive: true,
+                spv,
+                trackInventory: formData.trackInventory
             };
 
             if (editingProduct) {
+                // Check if image has changed and delete old one
+                const oldImage = editingProduct.images?.[0];
+                const newImage = productData.images?.[0];
+                
+                if (oldImage && newImage && oldImage !== newImage) {
+                    await deleteImageFromR2(oldImage);
+                }
+
                 await updateProduct(editingProduct.id, productData);
                 toast.success('Product updated successfully');
             } else {
@@ -189,23 +240,56 @@ export const ProductManager = () => {
             setEditingProduct(null);
             resetForm();
             // Refresh current view
-            fetchData(paginationStack[paginationStack.length - 1]);
+            fetchData();
         } catch (error) {
             toast.error('Error saving product');
             console.error(error);
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async (product: Product) => {
         if (!confirm('Are you sure?')) return;
         try {
-            await deleteProduct(id);
+            if (product.images?.[0]) {
+                await deleteImageFromR2(product.images[0]);
+            }
+            await deleteProduct(product.id);
             toast.success('Product deleted');
             // Refresh current view
-            fetchData(paginationStack[paginationStack.length - 1]);
+            fetchData();
         } catch (error) {
             toast.error('Error deleting product');
         }
+    };
+
+    const handleReorder = async (product: Product, direction: 'up' | 'down') => {
+        try {
+            const contextId = filterBrandId !== 'all' ? filterBrandId : undefined;
+            await reorderProduct(product.id, product.displayOrder || 0, direction, contextId);
+            fetchData();
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to reorder");
+        }
+    };
+    
+    const handleInitializeOrder = async () => {
+        if (filterBrandId === 'all') {
+             if (!confirm("This will reset order for ALL products globally (by creation date)? It's safer to do per brand.")) {
+                 if(!confirm("Are you REALLY sure you want to init all?")) return;
+             }
+             // For safety, maybe block global init or allow generic init
+             await initializeDisplayOrder('products');
+        } else {
+             if (!confirm(`Reset order for products in this brand?`)) return;
+             await initializeDisplayOrder('products', { field: 'brandId', value: filterBrandId });
+        }
+        toast.success("Order initialized");
+        fetchData();
+    };
+
+    const handleInitializeOrderConfirm = async () => {
+        await handleInitializeOrder();
     };
 
     const resetForm = () => {
@@ -221,8 +305,10 @@ export const ProductManager = () => {
             brandId: '',
             imageUrl: '',
             freeShipping: false,
+            spv:'',
             variantType: '',
-            isVisible: true
+            isVisible: true,
+            trackInventory: false
         });
     };
 
@@ -241,7 +327,9 @@ export const ProductManager = () => {
             imageUrl: product.images?.[0] || '',
             freeShipping: product.freeShipping || false,
             variantType: product.variantType || '',
-            isVisible: product.isVisible ?? true
+            isVisible: product.isVisible ?? true,
+            spv: product.spv?.toString() || '',
+            trackInventory: product.trackInventory || false
         });
         setIsDialogOpen(true);
     };
@@ -250,13 +338,26 @@ export const ProductManager = () => {
         <div className="space-y-4">
             <div className="flex justify-between items-center">
                 <div className="relative w-72">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                    {/* <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" /> */}
                     <Input
                         placeholder="Search products..."
                         className="pl-8"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
+                </div>
+                <div className="w-[200px]">
+                    <Select value={filterBrandId} onValueChange={setFilterBrandId}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Filter Brand" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Brands</SelectItem>
+                            {brands.map(b => (
+                                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
                 <Dialog open={isDialogOpen} onOpenChange={(open) => {
                     setIsDialogOpen(open);
@@ -268,6 +369,28 @@ export const ProductManager = () => {
                     <DialogTrigger asChild>
                         <Button><Plus className="h-4 w-4 mr-2" /> Add Product</Button>
                     </DialogTrigger>
+                    {filterBrandId !== 'all' && (
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="outline" title="Fix orders for this brand" className="ml-2">
+                                    <ListOrdered className="h-4 w-4" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Initialize Display Order?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will reset the display order for all products in this brand based on creation date. 
+                                        This action cannot be undone.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleInitializeOrderConfirm}>Continue</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    )}
                     <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
@@ -356,11 +479,29 @@ export const ProductManager = () => {
                                     <Label>Stock Quantity</Label>
                                     <Input type="number" required value={formData.stock} onChange={e => setFormData({ ...formData, stock: e.target.value })} />
                                 </div>
+                                <div className="space-y-2">
+                                    <Label>SPV</Label>
+                                    <Input type="number" value={formData.spv} onChange={e => setFormData({ ...formData, spv: e.target.value })} placeholder="0" />
+                                </div>
                             </div>
 
                             <div className="space-y-2">
                                 <Label>Variant Type (Optional)</Label>
                                 <Input value={formData.variantType} onChange={e => setFormData({ ...formData, variantType: e.target.value })} placeholder="e.g. Color, Size" />
+                            </div>
+                            
+                            <div className="flex gap-4">
+                                <div className="flex items-center space-x-2 border p-3 rounded-md flex-1">
+                                    <Switch
+                                        id="trackInventory"
+                                        checked={formData.trackInventory}
+                                        onCheckedChange={(checked) => setFormData({...formData, trackInventory: checked})}
+                                    />
+                                    <Label htmlFor="trackInventory">Track Inventory</Label>
+                                    <p className="text-xs text-muted-foreground ml-2">
+                                        Enable stock count logic.
+                                    </p>
+                                </div>
                             </div>
                             
                             <div className="flex gap-4">
@@ -393,7 +534,7 @@ export const ProductManager = () => {
                                 <Label>Product Image</Label>
                                 <div className="flex items-center gap-4">
                                     {isValidImageUrl(formData.imageUrl) && (
-                                        <img src={formData.imageUrl} alt="Preview" className="h-16 w-16 object-cover border rounded" />
+                                        <PreviewableImage src={formData.imageUrl} alt="Preview" className="h-16 w-16 object-cover border rounded" />
                                     )}
                                     <div className="relative flex-1">
                                         <Input
@@ -429,8 +570,15 @@ export const ProductManager = () => {
                             <TableHead>Name</TableHead>
                             <TableHead>Category</TableHead>
                             <TableHead>Brand</TableHead>
-                            <TableHead>Price</TableHead>
-                            <TableHead>Stock</TableHead>
+                            <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort('sellingPrice')}>
+                                Price {sortConfig?.key === 'sellingPrice' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                            </TableHead>
+                            <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort('spv')}>
+                                SPV {sortConfig?.key === 'spv' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                            </TableHead>
+                            <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort('stock')}>
+                                Stock {sortConfig?.key === 'stock' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                            </TableHead>
                             <TableHead>Visibility</TableHead>
                             <TableHead>Actions</TableHead>
                         </TableRow>
@@ -445,7 +593,7 @@ export const ProductManager = () => {
                                 <TableRow key={product.id}>
                                     <TableCell>
                                         {isValidImageUrl(product.images?.[0]) ? (
-                                            <img src={product.images[0]} alt={product.name} className="h-10 w-10 object-cover rounded" />
+                                            <PreviewableImage src={product.images[0]} alt={product.name} className="h-10 w-10 object-cover rounded" />
                                         ) : (
                                             <div className="h-10 w-10 bg-gray-100 rounded flex items-center justify-center text-xs">No</div>
                                         )}
@@ -468,6 +616,11 @@ export const ProductManager = () => {
                                         </div>
                                     </TableCell>
                                     <TableCell>
+                                        <span className="font-medium text-blue-600">
+                                            {product.spv || 0}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell>
                                         <span className={product.stock < 10 ? "text-red-500 font-bold" : ""}>
                                             {product.stock}
                                         </span>
@@ -482,9 +635,17 @@ export const ProductManager = () => {
                                             <Button size="icon" variant="ghost" onClick={() => handleEdit(product)}>
                                                 <Edit className="h-4 w-4" />
                                             </Button>
-                                            <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => handleDelete(product.id)}>
+                                            <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => handleDelete(product)}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
+                                                <div className="flex flex-col gap-0.5">
+                                                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleReorder(product, 'up')}>
+                                                        <ArrowUp className="h-3 w-3" />
+                                                    </Button>
+                                                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleReorder(product, 'down')}>
+                                                        <ArrowDown className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
                                         </div>
                                     </TableCell>
                                 </TableRow>

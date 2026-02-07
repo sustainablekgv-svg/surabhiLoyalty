@@ -1,4 +1,7 @@
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword
+} from 'firebase/auth';
 import { addDoc, collection, doc, getDoc, getDocs, query, Timestamp, where } from 'firebase/firestore';
 
 import { encryptText, isEncrypted, safeDecryptText } from '@/lib/encryption';
@@ -142,7 +145,52 @@ export const signInWithFirebase = async (email: string, password: string): Promi
   try {
     await signInWithEmailAndPassword(auth, email, password);
   } catch (error) {
-    // console.warn('Firebase auth login failed:', error);
+    console.warn('Firebase auth login failed:', error);
+    throw error;
+  }
+};
+
+export const ensureFirebaseAuth = async (
+  email: string,
+  password: string,
+  options: { allowCreate?: boolean; tolerateFailure?: boolean } = {}
+): Promise<void> => {
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (error: any) {
+    const code = error?.code as string | undefined;
+
+    // If password mismatch but Firestore verified, and we allow tolerance, let it pass.
+    // This allows users to login even if Auth is out of sync, enabling them to update password later.
+    if (options.tolerateFailure && (code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/missing-password')) {
+         console.warn(`Bypassing Firebase Auth login error (${code}) as tolerateFailure is true.`);
+         return;
+    }
+
+    // Only try to create if the user definitely doesn't exist
+    const shouldTryCreate = options.allowCreate && code === 'auth/user-not-found';
+
+    if (shouldTryCreate) {
+      try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        return;
+      } catch (createError: any) {
+        console.error('Error creating Firebase user:', createError);
+        
+        // If creating failed because user exists (race condition or confusion), tolerate it if requested
+        if (createError?.code === 'auth/email-already-in-use') {
+           if (options.tolerateFailure) {
+               console.warn('Bypassing user creation error (email-already-in-use) as tolerateFailure is true.');
+               return; 
+           }
+           throw new Error(
+            'Firebase Auth user exists but login failed. Password mismatch suspected.'
+           );
+        }
+        throw createError;
+      }
+    }
+
     throw error;
   }
 };
@@ -157,6 +205,7 @@ interface RegisterCustomerData {
   referredBy: string | null;
   isStudent: boolean;
   demoStore: boolean;
+  tpin: string;
 }
 
 export const registerCustomer = async (data: RegisterCustomerData): Promise<CustomerType> => {
@@ -174,14 +223,14 @@ export const registerCustomer = async (data: RegisterCustomerData): Promise<Cust
     // Encrypt password
     const encryptedPassword = encryptText(data.customerPassword);
 
-    // Generate Referral Code (e.g., REF-A1B2C)
+    // Generate Referral Code (e.g., A1B2C)
     const generateCode = () => {
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No I, O, 1, 0 for clarity
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No I, O, 0, 1 for clarity
       let result = '';
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 6; i++) { // Increased length slightly for uniqueness since prefix is gone
         result += chars.charAt(Math.floor(Math.random() * chars.length));
       }
-      return `REF-${result}`;
+      return result;
     };
 
     // Ensure uniqueness (simple retry)
@@ -227,7 +276,7 @@ export const registerCustomer = async (data: RegisterCustomerData): Promise<Cust
       createdAt: Timestamp.now(),
       joinedDate: Timestamp.now(),
       
-      tpin: '', // User needs to set this later if needed
+      tpin: encryptText(data.tpin),
       
       walletRechargeDone: false,
       saleElgibility: true,

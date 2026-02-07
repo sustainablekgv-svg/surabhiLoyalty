@@ -2,10 +2,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/auth-context';
 import { useShop } from '@/hooks/shop-context';
-import { ArrowLeft, Heart, ShoppingCart, User } from 'lucide-react';
+import { ArrowLeft, Heart, LayoutDashboard, ShoppingCart, User } from 'lucide-react';
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Footer } from './Footer';
+
+import { SEO } from '@/components/SEO';
 
 interface ShopLayoutProps {
   children: React.ReactNode;
@@ -21,6 +23,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({ children, title = 'Shop'
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
+      <SEO title={title} description="Browse our collection of premium products." />
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-4">
@@ -35,11 +38,18 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({ children, title = 'Shop'
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Profile / Login */}
+            {/* Profile / Login / Dashboard */}
             {user ? (
-               <Button variant="ghost" size="icon" onClick={() => navigate('/customer/dashboard')} title="My Profile">
-                 <User className="h-5 w-5" />
-               </Button>
+               (user.role === 'admin' || user.role === 'superadmin') ? (
+                  <Button variant="default" size="sm" onClick={() => navigate('/admin/dashboard')} className="gap-2 bg-red-600 hover:bg-red-700 text-white">
+                    <LayoutDashboard className="h-4 w-4" />
+                    Back to Dashboard
+                  </Button>
+               ) : (
+                  <Button variant="ghost" size="icon" onClick={() => navigate('/customer/dashboard')} title="My Profile">
+                    <User className="h-5 w-5" />
+                  </Button>
+               )
             ) : (
                <Button variant="ghost" size="sm" onClick={() => navigate('/login', { state: { from: location } })}>
                  Login

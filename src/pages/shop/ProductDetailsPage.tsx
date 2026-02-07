@@ -2,6 +2,7 @@ import { ShopLayout } from '@/components/shop/ShopLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/hooks/auth-context';
 import { useShop } from '@/hooks/shop-context';
 import { db } from '@/lib/firebase';
 import { Product } from '@/types/shop';
@@ -15,6 +16,7 @@ const ProductDetailsPage = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { addToCart, toggleWishlist, isInWishlist } = useShop();
+    const { user } = useAuth();
     
     const [product, setProduct] = useState<Product | null>(null);
     const [loading, setLoading] = useState(true);
@@ -142,6 +144,13 @@ const ProductDetailsPage = () => {
                                 </>
                             )}
                         </div>
+                        {(product.spv || 0) > 0 && (
+                            <div className="mt-2">
+                                <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full border border-blue-200">
+                                    SPV: {product.spv}
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     <div className="prose prose-sm text-gray-600 max-w-none">
@@ -160,7 +169,7 @@ const ProductDetailsPage = () => {
                         <div className="p-3 bg-gray-50 rounded-lg">
                              <span className="block text-gray-500 mb-1">Stock Status</span>
                              {product.stock > 0 ? (
-                                <span className="font-medium text-green-600">In Stock ({product.stock})</span>
+                                <span className="font-medium text-green-600">In Stock </span>
                              ) : (
                                 <span className="font-medium text-red-600">Out of Stock</span>
                              )}

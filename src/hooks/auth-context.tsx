@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import {
     getCustomerByMobile,
     getStaffByMobile,
-    signInWithFirebase,
+    ensureFirebaseAuth,
     verifyUserExists,
 } from '@/lib/authService';
 import { auth } from '@/lib/firebase';
@@ -22,7 +22,18 @@ interface AuthContextType {
   isInitialized: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const DEFAULT_AUTH_CONTEXT: AuthContextType = {
+  user: null,
+  login: async () => {
+    throw new Error('AuthProvider is not mounted');
+  },
+  logout: async () => {},
+  isLoading: false,
+  isAuthenticated: false,
+  isInitialized: false,
+};
+
+const AuthContext = createContext<AuthContextType>(DEFAULT_AUTH_CONTEXT);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -172,17 +183,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw new Error('Invalid credentials');
       }
 
+      const isValidEmail = (value: string) => {
+        const trimmed = value.trim();
+        if (!trimmed) {
+          return false;
+        }
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+      };
+
       // Try to sign in with Firebase if email exists
       const email = userData.role === 'customer' 
         ? (userData as import('@/types/types').CustomerType).customerEmail 
         : (userData as import('@/types/types').StaffType).staffEmail;
 
-      if (email) {
-        try {
-          await signInWithFirebase(email, password);
-        } catch (error) {
-          // console.warn('Firebase auth failed, continuing with custom auth');
-        }
+      const normalizedEmail = email?.trim();
+      const shouldAttemptFirebaseAuth =
+        !!normalizedEmail && isValidEmail(normalizedEmail) && password.length >= 6;
+
+      if (shouldAttemptFirebaseAuth) {
+        // Ensure Firebase auth so callable functions work (e.g. R2 upload URL)
+        await ensureFirebaseAuth(normalizedEmail!, password, {
+          allowCreate: role !== 'customer',
+          tolerateFailure: true,
+        });
       }
 
       // Set user state and storage
@@ -251,9 +274,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  // console.log('The line 190 is', context);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+  if (context === DEFAULT_AUTH_CONTEXT && import.meta.env.DEV) {
+    console.error('useAuth used outside AuthProvider. Check provider wiring.');
   }
   return context;
 };

@@ -1,10 +1,11 @@
 import { Button } from '@/components/ui/button';
-import { FileText, History, Home, Settings, Share2, ShoppingBag, TrendingUp } from 'lucide-react';
+import { FileText, History, Home, MapPin, Settings, Share2, ShoppingBag, TrendingUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { AccountSettings } from '@/components/customer/AccountSettings';
+import { AddressManager } from '@/components/customer/AddressManager';
 import { CustomerHeader } from '@/components/customer/CustomerHeader';
 import { CustomerStats } from '@/components/customer/CustomerStats';
 import { CustomerOrderHistory } from '@/components/customer/OrderHistory';
@@ -100,7 +101,7 @@ const CustomerDashboard = () => {
           onValueChange={setActiveTab}
           className="w-full space-y-2 xs:space-y-3 sm:space-y-4"
         >
-          <TabsList className="grid w-full grid-cols-6 mb-2 xs:mb-3 sm:mb-4 h-10">
+          <TabsList className="grid w-full grid-cols-7 mb-2 xs:mb-3 sm:mb-4 h-10">
             <TabsTrigger
               value="overview"
               className="flex items-center justify-center p-2"
@@ -128,6 +129,13 @@ const CustomerDashboard = () => {
               title="Orders"
             >
               <ShoppingBag className="h-4 w-4" />
+            </TabsTrigger>
+            <TabsTrigger
+              value="addresses"
+              className="flex items-center justify-center p-2"
+              title="Addresses"
+            >
+              <MapPin className="h-4 w-4" />
             </TabsTrigger>
             <TabsTrigger
               value="settings"
@@ -159,6 +167,10 @@ const CustomerDashboard = () => {
 
           <TabsContent value="orders" className="mt-0">
             <CustomerOrderHistory />
+          </TabsContent>
+
+          <TabsContent value="addresses" className="mt-0">
+            <AddressManager userId={user.id} />
           </TabsContent>
 
           <TabsContent value="settings" className="mt-0">

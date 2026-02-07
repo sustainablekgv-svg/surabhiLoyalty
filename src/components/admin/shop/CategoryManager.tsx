@@ -1,12 +1,14 @@
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PreviewableImage } from '@/components/ui/previewable-image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { uploadImageToCloudinary } from '@/services/cloudinary';
-import { createCategory, deleteCategory, getCategories, getCategoriesPaginated, updateCategory } from '@/services/shop';
+import { deleteImageFromR2, uploadImageToR2 } from '@/services/cloudflare';
+import { createCategory, deleteCategory, getCategories, initializeDisplayOrder, reorderCategory, updateCategory } from '@/services/shop';
 import { Category } from '@/types/shop';
-import { Edit, Plus, Search, Trash2, Upload } from 'lucide-react';
+import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Search, Trash2, Upload } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -45,7 +47,7 @@ export const CategoryManager = () => {
                  setCategories(filtered);
                  setHasMore(false);
             } else {
-                const result = await getCategoriesPaginated(PAGE_SIZE, startAfterDoc);
+                const result = await getCategories(PAGE_SIZE, startAfterDoc);
                 setCategories(result.categories);
                 setLastDoc(result.lastDoc);
                 setHasMore(result.categories.length >= PAGE_SIZE);
@@ -84,18 +86,17 @@ export const CategoryManager = () => {
         setPage(prev => prev - 1);
         fetchCategories(prevDoc);
     };
-
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         setUploading(true);
         try {
-            const url = await uploadImageToCloudinary(file);
+            const url = await uploadImageToR2(file, 'categories');
             setFormData(prev => ({ ...prev, image: url }));
             toast.success("Image uploaded");
-        } catch (error) {
-            toast.error("Upload failed");
+        } catch (error: any) {
+            toast.error(error.message || "Upload failed");
         } finally {
             setUploading(false);
         }
@@ -122,14 +123,28 @@ export const CategoryManager = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            if (!formData.name?.trim()) { toast.error("Category name is required"); return; }
+            if (!formData.slug?.trim()) { toast.error("Slug is required"); return; }
+            if (!formData.image && (!editingCategory || !editingCategory.image)) { 
+                toast.error("Category image is required"); 
+                return; 
+            }
+
             const categoryData = {
-                name: formData.name,
-                slug: formData.slug,
-                image: formData.image,
+                name: formData.name.trim(),
+                slug: formData.slug.trim(),
+                image: formData.image || (editingCategory?.image || ''),
                 isActive: formData.isActive,
             };
 
             if (editingCategory) {
+                const oldImage = editingCategory.image;
+                const newImage = categoryData.image;
+
+                if (oldImage && newImage && oldImage !== newImage) {
+                    await deleteImageFromR2(oldImage);
+                }
+
                 await updateCategory(editingCategory.id, categoryData);
                 toast.success('Category updated successfully');
             } else {
@@ -147,14 +162,42 @@ export const CategoryManager = () => {
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async (category: Category) => {
         if (!confirm('Are you sure? Deleting a category might affect products linked to it.')) return;
         try {
-            await deleteCategory(id);
+            if (category.image) {
+                await deleteImageFromR2(category.image);
+            }
+            await deleteCategory(category.id);
             toast.success('Category deleted');
             fetchCategories(paginationStack[paginationStack.length - 1]);
         } catch (error) {
             toast.error('Error deleting category');
+        }
+    };
+
+    const handleReorder = async (category: Category, direction: 'up' | 'down') => {
+        try {
+            await reorderCategory(category.id, category.displayOrder || 0, direction);
+            // Refresh
+            fetchCategories(paginationStack[paginationStack.length - 1]);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to reorder");
+        }
+    };
+
+    const handleInitializeOrder = async () => {
+        // if (!confirm("This will reset the order of all categories. Continue?")) return; // Removed native confirm
+        setLoading(true);
+        try {
+            await initializeDisplayOrder('categories');
+            toast.success("Order initialized");
+            fetchCategories(null);
+        } catch (error) {
+            toast.error("Failed to initialize");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -200,6 +243,26 @@ export const CategoryManager = () => {
                     <DialogTrigger asChild>
                         <Button className="w-full sm:w-auto"><Plus className="h-4 w-4 mr-2" /> Add Category</Button>
                     </DialogTrigger>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="outline" title="Fix missing orders">
+                                <ListOrdered className="h-4 w-4" />
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Initialize Category Order?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This will reset the order of all categories based on creation date.
+                                    This action cannot be undone.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleInitializeOrder}>Continue</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                     <DialogContent className="sm:max-w-[425px]">
                         <DialogHeader>
                             <DialogTitle>{editingCategory ? 'Edit Category' : 'Add New Category'}</DialogTitle>
@@ -217,7 +280,7 @@ export const CategoryManager = () => {
                                 <Label>Image</Label>
                                 <div className="flex items-center gap-4">
                                     {formData.image && (
-                                        <img src={formData.image} alt="Preview" className="h-12 w-12 object-contain border rounded" />
+                                        <PreviewableImage src={formData.image} alt="Preview" className="h-12 w-12 object-contain border rounded" />
                                     )}
                                     <div className="relative flex-1">
                                         <Input
@@ -266,7 +329,7 @@ export const CategoryManager = () => {
                                     <TableRow key={category.id}>
                                         <TableCell>
                                             {category.image ? (
-                                                <img src={category.image} alt={category.name} className="h-8 w-8 object-contain" />
+                                                <PreviewableImage src={category.image} alt={category.name} className="h-8 w-8 object-contain" />
                                             ) : (
                                                 <div className="h-8 w-8 bg-gray-100 rounded flex items-center justify-center text-xs text-muted-foreground">No</div>
                                             )}
@@ -278,9 +341,17 @@ export const CategoryManager = () => {
                                                 <Button size="icon" variant="ghost" onClick={() => handleEdit(category)}>
                                                     <Edit className="h-4 w-4" />
                                                 </Button>
-                                                <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => handleDelete(category.id)}>
+                                                <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => handleDelete(category)}>
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
+                                                <div className="flex flex-col gap-0.5">
+                                                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleReorder(category, 'up')}>
+                                                        <ArrowUp className="h-3 w-3" />
+                                                    </Button>
+                                                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleReorder(category, 'down')}>
+                                                        <ArrowDown className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
                                             </div>
                                         </TableCell>
                                     </TableRow>

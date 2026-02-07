@@ -1842,8 +1842,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                     <div className="relative">
                       <Input
                         id="spv"
-                        type="number"
-                        step="0.01"
+                        type="text"
                         placeholder="Enter Surabhi Point Value"
                         value={spvEntered}
                         onChange={e => setSpvEntered(e.target.value)}

@@ -31,9 +31,15 @@
 //   response.send("Hello from Firebase!");
 // });
 
+import * as auth from './auth';
+import * as cloudflare from './cloudflare';
 import * as ecommerce from './ecommerce';
 import * as quarterly from './quartleryCheck';
 
 export const checkQuarterlyCriteria = quarterly.checkQuarterlyCriteria;
 export const createRazorpayOrder = ecommerce.createRazorpayOrder;
 export const verifyRazorpayPayment = ecommerce.verifyRazorpayPayment;
+export const createR2UploadUrl = cloudflare.createR2UploadUrl;
+export const deleteImageFromR2 = cloudflare.deleteImageFromR2;
+export const onStaffUpdate = auth.onStaffUpdate;
+export const onCustomerUpdate = auth.onCustomerUpdate;
