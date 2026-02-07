@@ -4,7 +4,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
-import { getPerformance, trace } from 'firebase/performance';
+import { trace } from 'firebase/performance';
 import { getStorage } from 'firebase/storage';
 // Firebase v11 imports for monitoring and analytics
 
@@ -38,14 +38,15 @@ export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : nul
 // Initialize Performance monitoring - only in browser environments and PROD
 // or if explicitly enabled to avoid "invalid attribute value" crash in dev
 // with long Tailwind class names
-export const performance = 
-  typeof window !== 'undefined' && (import.meta.env.PROD || import.meta.env.VITE_ENABLE_PERFORMANCE === 'true')
-    ? getPerformance(app) 
-    : null;
+// export const performance = 
+//   typeof window !== 'undefined' && (import.meta.env.PROD || import.meta.env.VITE_ENABLE_PERFORMANCE === 'true')
+//     ? getPerformance(app) 
+//     : null;
+export const performance = null; // Temporarily disabled to fix crash
 
 // Debug log to verify API key (Temporary)
-console.log('[Firebase] Initializing with API Key:', firebaseConfig.apiKey ? '***' + firebaseConfig.apiKey.slice(-5) : 'MISSING');
-console.log('[Firebase] Project ID:', firebaseConfig.projectId);
+// console.log('[Firebase] Initializing with API Key:', firebaseConfig.apiKey ? '***' + firebaseConfig.apiKey.slice(-5) : 'MISSING');
+// console.log('[Firebase] Project ID:', firebaseConfig.projectId);
 
 
 // Helper functions for analytics

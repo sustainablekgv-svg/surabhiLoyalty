@@ -142,7 +142,7 @@ export const signInWithFirebase = async (email: string, password: string): Promi
   try {
     await signInWithEmailAndPassword(auth, email, password);
   } catch (error) {
-    // console.warn('Firebase auth login failed:', error);
+    console.warn('Firebase auth login failed:', error);
     throw error;
   }
 };
@@ -167,6 +167,7 @@ export const ensureFirebaseAuth = async (
         await createUserWithEmailAndPassword(auth, email, password);
         return;
       } catch (createError: any) {
+        console.error('Error creating Firebase user:', createError);
         if (createError?.code === 'auth/email-already-in-use') {
           throw new Error(
             'Firebase Auth user exists with a different password. Reset the Firebase password or update the staff password to match.'

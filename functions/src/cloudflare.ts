@@ -116,7 +116,7 @@ export const deleteImageFromR2 = functions.https.onCall({
     }
 
     try {
-        const { client, bucketName, accountId } = getR2Client();
+        const { client, bucketName } = getR2Client();
         let targetKey = key;
         
         // Extract key from URL if not provided directly
