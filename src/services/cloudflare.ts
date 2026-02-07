@@ -7,7 +7,7 @@ interface UploadResponse {
     key: string;
 }
 
-export const uploadImageToR2 = async (file: File): Promise<string> => {
+export const uploadImageToR2 = async (file: File, folder: string = 'uploads'): Promise<string> => {
     if (!file) {
         throw new Error("No file provided");
     }
@@ -20,19 +20,21 @@ export const uploadImageToR2 = async (file: File): Promise<string> => {
     const MAX_SIZE_MB = 10;
     if (file.size > MAX_SIZE_MB * 1024 * 1024) {
         throw new Error(`File size exceeds ${MAX_SIZE_MB}MB limit.`);
+        
     }
 
     try {
         // 1. Get Signed URL from Backend
-        const createR2UploadUrl = httpsCallable<{ filename: string; contentType: string }, UploadResponse>(
+        const createR2UploadUrl = httpsCallable<{ filename: string; contentType: string; folder?: string }, UploadResponse>(
             functions, 
             'createR2UploadUrl'
         );
         
-        console.log(`Requesting signed URL for ${file.name} (${file.type})...`);
+        // console.log(`Requesting signed URL for ${file.name} (${file.type}) in folder ${folder}...`);
         const { data } = await createR2UploadUrl({
             filename: file.name,
-            contentType: file.type
+            contentType: file.type,
+            folder
         });
 
         const { signedUrl, fileUrl } = data;
@@ -43,7 +45,7 @@ export const uploadImageToR2 = async (file: File): Promise<string> => {
 
         // 2. Upload to R2 using the Signed URL
         // Note: This determines if CORS is configured correctly on the R2 bucket.
-        console.log("Uploading to R2...");
+        // console.log("Uploading to R2...");
         const uploadResponse = await fetch(signedUrl, {
             method: 'PUT',
             headers: {
@@ -76,5 +78,21 @@ export const uploadImageToR2 = async (file: File): Promise<string> => {
         }
 
         throw new Error(error.message || "Unknown error during image upload");
+    }
+};
+
+export const deleteImageFromR2 = async (fileUrl: string): Promise<void> => {
+    if (!fileUrl) return;
+    try {
+        // console.log(`Attempting to delete image: ${fileUrl}`);
+        const deleteFn = httpsCallable<{ fileUrl: string }, { success: boolean; message: string }>(
+            functions, 
+            'deleteImageFromR2'
+        );
+        await deleteFn({ fileUrl });
+        // console.log(`Successfully requested deletion for: ${fileUrl}`);
+    } catch (error) {
+        console.error("Failed to delete image from R2:", error);
+        // Clean-up should not block user flow, so we log but don't re-throw typically
     }
 };

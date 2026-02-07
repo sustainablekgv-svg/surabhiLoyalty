@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { PreviewableImage } from '@/components/ui/previewable-image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { isValidImageUrl } from '@/lib/image-utils';
@@ -265,7 +266,7 @@ export const OrderManager = () => {
                                                                     <div key={idx} className="flex justify-between p-3 items-center">
                                                                         <div className="flex items-center gap-3">
                                                                             {isValidImageUrl(item.image) ? (
-                                                                                <img src={item.image} alt={item.name} className="h-10 w-10 rounded object-cover" />
+                                                                                <PreviewableImage src={item.image} alt={item.name} className="h-10 w-10 rounded object-cover" />
                                                                             ) : (
                                                                                 <div className="h-10 w-10 bg-gray-100 rounded flex items-center justify-center">
                                                                                     <Package className="h-5 w-5 text-gray-400" />

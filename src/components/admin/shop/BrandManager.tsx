@@ -3,11 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PreviewableImage } from '@/components/ui/previewable-image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { isValidImageUrl } from '@/lib/image-utils';
-import { uploadImageToR2 } from '@/services/cloudflare';
+import { deleteImageFromR2, uploadImageToR2 } from '@/services/cloudflare';
 import { createBrand, deleteBrand, getBrands, getCategories, initializeDisplayOrder, reorderBrand, updateBrand } from '@/services/shop';
 import { Brand, Category } from '@/types/shop';
 import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Search, Trash2, Upload } from 'lucide-react';
@@ -95,7 +96,7 @@ export const BrandManager = () => {
 
         setUploading(true);
         try {
-            const url = await uploadImageToR2(file);
+            const url = await uploadImageToR2(file, 'brands');
             setFormData(prev => ({ ...prev, logo: url }));
             toast.success("Logo uploaded");
         } catch (error: any) {
@@ -135,6 +136,13 @@ export const BrandManager = () => {
             };
 
             if (editingBrand) {
+                const oldLogo = editingBrand.logo;
+                const newLogo = brandData.logo;
+                
+                if (oldLogo && newLogo && oldLogo !== newLogo) {
+                    await deleteImageFromR2(oldLogo);
+                }
+                
                 await updateBrand(editingBrand.id, brandData);
                 toast.success('Brand updated successfully');
             } else {
@@ -152,10 +160,13 @@ export const BrandManager = () => {
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async (brand: Brand) => {
         if (!confirm('Are you sure? Deleting a brand might affect products linked to it.')) return;
         try {
-            await deleteBrand(id);
+            if (brand.logo) {
+                await deleteImageFromR2(brand.logo);
+            }
+            await deleteBrand(brand.id);
             toast.success('Brand deleted');
             fetchBrands();
         } catch (error) {
@@ -320,7 +331,7 @@ export const BrandManager = () => {
                                 <Label>Logo</Label>
                                 <div className="flex items-center gap-4">
                                     {isValidImageUrl(formData.logo) && (
-                                        <img src={formData.logo} alt="Preview" className="h-12 w-12 object-contain border rounded" />
+                                        <PreviewableImage src={formData.logo} alt="Preview" className="h-12 w-12 object-contain border rounded" />
                                     )}
                                     <div className="relative">
                                         <Input
@@ -368,7 +379,7 @@ export const BrandManager = () => {
                                 <TableRow key={brand.id}>
                                     <TableCell>
                                         {isValidImageUrl(brand.logo) ? (
-                                            <img src={brand.logo} alt={brand.name} className="h-8 w-8 object-contain" />
+                                            <PreviewableImage src={brand.logo} alt={brand.name} className="h-8 w-8 object-contain" />
                                         ) : (
                                             <div className="h-8 w-8 bg-gray-100 rounded flex items-center justify-center text-xs">No</div>
                                         )}
@@ -380,7 +391,7 @@ export const BrandManager = () => {
                                             <Button size="icon" variant="ghost" onClick={() => handleEdit(brand)}>
                                                 <Edit className="h-4 w-4" />
                                             </Button>
-                                            <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => handleDelete(brand.id)}>
+                                            <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => handleDelete(brand)}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                             <div className="flex flex-col gap-0.5">

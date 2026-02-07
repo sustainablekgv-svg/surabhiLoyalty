@@ -11,10 +11,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { registerCustomer } from '@/lib/authService';
 
+import { PasswordStrengthIndicator } from '@/components/ui/password-strength';
 import { db } from '@/lib/firebase';
 import { CustomerType } from '@/types/types';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { useSearchParams } from 'react-router-dom';
+
 
 const SignupPage = () => {
   const navigate = useNavigate();
@@ -111,12 +113,19 @@ const SignupPage = () => {
     return age;
   };
 
+  const [isPasswordValid, setIsPasswordValid] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (formData.customerPassword !== formData.confirmPassword) {
       toast.error("Passwords do not match");
       return;
+    }
+
+    if (!isPasswordValid) {
+        toast.error("Please choose a stronger password");
+        return;
     }
 
     if (!formData.customerName || !formData.customerMobile || !formData.dateOfBirth || !formData.gender || !formData.storeLocation || !formData.customerPassword || !formData.tpin) {
@@ -288,21 +297,34 @@ const SignupPage = () => {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="customerPassword">Password *</Label>
-                <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input id="customerPassword" name="customerPassword" type="password" placeholder="Create password" value={formData.customerPassword} onChange={handleInputChange} className="pl-10" required />
+                <div className="space-y-2">
+                  <Label htmlFor="customerPassword">Password *</Label>
+                  <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input 
+                        id="customerPassword" 
+                        name="customerPassword" 
+                        type="password" 
+                        placeholder="Create password" 
+                        value={formData.customerPassword} 
+                        onChange={handleInputChange} 
+                        className="pl-10" 
+                        required 
+                      />
+                  </div>
+                  <PasswordStrengthIndicator 
+                    password={formData.customerPassword} 
+                    onValidationChange={setIsPasswordValid} 
+                  />
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                 <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input id="confirmPassword" name="confirmPassword" type="password" placeholder="Confirm password" value={formData.confirmPassword} onChange={handleInputChange} className="pl-10" required />
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                   <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input id="confirmPassword" name="confirmPassword" type="password" placeholder="Confirm password" value={formData.confirmPassword} onChange={handleInputChange} className="pl-10" required />
+                  </div>
                 </div>
-              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="tpin">TPIN (4 Digits) *</Label>

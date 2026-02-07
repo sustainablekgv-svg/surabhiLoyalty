@@ -1,64 +1,65 @@
 // components/StaffStoreManagement.tsx
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  query,
-  serverTimestamp,
-  setDoc,
-  Timestamp,
-  updateDoc,
-  where,
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    getDocs,
+    query,
+    serverTimestamp,
+    setDoc,
+    Timestamp,
+    updateDoc,
+    where,
 } from 'firebase/firestore';
 import {
-  Edit,
-  Key,
-  MapPin,
-  PlusCircle,
-  RefreshCw,
-  Shield,
-  Store,
-  Trash2,
-  User,
-  UserPlus,
+    Edit,
+    Key,
+    MapPin,
+    PlusCircle,
+    RefreshCw,
+    Shield,
+    Store,
+    Trash2,
+    User,
+    UserPlus,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { PasswordStrengthIndicator } from '@/components/ui/password-strength';
 import { PasswordDecryptor } from './PasswordDecryptor';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@/components/ui/table';
-import { encryptText } from '@/lib/encryption';
+import { decryptText, encryptText } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { StaffType, StoreType } from '@/types/types';
 
@@ -230,10 +231,28 @@ export const StaffManagement = () => {
     const isValid = await validateStaff();
     if (!isValid) return;
 
+    // Validate password if provided
+    if (currentStaff.staffPassword) {
+      const pwd = currentStaff.staffPassword;
+       const hasNumber = /\d/.test(pwd);
+       const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(pwd);
+       const hasUpper = /[A-Z]/.test(pwd);
+
+      if (pwd.length < 6) {
+          toast.error('Password must be at least 6 characters long');
+          return;
+      }
+      
+      if (!(hasNumber || hasSpecial || hasUpper)) {
+          toast.error('Password must include a number, special character, or uppercase letter');
+          return;
+      }
+    }
+
     try {
       setIsLoading(true);
 
-      const staffData = {
+      const staffData: any = {
         staffName: currentStaff.staffName,
         staffMobile: currentStaff.staffMobile,
         staffEmail: currentStaff.staffEmail,
@@ -243,7 +262,6 @@ export const StaffManagement = () => {
         storeLocation: currentStaff.storeLocation,
         staffSalesCount: currentStaff.staffSalesCount || 0,
         staffRechargesCount: currentStaff.staffRechargesCount || 0,
-        staffPassword: currentStaff.staffPassword ? encryptText(currentStaff.staffPassword) : '',
         lastActive: currentStaff.lastActive || null,
         createdAt: currentStaff.id
           ? currentStaff.createdAt instanceof Timestamp
@@ -252,8 +270,15 @@ export const StaffManagement = () => {
               ? Timestamp.fromDate(new Date(currentStaff.createdAt))
               : Timestamp.now()
           : Timestamp.now(),
-        // Ensure createdAt is always a Timestamp object
       };
+
+      // Only update password if a new one is provided
+      if (currentStaff.staffPassword) {
+          staffData.staffPassword = encryptText(currentStaff.staffPassword);
+      } else if (!currentStaff.id) {
+          // If creating new staff and no password, default to empty (or handle as error if required)
+          staffData.staffPassword = '';
+      }
 
       if (currentStaff.id) {
         // Update existing staff
@@ -435,10 +460,10 @@ export const StaffManagement = () => {
         referralCommission: Number(currentStore.referralCommission) || 0,
         surabhiCommission: Number(currentStore.surabhiCommission) || 0,
         sevaCommission: Number(currentStore.sevaCommission) || 0,
-        storeCurrentBalance: Number(currentStore.storeCurrentBalance) || 0,
-        storeSevaBalance: Number(currentStore.storeSevaBalance) || 0,
         cashOnlyCommission: Number(currentStore.cashOnlyCommission) || 0,
         bonusPercentage: Number(currentStore.bonusPercentage) || 0,
+        storeCurrentBalance: Number(currentStore.storeCurrentBalance) || 0,
+        storeSevaBalance: Number(currentStore.storeSevaBalance) || 0,
         storeStatus: currentStore.storeStatus || 'active',
         walletEnabled: currentStore.walletEnabled !== false,
         demoStore: currentStore.demoStore || false,
@@ -724,15 +749,14 @@ export const StaffManagement = () => {
                           {member.staffRechargesCount || 0}
                         </TableCell>
                         <TableCell className="text-xs xs:text-sm">
-                          {/* {member.staffPassword ? (() => {
+                          {member.staffPassword ? (() => {
                             try {
                               return decryptText(member.staffPassword);
                             } catch (error) {
                               console.error('Decryption failed for staff password:', error);
                               return 'Invalid Password';
                             }
-                          })() : 'N/A'} */}
-                          {member?.staffPassword}
+                          })() : 'N/A'}
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col xs:flex-row gap-1 xs:gap-2">
@@ -741,7 +765,7 @@ export const StaffManagement = () => {
                               size="sm"
                               className="text-[10px] xs:text-xs h-7 xs:h-8 px-1.5 xs:px-2"
                               onClick={() => {
-                                setCurrentStaff(member);
+                                setCurrentStaff({ ...member, staffPassword: '' }); // Clear password for editing
                                 setIsStaffDialogOpen(true);
                               }}
                             >
@@ -1123,8 +1147,18 @@ export const StaffManagement = () => {
                     staffPassword: e.target.value,
                   })
                 }
-                placeholder="Enter staff password"
+                placeholder="Enter Staff Password (leave empty to keep existing)"
               />
+              {currentStaff?.staffPassword && (
+                 <PasswordStrengthIndicator 
+                    password={currentStaff.staffPassword}
+                    onValidationChange={(isValid) => {
+                        // Ideally we should block save here too, but passing state up might be tricky without refactoring
+                        // For now we rely on the toast validation in handleSaveStaff which we will enhance.
+                        // Actually, let's update handleSaveStaff to be stricter.
+                    }}
+                 />
+              )}
             </div>
 
             {currentStaff?.lastActive && (
