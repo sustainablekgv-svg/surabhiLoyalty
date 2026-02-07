@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import {
     getCustomerByMobile,
     getStaffByMobile,
-    signInWithFirebase,
+    ensureFirebaseAuth,
     verifyUserExists,
 } from '@/lib/authService';
 import { auth } from '@/lib/firebase';
@@ -178,11 +178,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         : (userData as import('@/types/types').StaffType).staffEmail;
 
       if (email) {
-        try {
-          await signInWithFirebase(email, password);
-        } catch (error) {
-          // console.warn('Firebase auth failed, continuing with custom auth');
-        }
+        // Ensure Firebase auth so callable functions work (e.g. R2 upload URL)
+        await ensureFirebaseAuth(email, password, { allowCreate: role !== 'customer' });
       }
 
       // Set user state and storage

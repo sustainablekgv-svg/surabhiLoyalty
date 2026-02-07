@@ -1,4 +1,4 @@
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { addDoc, collection, doc, getDoc, getDocs, query, Timestamp, where } from 'firebase/firestore';
 
 import { encryptText, isEncrypted, safeDecryptText } from '@/lib/encryption';
@@ -143,6 +143,23 @@ export const signInWithFirebase = async (email: string, password: string): Promi
     await signInWithEmailAndPassword(auth, email, password);
   } catch (error) {
     // console.warn('Firebase auth login failed:', error);
+    throw error;
+  }
+};
+
+export const ensureFirebaseAuth = async (
+  email: string,
+  password: string,
+  options: { allowCreate?: boolean } = {}
+): Promise<void> => {
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (error: any) {
+    const code = error?.code as string | undefined;
+    if (options.allowCreate && code === 'auth/user-not-found') {
+      await createUserWithEmailAndPassword(auth, email, password);
+      return;
+    }
     throw error;
   }
 };
