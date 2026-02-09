@@ -40,10 +40,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   const cleanCartItem = (item: CartItem): CartItem => ({
-    productId: item.productId,
-    quantity: item.quantity,
-    name: item.name,
-    price: item.price,
+    productId: item.productId || '',
+    quantity: item.quantity || 1,
+    name: item.name || 'Unknown Product',
+    price: item.price || 0,
     image: item.image || '',
     maxStock: item.maxStock || 999999,
     freeShipping: item.freeShipping ?? false,
@@ -93,7 +93,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updatedCart = updatedCart.map(cleanCartItem);
 
     try {
-      await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), { items: updatedCart });
+      // Foolproof data cleaning to remove any undefined properties
+      const dataToSave = JSON.parse(JSON.stringify({ items: updatedCart }));
+      await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), dataToSave);
       toast.success('Added to cart');
       return true;
     } catch (error) {
@@ -106,7 +108,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const removeFromCart = async (productId: string) => {
     if (!user || !user.id) return;
     const updatedCart = cart.filter((item) => item.productId !== productId).map(cleanCartItem);
-    await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), { items: updatedCart });
+    const dataToSave = JSON.parse(JSON.stringify({ items: updatedCart }));
+    await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), dataToSave);
     toast.success('Removed from cart');
   };
 
@@ -135,7 +138,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Clean all items before saving
     updatedCart = updatedCart.map(cleanCartItem);
 
-    await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), { items: updatedCart });
+    const dataToSave = JSON.parse(JSON.stringify({ items: updatedCart }));
+    await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), dataToSave);
   };
 
   const clearCart = async () => {

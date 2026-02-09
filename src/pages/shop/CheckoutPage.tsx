@@ -466,94 +466,94 @@ const CheckoutPage = () => {
                        </div>
                        
                        <div className="mt-8 pt-6 border-t">
-                           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-6 md:p-8 shadow-md">
-                               <div className="flex flex-col lg:flex-row gap-10 items-center lg:items-start">
+                           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 md:p-6 shadow-sm">
+                               <div className="flex flex-col lg:flex-row gap-6 items-center lg:items-start">
                                    <div className="relative group shrink-0">
-                                       <div className="absolute -inset-2 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl blur opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
-                                       <div className="relative bg-white p-4 rounded-xl shadow-xl border border-white">
+                                       <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
+                                       <div className="relative bg-white p-3 rounded-xl shadow-lg border border-white">
                                            <img 
                                                src="/qr.jpeg" 
                                                alt="Payment QR Code" 
-                                               className="h-72 w-72 md:h-80 md:w-80 object-contain rounded-lg" 
+                                               className="h-48 w-48 md:h-56 md:w-56 object-contain rounded-lg" 
                                                onError={(e) => {
                                                    e.currentTarget.src = 'https://placehold.co/320x320?text=QR+Code+Not+Found';
                                                }}
                                            />
                                        </div>
-                                       <div className="mt-4 flex flex-col items-center">
-                                           <p className="text-center text-xs font-bold text-blue-600 uppercase tracking-widest bg-blue-100 px-3 py-1 rounded-full">Scan to Pay</p>
-                                           <p className="text-[10px] text-slate-400 mt-2 italic text-center">Open any UPI app like GPay, PhonePe, or Paytm</p>
+                                       <div className="mt-3 flex flex-col items-center">
+                                           <p className="text-center text-[10px] font-bold text-blue-600 uppercase tracking-widest bg-blue-100 px-2 py-0.5 rounded-full">Scan to Pay</p>
+                                           
                                        </div>
                                    </div>
                                    
                                    <div className="flex-1 space-y-6 w-full">
                                        <div>
-                                           <h3 className="text-2xl font-black text-slate-900 flex items-center gap-3">
+                                           <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                                                Scan & Pay via UPI
-                                               <span className="text-xs bg-indigo-600 text-white px-3 py-1 rounded-full font-bold uppercase tracking-wider animate-pulse">Fastest</span>
+                                               <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Fastest</span>
                                            </h3>
-                                           <p className="text-base text-slate-600 mt-2">Preferred for instant order confirmation and faster shipping.</p>
+                                           <p className="text-sm text-slate-600">Confirm instantly for faster shipping.</p>
                                        </div>
 
-                                       <div className="grid grid-cols-1 gap-4">
+                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                            {/* UPI ID Card */}
-                                           <div className="bg-white rounded-xl p-4 border border-blue-100 shadow-sm hover:shadow-md transition-shadow group/item relative overflow-hidden">
+                                           <div className="bg-white rounded-xl p-3 border border-blue-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
                                                <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
                                                <div className="flex justify-between items-center relative z-10">
                                                    <div>
-                                                       <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest mb-1 font-sans">Official UPI ID</p>
-                                                       <p className="font-mono text-lg font-bold text-slate-800 break-all">sustainablekgv@okicici</p>
+                                                       <p className="text-[9px] text-blue-500 font-bold uppercase tracking-widest mb-0.5">UPI ID</p>
+                                                       <p className="font-mono text-sm font-bold text-slate-800 break-all">sustainablekgv@okicici</p>
                                                    </div>
                                                    <Button 
                                                        variant="secondary" 
                                                        size="sm"
                                                        onClick={() => handleCopy('sustainablekgv@okicici', 'UPI ID')}
-                                                       className="ml-4 shrink-0 bg-blue-50 hover:bg-blue-100 text-blue-700 border-none h-12 w-12 rounded-xl p-0 transition-all active:scale-95 flex items-center justify-center"
+                                                       className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50"
                                                        title="Copy UPI ID"
                                                    >
-                                                       {copiedField === 'UPI ID' ? <Check className="h-6 w-6 text-green-600" /> : <Copy className="h-6 w-6" />}
+                                                       {copiedField === 'UPI ID' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                                                    </Button>
                                                </div>
                                            </div>
 
                                            {/* WhatsApp Card */}
-                                           <div className="bg-white rounded-xl p-4 border border-blue-100 shadow-sm hover:shadow-md transition-shadow group/item relative overflow-hidden">
+                                           <div className="bg-white rounded-xl p-3 border border-blue-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
                                                <div className="absolute top-0 left-0 w-1 h-full bg-green-500"></div>
                                                <div className="flex justify-between items-center relative z-10">
                                                    <div>
-                                                       <p className="text-[10px] text-green-600 font-black uppercase tracking-widest mb-1 font-sans">WhatsApp for Screenshot</p>
-                                                       <p className="font-mono text-lg font-bold text-slate-800">9606979530</p>
+                                                       <p className="text-[9px] text-green-600 font-bold uppercase tracking-widest mb-0.5">WhatsApp screenshot</p>
+                                                       <p className="font-mono text-sm font-bold text-slate-800">9606979530</p>
                                                    </div>
                                                    <Button 
                                                        variant="secondary" 
                                                        size="sm"
                                                        onClick={() => handleCopy('9606979530', 'WhatsApp number')}
-                                                       className="ml-4 shrink-0 bg-green-50 hover:bg-green-100 text-green-700 border-none h-12 w-12 rounded-xl p-0 transition-all active:scale-95 flex items-center justify-center"
+                                                       className="h-8 w-8 p-0 text-green-600 hover:bg-green-50"
                                                        title="Copy WhatsApp Number"
                                                    >
-                                                       {copiedField === 'WhatsApp number' ? <Check className="h-6 w-6 text-green-600" /> : <Copy className="h-6 w-6" />}
+                                                       {copiedField === 'WhatsApp number' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                                                    </Button>
                                                </div>
                                            </div>
                                        </div>
 
-                                       <div className="bg-white/90 backdrop-blur rounded-2xl p-5 border border-indigo-100/50 shadow-inner">
-                                           <p className="font-black text-xs text-slate-800 mb-4 uppercase tracking-widest flex items-center gap-2">
-                                               <span className="h-1.5 w-1.5 rounded-full bg-indigo-600"></span>
-                                               How to complete payment:
+                                       <div className="bg-white/80 backdrop-blur rounded-xl p-3 border border-indigo-100/50">
+                                           <p className="font-bold text-[11px] text-slate-800 mb-2 uppercase tracking-widest">
+                                               
+                                               Instructions:
                                            </p>
-                                           <ul className="space-y-4">
-                                               <li className="flex gap-4 items-start">
-                                                   <span className="flex-shrink-0 h-7 w-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xs font-black shadow-lg shadow-indigo-200">1</span>
-                                                   <span className="text-sm font-medium text-slate-700 leading-relaxed pt-1">Scan the QR code or copy the UPI ID to pay <strong className="text-slate-900 text-lg border-b-2 border-indigo-200">₹{subtotal + shippingCost}</strong>.</span>
+                                           <ul className="space-y-1.5">
+                                               <li className="flex gap-2 items-start">
+                                                   <span className="flex-shrink-0 h-4 w-4 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] font-bold">1</span>
+                                                   <span className="text-xs text-slate-700">Scan the QR code or copy the UPI ID to pay <strong className="text-slate-900 font-bold">₹{subtotal + shippingCost}</strong>.</span>
                                                </li>
-                                               <li className="flex gap-4 items-start">
-                                                   <span className="flex-shrink-0 h-7 w-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xs font-black shadow-lg shadow-indigo-200">2</span>
-                                                   <span className="text-sm font-medium text-slate-700 leading-relaxed pt-1">Take a clear screenshot of the successful transaction page.</span>
+                                               <li className="flex gap-2 items-start">
+                                                   <span className="flex-shrink-0 h-4 w-4 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] font-bold">2</span>
+                                                   <span className="text-xs text-slate-700">Take a clear screenshot of the successful transaction page.</span>
                                                </li>
-                                               <li className="flex gap-4 items-start">
-                                                   <span className="flex-shrink-0 h-7 w-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xs font-black shadow-lg shadow-indigo-200">3</span>
-                                                   <span className="text-sm font-medium text-slate-700 leading-relaxed pt-1">Click the copy icon for WhatsApp and send the screenshot to us.</span>
+                                               <li className="flex gap-2 items-start">
+                                                   <span className="flex-shrink-0 h-4 w-4 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] font-bold">3</span>
+                                                   <span className="text-xs text-slate-700">Click the copy icon for WhatsApp and send the screenshot to us.</span>
                                                </li>
                                            </ul>
                                        </div>

@@ -56,7 +56,8 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }];
 
     try {
-      await setDoc(doc(db, 'Customers', user.id, 'wishlist', 'items'), { items: updatedWishlist });
+      const dataToSave = JSON.parse(JSON.stringify({ items: updatedWishlist }));
+      await setDoc(doc(db, 'Customers', user.id, 'wishlist', 'items'), dataToSave);
       toast.success('Added to wishlist');
     } catch (error) {
       console.error('Error adding to wishlist:', error);
@@ -67,7 +68,8 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const removeFromWishlist = async (productId: string) => {
     if (!user || !user.id) return;
     const updatedWishlist = wishlist.filter((item) => item.productId !== productId);
-    await setDoc(doc(db, 'Customers', user.id, 'wishlist', 'items'), { items: updatedWishlist });
+    const dataToSave = JSON.parse(JSON.stringify({ items: updatedWishlist }));
+    await setDoc(doc(db, 'Customers', user.id, 'wishlist', 'items'), dataToSave);
     toast.success('Removed from wishlist');
   };
 
