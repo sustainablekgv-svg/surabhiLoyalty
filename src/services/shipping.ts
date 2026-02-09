@@ -36,6 +36,24 @@ const EXTRA_PER_KG_AFTER_5KG: Record<string, number> = {
     'A': 40, 'B': 45, 'C': 50, 'D': 55, 'E': 60
 };
 
+export const parseWeightToKg = (weightStr: string): number => {
+    if (!weightStr) return 0.5; // Default
+    const lower = weightStr.toLowerCase().trim();
+    const value = parseFloat(lower.replace(/[^0-9.]/g, ''));
+    
+    if (isNaN(value)) return 0.5;
+
+    if (lower.includes('kg') || lower.includes('liter') || lower.includes('litre') || lower.includes('l')) {
+        return value;
+    }
+    if (lower.includes('g') || lower.includes('ml')) {
+        return value / 1000;
+    }
+    
+    // Default assumption if no unit found but value exists (assume kg if small, g if large? Safe to assume kg or 1 unit)
+    return value; 
+};
+
 export const calculateShippingCost = (totalWeightKg: number, state: string, config?: ShippingConfig): number => {
     const zones = config?.zones || SHIPPING_ZONES;
     const rateTable = config?.rateTable || RATE_TABLE;

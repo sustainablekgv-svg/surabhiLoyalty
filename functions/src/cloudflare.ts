@@ -42,7 +42,7 @@ export const createR2UploadUrl = functions.https.onCall({
         'https://www.sustainablekgv.com'
     ]
 }, async (request) => {
-  console.log("createR2UploadUrl called with data:", request.data);
+  // console.log("createR2UploadUrl called with data:", request.data);
 
   if (!request.auth) {
     console.warn("Unauthenticated attempt");
@@ -72,7 +72,7 @@ export const createR2UploadUrl = functions.https.onCall({
       const sanitizedFolder = folder.replace(/[^a-zA-Z0-9-_]/g, ''); 
       const key = `${sanitizedFolder}/${Date.now()}-${sanitizedFilename}`;
 
-      console.log(`Generating signed URL for key: ${key}, contentType: ${contentType}`);
+      // console.log(`Generating signed URL for key: ${key}, contentType: ${contentType}`);
 
       const command = new PutObjectCommand({
         Bucket: bucketName,
@@ -147,7 +147,7 @@ export const deleteImageFromR2 = functions.https.onCall({
             throw new functions.https.HttpsError('invalid-argument', 'Could not determine file key');
         }
 
-        console.log(`Deleting object from R2: ${targetKey}`);
+        // console.log(`Deleting object from R2: ${targetKey}`);
 
         const command = new DeleteObjectCommand({
             Bucket: bucketName,

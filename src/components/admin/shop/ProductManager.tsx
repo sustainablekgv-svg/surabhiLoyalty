@@ -4,16 +4,19 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { MultiImageUpload } from '@/components/ui/multi-image-upload';
 import { PreviewableImage } from '@/components/ui/previewable-image';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Textarea } from '@/components/ui/textarea';
+import { db } from '@/lib/firebase';
 import { isValidImageUrl } from '@/lib/image-utils';
-import { deleteImageFromR2, uploadImageToR2 } from '@/services/cloudflare';
+import { deleteImageFromR2 } from '@/services/cloudflare';
 import { createProduct, deleteProduct, getBrands, getCategories, getProducts, initializeDisplayOrder, reorderProduct, updateProduct } from '@/services/shop';
 import { Brand, Category, Product } from '@/types/shop';
-import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Trash2, Upload } from 'lucide-react';
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Trash2 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -25,6 +28,7 @@ export const ProductManager = () => {
 
     const [brands, setBrands] = useState<Brand[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
+    const [origins, setOrigins] = useState<{id: string, name: string}[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterBrandId, setFilterBrandId] = useState<string>('all');
@@ -43,9 +47,9 @@ export const ProductManager = () => {
     
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-    const [uploading, setUploading] = useState(false);
 
     // Form State
+
     const [formData, setFormData] = useState({
         name: '',
         description: '',
@@ -56,17 +60,19 @@ export const ProductManager = () => {
         stock: '',
         category: '',
         brandId: '',
-        imageUrl: '',
+        images: [] as string[],
         freeShipping: false,
         variantType: '',
         isVisible: true,
         spv: '',
-        trackInventory: false
+        trackInventory: false,
+        placeOfOrigin: ''
     });
 
     const fetchData = async () => {
         setLoading(true);
         try {
+            // Fetch brands and categories if empty
             if (brands.length === 0 || categories.length === 0) {
                  const [fetchedBrands, fetchedCategories] = await Promise.all([
                     getBrands(),
@@ -75,6 +81,11 @@ export const ProductManager = () => {
                 setBrands(fetchedBrands);
                 setCategories(fetchedCategories.categories);
             }
+            
+            // Fetch Origins
+            const originsSnapshot = await getDocs(query(collection(db, 'origins'), orderBy('name')));
+            const fetchedOrigins = originsSnapshot.docs.map(d => ({ id: d.id, name: d.data().name }));
+            setOrigins(fetchedOrigins);
 
             // Fetch ALL active/inactive products (limit 1000)
             const result = await getProducts({ includeInactive: true, sort: 'order' }, null, 1000);
@@ -149,21 +160,7 @@ export const ProductManager = () => {
         setPage(1);
     }, [searchTerm, filterBrandId]);
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        setUploading(true);
-        try {
-            const url = await uploadImageToR2(file, 'products');
-            setFormData(prev => ({ ...prev, imageUrl: url }));
-            toast.success("Image uploaded");
-        } catch (error: any) {
-            toast.error(error.message || "Upload failed");
-        } finally {
-            setUploading(false);
-        }
-    };
+    // Image upload is now handled by MultiImageUpload component
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -178,7 +175,11 @@ export const ProductManager = () => {
             if (!formData.name?.trim()) { toast.error("Product name is required"); return; }
             if (!formData.description?.trim()) { toast.error("Description is required"); return; }
             if (!formData.brandId) { toast.error("Brand is required"); return; }
+            if (!formData.brandId) { toast.error("Brand is required"); return; }
             if (!formData.category) { toast.error("Category is required"); return; }
+            
+            if (!formData.weight?.trim()) { toast.error("Weight is required"); return; }
+            if (!formData.placeOfOrigin?.trim()) { toast.error("Place of Origin is required"); return; }
             
             if (!formData.weight?.trim()) { toast.error("Weight is required"); return; }
             if (!formData.unitsOfMeasure) { toast.error("Unit of measure is required"); return; }
@@ -194,8 +195,8 @@ export const ProductManager = () => {
             if (isNaN(stock) || stock < 0) { toast.error("Stock cannot be negative"); return; }
             if (isNaN(spv) || spv < 0) { toast.error("SPV cannot be negative"); return; }
 
-            if (!formData.imageUrl && !editingProduct?.images?.length) { 
-                toast.error("Product image is required"); 
+            if (!formData.images || formData.images.length === 0) { 
+                toast.error("At least one product image is required"); 
                 return; 
             }
 
@@ -211,22 +212,28 @@ export const ProductManager = () => {
                 categoryName: categoryName,
                 brandId: formData.brandId,
                 brandName: brandName,
-                images: formData.imageUrl ? [formData.imageUrl] : (editingProduct?.images || []),
+                images: formData.images,
                 freeShipping: formData.freeShipping,
                 variantType: formData.variantType,
                 isVisible: formData.isVisible,
                 isActive: true,
                 spv,
-                trackInventory: formData.trackInventory
+                trackInventory: formData.trackInventory,
+                placeOfOrigin: formData.placeOfOrigin
             };
 
             if (editingProduct) {
-                // Check if image has changed and delete old one
-                const oldImage = editingProduct.images?.[0];
-                const newImage = productData.images?.[0];
+                // Delete images that were removed
+                const oldImages = editingProduct.images || [];
+                const newImages = productData.images || [];
+                const removedImages = oldImages.filter(img => !newImages.includes(img));
                 
-                if (oldImage && newImage && oldImage !== newImage) {
-                    await deleteImageFromR2(oldImage);
+                for (const img of removedImages) {
+                    try {
+                        await deleteImageFromR2(img);
+                    } catch (error) {
+                        console.error('Failed to delete old image:', error);
+                    }
                 }
 
                 await updateProduct(editingProduct.id, productData);
@@ -303,12 +310,13 @@ export const ProductManager = () => {
             stock: '',
             category: '',
             brandId: '',
-            imageUrl: '',
+            images: [],
             freeShipping: false,
             spv:'',
             variantType: '',
             isVisible: true,
-            trackInventory: false
+            trackInventory: false,
+            placeOfOrigin: ''
         });
     };
 
@@ -324,12 +332,13 @@ export const ProductManager = () => {
             stock: product.stock.toString(),
             category: product.categoryName || product.categoryId || '',
             brandId: product.brandId || '',
-            imageUrl: product.images?.[0] || '',
+            images: product.images || [],
             freeShipping: product.freeShipping || false,
             variantType: product.variantType || '',
             isVisible: product.isVisible ?? true,
             spv: product.spv?.toString() || '',
-            trackInventory: product.trackInventory || false
+            trackInventory: product.trackInventory || false,
+            placeOfOrigin: product.placeOfOrigin || ''
         });
         setIsDialogOpen(true);
     };
@@ -422,7 +431,11 @@ export const ProductManager = () => {
                             </div>
                             <div className="space-y-2">
                                 <Label>Description</Label>
-                                <Textarea required value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
+                                <RichTextEditor 
+                                    value={formData.description} 
+                                    onChange={value => setFormData({ ...formData, description: value })} 
+                                    placeholder="Product description..."
+                                />
                             </div>
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
@@ -531,30 +544,15 @@ export const ProductManager = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Product Image</Label>
-                                <div className="flex items-center gap-4">
-                                    {isValidImageUrl(formData.imageUrl) && (
-                                        <PreviewableImage src={formData.imageUrl} alt="Preview" className="h-16 w-16 object-cover border rounded" />
-                                    )}
-                                    <div className="relative flex-1">
-                                        <Input
-                                            type="file"
-                                            className="hidden"
-                                            id="product-image-upload"
-                                            accept="image/*"
-                                            onChange={handleImageUpload}
-                                            disabled={uploading}
-                                        />
-                                        <Label htmlFor="product-image-upload" className="cursor-pointer block w-full">
-                                            <div className="flex items-center justify-center gap-2 border-2 border-dashed px-4 py-8 rounded-md hover:bg-gray-50 text-gray-500">
-                                                <Upload className="h-6 w-6" />
-                                                <span>{uploading ? 'Uploading...' : 'Click to Upload Image'}</span>
-                                            </div>
-                                        </Label>
-                                    </div>
-                                </div>
+                                <Label>Product Images</Label>
+                                <MultiImageUpload
+                                    images={formData.images}
+                                    onChange={(images) => setFormData(prev => ({ ...prev, images }))}
+                                    folder="products"
+                                    maxImages={10}
+                                />
                             </div>
-                            <Button type="submit" className="w-full" disabled={uploading}>
+                            <Button type="submit" className="w-full">
                                 {editingProduct ? 'Update' : 'Create'} Product
                             </Button>
                         </form>

@@ -2,7 +2,7 @@ import { useImagePreview } from '@/contexts/ImagePreviewContext';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { Button } from './button';
-import { DialogContent, DialogOverlay, DialogPortal } from './dialog';
+import { DialogOverlay, DialogPortal } from './dialog';
 
 export const ImagePreviewModal = () => {
   const { isOpen, src, alt, closePreview } = useImagePreview();
@@ -13,7 +13,7 @@ export const ImagePreviewModal = () => {
     <DialogPrimitive.Root open={isOpen} onOpenChange={(open) => !open && closePreview()}>
       <DialogPortal>
         <DialogOverlay className="bg-black/80 backdrop-blur-sm z-[9999]" />
-        <DialogContent className="max-w-[90vw] max-h-[90vh] w-auto h-auto p-0 border-none bg-transparent shadow-none z-[10000] flex justify-center items-center">
+        <DialogPrimitive.Content className="fixed left-[50%] top-[50%] z-[10000] translate-x-[-50%] translate-y-[-50%] focus:outline-none">
             <div className="relative">
                 <Button 
                     variant="ghost" 
@@ -30,7 +30,7 @@ export const ImagePreviewModal = () => {
                     onClick={(e) => e.stopPropagation()}
                 />
             </div>
-        </DialogContent>
+        </DialogPrimitive.Content>
       </DialogPortal>
     </DialogPrimitive.Root>
   );

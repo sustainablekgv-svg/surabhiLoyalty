@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/auth-context';
 import { useShop } from '@/hooks/shop-context';
 import { addAddress, getAddresses } from '@/lib/addressService';
-import { calculateShippingCost, getZoneForState, INDIAN_STATES } from '@/services/shipping';
+import { calculateShippingCost, getZoneForState, INDIAN_STATES, parseWeightToKg } from '@/services/shipping';
 import { Address } from '@/types/shop';
 import { ArrowLeft, Loader2, Plus, ShoppingCart, Truck } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -80,8 +80,9 @@ const CheckoutPage = () => {
       // Use 'as any' for now if CartItem isn't updated yet, but I should update CartItem too.
       if (item.freeShipping) return sum;
 
-      // Assuming 0.5kg default weight if not available
-      return sum + (0.5 * item.quantity); 
+      // Use the helper to parse string weights like '500g', '1kg'
+      const weight = parseWeightToKg(item.weight || '0.5kg');
+      return sum + (weight * item.quantity); 
   }, 0);
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -455,6 +456,35 @@ const CheckoutPage = () => {
                                Online Payment (Razorpay)
                            </Button>
                        </div>
+                       
+                       {paymentMethod === 'online' && (
+                           <div className="mt-6 border-t pt-4">
+                               <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-4">
+                                   <h3 className="font-semibold text-blue-800 mb-2">Scan & Pay via UPI</h3>
+                                   <div className="flex flex-col md:flex-row gap-6 items-center">
+                                       <div className="bg-white p-2 rounded shadow-sm border">
+                                           {/* Placeholder for QR Code - User needs to provide actual image path or generating logic */}
+                                           <img src="/qr-code.jpeg" alt="Payment QR Code" className="h-48 w-48 object-contain" 
+                                                onError={(e) => {
+                                                    e.currentTarget.src = 'https://placehold.co/200x200?text=QR+Code';
+                                                }}
+                                           />
+                                       </div>
+                                       <div className="space-y-2 text-sm text-gray-700">
+                                           <p><span className="font-semibold">UPI ID:</span> <span className="font-mono bg-white px-2 py-0.5 rounded border">sustainablekgv@okicici</span></p>
+                                           <p><span className="font-semibold">WhatsApp:</span> <span className="font-mono bg-white px-2 py-0.5 rounded border">9606979530</span></p>
+                                           <div className="bg-white p-3 rounded border text-xs text-gray-600 space-y-1 mt-2">
+                                               <p className="font-semibold text-gray-800">Instructions:</p>
+                                               <p>1. Scan the QR code or use the UPI ID to pay <strong>₹{subtotal + shippingCost}</strong>.</p>
+                                               <p>2. Take a screenshot of the successful payment.</p>
+                                               <p>3. Send the screenshot to the WhatsApp number above.</p>
+                                               <p>4. Your order will be confirmed after verification.</p>
+                                           </div>
+                                       </div>
+                                   </div>
+                               </div>
+                           </div>
+                       )}
                    </CardContent>
                </Card>
            </div>

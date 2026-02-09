@@ -53,7 +53,7 @@ class ErrorBoundary extends Component<{ children: ReactNode; name: string }, { h
 
 const AdminDashboard = () => {
   const { user, logout, isLoading: authLoading } = useAuth();
-  console.log('AdminDashboard Render. User:', user?.role, user?.id);
+  // console.log('AdminDashboard Render. User:', user?.role, user?.id);
   // console.log('THe user data is', user);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');

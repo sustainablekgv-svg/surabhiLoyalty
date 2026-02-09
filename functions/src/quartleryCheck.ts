@@ -69,6 +69,6 @@ export const checkQuarterlyCriteria = functions.scheduler.onSchedule(
     });
 
     await Promise.all(updates);
-    console.log('Quarterly eligibility check completed');
+    // console.log('Quarterly eligibility check completed');
   }
 );

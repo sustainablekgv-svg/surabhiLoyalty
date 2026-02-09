@@ -53,17 +53,17 @@ const corsConfiguration = {
 
 async function configureCORS() {
     try {
-        console.log(`\n🔧 Configuring CORS for bucket: ${bucketName}\n`);
+        // console.log(`\n🔧 Configuring CORS for bucket: ${bucketName}\n`);
 
         // First, try to get current CORS configuration
         try {
             const getCurrentCors = new GetBucketCorsCommand({ Bucket: bucketName });
             const currentCors = await client.send(getCurrentCors);
-            console.log('📋 Current CORS configuration:');
-            console.log(JSON.stringify(currentCors.CORSRules, null, 2));
+            // console.log('📋 Current CORS configuration:');
+            // console.log(JSON.stringify(currentCors.CORSRules, null, 2));
         } catch (error) {
             if (error.name === 'NoSuchCORSConfiguration') {
-                console.log('📋 No existing CORS configuration found.');
+                // console.log('📋 No existing CORS configuration found.');
             } else {
                 console.warn('⚠️  Could not retrieve current CORS:', error.message);
             }
@@ -77,14 +77,14 @@ async function configureCORS() {
 
         await client.send(command);
 
-        console.log('\n✅ CORS configuration updated successfully!\n');
-        console.log('📝 New CORS rules:');
-        console.log(JSON.stringify(corsConfiguration.CORSRules, null, 2));
-        console.log('\n✨ Your R2 bucket is now configured to accept uploads from:');
+        // console.log('\n✅ CORS configuration updated successfully!\n');
+        // console.log('📝 New CORS rules:');
+        // console.log(JSON.stringify(corsConfiguration.CORSRules, null, 2));
+        // console.log('\n✨ Your R2 bucket is now configured to accept uploads from:');
         corsConfiguration.CORSRules[0].AllowedOrigins.forEach(origin => {
-            console.log(`   - ${origin}`);
+            // console.log(`   - ${origin}`);
         });
-        console.log('\n');
+        // console.log('\n');
 
     } catch (error) {
         console.error('\n❌ Error configuring CORS:', error);

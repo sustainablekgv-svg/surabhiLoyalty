@@ -1,7 +1,6 @@
 import {
     ArrowRight,
     CheckCircle,
-    ExternalLink,
     Heart,
     LogIn,
     Phone,
@@ -203,17 +202,55 @@ const LandingPage = () => {
               ))}
             </div>
 
-            {/* For more info link */}
-            <div className="text-center mt-8">
-              <a
-                href="https://docs.google.com/document/d/1WFKRRGu4G5AWeK9ch6rvw_4dnmsaFwHO0BEu2fYK0HA/edit?usp=sharing"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200"
-              >
-                For more info, click here
-                <ExternalLink className="h-4 w-4" />
-              </a>
+            {/* Coins Image and Milestones */}
+            <div className="flex flex-col items-center mt-12 space-y-8">
+              <div className="relative w-full max-w-sm mx-auto rounded-xl overflow-hidden shadow-xl hover:shadow-2xl transition-shadow duration-300">
+                <img
+                  src="/coins.jpeg"
+                  alt="Surabhi Coins and Seva Coins"
+                  className="w-full h-auto object-cover"
+                />
+              </div>
+
+              <div className="max-w-4xl mx-auto text-center space-y-8 bg-white/50 backdrop-blur-sm p-8 rounded-2xl border border-purple-100">
+                <div className="space-y-4">
+                  <h3 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-700 to-amber-600 bg-clip-text text-transparent">
+                    The 7 Milestones of SLL – Surabhi Loyalty League
+                  </h3>
+                  <p className="text-gray-600 italic">
+                    ✨ These 7 milestones are inspired by the Saptagiri — the sacred 7 Hills of Tirumala, symbolising spiritual ascent and commitment.
+                  </p>
+                </div>
+
+                <div className="space-y-6">
+                  <h4 className="text-xl font-bold text-gray-800 flex items-center justify-center gap-2">
+                    <span className="text-2xl">🏔️</span> 
+                    SLL Milestones (Lifetime Surabhi Coins)
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-left max-w-3xl mx-auto">
+                    {[
+                      { name: 'Seshadrian', coins: '5,001' },
+                      { name: 'Neeladrian', coins: '10,001' },
+                      { name: 'Garudadrian', coins: '20,001' },
+                      { name: 'Anjanadrian', coins: '40,001' },
+                      { name: 'Vrushabadrian', coins: '60,001' },
+                      { name: 'Narayanadrian', coins: '80,001' },
+                      { name: 'Venkatadrian', coins: '1,00,001' },
+                    ].map((milestone, idx) => (
+                      <div key={idx} className="bg-white p-3 rounded-lg shadow-sm border border-purple-100 flex items-center justify-between hover:scale-105 transition-transform">
+                        <span className="font-semibold text-purple-700">{milestone.name}</span>
+                        <span className="font-bold text-amber-600">{milestone.coins} Coins</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="text-gray-700 font-medium pt-4 flex items-center justify-center gap-2">
+                    <span className="text-2xl">🙏</span>
+                    Each milestone reflects progress, dedication, and seva — just as one ascends the sacred hills to seek the darshan of the Lord.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

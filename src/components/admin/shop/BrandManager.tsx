@@ -3,15 +3,16 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { MultiImageUpload } from '@/components/ui/multi-image-upload';
 import { PreviewableImage } from '@/components/ui/previewable-image';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Textarea } from '@/components/ui/textarea';
 import { isValidImageUrl } from '@/lib/image-utils';
-import { deleteImageFromR2, uploadImageToR2 } from '@/services/cloudflare';
+import { deleteImageFromR2 } from '@/services/cloudflare';
 import { createBrand, deleteBrand, getBrands, getCategories, initializeDisplayOrder, reorderBrand, updateBrand } from '@/services/shop';
 import { Brand, Category } from '@/types/shop';
-import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Search, Trash2, Upload } from 'lucide-react';
+import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Search, Trash2 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -29,13 +30,12 @@ export const BrandManager = () => {
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
-    const [uploading, setUploading] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
         name: '',
         description: '',
-        logo: '',
+        images: [] as string[],
         categoryId: '',
         categoryIds: [] as string[]
     });
@@ -90,21 +90,7 @@ export const BrandManager = () => {
 
 
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        setUploading(true);
-        try {
-            const url = await uploadImageToR2(file, 'brands');
-            setFormData(prev => ({ ...prev, logo: url }));
-            toast.success("Logo uploaded");
-        } catch (error: any) {
-            toast.error(error.message || "Upload failed");
-        } finally {
-            setUploading(false);
-        }
-    };
+    // Image upload is now handled by MultiImageUpload component
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -119,8 +105,8 @@ export const BrandManager = () => {
             return;
         }
 
-        if (!formData.logo && (!editingBrand || !editingBrand.logo)) {
-             toast.error("Brand logo is required");
+        if (!formData.images || formData.images.length === 0) {
+             toast.error("At least one brand image is required");
              return;
         }
 
@@ -128,7 +114,8 @@ export const BrandManager = () => {
             const brandData: any = {
                 name: formData.name.trim(),
                 description: formData.description,
-                logo: formData.logo || (editingBrand?.logo || ''),
+                logo: formData.images[0], // Primary image for backward compatibility
+                images: formData.images, // All images
                 isActive: true,
                 categoryId: formData.categoryIds[0], // Primary category for legacy support
                 categoryIds: formData.categoryIds,
@@ -136,11 +123,17 @@ export const BrandManager = () => {
             };
 
             if (editingBrand) {
-                const oldLogo = editingBrand.logo;
-                const newLogo = brandData.logo;
+                // Delete images that were removed
+                const oldImages = editingBrand.images || (editingBrand.logo ? [editingBrand.logo] : []);
+                const newImages = brandData.images || [];
+                const removedImages = oldImages.filter(img => !newImages.includes(img));
                 
-                if (oldLogo && newLogo && oldLogo !== newLogo) {
-                    await deleteImageFromR2(oldLogo);
+                for (const img of removedImages) {
+                    try {
+                        await deleteImageFromR2(img);
+                    } catch (error) {
+                        console.error('Failed to delete old image:', error);
+                    }
                 }
                 
                 await updateBrand(editingBrand.id, brandData);
@@ -163,8 +156,14 @@ export const BrandManager = () => {
     const handleDelete = async (brand: Brand) => {
         if (!confirm('Are you sure? Deleting a brand might affect products linked to it.')) return;
         try {
-            if (brand.logo) {
-                await deleteImageFromR2(brand.logo);
+            // Delete all images
+            const imagesToDelete = brand.images || (brand.logo ? [brand.logo] : []);
+            for (const img of imagesToDelete) {
+                try {
+                    await deleteImageFromR2(img);
+                } catch (error) {
+                    console.error('Failed to delete image:', error);
+                }
             }
             await deleteBrand(brand.id);
             toast.success('Brand deleted');
@@ -214,7 +213,7 @@ export const BrandManager = () => {
         setFormData({
             name: '',
             description: '',
-            logo: '',
+            images: [],
             categoryId: '',
             categoryIds: []
         });
@@ -225,7 +224,7 @@ export const BrandManager = () => {
         setFormData({
             name: brand.name,
             description: brand.description || '',
-            logo: brand.logo || '',
+            images: brand.images || (brand.logo ? [brand.logo] : []),
             categoryId: brand.categoryId || '',
             categoryIds: brand.categoryIds || (brand.categoryId ? [brand.categoryId] : [])
         });
@@ -269,11 +268,11 @@ export const BrandManager = () => {
                     </DialogTrigger>
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
-                            <Button variant="outline" title="Fix missing orders" className="ml-2">
+                            <Button variant="outline" className="ml-2">
                                 <ListOrdered className="h-4 w-4" />
                             </Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent>
+                        <AlertDialogContent>     
                             <AlertDialogHeader>
                                 <AlertDialogTitle>Initialize Brand Order?</AlertDialogTitle>
                                 <AlertDialogDescription>
@@ -325,33 +324,22 @@ export const BrandManager = () => {
                             </div>
                             <div className="space-y-2">
                                 <Label>Description</Label>
-                                <Textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
+                                <RichTextEditor 
+                                    value={formData.description} 
+                                    onChange={value => setFormData({ ...formData, description: value })}
+                                    placeholder="Brand description..." 
+                                />
                             </div>
                             <div className="space-y-2">
-                                <Label>Logo</Label>
-                                <div className="flex items-center gap-4">
-                                    {isValidImageUrl(formData.logo) && (
-                                        <PreviewableImage src={formData.logo} alt="Preview" className="h-12 w-12 object-contain border rounded" />
-                                    )}
-                                    <div className="relative">
-                                        <Input
-                                            type="file"
-                                            className="hidden"
-                                            id="brand-logo-upload"
-                                            accept="image/*"
-                                            onChange={handleImageUpload}
-                                            disabled={uploading}
-                                        />
-                                        <Label htmlFor="brand-logo-upload" className="cursor-pointer">
-                                            <div className="flex items-center gap-2 border px-3 py-2 rounded-md hover:bg-gray-50">
-                                                <Upload className="h-4 w-4" />
-                                                <span>{uploading ? 'Uploading...' : 'Upload Logo'}</span>
-                                            </div>
-                                        </Label>
-                                    </div>
-                                </div>
+                                <Label>Brand Images</Label>
+                                <MultiImageUpload
+                                    images={formData.images}
+                                    onChange={(images) => setFormData(prev => ({ ...prev, images }))}
+                                    folder="brands"
+                                    maxImages={10}
+                                />
                             </div>
-                            <Button type="submit" className="w-full" disabled={uploading}>
+                            <Button type="submit" className="w-full">
                                 {editingBrand ? 'Update' : 'Create'} Brand
                             </Button>
                         </form>
@@ -388,17 +376,17 @@ export const BrandManager = () => {
                                     <TableCell className="max-w-xs truncate">{brand.description}</TableCell>
                                     <TableCell>
                                         <div className="flex gap-2">
-                                            <Button size="icon" variant="ghost" onClick={() => handleEdit(brand)}>
+                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(brand)}>
                                                 <Edit className="h-4 w-4" />
                                             </Button>
-                                            <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => handleDelete(brand)}>
+                                            <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600" onClick={() => handleDelete(brand)}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                             <div className="flex flex-col gap-0.5">
-                                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleReorder(brand, 'up')}>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleReorder(brand, 'up')}>
                                                     <ArrowUp className="h-3 w-3" />
                                                 </Button>
-                                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleReorder(brand, 'down')}>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleReorder(brand, 'down')}>
                                                     <ArrowDown className="h-3 w-3" />
                                                 </Button>
                                             </div>
@@ -413,23 +401,13 @@ export const BrandManager = () => {
 
             {/* Pagination Controls */}
              <div className="flex items-center justify-between px-2">
-                <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={loadPrev} 
-                    disabled={page <= 1 || loading}
-                >
+                <Button variant="outline" size="sm" onClick={loadPrev} disabled={page <= 1 || loading}>
                     Previous
                 </Button>
                 <div className="text-sm text-gray-500">
                     Page {page}
                 </div>
-                <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={loadNext} 
-                    disabled={!hasMore || loading}
-                >
+                <Button variant="outline" size="sm" onClick={loadNext} disabled={!hasMore || loading}>
                     Next
                 </Button>
             </div>

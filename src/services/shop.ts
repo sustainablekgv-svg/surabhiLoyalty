@@ -104,6 +104,10 @@ export const getProducts = async (
         constraints.push(orderBy('sellingPrice', 'asc'));
     } else if (filters?.sort === 'price_desc') {
         constraints.push(orderBy('sellingPrice', 'desc'));
+    } else if (filters?.sort === 'spv_asc') {
+        constraints.push(orderBy('spv', 'asc'));
+    } else if (filters?.sort === 'spv_desc') {
+        constraints.push(orderBy('spv', 'desc'));
     } else if (filters?.sort === 'order') {
         constraints.push(orderBy('displayOrder', 'asc'));
     } else {

@@ -33,7 +33,7 @@ import StaffDashboard from './pages/staff/Dashboard';
 const queryClient = new QueryClient();
 
 const App = () => {
-  console.log('App Rendering');
+  // console.log('App Rendering');
   return (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
