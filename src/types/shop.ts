@@ -22,13 +22,15 @@ export interface Product {
     updatedAt: any; // Firestore Timestamp
     spv?: number; // Sales Point Value
     trackInventory?: boolean;
+    placeOfOrigin?: string;
 }
 
 export interface Brand {
     id: string;
     name: string;
     description?: string;
-    logo: string;
+    logo: string; // @deprecated - use images[0], kept for backward compatibility
+    images?: string[]; // Multiple images support
     categoryId?: string; // @deprecated - use categoryIds
     categoryName?: string; // @deprecated
     categoryIds?: string[]; // New: List of category IDs this brand belongs to
@@ -43,7 +45,8 @@ export interface Category {
     id: string;
     name: string;
     slug: string;
-    image?: string;
+    image?: string; // @deprecated - use images[0], kept for backward compatibility
+    images?: string[]; // Multiple images support
     isActive: boolean;
     displayOrder?: number;
 }
@@ -57,6 +60,9 @@ export interface CartItem {
     maxStock: number;
     freeShipping?: boolean;
     spv?: number;
+    placeOfOrigin?: string;
+    weight?: string;
+    unitsOfMeasure?: string;
 }
 
 export interface WishlistItem {
@@ -73,7 +79,7 @@ export interface FilterOptions {
     maxPrice?: number;
     brand?: string;
     inStock?: boolean;
-    sort?: 'price_asc' | 'price_desc' | 'newest' | 'order';
+    sort?: 'price_asc' | 'price_desc' | 'newest' | 'order' | 'spv_asc' | 'spv_desc';
     includeInactive?: boolean;
 }
 

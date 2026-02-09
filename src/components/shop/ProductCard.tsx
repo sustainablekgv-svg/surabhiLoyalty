@@ -21,15 +21,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
   const navigate = useNavigate();
   const isWishlisted = isInWishlist(product.id);
 
-  // Inventory Logic: If trackInventory is false (or undefined per legacy), we ignore stock check for adding to cart
-  const trackInventory = product.trackInventory === true; // Default false if undefined, as per user request for NEW behavior.
-  // Actually, user said "False by default".
-  
+  // Inventory Logic: If trackInventory is false (or undefined), we ignore stock check
+  // Default to false if undefined, to match the "optional" nature if not strictly enforced elsewhere, 
+  // but usually we want it to be explicit. The requirement is "defaulting to false".
+  // If product.trackInventory is undefined, it's effectively false.
+  const trackInventory = product.trackInventory === true;
   const isOutOfStock = trackInventory && product.stock <= 0;
-  const canAddToCart = !isOutOfStock;
+  const canAddToCart = !trackInventory || !isOutOfStock;
 
   return (
-    <Card className="group overflow-hidden border-0 bg-transparent shadow-none hover:shadow-lg transition-all duration-300 rounded-xl bg-white">
+    <Card className="group overflow-hidden border-0 bg-transparent shadow-none hover:shadow-lg transition-all duration-300 rounded-xl bg-white flex flex-col h-full">
 
       <div className="relative aspect-square overflow-hidden bg-gray-100 cursor-pointer" onClick={() => navigate(`/shop/product/${product.id}`)}>
         {isValidImageUrl(product.images?.[0]) ? (
@@ -68,43 +69,53 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
           )}
         </Button>
       </div>
-      <CardContent className="p-4">
+      
+      <CardContent className="p-4 flex-1 flex flex-col">
         <div 
           className="mb-2 text-sm text-gray-600 cursor-pointer hover:underline font-medium"
           onClick={() => navigate(`/shop?category=${product.categoryName}`)}
         >
           {product.categoryName}
         </div>
+        
         <h3 
-          className="font-semibold leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors mb-2 text-gray-900"
+          className="font-semibold leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors mb-2 text-gray-900 min-h-[2.5rem]"
           onClick={() => navigate(`/shop/product/${product.id}`)}
+          title={product.name}
         >
           {product.name}
         </h3>
-        <div className="flex items-center gap-2">
-          {product.sellingPrice && product.sellingPrice < product.price ? (
-            <>
-              <span className="font-bold text-lg text-gray-900">₹{product.sellingPrice}</span>
-              <span className="text-sm text-gray-500 line-through">₹{product.price}</span>
-            </>
-          ) : (
-            <span className="font-bold text-lg">₹{product.price}</span>
-          )}
-        </div>
         
-        {/* Product Details (Weight / SPV) */}
-        <div className="flex items-center gap-2 mt-1 flex-wrap">
-          {product.weight && (
-             <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-               {product.weight} {product.unitsOfMeasure}
-             </span>
-          )}
+        <div className="mt-auto">
+          <div className="flex items-center flex-wrap gap-2 mb-2">
+            {product.sellingPrice && product.sellingPrice < product.price ? (
+              <>
+                <span className="font-bold text-lg text-gray-900">₹{product.sellingPrice}</span>
+                <span className="text-sm text-gray-500 line-through">₹{product.price}</span>
+              </>
+            ) : (
+              <span className="font-bold text-lg">₹{product.price}</span>
+            )}
+            
+            {product.weight && (
+               <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded ml-auto">
+                 {product.weight} {product.unitsOfMeasure === 'pcs' ? 'pc' : product.unitsOfMeasure}
+               </span>
+            )}
+          </div>
           
-          {(product.spv || 0) > 0 && (
-             <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full border border-blue-200">
-               SPV: {product.spv}
+          {/* Rewards Section */}
+          <div className="flex flex-wrap gap-2 mb-3">
+             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+               🪙 {Math.floor(product.sellingPrice || product.price)} Coins
              </span>
-          )}
+             
+             {(product.spv || 0) > 0 && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                  💎 SPV: {product.spv}
+                </span>
+             )}
+          </div>
         </div>
 
       </CardContent>
@@ -115,7 +126,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
           disabled={!canAddToCart}
         >
           <ShoppingCart className="h-4 w-4" />
-          Add to Cart
+          {isOutOfStock ? "Out of Stock" : "Add to Cart"}
         </Button>
       </CardFooter>
     </Card>

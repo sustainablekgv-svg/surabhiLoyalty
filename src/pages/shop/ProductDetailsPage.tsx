@@ -1,7 +1,7 @@
 import { ShopLayout } from '@/components/shop/ShopLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useAuth } from '@/hooks/auth-context';
 import { useShop } from '@/hooks/shop-context';
 import { db } from '@/lib/firebase';
@@ -51,13 +51,8 @@ const ProductDetailsPage = () => {
     if (loading) {
         return (
             <ShopLayout title="Product Details">
-                <div className="grid md:grid-cols-2 gap-8">
-                    <Skeleton className="aspect-square rounded-xl" />
-                    <div className="space-y-4">
-                        <Skeleton className="h-8 w-3/4" />
-                        <Skeleton className="h-6 w-1/4" />
-                        <Skeleton className="h-32 w-full" />
-                    </div>
+                <div className="min-h-[60vh] flex items-center justify-center">
+                    <LoadingSpinner size={48} />
                 </div>
             </ShopLayout>
         );
@@ -144,36 +139,58 @@ const ProductDetailsPage = () => {
                                 </>
                             )}
                         </div>
-                        {(product.spv || 0) > 0 && (
-                            <div className="mt-2">
-                                <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full border border-blue-200">
-                                    SPV: {product.spv}
-                                </span>
-                            </div>
-                        )}
+                        
+                        {/* Rewards Display */}
+                        <div className="mt-4 flex flex-wrap gap-3">
+                             <span className="flex items-center gap-1.5 text-sm font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
+                                🪙 Earn {Math.floor(product.sellingPrice || product.price)} Surabhi Coins
+                             </span>
+
+                            {(product.spv || 0) > 0 && (
+                                <div className="">
+                                    <span className="flex items-center gap-1.5 text-sm font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                                        💎 SPV: {product.spv}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="prose prose-sm text-gray-600 max-w-none">
-                        <p>{product.description}</p>
-                    </div>
+                    <div 
+                        className="prose prose-sm text-gray-600 max-w-none text-justify"
+                        dangerouslySetInnerHTML={{ __html: product.description }}
+                    />
 
                     <div className="grid grid-cols-2 gap-4 text-sm">
                         <div className="p-3 bg-gray-50 rounded-lg">
                             <span className="block text-gray-500 mb-1">Weight</span>
-                            <span className="font-medium">{product.weight || 'N/A'}</span>
+                            <span className="font-medium">
+                                {product.weight || 'N/A'} {product.unitsOfMeasure ? (product.unitsOfMeasure === 'pcs' ? 'pc' : product.unitsOfMeasure) : ''}
+                            </span>
                         </div>
                          <div className="p-3 bg-gray-50 rounded-lg">
                             <span className="block text-gray-500 mb-1">Category</span>
                             <span className="font-medium">{product.categoryName}</span>
                         </div>
-                        <div className="p-3 bg-gray-50 rounded-lg">
-                             <span className="block text-gray-500 mb-1">Stock Status</span>
-                             {product.stock > 0 ? (
-                                <span className="font-medium text-green-600">In Stock </span>
-                             ) : (
-                                <span className="font-medium text-red-600">Out of Stock</span>
-                             )}
-                        </div>
+                        
+                        {/* Only show stock status if tracking is enabled */}
+                        {(product.trackInventory === true) && (
+                            <div className="p-3 bg-gray-50 rounded-lg">
+                                <span className="block text-gray-500 mb-1">Stock Status</span>
+                                {product.stock > 0 ? (
+                                    <span className="font-medium text-green-600">In Stock ({product.stock})</span>
+                                ) : (
+                                    <span className="font-medium text-red-600">Out of Stock</span>
+                                )}
+                            </div>
+                        )}
+                        
+                        {product.placeOfOrigin && (
+                            <div className="p-3 bg-gray-50 rounded-lg">
+                                <span className="block text-gray-500 mb-1">Place of Origin</span>
+                                <span className="font-medium">{product.placeOfOrigin}</span>
+                            </div>
+                        )}
                     </div>
 
                     <div className="pt-6 border-t flex flex-col sm:flex-row gap-4">
@@ -193,7 +210,7 @@ const ProductDetailsPage = () => {
                                 size="icon" 
                                 className="rounded-r-full" 
                                 onClick={increaseQty}
-                                disabled={quantity >= product.stock}
+                                disabled={(product.trackInventory === true) && quantity >= product.stock}
                             >
                                 <Plus className="h-4 w-4" />
                             </Button>
@@ -204,10 +221,10 @@ const ProductDetailsPage = () => {
                                 className="flex-1 gap-2 rounded-full h-10" 
                                 size="lg"
                                 onClick={() => addToCart(product, quantity)}
-                                disabled={product.stock <= 0}
+                                disabled={(product.trackInventory === true) && product.stock <= 0}
                             >
                                 <ShoppingCart className="h-5 w-5" />
-                                {product.stock <= 0 ? "Out of Stock" : "Add to Cart"}
+                                {(product.trackInventory === true) && product.stock <= 0 ? "Out of Stock" : "Add to Cart"}
                             </Button>
                              <Button 
                                 variant={isWishlisted ? "default" : "outline"}

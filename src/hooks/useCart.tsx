@@ -50,8 +50,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (existingItemIndex > -1) {
       const newQuantity = updatedCart[existingItemIndex].quantity + quantity;
-      if (newQuantity > product.stock) {
-        toast.error(`Only ${product.stock} items available in stock`);
+      // Inventory Check Logic
+      const isTrackingInventory = product.trackInventory === true;
+      const maxStock = isTrackingInventory ? product.stock : 999999;
+      
+      if (newQuantity > maxStock) {
+        toast.error(`Only ${maxStock} items available`);
         return false;
       }
       updatedCart[existingItemIndex].quantity = newQuantity;
@@ -62,9 +66,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: product.name,
         price: product.sellingPrice,
         image: product.images[0],
-        maxStock: product.stock,
+        maxStock: product.trackInventory === true ? product.stock : 999999, // High number if not tracking
         freeShipping: product.freeShipping,
         spv: product.spv,
+        placeOfOrigin: product.placeOfOrigin,
+        weight: product.weight,
+        unitsOfMeasure: product.unitsOfMeasure,
       });
     }
 

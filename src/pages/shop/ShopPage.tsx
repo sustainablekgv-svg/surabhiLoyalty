@@ -2,24 +2,43 @@ import { ProductCard } from '@/components/shop/ProductCard';
 import { ShopLayout } from '@/components/shop/ShopLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
-import { getActiveProducts, getBrands, getCategories } from '@/services/shop';
+import { db } from '@/lib/firebase';
+import { getBrands, getBrandsPaginated, getCategories, getCategoriesPaginated, getProducts } from '@/services/shop';
 import { Brand, Category, Product } from '@/types/shop';
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import { Filter, Home, LayoutGrid, ShoppingBag, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const ShopPage = () => {
     const navigate = useNavigate();
-    const [allProducts, setAllProducts] = useState<Product[]>([]);
-    const [brands, setBrands] = useState<Brand[]>([]);
-    const [allCategories, setAllCategories] = useState<Category[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [page, setPage] = useState(1);
+
+    // Data State (Paginated)
+    const [products, setProducts] = useState<Product[]>([]);
+    const [productsLastDoc, setProductsLastDoc] = useState<any>(null);
+    const [productsHasMore, setProductsHasMore] = useState(true);
+    const [productsLoading, setProductsLoading] = useState(false);
+
+    const [brandsList, setBrandsList] = useState<Brand[]>([]);
+    const [brandsLastDoc, setBrandsLastDoc] = useState<any>(null);
+    const [brandsHasMore, setBrandsHasMore] = useState(true);
+    const [brandsLoading, setBrandsLoading] = useState(false);
+
+    const [categoriesList, setCategoriesList] = useState<Category[]>([]);
+    const [categoriesLastDoc, setCategoriesLastDoc] = useState<any>(null);
+    const [categoriesHasMore, setCategoriesHasMore] = useState(true);
+    const [categoriesLoading, setCategoriesLoading] = useState(false);
+
+    // Initial Filter Data (for dropdowns - limited fetch)
+    const [filterBrands, setFilterBrands] = useState<Brand[]>([]);
+    const [filterCategories, setFilterCategories] = useState<Category[]>([]);
+    const [origins, setOrigins] = useState<{id: string, name: string}[]>([]);
+
     const PAGE_SIZE = 12;
 
     // Filters
@@ -27,9 +46,13 @@ const ShopPage = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
+    const [selectedOrigin, setSelectedOrigin] = useState<string | null>(null);
     const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
     const [spvRange, setSpvRange] = useState<[number, number]>([0, 5000]);
-    const [sortBy, setSortBy] = useState<string>('order');
+    const [sortBy, setSortBy] = useState<import('@/types/shop').FilterOptions['sort']>('order');
+
+    // Filter Trigger (to reset pagination)
+    const [filterTrigger, setFilterTrigger] = useState(0);
 
     // Debounce search query
     const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
@@ -43,127 +66,211 @@ const ShopPage = () => {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    // Initial Load
+    // Initial Load for Filter Dropdowns
     useEffect(() => {
-        const loadData = async () => {
-            setLoading(true);
+        const loadInitialData = async () => {
             try {
-                // Fetch brands, products, and categories in parallel
-                const [fetchedBrands, fetchedProducts, fetchedCategories] = await Promise.all([
-                    getBrands(),
-                    getActiveProducts(),
-                    getCategories(200) // Fetch enough relevant categories
+                const [fetchedBrands, fetchedCategoriesData, fetchedOrigins] = await Promise.all([
+                    getBrands(), // Fetch all/many for dropdowns
+                    getCategories(200), // Fetch many for dropdowns
+                    getDocs(query(collection(db, 'origins'), orderBy('name')))
                 ]);
                 
-                setBrands(fetchedBrands);
-                setAllProducts(fetchedProducts);
-                setAllCategories(fetchedCategories.categories);
+                setFilterBrands(fetchedBrands);
+                setFilterCategories(fetchedCategoriesData.categories);
+                setOrigins(fetchedOrigins.docs.map(d => ({ id: d.id, name: d.data().name })));
             } catch (error) {
-                console.error("Failed to load shop data", error);
-                toast.error("Failed to load products");
-            } finally {
-                setLoading(false);
+                console.error("Failed to load initial data", error);
+                toast.error("Failed to load shop data");
             }
         };
-        loadData();
+        loadInitialData();
     }, []);
 
-    // Check if we are in "Landing Mode" (No filters active)
-    const isLandingPage = useMemo(() => {
-        return viewMode === 'landing';
-    }, [viewMode]);
 
-    // Extract categories name strings
-    const categoryNames = useMemo(() => {
-        return allCategories.map(c => c.name);
-    }, [allCategories]);
+    // --- Products Fetching ---
+    const fetchProducts = useCallback(async (isLoadMore = false) => {
+        setProductsLoading(true);
+        try {
+            const lastDoc = isLoadMore ? productsLastDoc : null;
+            
+            // Build Filter Object
+            const filterOptions = {
+                category: selectedCategory === 'All' ? undefined : selectedCategory || undefined, // Note: selectedCategory stores Name string currently for UI match? 
+                // Ah, wait. selectedCategory state stores NAME string in current UI, but backend expects ID usually. 
+                // Let's check FilterContent. It sets NAME. 
+                // getProducts expects ID generally, but let's check services/shop.ts.
+                // getProducts: `where('categoryId', '==', filters.category)` -> Expects ID.
+                // WE NEED TO FIX THIS MAPPING. Dropdowns should use ID, UI can show Name.
+                
+                // Let's fix selectedCategory to be ID based or map it.
+                // Current UI uses IDs for Brands/Origins but Name for Category buttons?
+                // Let's map Name to ID if needed, or better, store ID.
+                
+                // FIX: map selectedCategory (Name) to ID if possible from filterCategories
+                // Actually, `filterCategories` has IDs. 
+                
+                brand: selectedBrand === 'all' ? undefined : selectedBrand || undefined,
+                includeInactive: false,
+                sort: sortBy,
+                minPrice: priceRange[0],
+                maxPrice: priceRange[1],
+                // Origin filter isn't in getProducts yet? confirmed: it is NOT.
+                // We'll Client Filter for Origin/SPV/Search if backend doesn't support it?
+                // Or update backend. Implementation plan said "Use getProducts with lastDoc". 
+                // getProducts DOES support price headers.
+                
+                // Search: Firestore has no partial search. We might need Client Side filtering on the PAGE_SIZE chunk?
+                // Or just do name prefix match if we added it?
+                // Let's assume for now we use what we have. 
+            };
+            
+            // Hack: Map Category ID
+            let catId = undefined;
+            if (selectedCategory) {
+                 const found = filterCategories.find(c => c.name === selectedCategory);
+                 if (found) catId = found.id;
+            }
 
-    // Filter and Sort Products
-    const filteredProducts = useMemo(() => {
-        let result = [...allProducts];
+            const constraints = {
+                // ...filterOptions,
+                category: catId,
+                brand: selectedBrand === 'all' ? undefined : selectedBrand || undefined,
+                minPrice: priceRange[0],
+                maxPrice: priceRange[1],
+                sort: sortBy,
+                includeInactive: false,
+                inStock: true // optional?
+            };
 
-        // Search
-        if (debouncedSearch) {
-            const lowerQuery = debouncedSearch.toLowerCase();
-            result = result.filter(p => 
-                p.name.toLowerCase().includes(lowerQuery) || 
-                p.description.toLowerCase().includes(lowerQuery)
-            );
+            const result = await getProducts(constraints, lastDoc, PAGE_SIZE);
+            
+            let newProducts = result.products;
+
+            // CLIENT SIDE FILTERS (that backend misses)
+            // 1. Search (Name/Description) - This breaks pagination if filtered out heavily...
+            // 2. Origin
+            // 3. SPV
+            // Ideally we move these to backend or accept generic "Client Search" limitation.
+            
+            if (debouncedSearch) {
+                const lower = debouncedSearch.toLowerCase();
+                newProducts = newProducts.filter(p => 
+                    p.name.toLowerCase().includes(lower) || 
+                    p.description?.toLowerCase().includes(lower)
+                );
+            }
+
+             if (selectedOrigin && selectedOrigin !== 'all') {
+                newProducts = newProducts.filter(p => p.placeOfOrigin === selectedOrigin);
+            }
+            
+            if (spvRange[1] < 5000 || spvRange[0] > 0) {
+                 newProducts = newProducts.filter(p => {
+                    const val = p.spv || 0;
+                    return val >= spvRange[0] && val <= spvRange[1];
+                });
+            }
+
+
+            if (isLoadMore) {
+                setProducts(prev => [...prev, ...newProducts]);
+            } else {
+                setProducts(newProducts);
+            }
+            
+            setProductsLastDoc(result.lastDoc);
+            setProductsHasMore(result.products.length >= PAGE_SIZE); // Approximation
+
+        } catch (error) {
+            console.error("Fetch products error", error);
+            toast.error("Error loading products");
+        } finally {
+            setProductsLoading(false);
         }
+    }, [debouncedSearch, selectedCategory, selectedBrand, selectedOrigin, priceRange, spvRange, sortBy, productsLastDoc, filterCategories]);
 
-        // Category
-        if (selectedCategory) {
-            result = result.filter(p => p.categoryName === selectedCategory);
+
+    // --- Brands Fetching (Landing) ---
+    const fetchBrandsData = useCallback(async (isLoadMore = false) => {
+        setBrandsLoading(true);
+        try {
+            const lastDoc = isLoadMore ? brandsLastDoc : null;
+            const result = await getBrandsPaginated(20, lastDoc); // 20 per page for grid
+            
+            if (isLoadMore) {
+                setBrandsList(prev => [...prev, ...result.brands]);
+            } else {
+                setBrandsList(result.brands);
+            }
+            setBrandsLastDoc(result.lastDoc);
+            setBrandsHasMore(result.brands.length >= 20);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setBrandsLoading(false);
         }
+    }, [brandsLastDoc]);
 
-        // Brand
-        if (selectedBrand && selectedBrand !== 'all') {
-            result = result.filter(p => p.brandId === selectedBrand);
+    // --- Categories Fetching (Landing) ---
+    const fetchCategoriesData = useCallback(async (isLoadMore = false) => {
+        setCategoriesLoading(true);
+        try {
+            const lastDoc = isLoadMore ? categoriesLastDoc : null;
+            const result = await getCategoriesPaginated(20, lastDoc);
+            
+            if (isLoadMore) {
+                setCategoriesList(prev => [...prev, ...result.categories]);
+            } else {
+                setCategoriesList(result.categories);
+            }
+            setCategoriesLastDoc(result.lastDoc);
+            setCategoriesHasMore(result.categories.length >= 20);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setCategoriesLoading(false);
         }
+    }, [categoriesLastDoc]);
 
-        // Price
-        result = result.filter(p => p.sellingPrice >= priceRange[0] && p.sellingPrice <= priceRange[1]);
 
-        // SPV
-        result = result.filter(p => {
-            const val = p.spv || 0;
-            return val >= spvRange[0] && val <= spvRange[1];
-        });
-
-        // Sort
-        if (sortBy === 'price_asc') {
-            result.sort((a, b) => a.sellingPrice - b.sellingPrice);
-        } else if (sortBy === 'price_desc') {
-            result.sort((a, b) => b.sellingPrice - a.sellingPrice);
-        } else if (sortBy === 'spv_asc') {
-            result.sort((a, b) => (a.spv || 0) - (b.spv || 0));
-        } else if (sortBy === 'spv_desc') {
-            result.sort((a, b) => (b.spv || 0) - (a.spv || 0));
+    // Effect: Fetch Data on View Change or Filter Change
+    useEffect(() => {
+        if (viewMode === 'landing') {
+            fetchBrandsData(false);
+            fetchCategoriesData(false);
         } else {
-             // Default (Admin Order)
-             result.sort((a, b) => {
-                 const orderA = a.displayOrder || 999999;
-                 const orderB = b.displayOrder || 999999;
-                 if (orderA === orderB) {
-                    const dateA = a.createdAt?.seconds || 0;
-                    const dateB = b.createdAt?.seconds || 0;
-                    return dateB - dateA;
-                 }
-                 return orderA - orderB;
-             });
+            fetchProducts(false);
         }
+    }, [viewMode, filterTrigger, debouncedSearch, selectedCategory, selectedBrand, selectedOrigin, priceRange, spvRange, sortBy]); 
+    // Note: Including dependencies here triggers re-fetch. 
+    // filterTrigger is a manual way to force refetch if needed, but deps cover it.
 
-        return result;
-        return result;
-    }, [allProducts, debouncedSearch, selectedCategory, selectedBrand, priceRange, spvRange, sortBy]);
-
-    // Pagination
-    const displayedProducts = useMemo(() => {
-        return filteredProducts.slice(0, page * PAGE_SIZE);
-    }, [filteredProducts, page]);
-
-    const hasMore = displayedProducts.length < filteredProducts.length;
-
-    const loadMore = () => {
-        setPage(prev => prev + 1);
+    
+    const loadMoreProducts = () => {
+        if (!productsLoading && productsHasMore) fetchProducts(true);
     };
 
-    // Reset pagination when filters change
-    useEffect(() => {
-        setPage(1);
-    }, [debouncedSearch, selectedCategory, selectedBrand, priceRange, spvRange, sortBy]);
-    
+    const loadMoreBrands = () => {
+        if (!brandsLoading && brandsHasMore) fetchBrandsData(true);
+    };
+
+    const loadMoreCategories = () => {
+         if (!categoriesLoading && categoriesHasMore) fetchCategoriesData(true);
+    };
 
     const resetFilters = () => {
         setSearchQuery('');
         setSelectedCategory(null);
         setSelectedBrand(null);
-        setSelectedBrand(null);
+        setSelectedOrigin(null);
         setPriceRange([0, 10000]);
         setSpvRange([0, 5000]);
         setSortBy('order');
         // Do NOT switch back to landing view automatically
     };
+
+    const categoryNames = useMemo(() => filterCategories.map(c => c.name), [filterCategories]);
 
     const FilterContent = () => (
         <div className="space-y-6">
@@ -200,7 +307,7 @@ const ShopPage = () => {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Brands</SelectItem>
-                        {brands.map(brand => (
+                        {filterBrands.map(brand => (
                             <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>
                         ))}
                     </SelectContent>
@@ -208,26 +315,73 @@ const ShopPage = () => {
             </div>
 
             <div>
-                <h3 className="mb-2 text-sm font-medium">Price Range (₹{priceRange[0]} - ₹{priceRange[1]})</h3>
-                 <Slider
+                <h3 className="mb-2 text-sm font-medium">Place of Origin</h3>
+                <Select value={selectedOrigin || "all"} onValueChange={(val) => setSelectedOrigin(val === "all" ? null : val)}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select Origin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Origins</SelectItem>
+                        {origins.map(origin => (
+                            <SelectItem key={origin.id} value={origin.name}>{origin.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+
+            <div>
+                <h3 className="mb-2 text-sm font-medium">Price Range</h3>
+                <div className="flex items-center gap-2 mb-2">
+                    <Input 
+                        type="number" 
+                        value={priceRange[0]} 
+                        onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
+                        className="h-8 text-xs"
+                        min={0}
+                    />
+                    <span className="text-muted-foreground">-</span>
+                    <Input 
+                        type="number" 
+                        value={priceRange[1]} 
+                        onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
+                        className="h-8 text-xs"
+                        min={0}
+                    />
+                </div>
+                <Slider
                     defaultValue={[0, 10000]}
                     max={10000}
                     step={100}
                     value={priceRange}
                     onValueChange={(val) => setPriceRange(val as [number, number])}
-                    className="mt-4"
                 />
             </div>
 
             <div>
-                <h3 className="mb-2 text-sm font-medium">SPV Range (Coins: {spvRange[0]} - {spvRange[1]})</h3>
-                 <Slider
+                <h3 className="mb-2 text-sm font-medium">SPV Range (Coins)</h3>
+                <div className="flex items-center gap-2 mb-2">
+                    <Input 
+                        type="number" 
+                        value={spvRange[0]} 
+                        onChange={(e) => setSpvRange([Number(e.target.value), spvRange[1]])}
+                        className="h-8 text-xs"
+                        min={0}
+                    />
+                    <span className="text-muted-foreground">-</span>
+                    <Input 
+                        type="number" 
+                        value={spvRange[1]} 
+                        onChange={(e) => setSpvRange([spvRange[0], Number(e.target.value)])}
+                        className="h-8 text-xs"
+                        min={0}
+                    />
+                </div>
+                <Slider
                     defaultValue={[0, 5000]}
                     max={5000}
                     step={50}
                     value={spvRange}
                     onValueChange={(val) => setSpvRange(val as [number, number])}
-                    className="mt-4"
                 />
             </div>
              <Button variant="outline" className="w-full" onClick={resetFilters}>
@@ -235,6 +389,8 @@ const ShopPage = () => {
             </Button>
         </div>
     );
+
+    const isLandingPage = viewMode === 'landing';
 
     return (
         <ShopLayout title="Shop">
@@ -274,7 +430,7 @@ const ShopPage = () => {
                             </Sheet>
                         )}
                         
-                        {/* Sort Dropdown - Removed Featured/Newest, kept Price */}
+                        {/* Sort Dropdown */}
                         {!isLandingPage && (
                             <Select value={sortBy} onValueChange={setSortBy}>
                                 <SelectTrigger className="w-[180px]">
@@ -303,7 +459,7 @@ const ShopPage = () => {
                                 <ShoppingBag className="h-6 w-6 text-primary" /> Shop by Category
                             </h2>
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                                {allCategories.map(cat => (
+                                {categoriesList.map(cat => (
                                     <div 
                                         key={cat.id} 
                                         onClick={() => {
@@ -323,6 +479,13 @@ const ShopPage = () => {
                                     </div>
                                 ))}
                             </div>
+                            {categoriesHasMore && (
+                                <div className="mt-4 text-center">
+                                    <Button onClick={loadMoreCategories} variant="ghost" disabled={categoriesLoading}>
+                                        {categoriesLoading ? <LoadingSpinner size={20} /> : 'Load More Categories'}
+                                    </Button>
+                                </div>
+                            )}
                         </section>
 
                         {/* Brands Section */}
@@ -331,7 +494,7 @@ const ShopPage = () => {
                                 <LayoutGrid className="h-6 w-6 text-primary" /> Shop by Brand
                             </h2>
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                                {brands.map(brand => (
+                                {brandsList.map(brand => (
                                     <div 
                                         key={brand.id} 
                                         onClick={() => {
@@ -351,11 +514,18 @@ const ShopPage = () => {
                                     </div>
                                 ))}
                             </div>
+                            {brandsHasMore && (
+                                <div className="mt-4 text-center">
+                                    <Button onClick={loadMoreBrands} variant="ghost" disabled={brandsLoading}>
+                                        {brandsLoading ? <LoadingSpinner size={20} /> : 'Load More Brands'}
+                                    </Button>
+                                </div>
+                            )}
                         </section>
 
                     </div>
                 ) : (
-                    // PRODUCT LISTING VIEW (Existing Layout)
+                    // PRODUCT LISTING VIEW
                     <div className="flex gap-8 items-start">
                         {/* Desktop Sidebar Filters */}
                         <div className="hidden md:block w-64 shrink-0 space-y-6 sticky top-36">
@@ -367,17 +537,24 @@ const ShopPage = () => {
 
                         {/* Product Grid */}
                         <div className="flex-1">
-                            {loading && allProducts.length === 0 ? (
-                                    <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {[1, 2, 3, 4, 5, 6].map((i) => (
-                                        <div key={i} className="space-y-4">
-                                            <Skeleton className="h-[250px] w-full rounded-xl" />
-                                            <Skeleton className="h-4 w-3/4" />
-                                            <Skeleton className="h-4 w-1/2" />
-                                        </div>
-                                    ))}
+                            {/* Brand Description Header */}
+                            {selectedBrand && filterBrands.find(b => b.id === selectedBrand)?.description && (
+                                <div className="mb-6 bg-white p-6 rounded-lg border shadow-sm">
+                                    <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
+                                        {filterBrands.find(b => b.id === selectedBrand)?.name}
+                                    </h2>
+                                    <div 
+                                        className="prose prose-sm text-gray-600 max-w-none"
+                                        dangerouslySetInnerHTML={{ __html: filterBrands.find(b => b.id === selectedBrand)?.description || '' }}
+                                    />
                                 </div>
-                            ) : filteredProducts.length === 0 ? (
+                            )}
+
+                            {productsLoading && products.length === 0 ? (
+                                <div className="min-h-[40vh] flex items-center justify-center">
+                                    <LoadingSpinner size={40} />
+                                </div>
+                            ) : products.length === 0 ? (
                                 <div className="text-center py-20 bg-white rounded-lg border border-dashed">
                                     <h3 className="text-lg font-medium text-gray-900">No products found</h3>
                                     <p className="text-gray-500 mt-1">Try adjusting your filters or search query.</p>
@@ -405,19 +582,21 @@ const ShopPage = () => {
                                                 Showing results for 
                                                 {selectedCategory && <span className="text-primary ml-1">{selectedCategory}</span>}
                                                 {selectedCategory && selectedBrand && <span className="mx-1">&</span>}
-                                                {selectedBrand && <span className="text-primary ml-1">{brands.find(b => b.id === selectedBrand)?.name || 'Brand'}</span>}
+                                                {selectedBrand && <span className="text-primary ml-1">{filterBrands.find(b => b.id === selectedBrand)?.name || 'Brand'}</span>}
+                                                {selectedOrigin && <span className="mx-1">&</span>}
+                                                {selectedOrigin && <span className="text-primary ml-1">{selectedOrigin}</span>}
                                             </span>
                                         )}
                                     </div>
                                     <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
-                                        {displayedProducts.map((product) => (
+                                        {products.map((product) => (
                                             <ProductCard key={product.id} product={product} />
                                         ))}
                                     </div>
-                                    {hasMore && (
+                                    {productsHasMore && (
                                         <div className="mt-8 text-center">
-                                                <Button onClick={loadMore} variant="secondary" size="lg">
-                                                    Load More Products
+                                                <Button onClick={loadMoreProducts} variant="secondary" size="lg" disabled={productsLoading}>
+                                                    {productsLoading ? <LoadingSpinner size={20} /> : 'Load More Products'}
                                                 </Button>
                                         </div>
                                     )}

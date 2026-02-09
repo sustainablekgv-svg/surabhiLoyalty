@@ -1,10 +1,11 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Layers, LayoutDashboard, ListOrdered, Package, ShoppingBag, Tag, Truck } from 'lucide-react';
+import { Globe, Layers, LayoutDashboard, ListOrdered, Package, ShoppingBag, Tag, Truck } from 'lucide-react';
 import { BrandManager } from './BrandManager';
 import { CatalogManager } from './CatalogManager';
 import { CategoryManager } from './CategoryManager';
 import { InventoryManager } from './InventoryManager';
 import { OrderManager } from './OrderManager';
+import { OriginManager } from './OriginManager';
 import { ProductManager } from './ProductManager';
 import { ShippingManager } from './ShippingManager';
 import { ShopAnalytics } from './ShopAnalytics';
@@ -34,6 +35,10 @@ export const AdminShopDashboard = () => {
                         <Tag className="h-4 w-4" />
                         Brands
                     </TabsTrigger>
+                    <TabsTrigger value="origins" className="flex items-center gap-2">
+                        <Globe className="h-4 w-4" />
+                        Origins
+                    </TabsTrigger>
 
                     <TabsTrigger value="products" className="flex items-center gap-2">
                         <Package className="h-4 w-4" />
@@ -51,6 +56,7 @@ export const AdminShopDashboard = () => {
                         <Truck className="h-4 w-4" />
                         Shipping
                     </TabsTrigger>
+
                 </TabsList>
                 <TabsContent value="products" className="space-y-4">
                     <ProductManager />
@@ -75,6 +81,9 @@ export const AdminShopDashboard = () => {
                 </TabsContent>
                 <TabsContent value="shipping" className="space-y-4">
                     <ShippingManager />
+                </TabsContent>
+                 <TabsContent value="origins" className="space-y-4">
+                    <OriginManager />
                 </TabsContent>
             </Tabs>
         </div>

@@ -275,6 +275,10 @@ export const OrderManager = () => {
                                                                             <div>
                                                                                 <p className="font-medium text-sm">{item.name}</p>
                                                                                 <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                                                                                <div className="flex gap-2 mt-1">
+                                                                                    {item.spv && <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">SPV: {item.spv}</span>}
+                                                                                    {item.placeOfOrigin && <span className="text-[10px] bg-gray-50 text-gray-700 px-1.5 py-0.5 rounded border border-gray-200">Origin: {item.placeOfOrigin}</span>}
+                                                                                </div>
                                                                             </div>
                                                                         </div>
                                                                         <div className="font-medium">

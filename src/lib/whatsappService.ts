@@ -145,7 +145,7 @@ Start earning rewards today! 💎`,
       };
 
       await this.sendMessage(message);
-      console.log(`Welcome message sent to ${phoneNumber}`);
+      // console.log(`Welcome message sent to ${phoneNumber}`);
     } catch (error) {
       if (error instanceof WhatsAppError && error.isRecipientNotAllowed) {
         console.warn(`WhatsApp recipient not allowed: ${phoneNumber}`);
@@ -193,7 +193,7 @@ Thank you for using Surabhi Loyalty Program! 🙏`,
       };
 
       await this.sendMessage(message);
-      console.log(`Recharge confirmation sent to ${phoneNumber}`);
+      // console.log(`Recharge confirmation sent to ${phoneNumber}`);
     } catch (error) {
       if (error instanceof WhatsAppError && error.isRecipientNotAllowed) {
         console.warn(`WhatsApp recipient not allowed: ${phoneNumber}`);
@@ -241,7 +241,7 @@ Thank you for shopping with us! 🎁`,
       };
 
       await this.sendMessage(message);
-      console.log(`Sale confirmation sent to ${phoneNumber}`);
+      // console.log(`Sale confirmation sent to ${phoneNumber}`);
     } catch (error) {
       if (error instanceof WhatsAppError && error.isRecipientNotAllowed) {
         console.warn(`WhatsApp recipient not allowed: ${phoneNumber}`);
@@ -273,7 +273,7 @@ Thank you for shopping with us! 🎁`,
       };
 
       await this.sendMessage(whatsappMessage);
-      console.log(`Custom message sent to ${phoneNumber}`);
+      // console.log(`Custom message sent to ${phoneNumber}`);
     } catch (error) {
       if (error instanceof WhatsAppError && error.isRecipientNotAllowed) {
         console.warn(`WhatsApp recipient not allowed: ${phoneNumber}`);
