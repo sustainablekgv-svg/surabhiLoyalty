@@ -39,13 +39,27 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, [user]);
 
+  const cleanCartItem = (item: CartItem): CartItem => ({
+    productId: item.productId,
+    quantity: item.quantity,
+    name: item.name,
+    price: item.price,
+    image: item.image || '',
+    maxStock: item.maxStock || 999999,
+    freeShipping: item.freeShipping ?? false,
+    spv: item.spv ?? 0,
+    placeOfOrigin: item.placeOfOrigin ?? '',
+    weight: item.weight ?? '',
+    unitsOfMeasure: item.unitsOfMeasure ?? '',
+  });
+
   const addToCart = async (product: Product, quantity = 1): Promise<boolean> => {
     if (!user || !user.id) {
       toast.error('Please login to add items to cart');
       return false;
     }
 
-    const updatedCart = [...cart];
+    let updatedCart = [...cart];
     const existingItemIndex = updatedCart.findIndex((item) => item.productId === product.id);
 
     if (existingItemIndex > -1) {
@@ -65,15 +79,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         quantity,
         name: product.name,
         price: product.sellingPrice,
-        image: product.images[0],
-        maxStock: product.trackInventory === true ? product.stock : 999999, // High number if not tracking
-        freeShipping: product.freeShipping,
-        spv: product.spv,
-        placeOfOrigin: product.placeOfOrigin,
-        weight: product.weight,
-        unitsOfMeasure: product.unitsOfMeasure,
+        image: product.images?.[0] || '',
+        maxStock: product.trackInventory === true ? product.stock : 999999,
+        freeShipping: product.freeShipping ?? false,
+        spv: product.spv ?? 0,
+        placeOfOrigin: product.placeOfOrigin ?? '',
+        weight: product.weight ?? '',
+        unitsOfMeasure: product.unitsOfMeasure ?? '',
       });
     }
+
+    // Clean all items before saving
+    updatedCart = updatedCart.map(cleanCartItem);
 
     try {
       await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), { items: updatedCart });
@@ -88,7 +105,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const removeFromCart = async (productId: string) => {
     if (!user || !user.id) return;
-    const updatedCart = cart.filter((item) => item.productId !== productId);
+    const updatedCart = cart.filter((item) => item.productId !== productId).map(cleanCartItem);
     await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), { items: updatedCart });
     toast.success('Removed from cart');
   };
@@ -100,7 +117,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
     }
     
-    const updatedCart = cart.map((item) => {
+    let updatedCart = cart.map((item) => {
       if (item.productId === productId) {
          if (quantity > item.maxStock) {
             toast.error(`Only ${item.maxStock} items available`);
@@ -114,6 +131,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check if change actually happened
     const item = updatedCart.find(i => i.productId === productId);
     if(item && item.quantity !== quantity) return; // Update validation failed (stock)
+
+    // Clean all items before saving
+    updatedCart = updatedCart.map(cleanCartItem);
 
     await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), { items: updatedCart });
   };

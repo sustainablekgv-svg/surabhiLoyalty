@@ -11,7 +11,7 @@ import { useShop } from '@/hooks/shop-context';
 import { addAddress, getAddresses } from '@/lib/addressService';
 import { calculateShippingCost, getZoneForState, INDIAN_STATES, parseWeightToKg } from '@/services/shipping';
 import { Address } from '@/types/shop';
-import { ArrowLeft, Loader2, Plus, ShoppingCart, Truck } from 'lucide-react';
+import { ArrowLeft, Check, Copy, Loader2, Plus, ShoppingCart, Truck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -22,6 +22,14 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   
   const [loading, setLoading] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const handleCopy = (text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    toast.success(`${field} copied to clipboard`);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
   
   // Address Management
   const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
@@ -457,34 +465,109 @@ const CheckoutPage = () => {
                            </Button>
                        </div>
                        
-                       {paymentMethod === 'online' && (
-                           <div className="mt-6 border-t pt-4">
-                               <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-4">
-                                   <h3 className="font-semibold text-blue-800 mb-2">Scan & Pay via UPI</h3>
-                                   <div className="flex flex-col md:flex-row gap-6 items-center">
-                                       <div className="bg-white p-2 rounded shadow-sm border">
-                                           {/* Placeholder for QR Code - User needs to provide actual image path or generating logic */}
-                                           <img src="/qr-code.jpeg" alt="Payment QR Code" className="h-48 w-48 object-contain" 
-                                                onError={(e) => {
-                                                    e.currentTarget.src = 'https://placehold.co/200x200?text=QR+Code';
-                                                }}
+                       <div className="mt-8 pt-6 border-t">
+                           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-6 md:p-8 shadow-md">
+                               <div className="flex flex-col lg:flex-row gap-10 items-center lg:items-start">
+                                   <div className="relative group shrink-0">
+                                       <div className="absolute -inset-2 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl blur opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+                                       <div className="relative bg-white p-4 rounded-xl shadow-xl border border-white">
+                                           <img 
+                                               src="/qr.jpeg" 
+                                               alt="Payment QR Code" 
+                                               className="h-72 w-72 md:h-80 md:w-80 object-contain rounded-lg" 
+                                               onError={(e) => {
+                                                   e.currentTarget.src = 'https://placehold.co/320x320?text=QR+Code+Not+Found';
+                                               }}
                                            />
                                        </div>
-                                       <div className="space-y-2 text-sm text-gray-700">
-                                           <p><span className="font-semibold">UPI ID:</span> <span className="font-mono bg-white px-2 py-0.5 rounded border">sustainablekgv@okicici</span></p>
-                                           <p><span className="font-semibold">WhatsApp:</span> <span className="font-mono bg-white px-2 py-0.5 rounded border">9606979530</span></p>
-                                           <div className="bg-white p-3 rounded border text-xs text-gray-600 space-y-1 mt-2">
-                                               <p className="font-semibold text-gray-800">Instructions:</p>
-                                               <p>1. Scan the QR code or use the UPI ID to pay <strong>₹{subtotal + shippingCost}</strong>.</p>
-                                               <p>2. Take a screenshot of the successful payment.</p>
-                                               <p>3. Send the screenshot to the WhatsApp number above.</p>
-                                               <p>4. Your order will be confirmed after verification.</p>
+                                       <div className="mt-4 flex flex-col items-center">
+                                           <p className="text-center text-xs font-bold text-blue-600 uppercase tracking-widest bg-blue-100 px-3 py-1 rounded-full">Scan to Pay</p>
+                                           <p className="text-[10px] text-slate-400 mt-2 italic text-center">Open any UPI app like GPay, PhonePe, or Paytm</p>
+                                       </div>
+                                   </div>
+                                   
+                                   <div className="flex-1 space-y-6 w-full">
+                                       <div>
+                                           <h3 className="text-2xl font-black text-slate-900 flex items-center gap-3">
+                                               Scan & Pay via UPI
+                                               <span className="text-xs bg-indigo-600 text-white px-3 py-1 rounded-full font-bold uppercase tracking-wider animate-pulse">Fastest</span>
+                                           </h3>
+                                           <p className="text-base text-slate-600 mt-2">Preferred for instant order confirmation and faster shipping.</p>
+                                       </div>
+
+                                       <div className="grid grid-cols-1 gap-4">
+                                           {/* UPI ID Card */}
+                                           <div className="bg-white rounded-xl p-4 border border-blue-100 shadow-sm hover:shadow-md transition-shadow group/item relative overflow-hidden">
+                                               <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+                                               <div className="flex justify-between items-center relative z-10">
+                                                   <div>
+                                                       <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest mb-1 font-sans">Official UPI ID</p>
+                                                       <p className="font-mono text-lg font-bold text-slate-800 break-all">sustainablekgv@okicici</p>
+                                                   </div>
+                                                   <Button 
+                                                       variant="secondary" 
+                                                       size="sm"
+                                                       onClick={() => handleCopy('sustainablekgv@okicici', 'UPI ID')}
+                                                       className="ml-4 shrink-0 bg-blue-50 hover:bg-blue-100 text-blue-700 border-none h-12 w-12 rounded-xl p-0 transition-all active:scale-95 flex items-center justify-center"
+                                                       title="Copy UPI ID"
+                                                   >
+                                                       {copiedField === 'UPI ID' ? <Check className="h-6 w-6 text-green-600" /> : <Copy className="h-6 w-6" />}
+                                                   </Button>
+                                               </div>
+                                           </div>
+
+                                           {/* WhatsApp Card */}
+                                           <div className="bg-white rounded-xl p-4 border border-blue-100 shadow-sm hover:shadow-md transition-shadow group/item relative overflow-hidden">
+                                               <div className="absolute top-0 left-0 w-1 h-full bg-green-500"></div>
+                                               <div className="flex justify-between items-center relative z-10">
+                                                   <div>
+                                                       <p className="text-[10px] text-green-600 font-black uppercase tracking-widest mb-1 font-sans">WhatsApp for Screenshot</p>
+                                                       <p className="font-mono text-lg font-bold text-slate-800">9606979530</p>
+                                                   </div>
+                                                   <Button 
+                                                       variant="secondary" 
+                                                       size="sm"
+                                                       onClick={() => handleCopy('9606979530', 'WhatsApp number')}
+                                                       className="ml-4 shrink-0 bg-green-50 hover:bg-green-100 text-green-700 border-none h-12 w-12 rounded-xl p-0 transition-all active:scale-95 flex items-center justify-center"
+                                                       title="Copy WhatsApp Number"
+                                                   >
+                                                       {copiedField === 'WhatsApp number' ? <Check className="h-6 w-6 text-green-600" /> : <Copy className="h-6 w-6" />}
+                                                   </Button>
+                                               </div>
                                            </div>
                                        </div>
+
+                                       <div className="bg-white/90 backdrop-blur rounded-2xl p-5 border border-indigo-100/50 shadow-inner">
+                                           <p className="font-black text-xs text-slate-800 mb-4 uppercase tracking-widest flex items-center gap-2">
+                                               <span className="h-1.5 w-1.5 rounded-full bg-indigo-600"></span>
+                                               How to complete payment:
+                                           </p>
+                                           <ul className="space-y-4">
+                                               <li className="flex gap-4 items-start">
+                                                   <span className="flex-shrink-0 h-7 w-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xs font-black shadow-lg shadow-indigo-200">1</span>
+                                                   <span className="text-sm font-medium text-slate-700 leading-relaxed pt-1">Scan the QR code or copy the UPI ID to pay <strong className="text-slate-900 text-lg border-b-2 border-indigo-200">₹{subtotal + shippingCost}</strong>.</span>
+                                               </li>
+                                               <li className="flex gap-4 items-start">
+                                                   <span className="flex-shrink-0 h-7 w-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xs font-black shadow-lg shadow-indigo-200">2</span>
+                                                   <span className="text-sm font-medium text-slate-700 leading-relaxed pt-1">Take a clear screenshot of the successful transaction page.</span>
+                                               </li>
+                                               <li className="flex gap-4 items-start">
+                                                   <span className="flex-shrink-0 h-7 w-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xs font-black shadow-lg shadow-indigo-200">3</span>
+                                                   <span className="text-sm font-medium text-slate-700 leading-relaxed pt-1">Click the copy icon for WhatsApp and send the screenshot to us.</span>
+                                               </li>
+                                           </ul>
+                                       </div>
+                                       
+                                       {/* {paymentMethod === 'cod' && (
+                                           <div className="flex items-center gap-3 text-sm font-bold text-amber-800 bg-amber-50 p-4 rounded-xl border border-amber-200 shadow-inner animate-in fade-in slide-in-from-top-2 duration-500">
+                                               <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">!</div>
+                                               <span>Pro-tip: Pay now via UPI to skip cash handling on delivery and get priority shipping!</span>
+                                           </div>
+                                       )} */}
                                    </div>
                                </div>
                            </div>
-                       )}
+                       </div>
                    </CardContent>
                </Card>
            </div>
