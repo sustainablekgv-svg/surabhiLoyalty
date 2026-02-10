@@ -25,9 +25,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
   // Default to false if undefined, to match the "optional" nature if not strictly enforced elsewhere, 
   // but usually we want it to be explicit. The requirement is "defaulting to false".
   // If product.trackInventory is undefined, it's effectively false.
-  const trackInventory = product.trackInventory === true;
-  const isOutOfStock = trackInventory && product.stock <= 0;
-  const canAddToCart = !trackInventory || !isOutOfStock;
+  // Inventory Logic: Always allow adding to cart irrespective of stock status (as per latest requirement)
+  const canAddToCart = true; 
+  const isOutOfStock = product.trackInventory && product.stock <= 0; // Still useful for label but not blocking
 
   return (
     <Card className="group overflow-hidden border-0 bg-transparent shadow-none hover:shadow-lg transition-all duration-300 rounded-xl bg-white flex flex-col h-full">
@@ -97,9 +97,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
               <span className="font-bold text-lg">₹{product.price}</span>
             )}
             
-            {product.weight && (
+            {(product.quantity || product.weight) && (
                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded ml-auto">
-                 {product.weight} {product.unitsOfMeasure === 'pcs' ? 'pc' : product.unitsOfMeasure}
+                 {product.quantity || product.weight} {product.unitsOfMeasure === 'pcs' ? 'pc' : product.unitsOfMeasure}
                </span>
             )}
           </div>
@@ -107,7 +107,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
           {/* Rewards Section */}
           <div className="flex flex-wrap gap-2 mb-3">
              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-               🪙 {Math.floor(product.sellingPrice || product.price)} Coins
+               🪙 {Math.floor((product.sellingPrice || product.price) * 0.1)} Coins
              </span>
              
              {(product.spv || 0) > 0 && (
@@ -123,10 +123,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
         <Button 
           className="w-full gap-2 rounded-full" 
           onClick={() => addToCart(product)}
-          disabled={!canAddToCart}
         >
           <ShoppingCart className="h-4 w-4" />
-          {isOutOfStock ? "Out of Stock" : "Add to Cart"}
+          Add to Cart
         </Button>
       </CardFooter>
     </Card>

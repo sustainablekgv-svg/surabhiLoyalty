@@ -46,10 +46,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     price: item.price || 0,
     image: item.image || '',
     maxStock: item.maxStock || 999999,
+    brandName: item.brandName ?? '',
+    brandId: item.brandId ?? '',
     freeShipping: item.freeShipping ?? false,
     spv: item.spv ?? 0,
-    placeOfOrigin: item.placeOfOrigin ?? '',
+    placeOfOrigin: item.placeOfOrigin ?? [],
     weight: item.weight ?? '',
+    productQuantity: item.productQuantity ?? item.weight ?? '',
+    weightInKg: item.weightInKg ?? 0,
     unitsOfMeasure: item.unitsOfMeasure ?? '',
   });
 
@@ -64,14 +68,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (existingItemIndex > -1) {
       const newQuantity = updatedCart[existingItemIndex].quantity + quantity;
-      // Inventory Check Logic
-      const isTrackingInventory = product.trackInventory === true;
-      const maxStock = isTrackingInventory ? product.stock : 999999;
-      
-      if (newQuantity > maxStock) {
-        toast.error(`Only ${maxStock} items available`);
-        return false;
-      }
       updatedCart[existingItemIndex].quantity = newQuantity;
     } else {
       updatedCart.push({
@@ -80,11 +76,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: product.name,
         price: product.sellingPrice,
         image: product.images?.[0] || '',
-        maxStock: product.trackInventory === true ? product.stock : 999999,
+        maxStock: 999999,
+        brandName: product.brandName ?? '',
+        brandId: product.brandId ?? '',
         freeShipping: product.freeShipping ?? false,
         spv: product.spv ?? 0,
-        placeOfOrigin: product.placeOfOrigin ?? '',
+        placeOfOrigin: product.placeOfOrigin ?? [],
         weight: product.weight ?? '',
+        productQuantity: product.quantity ?? product.weight ?? '',
+        weightInKg: product.weightInKg ?? 0,
         unitsOfMeasure: product.unitsOfMeasure ?? '',
       });
     }
@@ -122,18 +122,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     let updatedCart = cart.map((item) => {
       if (item.productId === productId) {
-         if (quantity > item.maxStock) {
-            toast.error(`Only ${item.maxStock} items available`);
-            return item;
-         }
          return { ...item, quantity };
       }
       return item;
     });
-    
-    // Check if change actually happened
-    const item = updatedCart.find(i => i.productId === productId);
-    if(item && item.quantity !== quantity) return; // Update validation failed (stock)
 
     // Clean all items before saving
     updatedCart = updatedCart.map(cleanCartItem);

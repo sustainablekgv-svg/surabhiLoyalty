@@ -9,8 +9,10 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/auth-context';
 import { useShop } from '@/hooks/shop-context';
 import { addAddress, getAddresses } from '@/lib/addressService';
+import { db } from '@/lib/firebase';
 import { calculateShippingCost, getZoneForState, INDIAN_STATES, parseWeightToKg } from '@/services/shipping';
-import { Address } from '@/types/shop';
+import { Address, CartItem } from '@/types/shop';
+import { collection, getDocs } from 'firebase/firestore';
 import { ArrowLeft, Check, Copy, Loader2, Plus, ShoppingCart, Truck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -65,43 +67,70 @@ const CheckoutPage = () => {
 
   const [shippingCost, setShippingCost] = useState(0);
   const [shippingConfig, setShippingConfig] = useState<any>(null);
+  const [originsList, setOriginsList] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchConfig = async () => {
+    const fetchConfigAndOrigins = async () => {
       const { getShippingConfig } = await import('@/services/shipping');
-      const config = await getShippingConfig();
+      const [config, originsSnap] = await Promise.all([
+        getShippingConfig(),
+        getDocs(collection(db, 'origins'))
+      ]);
       setShippingConfig(config);
+      setOriginsList(originsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     };
-    fetchConfig();
+    fetchConfigAndOrigins();
   }, []);
 
 
-  // Calculate totals
-  const totalWeight = cart.reduce((sum, item) => {
-      // If product has free shipping, it doesn't count towards shipping weight
-      // We need to check the product data. CartItem might not have freeShipping field?
-      // Wait, CartItem definition in types/shop.ts doesn't have it.
-      // We need to ensure CartItem has it or we look it up.
-      // Actually, better to extend CartItem or checking if we can pass it.
-      // For now, assuming CartItem needs update or we blindly trust he will add it to CartItem too?
-      // Let's check CartItem in types.
-      // Use 'as any' for now if CartItem isn't updated yet, but I should update CartItem too.
-      if (item.freeShipping) return sum;
+  // Calculate totals by brand + origin for breakdown
+  const productsByGroup = cart.reduce((acc, item) => {
+    const brandName = item.brandName || 'Other';
+    const originName = (item.placeOfOrigin && item.placeOfOrigin.length > 0) ? item.placeOfOrigin[0] : 'Unknown';
+    const groupKey = `${brandName}|${originName}`;
 
-      // Use the helper to parse string weights like '500g', '1kg'
-      const weight = parseWeightToKg(item.weight || '0.5kg');
-      return sum + (weight * item.quantity); 
-  }, 0);
+    if (!acc[groupKey]) {
+      acc[groupKey] = {
+        brandName,
+        originName,
+        items: [],
+        weight: 0,
+        shipping: 0,
+        originZone: originsList.find(o => o.name === originName)?.zone || 'A'
+      };
+    }
+    acc[groupKey].items.push(item);
+    
+    if (!item.freeShipping) {
+      const weight = item.weightInKg || parseWeightToKg(item.weight || '0.5kg');
+      acc[groupKey].weight += (weight * item.quantity);
+    }
+    return acc;
+  }, {} as Record<string, { brandName: string, originName: string, items: CartItem[], weight: number, shipping: number, originZone: string }>);
 
+  const totalWeight = Object.values(productsByGroup).reduce((sum, b) => sum + b.weight, 0);
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   
-  // Re-calculate shipping when state changes
+  // Re-calculate shipping when state or groupings change
   useEffect(() => {
-    if (formData.state) {
-        const cost = calculateShippingCost(totalWeight, formData.state, shippingConfig || undefined);
-        setShippingCost(cost);
+    if (formData.state && originsList.length > 0) {
+        let totalCost = 0;
+        Object.keys(productsByGroup).forEach(groupKey => {
+          const groupData = productsByGroup[groupKey];
+          if (groupData.weight > 0) {
+            const cost = calculateShippingCost(
+                groupData.weight, 
+                groupData.originZone, 
+                formData.state, 
+                shippingConfig || undefined
+            );
+            groupData.shipping = cost;
+            totalCost += cost;
+          }
+        });
+        setShippingCost(totalCost);
     }
-  }, [formData.state, totalWeight, shippingConfig]);
+  }, [formData.state, JSON.stringify(productsByGroup), shippingConfig, originsList]);
 
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
 
@@ -589,22 +618,49 @@ const CheckoutPage = () => {
                         </div>
                         <Separator />
                         
-                        <div className="space-y-1.5">
-                            <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">Subtotal</span>
-                                <span>₹{subtotal}</span>
-                            </div>
+                         <div className="space-y-3">
+                            <h4 className="font-semibold text-sm">Delivery Price Breakdown</h4>
+                            {Object.entries(productsByGroup).map(([groupKey, data]) => (
+                               <div key={groupKey} className="bg-slate-50 p-3 rounded-lg space-y-2 border border-slate-100">
+                                <div className="flex justify-between items-center">
+                                  <div className="flex flex-col">
+                                    <span className="font-bold text-slate-900">{data.brandName}</span>
+                                    <span className="text-[10px] text-slate-500">Ships from: {data.originName} (Zone {data.originZone})</span>
+                                  </div>
+                                  <span className="text-sm font-medium">₹{data.shipping}</span>
+                                </div>
+                                <div className="space-y-1">
+                                  {data.items.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between text-[11px] text-slate-600">
+                                      <span className="font-medium truncate max-w-[140px]">{item.name}</span>
+                                      <span>x{item.quantity}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                                <div className="text-[10px] text-slate-400 text-right">
+                                  Weight: {data.weight.toFixed(2)} kg
+                                </div>
+                              </div>
+                            ))}
+                         </div>
+                         <Separator />
+                         
+                         <div className="space-y-1.5">
                              <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">Estimated Weight</span>
-                                <span>{totalWeight.toFixed(2)} kg</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">Shipping ({formData.state ? `Zone ${getZoneForState(formData.state)}` : '-'})</span>
-                                <span className={shippingCost === 0 ? "text-orange-500" : ""}>
-                                    {shippingCost === 0 && !formData.state ? 'Select State' : `₹${shippingCost}`}
-                                </span>
-                            </div>
-                        </div>
+                                 <span className="text-muted-foreground">Subtotal</span>
+                                 <span>₹{subtotal}</span>
+                             </div>
+                              <div className="flex justify-between text-sm">
+                                 <span className="text-muted-foreground">Total Weight</span>
+                                 <span>{totalWeight.toFixed(2)} kg</span>
+                             </div>
+                             <div className="flex justify-between text-sm">
+                                 <span className="text-muted-foreground">Total Shipping ({formData.state ? `Zone ${getZoneForState(formData.state)}` : '-'})</span>
+                                 <span className={shippingCost === 0 ? "text-orange-500" : ""}>
+                                     {shippingCost === 0 && !formData.state ? 'Select State' : `₹${shippingCost}`}
+                                 </span>
+                             </div>
+                         </div>
 
                         <Separator />
                         

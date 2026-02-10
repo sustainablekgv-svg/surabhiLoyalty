@@ -231,31 +231,23 @@ export const getCategories = async (
     lastDoc?: any,
     search?: string
 ): Promise<{ categories: Category[]; lastDoc: any }> => {
-    const constraints: any[] = [orderBy('displayOrder', 'asc')];
-    
-    // Note: Firestore doesn't support native partial text search.
-    // We will do basic pagination here. Client side search or separate Index needed for robust search.
-    // For admin tables, we might just fetch latest.
-    
-    if (lastDoc) {
-        constraints.push(startAfter(lastDoc));
-    }
-    
-    constraints.push(limit(pageSize));
-    
-    const q = query(collection(db, 'categories'), ...constraints);
+    const q = query(collection(db, 'categories'));
     const snapshot = await getDocs(q);
     
     let categories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+    
+    // In-memory sort to handle missing displayOrder
+    categories.sort((a, b) => (a.displayOrder || 999) - (b.displayOrder || 999));
 
-    // Simple Client-side filter for current page (limited utility with pagination but better than nothing without Algolia)
-    // Ideally we fetch all for dropdowns, but paginate for Table.
     if (search) {
         categories = categories.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
     }
 
-    const newLastDoc = snapshot.docs[snapshot.docs.length - 1];
-    return { categories, lastDoc: newLastDoc };
+    const start = lastDoc ? categories.findIndex(c => c.id === (typeof lastDoc === 'string' ? lastDoc : lastDoc.id)) + 1 : 0;
+    const paginated = categories.slice(start, start + pageSize);
+    const newLastDoc = paginated[paginated.length - 1];
+
+    return { categories: paginated, lastDoc: newLastDoc };
 };
 
 export const createCategory = async (category: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
@@ -410,20 +402,26 @@ export const getCategoriesPaginated = async (
     lastDoc?: any,
     search?: string
 ): Promise<{ categories: Category[]; lastDoc: any }> => {
-    const constraints: any[] = [orderBy('createdAt', 'desc')];
-    if (lastDoc) constraints.push(startAfter(lastDoc));
-    constraints.push(limit(pageSize));
-
-    const q = query(collection(db, 'categories'), ...constraints);
+    const q = query(collection(db, 'categories'));
     const snapshot = await getDocs(q);
     let categories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
     
+    // Sort by creation date or fallback
+    categories.sort((a, b) => {
+        const timeA = a.createdAt?.seconds || 0;
+        const timeB = b.createdAt?.seconds || 1;
+        return timeB - timeA;
+    });
+
     if (search) {
         categories = categories.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
     }
     
-    const newLastDoc = snapshot.docs[snapshot.docs.length - 1];
-    return { categories, lastDoc: newLastDoc };
+    const start = lastDoc ? categories.findIndex(c => c.id === (typeof lastDoc === 'string' ? lastDoc : lastDoc.id)) + 1 : 0;
+    const paginated = categories.slice(start, start + pageSize);
+    const newLastDoc = paginated[paginated.length - 1];
+
+    return { categories: paginated, lastDoc: newLastDoc };
 }
 
 export const createBrand = async (brand: Omit<Brand, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {

@@ -143,7 +143,7 @@ const ProductDetailsPage = () => {
                         {/* Rewards Display */}
                         <div className="mt-4 flex flex-wrap gap-3">
                              <span className="flex items-center gap-1.5 text-sm font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
-                                🪙 Earn {Math.floor(product.sellingPrice || product.price)} Surabhi Coins
+                                🪙 Earn {Math.floor((product.sellingPrice || product.price) * 0.1)} Surabhi Coins
                              </span>
 
                             {(product.spv || 0) > 0 && (
@@ -163,9 +163,9 @@ const ProductDetailsPage = () => {
 
                     <div className="grid grid-cols-2 gap-4 text-sm">
                         <div className="p-3 bg-gray-50 rounded-lg">
-                            <span className="block text-gray-500 mb-1">Weight</span>
+                            <span className="block text-gray-500 mb-1">Quantity</span>
                             <span className="font-medium">
-                                {product.weight || 'N/A'} {product.unitsOfMeasure ? (product.unitsOfMeasure === 'pcs' ? 'pc' : product.unitsOfMeasure) : ''}
+                                {product.quantity || product.weight || 'N/A'} {product.unitsOfMeasure ? (product.unitsOfMeasure === 'pcs' ? 'pc' : product.unitsOfMeasure) : ''}
                             </span>
                         </div>
                          <div className="p-3 bg-gray-50 rounded-lg">
@@ -185,10 +185,17 @@ const ProductDetailsPage = () => {
                             </div>
                         )}
                         
-                        {product.placeOfOrigin && (
+                        {product.placeOfOrigin && product.placeOfOrigin.length > 0 && (
                             <div className="p-3 bg-gray-50 rounded-lg">
                                 <span className="block text-gray-500 mb-1">Place of Origin</span>
-                                <span className="font-medium">{product.placeOfOrigin}</span>
+                                <span className="font-medium">{product.placeOfOrigin.join(', ')}</span>
+                            </div>
+                        )}
+                        
+                        {product.weightInKg && (
+                            <div className="p-3 bg-gray-50 rounded-lg">
+                                <span className="block text-gray-500 mb-1">Shipping Weight</span>
+                                <span className="font-medium">{product.weightInKg} kg</span>
                             </div>
                         )}
                     </div>
@@ -210,21 +217,19 @@ const ProductDetailsPage = () => {
                                 size="icon" 
                                 className="rounded-r-full" 
                                 onClick={increaseQty}
-                                disabled={(product.trackInventory === true) && quantity >= product.stock}
                             >
                                 <Plus className="h-4 w-4" />
                             </Button>
                         </div>
                         
                         <div className="flex-1 flex gap-3">
-                            <Button 
+                             <Button 
                                 className="flex-1 gap-2 rounded-full h-10" 
                                 size="lg"
                                 onClick={() => addToCart(product, quantity)}
-                                disabled={(product.trackInventory === true) && product.stock <= 0}
                             >
                                 <ShoppingCart className="h-5 w-5" />
-                                {(product.trackInventory === true) && product.stock <= 0 ? "Out of Stock" : "Add to Cart"}
+                                Add to Cart
                             </Button>
                              <Button 
                                 variant={isWishlisted ? "default" : "outline"}
