@@ -96,9 +96,10 @@ export const getProducts = async (
          constraints.push(where('sellingPrice', '<=', filters.maxPrice));
     }
 
-    if (filters?.inStock) {
-         constraints.push(where('stock', '>', 0));
-    }
+    // REMOVED DB-level stock check to allow "trackInventory: false" items to be visible even if stock is 0
+    // if (filters?.inStock) {
+    //      constraints.push(where('stock', '>', 0));
+    // }
 
     if (filters?.sort === 'price_asc') {
         constraints.push(orderBy('sellingPrice', 'asc'));
@@ -111,16 +112,10 @@ export const getProducts = async (
     } else if (filters?.sort === 'order') {
         constraints.push(orderBy('displayOrder', 'asc'));
     } else {
-        // Default to Order if exists, else Create Date
-        // Note: Client fetcher usually passes 'newest' or similar. 
-        // If 'newest' is passed:
         if (filters?.sort === 'newest') {
             constraints.push(orderBy('createdAt', 'desc'));
         } else {
-            // Default Admin / Shop behavior if specified
             constraints.push(orderBy('displayOrder', 'asc')); 
-            // Warning: If displayOrder is mixed missing/present, this might drop items.
-            // Client should request 'order' explicitly if they want it.
         }
     }
 
@@ -128,12 +123,33 @@ export const getProducts = async (
         constraints.push(startAfter(lastDoc));
     }
 
-    constraints.push(limit(pageSize));
+    // Fetch slightly more to account for in-memory filtering
+    constraints.push(limit(pageSize + 5)); 
 
     const q = query(collection(db, 'products'), ...constraints);
 
     const snapshot = await getDocs(q);
-    const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+    let products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+    
+    // In-memory Filter for Stock/Inventory
+    if (filters?.inStock) {
+        products = products.filter(p => {
+             // If trackInventory is explicitly FALSE, it is always visible (ignored stock)
+             if (p.trackInventory === false) return true;
+             // Otherwise (true or undefined), check stock > 0
+             return (p.stock || 0) > 0;
+        });
+    }
+
+    // Since we fetched extra, enforce pageSize limit on result? 
+    // Actually, simple pagination relies on lastDoc. 
+    // If we filter out items, the page might be shorter. 
+    // If we slice the result, we must ensure lastDoc matches the LAST VISIBLE item? 
+    // No, for next cursor to work, it must match the last FETCHED item from DB layer, 
+    // regardless of whether it was discarded. 
+    // BUT if the last fetched item was discarded, `startAfter` that item still works for next page.
+    // So we return the snapshot's last doc as cursor, but return filtered products.
+    
     const newLastDoc = snapshot.docs[snapshot.docs.length - 1];
 
     return { products, lastDoc: newLastDoc };

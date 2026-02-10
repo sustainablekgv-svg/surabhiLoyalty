@@ -107,7 +107,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
           {/* Rewards Section */}
           <div className="flex flex-wrap gap-2 mb-3">
              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-               🪙 {Math.floor((product.sellingPrice || product.price) * 0.1)} Coins
+               🪙 {Math.floor((product.spv || 0) * 0.1)} Coins
              </span>
              
              {(product.spv || 0) > 0 && (
