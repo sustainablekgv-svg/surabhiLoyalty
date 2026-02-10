@@ -475,7 +475,7 @@ const CheckoutPage = () => {
                        <CardTitle>Payment Method</CardTitle>
                    </CardHeader>
                    <CardContent>
-                       <div className="flex gap-4">
+                       {/* <div className="flex gap-4">
                            <Button 
                                 type="button" 
                                 variant={paymentMethod === 'cod' ? 'default' : 'outline'}
@@ -492,7 +492,7 @@ const CheckoutPage = () => {
                            >
                                Online Payment (Razorpay)
                            </Button>
-                       </div>
+                       </div> */}
                        
                        <div className="mt-8 pt-6 border-t">
                            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 md:p-6 shadow-sm">
@@ -677,7 +677,7 @@ const CheckoutPage = () => {
                             disabled={loading}
                         >
                             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Place Order ({paymentMethod === 'cod' ? 'COD' : 'Online'})
+                            Place Order
                         </Button>
                         <p className="text-xs text-center text-gray-500 mt-2">
                            * Shipping calculated based on weight and destination zone.
