@@ -39,25 +39,35 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, [user]);
 
+  const cleanCartItem = (item: CartItem): CartItem => ({
+    productId: item.productId || '',
+    quantity: item.quantity || 1,
+    name: item.name || 'Unknown Product',
+    price: item.price || 0,
+    image: item.image || '',
+    maxStock: item.maxStock || 999999,
+    brandName: item.brandName ?? '',
+    brandId: item.brandId ?? '',
+    freeShipping: item.freeShipping ?? false,
+    spv: item.spv ?? 0,
+    placeOfOrigin: item.placeOfOrigin ?? [],
+    weight: item.weight ?? '',
+    productQuantity: item.productQuantity ?? item.weight ?? '',
+    weightInKg: item.weightInKg ?? 0,
+    unitsOfMeasure: item.unitsOfMeasure ?? '',
+  });
+
   const addToCart = async (product: Product, quantity = 1): Promise<boolean> => {
     if (!user || !user.id) {
       toast.error('Please login to add items to cart');
       return false;
     }
 
-    const updatedCart = [...cart];
+    let updatedCart = [...cart];
     const existingItemIndex = updatedCart.findIndex((item) => item.productId === product.id);
 
     if (existingItemIndex > -1) {
       const newQuantity = updatedCart[existingItemIndex].quantity + quantity;
-      // Inventory Check Logic
-      const isTrackingInventory = product.trackInventory === true;
-      const maxStock = isTrackingInventory ? product.stock : 999999;
-      
-      if (newQuantity > maxStock) {
-        toast.error(`Only ${maxStock} items available`);
-        return false;
-      }
       updatedCart[existingItemIndex].quantity = newQuantity;
     } else {
       updatedCart.push({
@@ -65,18 +75,27 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         quantity,
         name: product.name,
         price: product.sellingPrice,
-        image: product.images[0],
-        maxStock: product.trackInventory === true ? product.stock : 999999, // High number if not tracking
-        freeShipping: product.freeShipping,
-        spv: product.spv,
-        placeOfOrigin: product.placeOfOrigin,
-        weight: product.weight,
-        unitsOfMeasure: product.unitsOfMeasure,
+        image: product.images?.[0] || '',
+        maxStock: 999999,
+        brandName: product.brandName ?? '',
+        brandId: product.brandId ?? '',
+        freeShipping: product.freeShipping ?? false,
+        spv: product.spv ?? 0,
+        placeOfOrigin: product.placeOfOrigin ?? [],
+        weight: product.weight ?? '',
+        productQuantity: product.quantity ?? product.weight ?? '',
+        weightInKg: product.weightInKg ?? 0,
+        unitsOfMeasure: product.unitsOfMeasure ?? '',
       });
     }
 
+    // Clean all items before saving
+    updatedCart = updatedCart.map(cleanCartItem);
+
     try {
-      await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), { items: updatedCart });
+      // Foolproof data cleaning to remove any undefined properties
+      const dataToSave = JSON.parse(JSON.stringify({ items: updatedCart }));
+      await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), dataToSave);
       toast.success('Added to cart');
       return true;
     } catch (error) {
@@ -88,8 +107,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const removeFromCart = async (productId: string) => {
     if (!user || !user.id) return;
-    const updatedCart = cart.filter((item) => item.productId !== productId);
-    await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), { items: updatedCart });
+    const updatedCart = cart.filter((item) => item.productId !== productId).map(cleanCartItem);
+    const dataToSave = JSON.parse(JSON.stringify({ items: updatedCart }));
+    await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), dataToSave);
     toast.success('Removed from cart');
   };
 
@@ -100,22 +120,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
     }
     
-    const updatedCart = cart.map((item) => {
+    let updatedCart = cart.map((item) => {
       if (item.productId === productId) {
-         if (quantity > item.maxStock) {
-            toast.error(`Only ${item.maxStock} items available`);
-            return item;
-         }
          return { ...item, quantity };
       }
       return item;
     });
-    
-    // Check if change actually happened
-    const item = updatedCart.find(i => i.productId === productId);
-    if(item && item.quantity !== quantity) return; // Update validation failed (stock)
 
-    await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), { items: updatedCart });
+    // Clean all items before saving
+    updatedCart = updatedCart.map(cleanCartItem);
+
+    const dataToSave = JSON.parse(JSON.stringify({ items: updatedCart }));
+    await setDoc(doc(db, 'Customers', user.id, 'cart', 'items'), dataToSave);
   };
 
   const clearCart = async () => {

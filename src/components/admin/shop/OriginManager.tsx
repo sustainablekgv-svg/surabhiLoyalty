@@ -11,12 +11,14 @@ import { toast } from 'sonner';
 interface Origin {
     id: string;
     name: string;
+    zone: string;
 }
 
 export const OriginManager = () => {
     const [origins, setOrigins] = useState<Origin[]>([]);
     const [loading, setLoading] = useState(true);
     const [newOrigin, setNewOrigin] = useState('');
+    const [newZone, setNewZone] = useState('A');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     const fetchOrigins = async () => {
@@ -41,9 +43,13 @@ export const OriginManager = () => {
     const handleAdd = async () => {
         if (!newOrigin.trim()) return;
         try {
-            await addDoc(collection(db, 'origins'), { name: newOrigin.trim() });
+            await addDoc(collection(db, 'origins'), { 
+                name: newOrigin.trim(),
+                zone: newZone 
+            });
             toast.success("Origin added");
             setNewOrigin('');
+            setNewZone('A');
             setIsDialogOpen(false);
             fetchOrigins();
         } catch (error) {
@@ -78,13 +84,30 @@ export const OriginManager = () => {
                         <DialogHeader>
                             <DialogTitle>Add Place of Origin</DialogTitle>
                         </DialogHeader>
-                        <div className="flex gap-2 mt-4">
-                            <Input 
-                                value={newOrigin} 
-                                onChange={(e) => setNewOrigin(e.target.value)} 
-                                placeholder="e.g. Kashmir, Ooty"
-                            />
-                            <Button onClick={handleAdd}>Save</Button>
+                        <div className="space-y-4 mt-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Place Name</label>
+                                <Input 
+                                    value={newOrigin} 
+                                    onChange={(e) => setNewOrigin(e.target.value)} 
+                                    placeholder="e.g. Kashmir, Ooty"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Shipping Zone</label>
+                                <select 
+                                    className="w-full border rounded-md p-2 h-10"
+                                    value={newZone}
+                                    onChange={(e) => setNewZone(e.target.value)}
+                                >
+                                    <option value="A">Zone A (Local/Regional)</option>
+                                    <option value="B">Zone B</option>
+                                    <option value="C">Zone C</option>
+                                    <option value="D">Zone D</option>
+                                    <option value="E">Zone E (Remote/Hilly)</option>
+                                </select>
+                            </div>
+                            <Button className="w-full" onClick={handleAdd}>Save Origin</Button>
                         </div>
                     </DialogContent>
                 </Dialog>
@@ -95,6 +118,7 @@ export const OriginManager = () => {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Name</TableHead>
+                            <TableHead>Zone</TableHead>
                             <TableHead className="w-[100px]">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -106,7 +130,8 @@ export const OriginManager = () => {
                         ) : (
                             origins.map(origin => (
                                 <TableRow key={origin.id}>
-                                    <TableCell>{origin.name}</TableCell>
+                                    <TableCell className="font-medium">{origin.name}</TableCell>
+                                    <TableCell>Zone {origin.zone || 'A'}</TableCell>
                                     <TableCell>
                                         <Button variant="ghost" size="icon" className="text-red-500" onClick={() => handleDelete(origin.id)}>
                                             <Trash2 className="h-4 w-4" />

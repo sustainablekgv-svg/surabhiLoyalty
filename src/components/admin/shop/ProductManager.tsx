@@ -1,4 +1,5 @@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -55,7 +56,8 @@ export const ProductManager = () => {
         description: '',
         price: '',
         sellingPrice: '',
-        weight: '',
+        quantity: '', // Renamed from weight - represents product quantity
+        weightInKg: '', // New field for delivery cost calculation
         unitsOfMeasure: '',
         stock: '',
         category: '',
@@ -66,7 +68,7 @@ export const ProductManager = () => {
         isVisible: true,
         spv: '',
         trackInventory: false,
-        placeOfOrigin: ''
+        placeOfOrigin: [] as string[] // Multi-select support
     });
 
     const fetchData = async () => {
@@ -169,19 +171,20 @@ export const ProductManager = () => {
             const brandName = selectedBrand ? selectedBrand.name : 'Unknown Brand';
             
             const selectedCategory = categories.find(c => c.id === formData.category);
-            const categoryName = selectedCategory ? selectedCategory.name : formData.category;
+            const categoryName = selectedCategory ? selectedCategory.name : (editingProduct?.categoryName || "Unknown Category");
 
             // detailed validation
             if (!formData.name?.trim()) { toast.error("Product name is required"); return; }
             if (!formData.description?.trim()) { toast.error("Description is required"); return; }
             if (!formData.brandId) { toast.error("Brand is required"); return; }
-            if (!formData.brandId) { toast.error("Brand is required"); return; }
             if (!formData.category) { toast.error("Category is required"); return; }
             
-            if (!formData.weight?.trim()) { toast.error("Weight is required"); return; }
-            if (!formData.placeOfOrigin?.trim()) { toast.error("Place of Origin is required"); return; }
+            if (!formData.quantity?.trim()) { toast.error("Quantity is required"); return; }
+            if (!formData.weightInKg?.trim()) { toast.error("Weight (kg) is required for delivery calculation"); return; }
+            if (!formData.placeOfOrigin || formData.placeOfOrigin.length === 0) { toast.error("At least one place of origin is required"); return; }
             
-            if (!formData.weight?.trim()) { toast.error("Weight is required"); return; }
+            const weightInKgNum = Number(formData.weightInKg);
+            if (isNaN(weightInKgNum) || weightInKgNum <= 0) { toast.error("Weight (kg) must be a valid positive number"); return; }
             if (!formData.unitsOfMeasure) { toast.error("Unit of measure is required"); return; }
 
             const price = Number(formData.price);
@@ -205,7 +208,9 @@ export const ProductManager = () => {
                 description: formData.description.trim(),
                 price,
                 sellingPrice,
-                weight: formData.weight.trim(),
+                weight: formData.quantity.trim(), // Keep for backward compatibility
+                quantity: formData.quantity.trim(), // New field
+                weightInKg: weightInKgNum,
                 unitsOfMeasure: formData.unitsOfMeasure,
                 stock,
                 categoryId: formData.category, 
@@ -219,7 +224,7 @@ export const ProductManager = () => {
                 isActive: true,
                 spv,
                 trackInventory: formData.trackInventory,
-                placeOfOrigin: formData.placeOfOrigin
+                placeOfOrigin: formData.placeOfOrigin // Array of origins
             };
 
             if (editingProduct) {
@@ -305,7 +310,8 @@ export const ProductManager = () => {
             description: '',
             price: '',
             sellingPrice: '',
-            weight: '',
+            quantity: '',
+            weightInKg: '',
             unitsOfMeasure: '',
             stock: '',
             category: '',
@@ -316,21 +322,25 @@ export const ProductManager = () => {
             variantType: '',
             isVisible: true,
             trackInventory: false,
-            placeOfOrigin: ''
+            placeOfOrigin: []
         });
     };
 
     const handleEdit = (product: Product) => {
         setEditingProduct(product);
+        setIsDialogOpen(true);
+        // If categories are already loaded, we can set the form data safely. 
+        // If not, it will just show placeholder until categories load.
         setFormData({
             name: product.name,
             description: product.description,
             price: product.price.toString(),
             sellingPrice: product.sellingPrice?.toString() || '',
-            weight: product.weight || '',
+            quantity: product.quantity || product.weight || '',
+            weightInKg: product.weightInKg?.toString() || '',
             unitsOfMeasure: product.unitsOfMeasure || '',
             stock: product.stock.toString(),
-            category: product.categoryName || product.categoryId || '',
+            category: product.categoryId || (categories.find(c => c.name === product.categoryName)?.id) || '',
             brandId: product.brandId || '',
             images: product.images || [],
             freeShipping: product.freeShipping || false,
@@ -338,9 +348,8 @@ export const ProductManager = () => {
             isVisible: product.isVisible ?? true,
             spv: product.spv?.toString() || '',
             trackInventory: product.trackInventory || false,
-            placeOfOrigin: product.placeOfOrigin || ''
+            placeOfOrigin: product.placeOfOrigin || []
         });
-        setIsDialogOpen(true);
     };
 
     return (
@@ -457,8 +466,8 @@ export const ProductManager = () => {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Weight</Label>
-                                    <Input required value={formData.weight} onChange={e => setFormData({ ...formData, weight: e.target.value })} placeholder="e.g. 500g, 1kg" />
+                                    <Label>Quantity</Label>
+                                    <Input required value={formData.quantity} onChange={e => setFormData({ ...formData, quantity: e.target.value })} placeholder="e.g. 500g, 1kg, 12 pcs" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Units of Measure</Label>
@@ -477,6 +486,54 @@ export const ProductManager = () => {
                                             ))}
                                         </SelectContent>
                                     </Select>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Weight (kg) for Delivery</Label>
+                                    <Input type="number" step="0.01" required value={formData.weightInKg} onChange={e => setFormData({ ...formData, weightInKg: e.target.value })} placeholder="e.g. 0.5, 1.2" />
+                                    <p className="text-xs text-muted-foreground">Used to calculate delivery cost</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Place of Origin (Multi-select)</Label>
+                                    <Select 
+                                        value="__select__" 
+                                        onValueChange={(value) => {
+                                            if (value !== "__select__" && !formData.placeOfOrigin.includes(value)) {
+                                                setFormData({ ...formData, placeOfOrigin: [...formData.placeOfOrigin, value] });
+                                            }
+                                        }}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select Origins" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {origins.map(origin => (
+                                                <SelectItem key={origin.id} value={origin.name}>
+                                                    {origin.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {formData.placeOfOrigin.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-2">
+                                            {formData.placeOfOrigin.map((origin, idx) => (
+                                                <Badge key={idx} variant="secondary" className="gap-1">
+                                                    {origin}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setFormData({ 
+                                                            ...formData, 
+                                                            placeOfOrigin: formData.placeOfOrigin.filter((_, i) => i !== idx) 
+                                                        })}
+                                                        className="ml-1 hover:text-destructive"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="grid grid-cols-3 gap-4">
@@ -601,7 +658,16 @@ export const ProductManager = () => {
                                         {product.freeShipping && (
                                             <span className="text-[10px] bg-green-100 text-green-800 px-1 py-0.5 rounded">Free Shipping</span>
                                         )}
-                                        <div className="text-xs text-gray-500">{product.weight}</div>
+                                        <div className="text-xs text-gray-500">
+                                            {product.quantity || product.weight} ({product.weightInKg}kg)
+                                        </div>
+                                        {product.placeOfOrigin && product.placeOfOrigin.length > 0 && (
+                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                {product.placeOfOrigin.map((o, i) => (
+                                                    <span key={i} className="text-[9px] bg-slate-100 text-slate-600 px-1 rounded">{o}</span>
+                                                ))}
+                                            </div>
+                                        )}
                                     </TableCell>
                                     <TableCell>{product.categoryName}</TableCell>
                                     <TableCell>{product.brandName}</TableCell>

@@ -4,7 +4,9 @@ export interface Product {
     description: string;
     price: number; // Original Price (MRP)
     sellingPrice: number; // Selling Price (after discount)
-    weight: string; // e.g., "500g", "1kg"
+    weight: string; // @deprecated - use quantity field. Kept for backward compatibility
+    quantity?: string; // Product quantity e.g., "500g", "1kg", "12 pcs"
+    weightInKg?: number; // Weight in kilograms for delivery cost calculation
     stock: number;
     images: string[];
     categoryId: string;
@@ -22,7 +24,7 @@ export interface Product {
     updatedAt: any; // Firestore Timestamp
     spv?: number; // Sales Point Value
     trackInventory?: boolean;
-    placeOfOrigin?: string;
+    placeOfOrigin?: string[]; // Multiple places of origin
 }
 
 export interface Brand {
@@ -49,6 +51,8 @@ export interface Category {
     images?: string[]; // Multiple images support
     isActive: boolean;
     displayOrder?: number;
+    createdAt?: any;
+    updatedAt?: any;
 }
 
 export interface CartItem {
@@ -58,10 +62,14 @@ export interface CartItem {
     price: number;
     image: string;
     maxStock: number;
+    brandName?: string; // Brand name for delivery breakdown
+    brandId?: string; // Brand ID for grouping
     freeShipping?: boolean;
     spv?: number;
-    placeOfOrigin?: string;
-    weight?: string;
+    placeOfOrigin?: string[]; // Multiple places of origin
+    weight?: string; // @deprecated - use productQuantity
+    productQuantity?: string; // Product quantity display (e.g., "500g")
+    weightInKg?: number; // Weight in kg for delivery calculation
     unitsOfMeasure?: string;
 }
 
@@ -113,3 +121,8 @@ export interface Order {
     updatedAt: any;
 }
 
+export interface Origin {
+    id: string;
+    name: string;
+    zone: string; // A, B, C, D, E
+}

@@ -33,7 +33,14 @@ const CartPage = () => {
                   <div className="flex-1 flex flex-col justify-between">
                     <div className="pr-8">
                       <h3 className="font-medium text-base md:text-lg cursor-pointer hover:underline line-clamp-2" onClick={() => navigate(`/shop/product/${item.productId}`)}>{item.name}</h3>
-                      {/* item.product.brand is no longer available directly unless we fetch it or store it. Removing for now or we could store brand too */}
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {item.brandName && (
+                          <span className="text-[10px] bg-secondary px-2 py-0.5 rounded-full">{item.brandName}</span>
+                        )}
+                        {item.placeOfOrigin && item.placeOfOrigin.length > 0 && (
+                          <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Origin: {item.placeOfOrigin.join(', ')}</span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center justify-between mt-2">
                         <div className="font-bold text-sm md:text-base">₹{item.price}</div>

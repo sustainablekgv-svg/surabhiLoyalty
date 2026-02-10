@@ -1,12 +1,12 @@
 
+import { useAuth } from '@/hooks/auth-context';
+import { useCart } from '@/hooks/useCart';
+import { useWishlist } from '@/hooks/useWishlist';
 import { db } from '@/lib/firebase';
 import { CartItem, Order, Product } from '@/types/shop';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import React, { createContext, useContext } from 'react';
 import { toast } from 'sonner';
-import { useAuth } from '@/hooks/auth-context';
-import { useCart } from '@/hooks/useCart';
-import { useWishlist } from '@/hooks/useWishlist';
 
 interface ShopContextType {
   cart: CartItem[];
@@ -95,7 +95,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // If Online Payment, we handle differently.
         
         const docRef = await addDoc(collection(db, 'orders'), {
-            ...orderData,
+            ...JSON.parse(JSON.stringify(orderData)),
             userId: userId,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),

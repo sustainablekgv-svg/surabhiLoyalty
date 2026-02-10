@@ -54,26 +54,37 @@ export const parseWeightToKg = (weightStr: string): number => {
     return value; 
 };
 
-export const calculateShippingCost = (totalWeightKg: number, state: string, config?: ShippingConfig): number => {
+export const calculateShippingCost = (totalWeightKg: number, originZone: string, destinationState: string, config?: ShippingConfig): number => {
     const zones = config?.zones || SHIPPING_ZONES;
     const rateTable = config?.rateTable || RATE_TABLE;
     const extraPerKg = config?.extraPerKg || EXTRA_PER_KG_AFTER_5KG;
 
-    const zone = getZoneForState(state, zones);
+    const destZone = getZoneForState(destinationState, zones);
     
+    // Effective shipping tier calculation
+    // We'll use the "higher" zone between origin and destination to determine the rate tier
+    // Map zones to numeric values for comparison: A=0, B=1, C=2, D=3, E=4
+    const zoneMap: Record<string, number> = { 'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4 };
+    const originVal = zoneMap[originZone] ?? 0;
+    const destVal = zoneMap[destZone] ?? 0;
+    
+    // The rate used is determined by the "more expensive" zone involved
+    const effectiveZoneVal = Math.max(originVal, destVal);
+    const effectiveZone = Object.keys(zoneMap).find(key => zoneMap[key] === effectiveZoneVal) || 'E';
+
     // Minimum 0.5kg charged
     const weight = Math.max(totalWeightKg, 0.5);
 
-    if (weight <= 0.5) return rateTable[zone][0];
-    if (weight <= 1) return rateTable[zone][1];
-    if (weight <= 2) return rateTable[zone][2];
-    if (weight <= 3) return rateTable[zone][3];
-    if (weight <= 5) return rateTable[zone][4];
+    if (weight <= 0.5) return rateTable[effectiveZone][0];
+    if (weight <= 1) return rateTable[effectiveZone][1];
+    if (weight <= 2) return rateTable[effectiveZone][2];
+    if (weight <= 3) return rateTable[effectiveZone][3];
+    if (weight <= 5) return rateTable[effectiveZone][4];
 
     // Above 5kg
-    const basePrice = rateTable[zone][4]; // Cost for 5kg
+    const basePrice = rateTable[effectiveZone][4]; // Cost for 5kg
     const extraWeight = Math.ceil(weight - 5); // Round up to next kg
-    const extraCost = extraWeight * extraPerKg[zone];
+    const extraCost = extraWeight * extraPerKg[effectiveZone];
     
     return basePrice + extraCost;
 };
