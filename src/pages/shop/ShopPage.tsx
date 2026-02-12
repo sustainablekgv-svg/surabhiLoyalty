@@ -54,40 +54,65 @@ const ShopPage = () => {
     // Filter Trigger (to reset pagination)
     const [filterTrigger, setFilterTrigger] = useState(0);
 
+    const location = useLocation();
+
+    // Initialize from URL params and Path
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const search = params.get('q');
+        const cat = params.get('category');
+        const brand = params.get('brand');
+        const origin = params.get('origin');
+        
+        if (search) setSearchQuery(search);
+        if (cat) setSelectedCategory(cat);
+        if (brand) setSelectedBrand(brand);
+        if (origin) setSelectedOrigin(origin);
+
+        // Strict View Mode based on Path
+        if (location.pathname === '/shop') {
+            setViewMode('landing');
+            // Clear filters when on landing, unless search is present (which might warrant a switch?)
+            // User requested /shop is strictly categories/brands.
+            // If search is present on /shop? Maybe redirect to /shop/filters?
+            if (search) {
+                navigate(`/shop/filters?q=${search}`, { replace: true });
+            }
+        } else if (location.pathname.startsWith('/shop/filters') || location.pathname.startsWith('/shop/category') || location.pathname.startsWith('/shop/brand')) {
+            setViewMode('products');
+        }
+    }, [location.pathname, location.search, navigate]);
+
     // Debounce search query
     const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedSearch(searchQuery);
+            // Auto-switch to products if user types search
             if (searchQuery) {
-                setViewMode('products');
+                 // If on landing page and searching, we might want to navigate to filters?
+                 // But for now, let's just allow viewMode switch if the user is already on a page that supports it?
+                 // Actually the previous logic just set viewMode.
+                 // If we are strictly on /shop, we might want to navigate to /shop/filters?q=...
+                 // But let's keep it simple: if search query exists, we assume we want to see products.
+                 // However, if we enforce strict routing, we should navigate.
             }
         }, 500);
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
     const { categoryName: urlCategory, brandId: urlBrand } = useParams<{ categoryName?: string, brandId?: string }>();
-    const location = useLocation();
 
-    // Effect: Sync URL Params to State
+    // Effect: Handle URL Params for Categories/Brands routes
     useEffect(() => {
         if (urlCategory) {
             setSelectedCategory(urlCategory);
             setViewMode('products');
-            setSelectedBrand(null);
         } else if (urlBrand) {
             setSelectedBrand(urlBrand);
             setViewMode('products');
-            setSelectedCategory(null);
-        } else if (location.pathname === '/shop') {
-             // Reset to landing if precisely on /shop and no search
-             if (!searchQuery && !debouncedSearch) {
-                setViewMode('landing');
-                setSelectedCategory(null);
-                setSelectedBrand(null);
-             }
         }
-    }, [urlCategory, urlBrand, location.pathname]);
+    }, [urlCategory, urlBrand]);
 
     // Initial Load for Filter Dropdowns
     useEffect(() => {
@@ -487,7 +512,7 @@ const ShopPage = () => {
                                     <div 
                                         key={cat.id} 
                                         onClick={() => {
-                                            navigate(`/shop/category/${cat.name}`);
+                                            navigate(`/shop/filters?category=${cat.name}`);
                                         }}
                                         className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-4 flex flex-col items-center text-center gap-3"
                                     >
@@ -521,7 +546,7 @@ const ShopPage = () => {
                                     <div 
                                         key={brand.id} 
                                         onClick={() => {
-                                            navigate(`/shop/brand/${brand.id}`);
+                                            navigate(`/shop/filters?brand=${brand.id}`);
                                         }}
                                         className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-4 flex flex-col items-center text-center gap-3"
                                     >

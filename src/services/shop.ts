@@ -422,12 +422,8 @@ export const getCategoriesPaginated = async (
     const snapshot = await getDocs(q);
     let categories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
     
-    // Sort by creation date or fallback
-    categories.sort((a, b) => {
-        const timeA = a.createdAt?.seconds || 0;
-        const timeB = b.createdAt?.seconds || 1;
-        return timeB - timeA;
-    });
+    // Sort by displayOrder
+    categories.sort((a, b) => (a.displayOrder || 999) - (b.displayOrder || 999));
 
     if (search) {
         categories = categories.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));

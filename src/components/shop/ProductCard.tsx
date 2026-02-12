@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { Product } from '@/types/shop';
 import { Heart, ShoppingCart, Trash2 } from 'lucide-react';
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 interface ProductCardProps {
   product: Product;
@@ -19,18 +19,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
   const { addToCart, toggleWishlist, isInWishlist } = useShop();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const isWishlisted = isInWishlist(product.id);
 
 
   return (
     <Card className="group overflow-hidden border-0 bg-transparent shadow-none hover:shadow-lg transition-all duration-300 rounded-xl bg-white flex flex-col h-full">
 
-      <div className="relative aspect-square overflow-hidden bg-gray-100 cursor-pointer" onClick={() => navigate(`/shop/product/${product.id}`)}>
+      <div className="relative aspect-square overflow-hidden bg-white cursor-pointer flex items-center justify-center" onClick={() => navigate(`/shop/product/${product.id}`, { state: { from: location } })}>
         {isValidImageUrl(product.images?.[0]) ? (
           <img
             src={product.images[0]}
             alt={product.name}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+            className="max-h-full max-w-full object-contain transition-transform duration-500 group-hover:scale-110"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-gray-400">
@@ -73,7 +74,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
         
         <h3 
           className="font-semibold leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors mb-2 text-gray-900 min-h-[2.5rem]"
-          onClick={() => navigate(`/shop/product/${product.id}`)}
+          onClick={() => navigate(`/shop/product/${product.id}`, { state: { from: location } })}
           title={product.name}
         >
           {product.name}

@@ -69,8 +69,9 @@ const LoginPage = () => {
       // Navigate based on role and previous location
       let redirectPath;
 
-      if (formData.role === 'customer' && location.state?.from?.pathname) {
-          redirectPath = location.state.from.pathname;
+      const from = location.state?.from;
+      if (formData.role === 'customer' && from) {
+          redirectPath = from.pathname + (from.search || '');
       } else {
           redirectPath =
             formData.role === 'admin'

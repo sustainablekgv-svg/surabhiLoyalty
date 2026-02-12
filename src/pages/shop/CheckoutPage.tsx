@@ -84,31 +84,51 @@ const CheckoutPage = () => {
 
 
   // Calculate totals by brand + origin for breakdown
-  const productsByGroup = cart.reduce((acc, item) => {
+  // FIXED: Case insensitive matching for origins
+    interface ShippingGroup {
+    brandName: string;
+    originName: string;
+    items: CartItem[];
+    weight: number; // Billable weight
+    displayWeight: number; // Total physical weight
+    shipping: number;
+    originZone: string;
+  }
+
+  const productsByGroup = cart.reduce<Record<string, ShippingGroup>>((acc, item: CartItem) => {
     const brandName = item.brandName || 'Other';
     const originName = (item.placeOfOrigin && item.placeOfOrigin.length > 0) ? item.placeOfOrigin[0] : 'Unknown';
+    // Use a composite key
     const groupKey = `${brandName}|${originName}`;
 
     if (!acc[groupKey]) {
+      // Find origin case-insensitively
+      const originObj = originsList.find(o => o.name && o.name.toLowerCase() === originName.toLowerCase());
+      
       acc[groupKey] = {
         brandName,
-        originName,
+        originName, // keep original name for display
         items: [],
         weight: 0,
+        displayWeight: 0,
         shipping: 0,
-        originZone: originsList.find(o => o.name === originName)?.zone || 'A'
+        originZone: originObj?.zone || 'A'
       };
     }
     acc[groupKey].items.push(item);
     
+    // Calculate weight for ALL items for display purposes
+    const weight = item.weightInKg || parseWeightToKg(item.weight || '0.5kg');
+    acc[groupKey].displayWeight += (weight * item.quantity);
+    
     if (!item.freeShipping) {
-      const weight = item.weightInKg || parseWeightToKg(item.weight || '0.5kg');
       acc[groupKey].weight += (weight * item.quantity);
     }
+    
     return acc;
-  }, {} as Record<string, { brandName: string, originName: string, items: CartItem[], weight: number, shipping: number, originZone: string }>);
+  }, {});
 
-  const totalWeight = Object.values(productsByGroup).reduce((sum, b) => sum + b.weight, 0);
+  const totalWeight = Object.values(productsByGroup).reduce((sum, b) => sum + b.displayWeight, 0);
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   
   // Re-calculate shipping when state or groupings change
@@ -300,7 +320,7 @@ const CheckoutPage = () => {
     <div className="min-h-screen flex flex-col bg-gray-50/50">
     <div className="container mx-auto p-4 py-8 max-w-6xl flex-1">   
        <div className="flex items-center gap-4 mb-8">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/shop')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/shop/cart')}>
             <ArrowLeft className="h-6 w-6" />
           </Button>
           <h1 className="text-3xl font-bold">Checkout</h1>
@@ -611,7 +631,7 @@ const CheckoutPage = () => {
                         <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                             {cart.map(item => (
                                 <div key={item.productId} className="flex justify-between text-sm">
-                                    <span className="truncate max-w-[180px]">{item.name} x {item.quantity}</span>
+                                    <span className="">{item.name} x {item.quantity}</span>
                                     <span>₹{item.price * item.quantity}</span>
                                 </div>
                             ))}
@@ -632,13 +652,13 @@ const CheckoutPage = () => {
                                 <div className="space-y-1">
                                   {data.items.map((item, idx) => (
                                     <div key={idx} className="flex justify-between text-[11px] text-slate-600">
-                                      <span className="font-medium truncate max-w-[140px]">{item.name}</span>
+                                      <span className="font-medium">{item.name}</span>
                                       <span>x{item.quantity}</span>
                                     </div>
                                   ))}
                                 </div>
-                                <div className="text-[10px] text-slate-400 text-right">
-                                  Weight: {data.weight.toFixed(2)} kg
+                                <div className="text-xs font-semibold text-slate-700 text-right">
+                                  Total Weight: {data.displayWeight.toFixed(2)} kg
                                 </div>
                               </div>
                             ))}

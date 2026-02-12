@@ -3,8 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { db } from '@/lib/firebase';
-import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query } from 'firebase/firestore';
-import { Plus, Trash2 } from 'lucide-react';
+import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc } from 'firebase/firestore';
+import { Edit2, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -20,6 +20,9 @@ export const OriginManager = () => {
     const [newOrigin, setNewOrigin] = useState('');
     const [newZone, setNewZone] = useState('A');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    
+    // Edit State
+    const [editingId, setEditingId] = useState<string | null>(null);
 
     const fetchOrigins = async () => {
         setLoading(true);
@@ -40,22 +43,39 @@ export const OriginManager = () => {
         fetchOrigins();
     }, []);
 
-    const handleAdd = async () => {
+    const handleSave = async () => {
         if (!newOrigin.trim()) return;
+        
         try {
-            await addDoc(collection(db, 'origins'), { 
-                name: newOrigin.trim(),
-                zone: newZone 
-            });
-            toast.success("Origin added");
-            setNewOrigin('');
-            setNewZone('A');
-            setIsDialogOpen(false);
+            if (editingId) {
+                // Update existing
+                await updateDoc(doc(db, 'origins', editingId), {
+                    name: newOrigin.trim(),
+                    zone: newZone
+                });
+                toast.success("Origin updated");
+            } else {
+                // Create new
+                await addDoc(collection(db, 'origins'), { 
+                    name: newOrigin.trim(),
+                    zone: newZone 
+                });
+                toast.success("Origin added");
+            }
+            
+            resetForm();
             fetchOrigins();
         } catch (error) {
             console.error(error);
-            toast.error("Failed to add origin");
+            toast.error(editingId ? "Failed to update origin" : "Failed to add origin");
         }
+    };
+
+    const handleEdit = (origin: Origin) => {
+        setNewOrigin(origin.name);
+        setNewZone(origin.zone || 'A');
+        setEditingId(origin.id);
+        setIsDialogOpen(true);
     };
 
     const handleDelete = async (id: string) => {
@@ -70,19 +90,29 @@ export const OriginManager = () => {
         }
     };
 
+    const resetForm = () => {
+        setNewOrigin('');
+        setNewZone('A');
+        setEditingId(null);
+        setIsDialogOpen(false);
+    };
+
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium">Place of Origin</h3>
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                    setIsDialogOpen(open);
+                    if (!open) resetForm();
+                }}>
                     <DialogTrigger asChild>
-                        <Button>
+                        <Button onClick={() => resetForm()}>
                             <Plus className="h-4 w-4 mr-2" /> Add Origin
                         </Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Add Place of Origin</DialogTitle>
+                            <DialogTitle>{editingId ? "Edit Origin" : "Add Place of Origin"}</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4 mt-4">
                             <div className="space-y-2">
@@ -107,7 +137,9 @@ export const OriginManager = () => {
                                     <option value="E">Zone E (Remote/Hilly)</option>
                                 </select>
                             </div>
-                            <Button className="w-full" onClick={handleAdd}>Save Origin</Button>
+                            <Button className="w-full" onClick={handleSave}>
+                                {editingId ? "Update Origin" : "Save Origin"}
+                            </Button>
                         </div>
                     </DialogContent>
                 </Dialog>
@@ -119,23 +151,28 @@ export const OriginManager = () => {
                         <TableRow>
                             <TableHead>Name</TableHead>
                             <TableHead>Zone</TableHead>
-                            <TableHead className="w-[100px]">Actions</TableHead>
+                            <TableHead className="w-[100px] text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
-                            <TableRow><TableCell colSpan={2} className="text-center">Loading...</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={3} className="text-center">Loading...</TableCell></TableRow>
                         ) : origins.length === 0 ? (
-                            <TableRow><TableCell colSpan={2} className="text-center">No origins found</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={3} className="text-center">No origins found</TableCell></TableRow>
                         ) : (
                             origins.map(origin => (
                                 <TableRow key={origin.id}>
                                     <TableCell className="font-medium">{origin.name}</TableCell>
                                     <TableCell>Zone {origin.zone || 'A'}</TableCell>
-                                    <TableCell>
-                                        <Button variant="ghost" size="icon" className="text-red-500" onClick={() => handleDelete(origin.id)}>
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                    <TableCell className="text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(origin)}>
+                                                <Edit2 className="h-4 w-4 text-blue-500" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="text-red-500" onClick={() => handleDelete(origin.id)}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))

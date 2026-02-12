@@ -2,7 +2,7 @@ import { ShopLayout } from '@/components/shop/ShopLayout';
 import { Button } from '@/components/ui/button';
 import { useShop } from '@/hooks/shop-context';
 import { isValidImageUrl } from '@/lib/image-utils';
-import { Minus, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const CartPage = () => {
@@ -10,8 +10,14 @@ const CartPage = () => {
   const navigate = useNavigate();
 
   return (
-    <ShopLayout title="Shopping Cart">
+    <ShopLayout title="Surabhi" showBack={false}>
       <div className="max-w-4xl mx-auto">
+        <div className="flex items-center gap-4 mb-8">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/shop/filters')}>
+            <ArrowLeft className="h-6 w-6" />
+          </Button>
+          <h1 className="text-3xl font-bold">Shopping Cart</h1>
+        </div>
         {cart.length === 0 ? (
           <div className="text-center py-20">
             <h2 className="text-2xl font-semibold mb-4">Your cart is empty</h2>
@@ -23,9 +29,9 @@ const CartPage = () => {
               {cart.map((item) => (
 
                 <div key={item.productId} className="flex gap-3 md:gap-4 p-3 md:p-4 bg-white rounded-lg shadow-sm border relative">
-                  <div className="h-20 w-20 md:h-24 md:w-24 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 cursor-pointer" onClick={() => navigate(`/shop/product/${item.productId}`)}>
+                  <div className="h-20 w-20 md:h-24 md:w-24 bg-white rounded-md overflow-hidden flex-shrink-0 cursor-pointer flex items-center justify-center border" onClick={() => navigate(`/shop/product/${item.productId}`)}>
                     {isValidImageUrl(item.image) ? (
-                      <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                      <img src={item.image} alt={item.name} className="max-h-full max-w-full object-contain" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-gray-400 text-xs">No Img</div>
                     )}
