@@ -157,7 +157,7 @@ const ProductDetailsPage = () => {
                     </div>
 
                     <div 
-                        className="prose prose-sm text-gray-600 max-w-none text-justify"
+                        className="prose prose-sm text-gray-600 max-w-none text-justify overflow-hidden break-words"
                         dangerouslySetInnerHTML={{ __html: product.description }}
                     />
 
@@ -173,17 +173,6 @@ const ProductDetailsPage = () => {
                             <span className="font-medium">{product.categoryName}</span>
                         </div>
                         
-                        {/* Only show stock status if tracking is enabled */}
-                        {(product.trackInventory === true) && (
-                            <div className="p-3 bg-gray-50 rounded-lg">
-                                <span className="block text-gray-500 mb-1">Stock Status</span>
-                                {product.stock > 0 ? (
-                                    <span className="font-medium text-green-600">In Stock ({product.stock})</span>
-                                ) : (
-                                    <span className="font-medium text-red-600">Out of Stock</span>
-                                )}
-                            </div>
-                        )}
                         
                         {product.placeOfOrigin && product.placeOfOrigin.length > 0 && (
                             <div className="p-3 bg-gray-50 rounded-lg">

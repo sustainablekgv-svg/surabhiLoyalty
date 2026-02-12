@@ -12,7 +12,7 @@ import { Brand, Category, Product } from '@/types/shop';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import { Filter, Home, LayoutGrid, ShoppingBag, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const ShopPage = () => {
@@ -65,6 +65,29 @@ const ShopPage = () => {
         }, 500);
         return () => clearTimeout(timer);
     }, [searchQuery]);
+
+    const { categoryName: urlCategory, brandId: urlBrand } = useParams<{ categoryName?: string, brandId?: string }>();
+    const location = useLocation();
+
+    // Effect: Sync URL Params to State
+    useEffect(() => {
+        if (urlCategory) {
+            setSelectedCategory(urlCategory);
+            setViewMode('products');
+            setSelectedBrand(null);
+        } else if (urlBrand) {
+            setSelectedBrand(urlBrand);
+            setViewMode('products');
+            setSelectedCategory(null);
+        } else if (location.pathname === '/shop') {
+             // Reset to landing if precisely on /shop and no search
+             if (!searchQuery && !debouncedSearch) {
+                setViewMode('landing');
+                setSelectedCategory(null);
+                setSelectedBrand(null);
+             }
+        }
+    }, [urlCategory, urlBrand, location.pathname]);
 
     // Initial Load for Filter Dropdowns
     useEffect(() => {
@@ -162,7 +185,7 @@ const ShopPage = () => {
             }
 
              if (selectedOrigin && selectedOrigin !== 'all') {
-                newProducts = newProducts.filter(p => p.placeOfOrigin === selectedOrigin);
+                newProducts = newProducts.filter(p => p.placeOfOrigin?.includes(selectedOrigin));
             }
             
             if (spvRange[1] < 5000 || spvRange[0] > 0) {
@@ -268,6 +291,7 @@ const ShopPage = () => {
         setSpvRange([0, 5000]);
         setSortBy('order');
         // Do NOT switch back to landing view automatically
+        navigate('/shop');
     };
 
     const categoryNames = useMemo(() => filterCategories.map(c => c.name), [filterCategories]);
@@ -432,7 +456,7 @@ const ShopPage = () => {
                         
                         {/* Sort Dropdown */}
                         {!isLandingPage && (
-                            <Select value={sortBy} onValueChange={setSortBy}>
+                            <Select value={sortBy} onValueChange={(val) => setSortBy(val as any)}>
                                 <SelectTrigger className="w-[180px]">
                                     <SelectValue placeholder="Sort By" />
                                 </SelectTrigger>
@@ -463,8 +487,7 @@ const ShopPage = () => {
                                     <div 
                                         key={cat.id} 
                                         onClick={() => {
-                                            setSelectedCategory(cat.name);
-                                            setViewMode('products');
+                                            navigate(`/shop/category/${cat.name}`);
                                         }}
                                         className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-4 flex flex-col items-center text-center gap-3"
                                     >
@@ -498,8 +521,7 @@ const ShopPage = () => {
                                     <div 
                                         key={brand.id} 
                                         onClick={() => {
-                                            setSelectedBrand(brand.id);
-                                            setViewMode('products');
+                                            navigate(`/shop/brand/${brand.id}`);
                                         }}
                                         className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-4 flex flex-col items-center text-center gap-3"
                                     >

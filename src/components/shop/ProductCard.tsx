@@ -21,13 +21,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
   const navigate = useNavigate();
   const isWishlisted = isInWishlist(product.id);
 
-  // Inventory Logic: If trackInventory is false (or undefined), we ignore stock check
-  // Default to false if undefined, to match the "optional" nature if not strictly enforced elsewhere, 
-  // but usually we want it to be explicit. The requirement is "defaulting to false".
-  // If product.trackInventory is undefined, it's effectively false.
-  // Inventory Logic: Always allow adding to cart irrespective of stock status (as per latest requirement)
-  const canAddToCart = true; 
-  const isOutOfStock = product.trackInventory && product.stock <= 0; // Still useful for label but not blocking
 
   return (
     <Card className="group overflow-hidden border-0 bg-transparent shadow-none hover:shadow-lg transition-all duration-300 rounded-xl bg-white flex flex-col h-full">
@@ -73,7 +66,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
       <CardContent className="p-4 flex-1 flex flex-col">
         <div 
           className="mb-2 text-sm text-gray-600 cursor-pointer hover:underline font-medium"
-          onClick={() => navigate(`/shop?category=${product.categoryName}`)}
+          onClick={() => navigate(`/shop/category/${product.categoryName}`)}
         >
           {product.categoryName}
         </div>
