@@ -1,4 +1,3 @@
-import { Footer } from '@/components/shop/Footer';
 import { ShopLayout } from '@/components/shop/ShopLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,8 +12,8 @@ import { db } from '@/lib/firebase';
 import { calculateShippingCost, getZoneForState, INDIAN_STATES, parseWeightToKg } from '@/services/shipping';
 import { Address, CartItem } from '@/types/shop';
 import { collection, getDocs } from 'firebase/firestore';
-import { ArrowLeft, Check, Copy, Loader2, Plus, ShoppingCart, Truck } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Check, Copy, Loader2, Plus, ShoppingCart, Truck } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -65,7 +64,7 @@ const CheckoutPage = () => {
     landmark: ''
   });
 
-  const [shippingCost, setShippingCost] = useState(0);
+
   const [shippingConfig, setShippingConfig] = useState<any>(null);
   const [originsList, setOriginsList] = useState<any[]>([]);
 
@@ -84,53 +83,82 @@ const CheckoutPage = () => {
 
 
   // Calculate totals by brand + origin for breakdown
-  const productsByGroup = cart.reduce((acc, item) => {
-    const brandName = item.brandName || 'Other';
-    const originName = (item.placeOfOrigin && item.placeOfOrigin.length > 0) ? item.placeOfOrigin[0] : 'Unknown';
-    const groupKey = `${brandName}|${originName}`;
+  // FIXED: Case insensitive matching for origins
+    interface ShippingGroup {
+    brandName: string;
+    originName: string;
+    items: CartItem[];
+    weight: number; // Billable weight
+    displayWeight: number; // Total physical weight
+    shipping: number;
+    originZone: string;
+  }
 
-    if (!acc[groupKey]) {
-      acc[groupKey] = {
-        brandName,
-        originName,
-        items: [],
-        weight: 0,
-        shipping: 0,
-        originZone: originsList.find(o => o.name === originName)?.zone || 'A'
-      };
-    }
-    acc[groupKey].items.push(item);
+  const productsByGroup = useMemo(() => {
+    const groups = cart.reduce<Record<string, ShippingGroup>>((acc, item: CartItem) => {
+        const brandName = item.brandName || 'Other';
+        const originName = (item.placeOfOrigin && item.placeOfOrigin.length > 0) ? item.placeOfOrigin[0] : 'Unknown';
+        // Use a composite key
+        const groupKey = `${brandName}|${originName}`;
     
-    if (!item.freeShipping) {
-      const weight = item.weightInKg || parseWeightToKg(item.weight || '0.5kg');
-      acc[groupKey].weight += (weight * item.quantity);
-    }
-    return acc;
-  }, {} as Record<string, { brandName: string, originName: string, items: CartItem[], weight: number, shipping: number, originZone: string }>);
+        if (!acc[groupKey]) {
+          // Find origin case-insensitively
+          const originObj = originsList.find(o => o.name && o.name.toLowerCase() === originName.toLowerCase());
+          
+          acc[groupKey] = {
+            brandName,
+            originName, // keep original name for display
+            items: [],
+            weight: 0,
+            displayWeight: 0,
+            shipping: 0,
+            // Fallback to Zone A if origin not found or collection empty
+            originZone: originObj?.zone || 'A' 
+          };
+        }
+        acc[groupKey].items.push(item);
+        
+        // Calculate weight for ALL items for display purposes
+        const weight = item.weightInKg || parseWeightToKg(item.weight || '0.5kg');
+        acc[groupKey].displayWeight += (weight * item.quantity);
+        
+        if (!item.freeShipping) {
+          acc[groupKey].weight += (weight * item.quantity);
+        }
+        
+        return acc;
+    }, {});
+    
+    // Calculate shipping for each group
+    // Calculate shipping for each group
+    if (formData.state) {
+        Object.values(groups).forEach(group => {
+             // Fallback: If billable weight is 0 (all items free shipping?) but we have items, 
+             // we use displayWeight to ensure a shipping cost is always calculated as per user request.
+             const effectiveWeight = group.weight > 0 ? group.weight : group.displayWeight;
 
-  const totalWeight = Object.values(productsByGroup).reduce((sum, b) => sum + b.weight, 0);
-  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  
-  // Re-calculate shipping when state or groupings change
-  useEffect(() => {
-    if (formData.state && originsList.length > 0) {
-        let totalCost = 0;
-        Object.keys(productsByGroup).forEach(groupKey => {
-          const groupData = productsByGroup[groupKey];
-          if (groupData.weight > 0) {
-            const cost = calculateShippingCost(
-                groupData.weight, 
-                groupData.originZone, 
-                formData.state, 
-                shippingConfig || undefined
-            );
-            groupData.shipping = cost;
-            totalCost += cost;
-          }
+             if (effectiveWeight > 0) {
+                const cost = calculateShippingCost(
+                    effectiveWeight, 
+                    group.originZone, 
+                    formData.state, 
+                    shippingConfig || undefined
+                );
+                
+                group.shipping = cost;
+                
+                // If we used fallback, update weight so share calculation works correctly
+                if (group.weight === 0) group.weight = effectiveWeight; 
+             }
         });
-        setShippingCost(totalCost);
     }
-  }, [formData.state, JSON.stringify(productsByGroup), shippingConfig, originsList]);
+
+    return groups;
+  }, [cart, originsList, formData.state, shippingConfig]);
+
+  const totalWeight = Object.values(productsByGroup).reduce((sum, b) => sum + b.displayWeight, 0);
+  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const shippingCost = Object.values(productsByGroup).reduce((sum, group) => sum + group.shipping, 0);
 
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
 
@@ -297,16 +325,9 @@ const CheckoutPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50/50">
-    <div className="container mx-auto p-4 py-8 max-w-6xl flex-1">   
-       <div className="flex items-center gap-4 mb-8">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/shop')}>
-            <ArrowLeft className="h-6 w-6" />
-          </Button>
-          <h1 className="text-3xl font-bold">Checkout</h1>
-       </div>
-       
-       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <ShopLayout title="Checkout" onBack={() => navigate('/shop/cart')}>
+      <div className="max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Address Selection */}
           <div className="lg:col-span-2 space-y-6">
             <Card>
@@ -611,7 +632,7 @@ const CheckoutPage = () => {
                         <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                             {cart.map(item => (
                                 <div key={item.productId} className="flex justify-between text-sm">
-                                    <span className="truncate max-w-[180px]">{item.name} x {item.quantity}</span>
+                                    <span className="">{item.name} x {item.quantity}</span>
                                     <span>₹{item.price * item.quantity}</span>
                                 </div>
                             ))}
@@ -630,15 +651,24 @@ const CheckoutPage = () => {
                                   <span className="text-sm font-medium">₹{data.shipping}</span>
                                 </div>
                                 <div className="space-y-1">
-                                  {data.items.map((item, idx) => (
-                                    <div key={idx} className="flex justify-between text-[11px] text-slate-600">
-                                      <span className="font-medium truncate max-w-[140px]">{item.name}</span>
-                                      <span>x{item.quantity}</span>
-                                    </div>
-                                  ))}
+                                  {data.items.map((item, idx) => {
+                                      const itemWeight = (item.weightInKg || parseWeightToKg(item.weight || '0.5kg')) * item.quantity;
+                                      // Calculate share based on total display weight to ensure fair distribution if we are falling back
+                                      // Or better: use data.weight which we standardized in useMemo
+                                      const  shippingShare = (data.weight > 0) ? (itemWeight / data.weight) * data.shipping : 0;
+                                      
+                                      return (
+                                        <div key={idx} className="flex justify-between text-[11px] text-slate-600">
+                                          <span className="font-medium flex-1">{item.name}</span>
+                                          <span className="text-gray-500 w-16 text-right">x{item.quantity}</span>
+                                          <span className="text-gray-500 w-20 text-right">{itemWeight.toFixed(2)}kg</span>
+                                          <span className="font-medium w-20 text-right">₹{shippingShare.toFixed(2)}</span>
+                                        </div>
+                                      );
+                                  })}
                                 </div>
-                                <div className="text-[10px] text-slate-400 text-right">
-                                  Weight: {data.weight.toFixed(2)} kg
+                                <div className="text-xs font-semibold text-slate-700 text-right mt-1">
+                                  Total Weight: {data.displayWeight.toFixed(2)} kg
                                 </div>
                               </div>
                             ))}
@@ -685,12 +715,10 @@ const CheckoutPage = () => {
                     </CardContent>
                 </Card>
            </div>
-       </div>
-    </div>
-    <Footer />
-    </div>
+        </div>
+      </div>
+    </ShopLayout>
   );
 };
-
 
 export default CheckoutPage;

@@ -8,7 +8,7 @@ import {
     Star,
     Users
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { Footer } from '@/components/shop/Footer';
 import { Button } from '@/components/ui/button';
@@ -16,9 +16,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLoginClick = () => {
-    navigate('/login');
+    navigate('/login', { state: { from: location } });
   };
 
   const features = [

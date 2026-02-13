@@ -13,9 +13,10 @@ interface ShopLayoutProps {
   children: React.ReactNode;
   title?: string;
   showBack?: boolean;
+  onBack?: () => void;
 }
 
-export const ShopLayout: React.FC<ShopLayoutProps> = ({ children, title = 'Shop', showBack = true }) => {
+export const ShopLayout: React.FC<ShopLayoutProps> = ({ children, title = 'Shop', showBack = true, onBack }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { cartCount, wishlist } = useShop();
@@ -28,7 +29,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({ children, title = 'Shop'
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-4">
             {showBack && (
-              <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <Button variant="ghost" size="icon" onClick={onBack || (() => navigate(-1))}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             )}

@@ -53,7 +53,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     placeOfOrigin: item.placeOfOrigin ?? [],
     weight: item.weight ?? '',
     productQuantity: item.productQuantity ?? item.weight ?? '',
-    weightInKg: item.weightInKg ?? 0,
+    weightInKg: item.weightInKg || 0.5,
     unitsOfMeasure: item.unitsOfMeasure ?? '',
   });
 
@@ -84,7 +84,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         placeOfOrigin: product.placeOfOrigin ?? [],
         weight: product.weight ?? '',
         productQuantity: product.quantity ?? product.weight ?? '',
-        weightInKg: product.weightInKg ?? 0,
+        weightInKg: product.weightInKg || 0.5,
         unitsOfMeasure: product.unitsOfMeasure ?? '',
       });
     }

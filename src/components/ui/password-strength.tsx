@@ -6,9 +6,10 @@ import { Progress } from '@/components/ui/progress';
 interface PasswordStrengthProps {
   password: string;
   onValidationChange: (isValid: boolean) => void;
+  showError?: boolean;
 }
 
-export const PasswordStrengthIndicator = ({ password, onValidationChange }: PasswordStrengthProps) => {
+export const PasswordStrengthIndicator = ({ password, onValidationChange, showError = true }: PasswordStrengthProps) => {
   const [strength, setStrength] = useState(0);
   const [requirements, setRequirements] = useState({
     length: false,
@@ -51,7 +52,10 @@ export const PasswordStrengthIndicator = ({ password, onValidationChange }: Pass
 
   }, [password, onValidationChange]);
 
+  // Logic to determine color based on strength and error state
   const getColor = () => {
+    if (!showError) return 'bg-gray-200';
+    
     if (strength <= 25) return 'bg-red-500';
     if (strength <= 50) return 'bg-orange-500';
     if (strength <= 75) return 'bg-yellow-500';

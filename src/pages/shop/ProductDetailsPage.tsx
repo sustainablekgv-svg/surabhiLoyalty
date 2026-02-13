@@ -1,20 +1,22 @@
 import { ShopLayout } from '@/components/shop/ShopLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useAuth } from '@/hooks/auth-context';
 import { useShop } from '@/hooks/shop-context';
 import { db } from '@/lib/firebase';
 import { Product } from '@/types/shop';
 import { doc, getDoc } from 'firebase/firestore';
-import { Heart, Minus, Plus, Share2, ShoppingCart } from 'lucide-react';
+import { Heart, Minus, Plus, Share2, ShoppingCart, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const ProductDetailsPage = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const location = useLocation();
     const { addToCart, toggleWishlist, isInWishlist } = useShop();
     const { user } = useAuth();
     
@@ -22,6 +24,17 @@ const ProductDetailsPage = () => {
     const [loading, setLoading] = useState(true);
     const [quantity, setQuantity] = useState(1);
     const [selectedImage, setSelectedImage] = useState<string>('');
+    
+    // Custom back handler to preserve filters
+    const handleBack = () => {
+        if (location.state?.from) {
+            navigate(location.state.from);
+        } else {
+            navigate('/shop');
+        }
+    };
+    
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -50,7 +63,7 @@ const ProductDetailsPage = () => {
 
     if (loading) {
         return (
-            <ShopLayout title="Product Details">
+            <ShopLayout title="Product Details" onBack={handleBack}>
                 <div className="min-h-[60vh] flex items-center justify-center">
                     <LoadingSpinner size={48} />
                 </div>
@@ -70,34 +83,64 @@ const ProductDetailsPage = () => {
     const increaseQty = () => setQuantity(prev => Math.min(product.stock, prev + 1));
 
     return (
-        <ShopLayout>
+        <ShopLayout onBack={handleBack}>
             <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
                 {/* Image Gallery */}
                 <div className="space-y-4">
-                    <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden border">
-                        {selectedImage ? (
-                            <img 
-                                src={selectedImage} 
-                                alt={product.name} 
-                                className="h-full w-full object-cover" 
-                                onError={(e) => {
-                                    e.currentTarget.src = 'https://placehold.co/600x600?text=No+Image';
-                                    e.currentTarget.onerror = null; // Prevent infinite loop
-                                }}
-                            />
-                        ) : (
-                            <div className="h-full w-full flex items-center justify-center text-gray-400">No Image</div>
-                        )}
-                    </div>
+                    <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
+                        <DialogTrigger asChild>
+                            <div className="aspect-square bg-white rounded-2xl overflow-hidden border flex items-center justify-center cursor-pointer hover:opacity-95 transition-opacity relative group">
+                                {selectedImage ? (
+                                    <>
+                                    <img 
+                                        src={selectedImage} 
+                                        alt={product.name} 
+                                        className="max-h-full max-w-full object-contain" 
+                                        onError={(e) => {
+                                            e.currentTarget.src = 'https://placehold.co/600x600?text=No+Image';
+                                            e.currentTarget.onerror = null; // Prevent infinite loop
+                                        }}
+                                    />
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <span className="bg-white/90 text-xs px-2 py-1 rounded shadow-sm">Click to expand</span>
+                                    </div>
+                                    </>
+                                ) : (
+                                    <div className="h-full w-full flex items-center justify-center text-gray-400">No Image</div>
+                                )}
+                            </div>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl w-full h-[90vh] p-0 bg-transparent border-0 shadow-none flex flex-col items-center justify-center">
+                             <div className="relative w-full h-full flex items-center justify-center" onClick={() => setIsImageModalOpen(false)}>
+                                <img
+                                    src={selectedImage}
+                                    alt={product.name}
+                                    className="max-w-full max-h-full object-contain rounded-lg"
+                                />
+                                <Button
+                                    variant="secondary"
+                                    size="icon"
+                                    className="absolute top-4 right-4 rounded-full h-10 w-10 bg-white/80 hover:bg-white"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIsImageModalOpen(false);
+                                    }}
+                                >
+                                    <X className="h-6 w-6" />
+                                </Button>
+                             </div>
+                        </DialogContent>
+                    </Dialog>
+
                     {product.images && product.images.length > 1 && (
-                        <div className="flex gap-4 overflow-x-auto pb-2">
+                        <div className="flex gap-2 md:gap-4 overflow-x-auto pb-2 scrollbar-hide max-w-full">
                             {product.images.map((img, idx) => (
                                 <button 
                                     key={idx}
                                     onClick={() => setSelectedImage(img)}
-                                    className={`relative shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transaction-all ${selectedImage === img ? 'border-primary ring-2 ring-primary/20' : 'border-transparent hover:border-gray-200'}`}
+                                    className={`relative shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden border-2 transition-all flex items-center justify-center bg-white ${selectedImage === img ? 'border-primary ring-2 ring-primary/20' : 'border-transparent hover:border-gray-200'}`}
                                 >
-                                    <img src={img} alt={`${product.name} view ${idx + 1}`} className="h-full w-full object-cover" />
+                                    <img src={img} alt={`${product.name} view ${idx + 1}`} className="max-h-full max-w-full object-contain" />
                                 </button>
                             ))}
                         </div>
@@ -157,45 +200,34 @@ const ProductDetailsPage = () => {
                     </div>
 
                     <div 
-                        className="prose prose-sm text-gray-600 max-w-none text-justify"
+                        className="prose prose-sm text-gray-600 max-w-none text-justify overflow-hidden break-words"
                         dangerouslySetInnerHTML={{ __html: product.description }}
                     />
 
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div className="p-3 bg-gray-50 rounded-lg">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm max-w-full">
+                        <div className="p-3 bg-gray-50 rounded-lg overflow-hidden">
                             <span className="block text-gray-500 mb-1">Quantity</span>
-                            <span className="font-medium">
+                            <span className="font-medium break-words">
                                 {product.quantity || product.weight || 'N/A'} {product.unitsOfMeasure ? (product.unitsOfMeasure === 'pcs' ? 'pc' : product.unitsOfMeasure) : ''}
                             </span>
                         </div>
-                         <div className="p-3 bg-gray-50 rounded-lg">
+                         <div className="p-3 bg-gray-50 rounded-lg overflow-hidden">
                             <span className="block text-gray-500 mb-1">Category</span>
-                            <span className="font-medium">{product.categoryName}</span>
+                            <span className="font-medium break-words">{product.categoryName}</span>
                         </div>
                         
-                        {/* Only show stock status if tracking is enabled */}
-                        {(product.trackInventory === true) && (
-                            <div className="p-3 bg-gray-50 rounded-lg">
-                                <span className="block text-gray-500 mb-1">Stock Status</span>
-                                {product.stock > 0 ? (
-                                    <span className="font-medium text-green-600">In Stock ({product.stock})</span>
-                                ) : (
-                                    <span className="font-medium text-red-600">Out of Stock</span>
-                                )}
-                            </div>
-                        )}
                         
                         {product.placeOfOrigin && product.placeOfOrigin.length > 0 && (
-                            <div className="p-3 bg-gray-50 rounded-lg">
+                            <div className="p-3 bg-gray-50 rounded-lg overflow-hidden">
                                 <span className="block text-gray-500 mb-1">Place of Origin</span>
-                                <span className="font-medium">{product.placeOfOrigin.join(', ')}</span>
+                                <span className="font-medium break-words">{product.placeOfOrigin.join(', ')}</span>
                             </div>
                         )}
                         
                         {product.weightInKg && (
-                            <div className="p-3 bg-gray-50 rounded-lg">
+                            <div className="p-3 bg-gray-50 rounded-lg overflow-hidden">
                                 <span className="block text-gray-500 mb-1">Shipping Weight</span>
-                                <span className="font-medium">{product.weightInKg} kg</span>
+                                <span className="font-medium break-words">{product.weightInKg} kg</span>
                             </div>
                         )}
                     </div>

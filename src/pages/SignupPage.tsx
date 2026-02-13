@@ -1,6 +1,6 @@
 import { ArrowLeft, CheckCircle, Coins, KeyRound, Loader2, Lock, Phone, User, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -15,14 +15,15 @@ import { PasswordStrengthIndicator } from '@/components/ui/password-strength';
 import { db } from '@/lib/firebase';
 import { CustomerType } from '@/types/types';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { useSearchParams } from 'react-router-dom';
 
 
 const SignupPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const referralCode = searchParams.get('ref');
   
+  const from = location.state?.from;
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     customerName: '',
@@ -114,9 +115,11 @@ const SignupPage = () => {
   };
 
   const [isPasswordValid, setIsPasswordValid] = useState(false);
+  const [isPasswordTouched, setIsPasswordTouched] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsPasswordTouched(true);
 
     if (formData.customerPassword !== formData.confirmPassword) {
       toast.error("Passwords do not match");
@@ -163,7 +166,7 @@ const SignupPage = () => {
       });
 
       toast.success('Registration successful! Please login.');
-      navigate('/login');
+      navigate('/login', { state: { from } });
     } catch (error: any) {
       toast.error(error.message || 'Registration failed. Please try again.');
     } finally {
@@ -172,7 +175,7 @@ const SignupPage = () => {
   };
 
   const handleBackToLogin = () => {
-    navigate('/login');
+    navigate('/login', { state: { from } });
   };
 
   return (
@@ -236,14 +239,14 @@ const SignupPage = () => {
                                 } as any)
                             }}
                             placeholder="Select date of birth *"
-                            className="w-full"
+                            className="w-full h-12"
                         />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="gender">Gender *</Label>
                     <Select value={formData.gender} onValueChange={handleGenderChange}>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-12 w-full">
                             <SelectValue placeholder="Select" />
                         </SelectTrigger>
                         <SelectContent>
@@ -308,13 +311,15 @@ const SignupPage = () => {
                         placeholder="Create password" 
                         value={formData.customerPassword} 
                         onChange={handleInputChange} 
-                        className="pl-10" 
+                        onBlur={() => setIsPasswordTouched(true)}
+                        className="pl-10 h-12" 
                         required 
                       />
                   </div>
                   <PasswordStrengthIndicator 
                     password={formData.customerPassword} 
                     onValidationChange={setIsPasswordValid} 
+                    showError={isPasswordTouched}
                   />
                 </div>
 
