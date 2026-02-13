@@ -290,7 +290,7 @@ const ShopPage = () => {
         } else {
             fetchProducts(false);
         }
-    }, [viewMode, filterTrigger, debouncedSearch, selectedCategory, selectedBrand, selectedOrigin, priceRange, spvRange, sortBy]); 
+    }, [viewMode, filterTrigger, debouncedSearch, selectedCategory, selectedBrand, selectedOrigin, priceRange, spvRange, sortBy, fetchProducts]); 
     // Note: Including dependencies here triggers re-fetch. 
     // filterTrigger is a manual way to force refetch if needed, but deps cover it.
 

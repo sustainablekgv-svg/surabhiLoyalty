@@ -55,9 +55,9 @@ export const parseWeightToKg = (weightStr: string): number => {
 };
 
 export const calculateShippingCost = (totalWeightKg: number, originZone: string, destinationState: string, config?: ShippingConfig): number => {
-    const zones = config?.zones || SHIPPING_ZONES;
-    const rateTable = config?.rateTable || RATE_TABLE;
-    const extraPerKg = config?.extraPerKg || EXTRA_PER_KG_AFTER_5KG;
+    const zones = (config?.zones && Object.keys(config.zones).length > 0) ? config.zones : SHIPPING_ZONES;
+    const rateTable = (config?.rateTable && Object.keys(config.rateTable).length > 0) ? config.rateTable : RATE_TABLE;
+    const extraPerKg = (config?.extraPerKg && Object.keys(config.extraPerKg).length > 0) ? config.extraPerKg : EXTRA_PER_KG_AFTER_5KG;
 
     const destZone = getZoneForState(destinationState, zones);
     
@@ -75,16 +75,15 @@ export const calculateShippingCost = (totalWeightKg: number, originZone: string,
     // Minimum 0.5kg charged
     const weight = Math.max(totalWeightKg, 0.5);
 
-    if (weight <= 0.5) return rateTable[effectiveZone][0];
-    if (weight <= 1) return rateTable[effectiveZone][1];
-    if (weight <= 2) return rateTable[effectiveZone][2];
-    if (weight <= 3) return rateTable[effectiveZone][3];
-    if (weight <= 5) return rateTable[effectiveZone][4];
+    const rates = rateTable[effectiveZone] || RATE_TABLE[effectiveZone] || RATE_TABLE['E'];
 
+    if (weight <= 0.5) return rates[0];
+    if (weight <= 1) return rates[1];
     // Above 5kg
-    const basePrice = rateTable[effectiveZone][4]; // Cost for 5kg
+    const basePrice = rates[4]; // Cost for 5kg
     const extraWeight = Math.ceil(weight - 5); // Round up to next kg
-    const extraCost = extraWeight * extraPerKg[effectiveZone];
+    const extraRate = extraPerKg[effectiveZone] || EXTRA_PER_KG_AFTER_5KG[effectiveZone] || 60;
+    const extraCost = extraWeight * extraRate;
     
     return basePrice + extraCost;
 };

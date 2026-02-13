@@ -26,7 +26,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
   return (
     <Card className="group overflow-hidden border-0 bg-transparent shadow-none hover:shadow-lg transition-all duration-300 rounded-xl bg-white flex flex-col h-full">
 
-      <div className="relative aspect-square overflow-hidden bg-white cursor-pointer flex items-center justify-center" onClick={() => navigate(`/shop/product/${product.id}`, { state: { from: location } })}>
+      <div className="relative aspect-square overflow-hidden bg-white cursor-pointer flex items-center justify-center" onClick={() => navigate(`/shop/product/${product.id}`, { state: { from: location.pathname + location.search } })}>
         {isValidImageUrl(product.images?.[0]) ? (
           <img
             src={product.images[0]}
@@ -74,7 +74,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
         
         <h3 
           className="font-semibold leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors mb-2 text-gray-900 min-h-[2.5rem]"
-          onClick={() => navigate(`/shop/product/${product.id}`, { state: { from: location } })}
+          onClick={() => navigate(`/shop/product/${product.id}`, { state: { from: location.pathname + location.search } })}
           title={product.name}
         >
           {product.name}
