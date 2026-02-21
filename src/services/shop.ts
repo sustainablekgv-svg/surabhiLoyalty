@@ -614,7 +614,7 @@ export const updateOrderTotal = async (orderId: string, newTotal: number) => {
     });
 };
 
-const getStoreByLocation = async (location: string): Promise<StoreType | null> => {
+export const getStoreByLocation = async (location: string): Promise<StoreType | null> => {
     try {
         const q = query(collection(db, 'stores'), where('storeLocation', '==', location));
         const snap = await getDocs(q);
@@ -747,4 +747,126 @@ export const updateOrderAddress = async (orderId: string, newAddress: import('@/
         shippingAddress: newAddress,
         updatedAt: serverTimestamp()
     });
+};
+
+export const adjustOrderShippingBalance = async (
+    orderId: string, 
+    customerId: string, 
+    amount: number, 
+    isAddition: boolean,
+    user: any // for processedBy
+) => {
+    try {
+        const orderRef = doc(db, 'orders', orderId);
+        const orderSnap = await getDoc(orderRef);
+        
+        if (!orderSnap.exists()) throw new Error("Order not found");
+        const orderData = orderSnap.data() as Order;
+        
+        const customerRef = doc(db, 'Customers', customerId);
+        const customerSnap = await getDoc(customerRef);
+        
+        if (!customerSnap.exists()) throw new Error("Customer not found");
+        const customerData = customerSnap.data() as CustomerType;
+
+        const adjustmentAmount = isAddition ? amount : -amount;
+        
+        // Ensure deduction doesn't exceed current balance
+        if (!isAddition && (customerData.shippingBalance || 0) < amount) {
+            throw new Error("Insufficient shipping balance to deduct");
+        }
+
+        const newShippingBalance = Number(((customerData.shippingBalance || 0) + adjustmentAmount).toFixed(2));
+        const newShippingTotal = isAddition 
+            ? Number(((customerData.shippingTotal || 0) + amount).toFixed(2)) 
+            : (customerData.shippingTotal || 0);
+
+        // 1. Update Customer Balance
+        await updateDoc(customerRef, {
+            shippingBalance: newShippingBalance,
+            ...(isAddition && { shippingTotal: newShippingTotal })
+        });
+
+        // 2. Update Order with tracking field
+        const currentAdjustment = orderData.adminShippingAdjustment || 0;
+        await updateDoc(orderRef, {
+            adminShippingAdjustment: currentAdjustment + adjustmentAmount,
+            updatedAt: serverTimestamp()
+        });
+
+        // 3. Create CustomerTx for the ledger
+        const customerTxData: Omit<CustomerTxType, 'id'> = {
+            type: 'shipping_adjustment',
+            customerMobile: customerData.customerMobile,
+            customerName: customerData.customerName,
+            demoStore: customerData.demoStore || false,
+            storeLocation: customerData.storeLocation || 'Main Store',
+            storeName: user?.storeLocation || 'Main Store',
+            createdAt: Timestamp.fromDate(new Date()),
+            paymentMethod: 'wallet', // conceptual
+            processedBy: user?.staffName || 'Admin',
+            invoiceId: `ADJ-${orderId.slice(0,6).toUpperCase()}`,
+            remarks: `Manual shipping balance adjustment by Admin (${isAddition ? 'Add' : 'Deduct'} ₹${amount}) for order ${orderId.slice(0,8)}`,
+            
+            amount: amount,
+            surabhiEarned: 0,
+            sevaEarned: 0,
+            referralEarned: 0,
+            referredBy: customerData.referredBy || '',
+            adminProft: 0,
+
+            surabhiUsed: 0,
+            walletDeduction: 0,
+            cashPayment: 0,
+
+            previousBalance: {
+                walletBalance: Number(customerData.walletBalance.toFixed(2)),
+                surabhiBalance: Number(customerData.surabhiBalance.toFixed(2)),
+                shippingBalance: Number((customerData.shippingBalance || 0).toFixed(2))
+            },
+            newBalance: {
+                walletBalance: Number(customerData.walletBalance.toFixed(2)),
+                surabhiBalance: Number(customerData.surabhiBalance.toFixed(2)),
+                shippingBalance: newShippingBalance
+            },
+
+            walletCredit: 0,
+            walletDebit: 0,
+            walletBalance: Number(customerData.walletBalance.toFixed(2)),
+            surabhiDebit: 0,
+            surabhiCredit: 0,
+            surabhiBalance: Number(customerData.surabhiBalance.toFixed(2)),
+            sevaCredit: 0,
+            sevaDebit: 0,
+            sevaBalance: Number((customerData.sevaBalance || 0).toFixed(2)),
+            sevaTotal: Number((customerData.sevaTotal || 0).toFixed(2)),
+            
+            shippingCredit: isAddition ? amount : 0,
+            shippingDebit: !isAddition ? amount : 0,
+            shippingBalance: newShippingBalance,
+            shippingTotal: newShippingTotal,
+            
+            storeSevaBalance: 0
+        };
+
+        if (customerTxData.type) { 
+           await addDoc(collection(db, 'CustomerTx'), customerTxData);
+        }
+
+        // 4. Activity Log
+        await addDoc(collection(db, 'Activity'), {
+            type: 'shipping_adjustment',
+            remarks: customerTxData.remarks,
+            amount: amount,
+            customerMobile: customerData.customerMobile,
+            customerName: customerData.customerName,
+            storeLocation: customerData.storeLocation || 'Main Store',
+            demoStore: customerData.demoStore || false,
+            date: new Date()
+        });
+
+    } catch (error) {
+        console.error("Error adjusting shipping balance:", error);
+        throw error;
+    }
 };

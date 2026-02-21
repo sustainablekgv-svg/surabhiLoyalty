@@ -59,22 +59,20 @@ const ShopPage = () => {
     // Initialize from URL params and Path
     useEffect(() => {
         const params = new URLSearchParams(location.search);
-        const search = params.get('q');
-        const cat = params.get('category');
-        const brand = params.get('brand');
-        const origin = params.get('origin');
+        const search = params.get('q') || '';
+        const cat = params.get('category') || null;
+        const brand = params.get('brand') || null;
+        const origin = params.get('origin') || null;
         
-        if (search) setSearchQuery(search);
-        if (cat) setSelectedCategory(cat);
-        if (brand) setSelectedBrand(brand);
-        if (origin) setSelectedOrigin(origin);
+        // Only update if actually different to avoid unnecessary triggers
+        setSearchQuery(prev => prev !== search ? search : prev);
+        setSelectedCategory(prev => prev !== cat ? cat : prev);
+        setSelectedBrand(prev => prev !== brand ? brand : prev);
+        setSelectedOrigin(prev => prev !== origin ? origin : prev);
 
         // Strict View Mode based on Path
         if (location.pathname === '/shop') {
             setViewMode('landing');
-            // Clear filters when on landing, unless search is present (which might warrant a switch?)
-            // User requested /shop is strictly categories/brands.
-            // If search is present on /shop? Maybe redirect to /shop/filters?
             if (search) {
                 navigate(`/shop/filters?q=${search}`, { replace: true });
             }
@@ -114,6 +112,27 @@ const ShopPage = () => {
         }
     }, [urlCategory, urlBrand]);
 
+    // Sync filters to URL params to preserve state on refresh and handle "redirection" better
+    useEffect(() => {
+        if (viewMode === 'landing') return;
+
+        const params = new URLSearchParams();
+        if (searchQuery) params.set('q', searchQuery);
+        if (selectedCategory) params.set('category', selectedCategory);
+        if (selectedBrand) params.set('brand', selectedBrand);
+        if (selectedOrigin) params.set('origin', selectedOrigin);
+        
+        const newSearch = params.toString();
+        const currentSearch = location.search.startsWith('?') ? location.search.substring(1) : location.search;
+        
+        if (newSearch !== currentSearch && !urlCategory && !urlBrand) {
+            navigate({
+                pathname: '/shop/filters',
+                search: newSearch ? `?${newSearch}` : ''
+            }, { replace: true });
+        }
+    }, [searchQuery, selectedCategory, selectedBrand, selectedOrigin, viewMode, navigate, location.pathname, urlCategory, urlBrand]);
+
     // Initial Load for Filter Dropdowns
     useEffect(() => {
         const loadInitialData = async () => {
@@ -137,10 +156,10 @@ const ShopPage = () => {
 
 
     // --- Products Fetching ---
-    const fetchProducts = useCallback(async (isLoadMore = false) => {
+    const fetchProducts = useCallback(async (isLoadMore = false, customLastDoc = null) => {
         setProductsLoading(true);
         try {
-            const lastDoc = isLoadMore ? productsLastDoc : null;
+            const lastDoc = isLoadMore ? (customLastDoc || productsLastDoc) : null;
             
             // Build Filter Object
             const filterOptions = {
@@ -173,11 +192,12 @@ const ShopPage = () => {
                 // Let's assume for now we use what we have. 
             };
             
-            // Hack: Map Category ID
+            // Mapping Category Name to ID for backend query
             let catId = undefined;
             if (selectedCategory) {
-                 const found = filterCategories.find(c => c.name === selectedCategory);
+                 const found = filterCategories.find(c => c.name === selectedCategory || c.id === selectedCategory);
                  if (found) catId = found.id;
+                 else catId = selectedCategory; // Fallback if it's already an ID
             }
 
             const constraints = {
@@ -230,13 +250,19 @@ const ShopPage = () => {
             setProductsLastDoc(result.lastDoc);
             setProductsHasMore(result.products.length >= PAGE_SIZE); // Approximation
 
-        } catch (error) {
-            console.error("Fetch products error", error);
-            toast.error("Error loading products");
         } finally {
             setProductsLoading(false);
         }
-    }, [debouncedSearch, selectedCategory, selectedBrand, selectedOrigin, priceRange, spvRange, sortBy, productsLastDoc, filterCategories]);
+    // We remove productsLastDoc from dependencies to prevent infinite loops when it updates
+    }, [debouncedSearch, selectedCategory, selectedBrand, selectedOrigin, priceRange, spvRange, sortBy, filterCategories]); 
+
+
+    // --- Load More Wrapper ---
+    const loadMoreProducts = () => {
+        if (!productsLoading && productsHasMore) {
+            fetchProducts(true, productsLastDoc);
+        }
+    };
 
 
     // --- Brands Fetching (Landing) ---
@@ -288,16 +314,15 @@ const ShopPage = () => {
             fetchBrandsData(false);
             fetchCategoriesData(false);
         } else {
+            // Guard: if a category is selected but categories aren't loaded yet, wait to avoid ID mapping failure
+            if (selectedCategory && filterCategories.length === 0) {
+                 return;
+            }
             fetchProducts(false);
         }
-    }, [viewMode, filterTrigger, debouncedSearch, selectedCategory, selectedBrand, selectedOrigin, priceRange, spvRange, sortBy, fetchProducts]); 
-    // Note: Including dependencies here triggers re-fetch. 
-    // filterTrigger is a manual way to force refetch if needed, but deps cover it.
+    }, [viewMode, filterTrigger, debouncedSearch, selectedCategory, selectedBrand, selectedOrigin, priceRange, spvRange, sortBy, filterCategories]); 
 
     
-    const loadMoreProducts = () => {
-        if (!productsLoading && productsHasMore) fetchProducts(true);
-    };
 
     const loadMoreBrands = () => {
         if (!brandsLoading && brandsHasMore) fetchBrandsData(true);

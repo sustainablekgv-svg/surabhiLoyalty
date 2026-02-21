@@ -79,6 +79,10 @@ export const calculateShippingCost = (totalWeightKg: number, originZone: string,
 
     if (weight <= 0.5) return rates[0];
     if (weight <= 1) return rates[1];
+    if (weight <= 2) return rates[2];
+    if (weight <= 3) return rates[3];
+    if (weight <= 5) return rates[4];
+    
     // Above 5kg
     const basePrice = rates[4]; // Cost for 5kg
     const extraWeight = Math.ceil(weight - 5); // Round up to next kg
@@ -86,6 +90,16 @@ export const calculateShippingCost = (totalWeightKg: number, originZone: string,
     const extraCost = extraWeight * extraRate;
     
     return basePrice + extraCost;
+};
+
+export const getWeightBracketLabel = (weight: number): string => {
+    const w = Math.max(weight, 0.5);
+    if (w <= 0.5) return 'Up to 0.5 kg';
+    if (w <= 1) return '0.5 - 1 kg';
+    if (w <= 2) return '1 - 2 kg';
+    if (w <= 3) return '2 - 3 kg';
+    if (w <= 5) return '3 - 5 kg';
+    return `Above 5 kg (${Math.ceil(w)} kg)`;
 };
 
 export const getZoneForState = (state: string, zones: Record<string, string[]> = SHIPPING_ZONES): string => {

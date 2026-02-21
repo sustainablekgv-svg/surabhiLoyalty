@@ -25,6 +25,18 @@ export interface Product {
     spv?: number; // Sales Point Value
     trackInventory?: boolean;
     placeOfOrigin?: string[]; // Multiple places of origin
+    averageRating?: number;
+    totalReviews?: number;
+}
+
+export interface ProductReview {
+    id: string;
+    productId: string;
+    customerId: string;
+    customerName: string;
+    rating: number; // 1-5
+    reviewText: string;
+    createdAt: any; // Firestore Timestamp
 }
 
 export interface Brand {
@@ -39,6 +51,7 @@ export interface Brand {
     categoryOrders?: { [categoryId: string]: number }; // New: Map of CategoryID -> OrderIndex
     isActive: boolean;
     displayOrder?: number; // @deprecated - use categoryOrders for specific contexts
+    shippingPercentage?: number; // New: Percentage for shipping credits earning
     createdAt: any;
     updatedAt: any;
 }
@@ -117,6 +130,12 @@ export interface Order {
     }[];
     cancelReason?: string;
     surabhiCoinsUsed?: number;
+    shippingPointsEarned?: number;
+    shippingPointsUsed?: number;
+    netShippingCharges?: number;
+    surabhiCoinsEarned?: number;
+    sevaCoinsEarned?: number;
+    adminShippingAdjustment?: number;
     createdAt: any;
     updatedAt: any;
 }

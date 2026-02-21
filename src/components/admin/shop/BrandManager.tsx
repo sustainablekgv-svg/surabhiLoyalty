@@ -37,7 +37,8 @@ export const BrandManager = () => {
         description: '',
         images: [] as string[],
         categoryId: '',
-        categoryIds: [] as string[]
+        categoryIds: [] as string[],
+        shippingPercentage: 0
     });
 
     const fetchBrands = async () => {
@@ -119,7 +120,8 @@ export const BrandManager = () => {
                 isActive: true,
                 categoryId: formData.categoryIds[0], // Primary category for legacy support
                 categoryIds: formData.categoryIds,
-                categoryName: categories.find(c => c.id === formData.categoryIds[0])?.name || ''
+                categoryName: categories.find(c => c.id === formData.categoryIds[0])?.name || '',
+                shippingPercentage: Number(formData.shippingPercentage) || 0
             };
 
             if (editingBrand) {
@@ -215,7 +217,8 @@ export const BrandManager = () => {
             description: '',
             images: [],
             categoryId: '',
-            categoryIds: []
+            categoryIds: [],
+            shippingPercentage: 0
         });
     };
 
@@ -226,7 +229,8 @@ export const BrandManager = () => {
             description: brand.description || '',
             images: brand.images || (brand.logo ? [brand.logo] : []),
             categoryId: brand.categoryId || '',
-            categoryIds: brand.categoryIds || (brand.categoryId ? [brand.categoryId] : [])
+            categoryIds: brand.categoryIds || (brand.categoryId ? [brand.categoryId] : []),
+            shippingPercentage: brand.shippingPercentage || 0
         });
         setIsDialogOpen(true);
     };
@@ -294,6 +298,18 @@ export const BrandManager = () => {
                             <div className="space-y-2">
                                 <Label>Brand Name</Label>
                                 <Input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Shipping Earn Percentage (%)</Label>
+                                <Input 
+                                    type="number" 
+                                    step="0.01"
+                                    required 
+                                    value={formData.shippingPercentage} 
+                                    onChange={e => setFormData({ ...formData, shippingPercentage: Number(e.target.value) })} 
+                                    placeholder="e.g. 5"
+                                />
+                                <p className="text-xs text-muted-foreground">Percentage of SPV customer earns as shipping credits.</p>
                             </div>
                             <div className="space-y-2">
                                 <Label>Categories</Label>

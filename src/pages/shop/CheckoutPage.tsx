@@ -1,3 +1,4 @@
+import { WhatsAppIcon } from '@/components/shop/FloatingWhatsApp';
 import { ShopLayout } from '@/components/shop/ShopLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +10,7 @@ import { useAuth } from '@/hooks/auth-context';
 import { useShop } from '@/hooks/shop-context';
 import { addAddress, getAddresses } from '@/lib/addressService';
 import { db } from '@/lib/firebase';
-import { calculateShippingCost, getZoneForState, INDIAN_STATES, parseWeightToKg } from '@/services/shipping';
+import { calculateShippingCost, getWeightBracketLabel, INDIAN_STATES, parseWeightToKg } from '@/services/shipping';
 import { Address, CartItem } from '@/types/shop';
 import { collection, getDocs } from 'firebase/firestore';
 import { Check, Copy, Loader2, Plus, ShoppingCart, Truck } from 'lucide-react';
@@ -64,6 +65,10 @@ const CheckoutPage = () => {
     landmark: ''
   });
 
+  const [brands, setBrands] = useState<any[]>([]);
+  const [shippingCreditsUsed, setShippingCreditsUsed] = useState(0);
+  const [maxShippingCreditsAvailable, setMaxShippingCreditsAvailable] = useState(0);
+
 
   const [shippingConfig, setShippingConfig] = useState<any>(null);
   const [originsList, setOriginsList] = useState<any[]>([]);
@@ -71,15 +76,22 @@ const CheckoutPage = () => {
   useEffect(() => {
     const fetchConfigAndOrigins = async () => {
       const { getShippingConfig } = await import('@/services/shipping');
-      const [config, originsSnap] = await Promise.all([
+      const [config, originsSnap, brandsSnap] = await Promise.all([
         getShippingConfig(),
-        getDocs(collection(db, 'origins'))
+        getDocs(collection(db, 'origins')),
+        getDocs(collection(db, 'brands'))
       ]);
       setShippingConfig(config);
       setOriginsList(originsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setBrands(brandsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     };
     fetchConfigAndOrigins();
-  }, []);
+    
+    // Set max available shipping credits
+    if (user && 'shippingBalance' in user) {
+        setMaxShippingCreditsAvailable(user.shippingBalance || 0);
+    }
+  }, [user]);
 
 
   // Calculate totals by brand + origin for breakdown
@@ -91,6 +103,7 @@ const CheckoutPage = () => {
     weight: number; // Billable weight
     displayWeight: number; // Total physical weight
     shipping: number;
+    shippingCreditsEarned: number;
     originZone: string;
   }
 
@@ -98,8 +111,8 @@ const CheckoutPage = () => {
     const groups = cart.reduce<Record<string, ShippingGroup>>((acc, item: CartItem) => {
         const brandName = item.brandName || 'Other';
         const originName = (item.placeOfOrigin && item.placeOfOrigin.length > 0) ? item.placeOfOrigin[0] : 'Unknown';
-        // Use a composite key
-        const groupKey = `${brandName}|${originName}`;
+        // Use brandName as the primary grouping key
+        const groupKey = brandName;
     
         if (!acc[groupKey]) {
           // Find origin case-insensitively
@@ -112,6 +125,7 @@ const CheckoutPage = () => {
             weight: 0,
             displayWeight: 0,
             shipping: 0,
+            shippingCreditsEarned: 0,
             // Fallback to Zone A if origin not found or collection empty
             originZone: originObj?.zone || 'A' 
           };
@@ -125,6 +139,9 @@ const CheckoutPage = () => {
         if (!item.freeShipping) {
           acc[groupKey].weight += (weight * item.quantity);
         }
+
+        // Shipping credits will be calculated later using the current store's shippingCommission
+        acc[groupKey].shippingCreditsEarned = 0;
         
         return acc;
     }, {});
@@ -160,6 +177,45 @@ const CheckoutPage = () => {
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const shippingCost = Object.values(productsByGroup).reduce((sum, group) => sum + group.shipping, 0);
 
+  // Calculate total SPV
+  const totalSpv = cart.reduce((sum, item) => sum + ((item.spv || 0) * item.quantity), 0);
+
+  // Rewards projections
+  const storeLocation = user && 'storeLocation' in user ? user.storeLocation : 'Main Store';
+  const [currentStore, setCurrentStore] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchStore = async () => {
+        const { getStoreByLocation } = await import('@/services/shop');
+        const store = await getStoreByLocation(storeLocation);
+        setCurrentStore(store);
+    };
+    if (storeLocation) fetchStore();
+  }, [storeLocation]);
+
+  const totalShippingCreditsEarned = useMemo(() => {
+    if (!currentStore) return 0;
+    const commission = currentStore.shippingCommission || 0;
+    return (totalSpv * commission) / 100;
+  }, [totalSpv, currentStore]);
+
+  const netSpvForEarning = useMemo(() => {
+    // Loyalty points should be calculated on SPV minus any credits used
+    return Math.max(0, totalSpv - shippingCreditsUsed);
+  }, [totalSpv, shippingCreditsUsed]);
+
+  const surabhiCoinsEarned = useMemo(() => {
+    if (!currentStore) return 0;
+    const commission = currentStore.cashOnlyCommission || 0;
+    return Math.round((netSpvForEarning * commission) / 100);
+  }, [netSpvForEarning, currentStore]);
+
+  const sevaPoolEarned = useMemo(() => {
+    if (!currentStore) return 0;
+    const commission = currentStore.sevaCommission || 0;
+    return Math.round((netSpvForEarning * commission) / 100);
+  }, [netSpvForEarning, currentStore]);
+
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
 
   const loadRazorpay = () => {
@@ -171,9 +227,6 @@ const CheckoutPage = () => {
       document.body.appendChild(script);
     });
   };
-
-  // Calculate total SPV
-  const totalSpv = cart.reduce((sum, item) => sum + ((item.spv || item.price) * item.quantity), 0);
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,12 +244,18 @@ const CheckoutPage = () => {
     try {
       if (paymentMethod === 'cod') {
           // COD Flow
+          const netShippingCharges = Math.max(0, shippingCost - shippingCreditsUsed);
           const orderData = {
               items: cart,
-              totalAmount: subtotal + shippingCost,
+              totalAmount: subtotal + netShippingCharges,
               shippingAddress: formData,
               paymentMethod: 'cod',
-              paymentStatus: 'pending'
+              paymentStatus: 'pending',
+              shippingPointsEarned: totalShippingCreditsEarned,
+              shippingPointsUsed: shippingCreditsUsed,
+              netShippingCharges: netShippingCharges,
+              surabhiCoinsEarned: surabhiCoinsEarned,
+              sevaCoinsEarned: sevaPoolEarned
           };
           
           await createOrder(orderData as any); 
@@ -228,7 +287,8 @@ const CheckoutPage = () => {
           const createRazorpayOrderFn = httpsCallable(functions, 'createRazorpayOrder');
           const verifyRazorpayPaymentFn = httpsCallable(functions, 'verifyRazorpayPayment');
 
-          const amount = subtotal + shippingCost;
+          const netShippingCharges = Math.max(0, shippingCost - shippingCreditsUsed);
+          const amount = subtotal + netShippingCharges;
           const razorpayOrder = await createRazorpayOrderFn({ amount: amount, currency: 'INR' });
           const orderDetails = razorpayOrder.data as any;
 
@@ -259,7 +319,12 @@ const CheckoutPage = () => {
                               paymentDetails: {
                                   razorpay_order_id: response.razorpay_order_id,
                                   razorpay_payment_id: response.razorpay_payment_id
-                              }
+                              },
+                              shippingPointsEarned: totalShippingCreditsEarned,
+                              shippingPointsUsed: shippingCreditsUsed,
+                              netShippingCharges: netShippingCharges,
+                              surabhiCoinsEarned: surabhiCoinsEarned,
+                              sevaCoinsEarned: sevaPoolEarned
                           };
                           await createOrder(orderData as any);
 
@@ -571,8 +636,20 @@ const CheckoutPage = () => {
                                                <div className="absolute top-0 left-0 w-1 h-full bg-green-500"></div>
                                                <div className="flex justify-between items-center relative z-10">
                                                    <div>
-                                                       <p className="text-[9px] text-green-600 font-bold uppercase tracking-widest mb-0.5">WhatsApp screenshot</p>
-                                                       <p className="font-mono text-sm font-bold text-slate-800">9606979530</p>
+                                                       <p className="text-[9px] text-green-600 font-bold uppercase tracking-widest mb-0.5 flex items-center gap-1">
+                                                           <WhatsAppIcon className="h-3 w-3" /> WhatsApp screenshot
+                                                       </p>
+                                                       <p className="font-mono text-sm font-bold text-slate-800">
+                                                            <a 
+                                                                href="https://wa.me/9606979530" 
+                                                                target="_blank" 
+                                                                rel="noopener noreferrer" 
+                                                                className="hover:text-green-600 hover:underline transition-colors block"
+                                                                title="Open in WhatsApp"
+                                                            >
+                                                                9606979530
+                                                            </a>
+                                                       </p>
                                                    </div>
                                                    <Button 
                                                        variant="secondary" 
@@ -622,95 +699,167 @@ const CheckoutPage = () => {
                </Card>
            </div>
 
-           {/* Order Summary */}
+            {/* Order Summary */}
            <div className="space-y-6">
                 <Card>
                     <CardHeader>
                         <CardTitle>Order Summary</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                            {cart.map(item => (
-                                <div key={item.productId} className="flex justify-between text-sm">
-                                    <span className="">{item.name} x {item.quantity}</span>
-                                    <span>₹{item.price * item.quantity}</span>
-                                </div>
-                            ))}
+                    <CardContent className="space-y-6">
+                        {/* Table Breakdown */}
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs text-left">
+                                <thead className="text-slate-500 uppercase font-bold border-b">
+                                    <tr>
+                                        <th className="py-2">Items</th>
+                                        <th className="py-2 text-center">Qty</th>
+                                        <th className="py-2 text-center">SPV</th>
+                                        <th className="py-2 text-center">Rate</th>
+                                        <th className="py-2 text-right">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {cart.map(item => (
+                                        <tr key={item.productId}>
+                                            <td className="py-3 font-medium text-slate-900 max-w-[120px] truncate">{item.name}</td>
+                                            <td className="py-3 text-center">{item.quantity}</td>
+                                            <td className="py-3 text-center text-purple-600 font-bold">{item.spv * item.quantity}</td>
+                                            <td className="py-3 text-center">₹{item.price}</td>
+                                            <td className="py-3 text-right font-bold text-slate-900">₹{item.price * item.quantity}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
+
                         <Separator />
                         
-                         <div className="space-y-3">
-                            <h4 className="font-semibold text-sm">Delivery Price Breakdown</h4>
+                        <div className="space-y-3">
+                            <h4 className="font-bold text-sm text-slate-900">Delivery Distribution Breakdown</h4>
                             {Object.entries(productsByGroup).map(([groupKey, data]) => (
-                               <div key={groupKey} className="bg-slate-50 p-3 rounded-lg space-y-2 border border-slate-100">
+                               <div key={groupKey} className="bg-slate-50/50 p-3 rounded-xl space-y-2 border border-slate-100">
                                 <div className="flex justify-between items-center">
                                   <div className="flex flex-col">
-                                    <span className="font-bold text-slate-900">{data.brandName}</span>
-                                    <span className="text-[10px] text-slate-500">Ships from: {data.originName} (Zone {data.originZone})</span>
+                                    <span className="font-extrabold text-slate-900 text-sm">{data.brandName}</span>
+                                    <span className="text-[10px] text-slate-500 font-medium tracking-tight">Ships from: {data.originName} (Zone {data.originZone})</span>
                                   </div>
-                                  <span className="text-sm font-medium">₹{data.shipping}</span>
+                                  <span className="text-sm font-bold text-slate-900">₹{data.shipping}</span>
                                 </div>
-                                <div className="space-y-1">
-                                  {data.items.map((item, idx) => {
-                                      const itemWeight = (item.weightInKg || parseWeightToKg(item.weight || '0.5kg')) * item.quantity;
-                                      // Calculate share based on total display weight to ensure fair distribution if we are falling back
-                                      // Or better: use data.weight which we standardized in useMemo
-                                      const  shippingShare = (data.weight > 0) ? (itemWeight / data.weight) * data.shipping : 0;
-                                      
-                                      return (
-                                        <div key={idx} className="flex justify-between text-[11px] text-slate-600">
-                                          <span className="font-medium flex-1">{item.name}</span>
-                                          <span className="text-gray-500 w-16 text-right">x{item.quantity}</span>
-                                          <span className="text-gray-500 w-20 text-right">{itemWeight.toFixed(2)}kg</span>
-                                          <span className="font-medium w-20 text-right">₹{shippingShare.toFixed(2)}</span>
-                                        </div>
-                                      );
-                                  })}
-                                </div>
-                                <div className="text-xs font-semibold text-slate-700 text-right mt-1">
-                                  Total Weight: {data.displayWeight.toFixed(2)} kg
+                                
+                                <div className="flex justify-between items-center text-[10px] font-bold text-slate-700 bg-white px-2 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+                                  <span className="text-slate-500 uppercase tracking-tighter">Bracket: {getWeightBracketLabel(data.displayWeight)}</span>
+                                  <span className="text-indigo-600 uppercase tracking-tighter">Total: {data.displayWeight.toFixed(2)} kg</span>
+                                  <span className="text-purple-600 uppercase tracking-tighter">Credits: +{data.shippingCreditsEarned.toFixed(2)}</span>
                                 </div>
                               </div>
                             ))}
                          </div>
+
                          <Separator />
                          
-                         <div className="space-y-1.5">
-                             <div className="flex justify-between text-sm">
-                                 <span className="text-muted-foreground">Subtotal</span>
-                                 <span>₹{subtotal}</span>
+                         {/* Shipping Credits Usage Section */}
+                         {maxShippingCreditsAvailable > 0 && (
+                             <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-3">
+                                 <div className="flex justify-between items-center">
+                                     <Label className="text-xs font-bold text-blue-900 uppercase tracking-wider">Use Shipping Credits</Label>
+                                     <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">Avail: {maxShippingCreditsAvailable.toFixed(2)}</span>
+                                 </div>
+                                 <div className="flex gap-2">
+                                     <Input 
+                                        type="number"
+                                        max={Math.min(maxShippingCreditsAvailable, shippingCost)}
+                                        value={shippingCreditsUsed}
+                                        onChange={(e) => {
+                                            const val = Math.min(Number(e.target.value), maxShippingCreditsAvailable, shippingCost);
+                                            setShippingCreditsUsed(val);
+                                        }}
+                                        className="h-9 text-sm font-bold"
+                                        placeholder="0.00"
+                                     />
+                                     <Button 
+                                        type="button" 
+                                        variant="outline" 
+                                        size="sm"
+                                        className="h-9 px-3 text-xs font-bold uppercase"
+                                        onClick={() => setShippingCreditsUsed(Math.min(maxShippingCreditsAvailable, shippingCost))}
+                                     >
+                                         Max
+                                     </Button>
+                                 </div>
+                                 <p className="text-[10px] text-blue-600 font-medium">* Credits applied to reduce shipping cost.</p>
                              </div>
-                              <div className="flex justify-between text-sm">
-                                 <span className="text-muted-foreground">Total Weight</span>
-                                 <span>{totalWeight.toFixed(2)} kg</span>
+                         )}
+
+                         <div className="space-y-2 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                             <div className="flex justify-between text-sm font-medium">
+                                 <span className="text-slate-500">Subtotal</span>
+                                 <span className="text-slate-900">₹{subtotal}</span>
                              </div>
-                             <div className="flex justify-between text-sm">
-                                 <span className="text-muted-foreground">Total Shipping ({formData.state ? `Zone ${getZoneForState(formData.state)}` : '-'})</span>
-                                 <span className={shippingCost === 0 ? "text-orange-500" : ""}>
-                                     {shippingCost === 0 && !formData.state ? 'Select State' : `₹${shippingCost}`}
-                                 </span>
+                             <div className="flex justify-between text-sm font-medium">
+                                 <span className="text-slate-500 text-xs">Total Shipping</span>
+                                 <span className="text-slate-900">₹{shippingCost}</span>
                              </div>
+                             {shippingCreditsUsed > 0 && (
+                                 <div className="flex justify-between text-sm font-bold text-green-600 border-t border-dashed border-green-200 pt-1">
+                                     <span className="text-xs">Shipping Credits Used</span>
+                                     <span>-₹{shippingCreditsUsed.toFixed(2)}</span>
+                                 </div>
+                             )}
+                             <div className="flex justify-between text-sm font-bold text-slate-900 border-t pt-2 mt-2">
+                                 <span className="text-slate-500 text-xs uppercase">Net Shipping Charges</span>
+                                 <span>₹{Math.max(0, shippingCost - shippingCreditsUsed).toFixed(2)}</span>
+                             </div>
+                             <div className="flex justify-between font-extrabold text-xl text-slate-900 pt-4 mt-2 border-t-2 border-slate-900">
+                                <span>Net Payable</span>
+                                <span>₹{(subtotal + Math.max(0, shippingCost - shippingCreditsUsed)).toFixed(2)}</span>
+                            </div>
                          </div>
 
-                        <Separator />
-                        
-                        <div className="flex justify-between font-bold text-lg">
-                            <span>Total</span>
-                            <span>₹{subtotal + shippingCost}</span>
+                        {/* Rewards Section */}
+                        <div className="bg-indigo-600 text-white rounded-2xl p-5 space-y-4 shadow-xl shadow-indigo-100">
+                            <h4 className="font-extrabold text-sm uppercase tracking-widest border-b border-indigo-500 pb-2">Rewards earned On Order</h4>
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-2 w-2 rounded-full bg-indigo-300"></div>
+                                        <span className="text-xs font-medium text-indigo-100">Shipping Credits</span>
+                                    </div>
+                                    <span className="font-bold text-sm tracking-tight">+{totalShippingCreditsEarned.toFixed(2)} pts</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-2 w-2 rounded-full bg-indigo-300"></div>
+                                        <span className="text-xs font-medium text-indigo-100">Surabhi Coins Earned</span>
+                                    </div>
+                                    <span className="font-bold text-sm tracking-tight">+{surabhiCoinsEarned} pts</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-2 w-2 rounded-full bg-indigo-300"></div>
+                                        <span className="text-xs font-medium text-indigo-100">Go Seva Pool Contribution</span>
+                                    </div>
+                                    <span className="font-bold text-sm tracking-tight">+{sevaPoolEarned} pts</span>
+                                </div>
+                            </div>
+                            <div className="bg-indigo-500/30 rounded-lg p-2.5 text-[10px] font-medium text-indigo-100 flex items-center gap-2 border border-indigo-400/20">
+                                <ShoppingCart className="h-3 w-3" />
+                                <span>Total Sales Point Value (SPV): {totalSpv}</span>
+                            </div>
                         </div>
 
                         <Button 
-                            className="w-full mt-4" 
+                            className="w-full h-14 rounded-xl text-base font-extrabold uppercase tracking-widest shadow-lg shadow-primary/20 
+                                     bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 transition-all active:scale-[0.98]" 
                             size="lg" 
                             type="submit" 
                             form="checkout-form"
                             disabled={loading}
                         >
-                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Place Order
+                            {loading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+                            Place Order Now
                         </Button>
-                        <p className="text-xs text-center text-gray-500 mt-2">
-                           * Shipping calculated based on weight and destination zone.
+                        <p className="text-[10px] text-center text-gray-500 font-medium">
+                           Secured by end-to-end encrypted payment processing.
                         </p>
                     </CardContent>
                 </Card>

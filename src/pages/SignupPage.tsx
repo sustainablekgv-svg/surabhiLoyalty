@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle, Coins, KeyRound, Loader2, Lock, Phone, User, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, CheckCircle, Coins, KeyRound, Loader2, Lock, Phone, User, UserCircle, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { registerCustomer } from '@/lib/authService';
 
-import { PasswordStrengthIndicator } from '@/components/ui/password-strength';
+// import { PasswordStrengthIndicator } from '@/components/ui/password-strength';
 import { db } from '@/lib/firebase';
 import { CustomerType } from '@/types/types';
 import { collection, getDocs, query, where } from 'firebase/firestore';
@@ -114,7 +114,7 @@ const SignupPage = () => {
     return age;
   };
 
-  const [isPasswordValid, setIsPasswordValid] = useState(false);
+  // const [isPasswordValid, setIsPasswordValid] = useState(false);
   const [isPasswordTouched, setIsPasswordTouched] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -126,10 +126,10 @@ const SignupPage = () => {
       return;
     }
 
-    if (!isPasswordValid) {
-        toast.error("Please choose a stronger password");
-        return;
-    }
+    // if (!isPasswordValid) {
+    //     toast.error("Please choose a stronger password");
+    //     return;
+    // }
 
     if (!formData.customerName || !formData.customerMobile || !formData.dateOfBirth || !formData.gender || !formData.storeLocation || !formData.customerPassword || !formData.tpin) {
         toast.error("All fields are mandatory");
@@ -228,6 +228,7 @@ const SignupPage = () => {
                   <div className="space-y-2">
                     <Label htmlFor="dateOfBirth">Date of Birth *</Label>
                     <div className="relative">
+                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 z-10" />
                         <DatePicker
                             date={formData.dateOfBirth ? new Date(formData.dateOfBirth) : undefined}
                             onDateChange={(date) => {
@@ -239,22 +240,25 @@ const SignupPage = () => {
                                 } as any)
                             }}
                             placeholder="Select date of birth *"
-                            className="w-full h-12"
+                            className="w-full h-12 pl-10"
                         />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="gender">Gender *</Label>
-                    <Select value={formData.gender} onValueChange={handleGenderChange}>
-                        <SelectTrigger className="h-12 w-full">
-                            <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <div className="relative">
+                        <UserCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 z-10" />
+                        <Select value={formData.gender} onValueChange={handleGenderChange}>
+                            <SelectTrigger className="h-12 w-full pl-10">
+                                <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="male">Male</SelectItem>
+                                <SelectItem value="female">Female</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                   </div>
               </div>
 
@@ -316,11 +320,11 @@ const SignupPage = () => {
                         required 
                       />
                   </div>
-                  <PasswordStrengthIndicator 
+                  {/* <PasswordStrengthIndicator 
                     password={formData.customerPassword} 
                     onValidationChange={setIsPasswordValid} 
                     showError={isPasswordTouched}
-                  />
+                  /> */}
                 </div>
 
                 <div className="space-y-2">

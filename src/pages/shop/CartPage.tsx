@@ -49,13 +49,26 @@ const CartPage = () => {
                       </div>
                     </div>
                     <div className="flex items-center justify-between mt-2">
-                        <div className="font-bold text-sm md:text-base">₹{item.price}</div>
+                        <div className="flex flex-col">
+                            <div className="font-bold text-sm md:text-base">₹{item.price}</div>
+                            {item.spv > 0 && (
+                                <div className="text-[10px] text-purple-600 font-semibold bg-purple-50 px-1.5 py-0.5 rounded-full w-fit">
+                                    SPV: {item.spv * item.quantity}
+                                </div>
+                            )}
+                        </div>
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="icon" className="h-7 w-7 md:h-8 md:w-8" onClick={() => updateQuantity(item.productId, item.quantity - 1)}>
                                 <Minus className="h-3 w-3" />
                             </Button>
                             <span className="w-6 md:w-8 text-center text-sm">{item.quantity}</span>
-                            <Button variant="outline" size="icon" className="h-7 w-7 md:h-8 md:w-8" onClick={() => updateQuantity(item.productId, item.quantity + 1)}>
+                            <Button 
+                                variant="outline" 
+                                size="icon" 
+                                className="h-7 w-7 md:h-8 md:w-8" 
+                                onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                                disabled={item.quantity >= item.maxStock}
+                            >
                                 <Plus className="h-3 w-3" />
                             </Button>
                         </div>

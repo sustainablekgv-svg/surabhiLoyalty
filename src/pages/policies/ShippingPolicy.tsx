@@ -28,7 +28,7 @@ const ShippingPolicy = () => {
           <p>You can track your order status in the "My Orders" section of your dashboard. We will also update the status as "In Transit" when the order is shipped.</p>
 
           <h2 className="text-xl font-semibold">4. Damages</h2>
-          <p>Surabhi Loyalty is not liable for any products damaged or lost during shipping. If you received your order damaged, please contact the shipment carrier to file a claim.</p>
+          <p>Incase if you receive damaged goods, contact the customer care.</p>
         </div>
       </div>
     </div>

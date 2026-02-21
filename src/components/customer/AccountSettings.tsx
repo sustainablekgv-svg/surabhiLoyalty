@@ -1,15 +1,16 @@
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { Calendar, Edit3, Lock, Save, Settings, User, X } from 'lucide-react';
+import { safeDecryptText } from '@/lib/encryption';
+import { doc, getDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import { Calendar, Edit3, Key, Lock, Phone, RefreshCw, Save, Settings, User, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { Badge } from '../ui/badge';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PasswordStrengthIndicator } from '@/components/ui/password-strength';
 import { useAuth } from '@/hooks/auth-context';
-import { decryptText, encryptText } from '@/lib/encryption';
+import { encryptText } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { CustomerType } from '@/types/types';
 
@@ -126,25 +127,64 @@ export const AccountSettings = ({ userId }: AccountSettingsProps) => {
     setNewTpin('');
   };
 
-  const getDecryptedPassword = () => {
-    if (!customerData?.customerPassword) return 'N/A';
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchCustomerData = async () => {
+    if (!userId) return;
+
+    setLoading(true);
     try {
-      return decryptText(customerData.customerPassword);
-    } catch (error) {
-      // console.error('Failed to decrypt password:', error);
-      return 'Invalid Password';
+      const docRef = doc(db, 'Customers', userId);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const customer = { id: docSnap.id, ...docSnap.data() } as CustomerType;
+        setCustomerData(customer);
+      } else {
+        setError('No customer data found');
+      }
+    } catch (err) {
+      // console.error('Error fetching customer data:', err);
+      setError('Failed to fetch customer data');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getDecryptedTpin = () => {
-    if (!customerData?.tpin) return 'N/A';
-    try {
-      return decryptText(customerData.tpin);
-    } catch (error) {
-      // console.error('Failed to decrypt TPIN:', error);
-      return 'Invalid TPIN';
-    }
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchCustomerData();
+    toast.success('Data refreshed successfully');
+    setIsRefreshing(false);
   };
+
+  function formatCreatedAt(createdAt: unknown): string {
+    if (createdAt instanceof Timestamp) {
+      return createdAt.toDate().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+
+    if (createdAt instanceof Date) {
+      return createdAt.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+
+    if (typeof createdAt === 'string' || typeof createdAt === 'number') {
+      return new Date(createdAt).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+
+    return 'N/A';
+  }
 
   if (loading) {
     return (
@@ -170,169 +210,196 @@ export const AccountSettings = ({ userId }: AccountSettingsProps) => {
     );
   }
 
+  const memberSince = formatCreatedAt(customerData.createdAt);
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Settings className="h-5 w-5 text-gray-600" />
-        <h1 className="text-xl font-bold text-gray-900">Account Settings</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Settings className="h-5 w-5 text-gray-600" />
+          <h1 className="text-xl font-bold text-gray-900">Account Settings</h1>
+        </div>
+        <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="h-8 w-8 p-0"
+        >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+        </Button>
       </div>
       <p className="text-gray-600">Update your personal information here.</p>
 
-      {/* Personal Information Card */}
+      {/* Customer Info Card (Moved from Dashboard Overview) */}
       <Card className="shadow-lg border-0 bg-white">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5 text-purple-600" />
-            Personal Information
-          </CardTitle>
-          <CardDescription>Your basic account information</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Name */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-            <Label className="text-sm font-medium text-gray-700">Full Name</Label>
-            <div className="md:col-span-2">
-              <Input value={customerData.customerName} disabled className="bg-gray-50" />
-            </div>
-          </div>
-
-          {/* Mobile Number */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-            <Label className="text-sm font-medium text-gray-700">Mobile Number</Label>
-            <div className="md:col-span-2">
-              <Input value={customerData.customerMobile} disabled className="bg-gray-50" />
-            </div>
-          </div>
-
-          {/* Date of Birth */}
-          {customerData.dateOfBirth && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-              <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Date of Birth
-              </Label>
-              <div className="md:col-span-2">
-                <Input
-                  value={new Date(customerData.dateOfBirth).toLocaleDateString()}
-                  disabled
-                  className="bg-gray-50"
-                />
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="bg-purple-100 p-3 rounded-full">
+                <User className="h-6 w-6 text-purple-600" />
+              </div>
+              <div>
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+                  {customerData.customerName}
+                </h2>
+                <div className="text-xs sm:text-sm text-gray-600 flex items-center gap-2">
+                  Member since {memberSince}
+                  {customerData.demoStore && (
+                    <Badge className="bg-black text-white text-[10px] rounded-full px-2">
+                      Demo Customer
+                    </Badge>
+                  )}
+                </div>
               </div>
             </div>
-          )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:flex md:items-center md:gap-8">
+                {/* Password Section */}
+                <div className="flex items-center gap-3">
+                  <div className="bg-green-100 p-2 rounded-full">
+                    <Lock className="h-4 w-4 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] sm:text-xs text-gray-600">Your Password</p>
+                    {isEditingPassword ? (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Input
+                          type="text"
+                          value={newPassword}
+                          onChange={e => setNewPassword(e.target.value)}
+                          placeholder="New password"
+                          className="h-8 text-xs w-32"
+                          disabled={isSaving}
+                        />
+                        <Button
+                          size="sm"
+                          onClick={handleSavePassword}
+                          disabled={isSaving}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Save className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleCancelPasswordEdit}
+                          disabled={isSaving}
+                          className="h-8 w-8 p-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-sm sm:text-base font-bold">
+                          {customerData.customerPassword
+                            ? safeDecryptText(customerData.customerPassword) ||
+                              customerData.customerPassword
+                            : 'N/A'}
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setIsEditingPassword(true)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <Edit3 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* TPIN Section */}
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-100 p-2 rounded-full">
+                    <Key className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] sm:text-xs text-gray-600">Your T Pin</p>
+                    {isEditingTpin ? (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Input
+                          type="text"
+                          value={newTpin}
+                          onChange={e => setNewTpin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                          placeholder="4-digit PIN"
+                          className="h-8 text-xs w-28"
+                          disabled={isSaving}
+                          maxLength={4}
+                        />
+                        <Button
+                          size="sm"
+                          onClick={handleSaveTpin}
+                          disabled={isSaving}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Save className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleCancelTpinEdit}
+                          disabled={isSaving}
+                          className="h-8 w-8 p-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-sm sm:text-base font-bold">
+                          {customerData.tpin
+                            ? safeDecryptText(customerData.tpin) || customerData.tpin
+                            : 'N/A'}
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setIsEditingTpin(true)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <Edit3 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Phone Section */}
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-100 p-2 rounded-full">
+                    <Phone className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] sm:text-xs text-gray-600">Your referral number</p>
+                    <p className="text-sm sm:text-base font-bold mt-1">
+                      {customerData.customerMobile}
+                    </p>
+                  </div>
+                </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Security Settings Card */}
+      {/* Date of Birth Section */}
       <Card className="shadow-lg border-0 bg-white">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Lock className="h-5 w-5 text-green-600" />
-            Security Settings
-          </CardTitle>
-          <CardDescription>Manage your password and TPIN for secure access</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Password */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-            <Label className="text-sm font-medium text-gray-700">Password</Label>
-            <div className="md:col-span-2">
-              {isEditingPassword ? (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="text"
-                      value={newPassword}
-                      onChange={e => setNewPassword(e.target.value)}
-                      placeholder="Enter new password"
-                      disabled={isSaving}
-                      className="flex-1"
-                    />
-                    <Button
-                      size="sm"
-                      onClick={handleSavePassword}
-                      disabled={isSaving}
-                      className="px-3"
-                    >
-                      <Save className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleCancelPasswordEdit}
-                      disabled={isSaving}
-                      className="px-3"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <PasswordStrengthIndicator 
-                    password={newPassword}
-                    onValidationChange={(isValid) => {
-                        // Logic to block save can be added here
-                    }}
-                  />
+         <CardHeader>
+           <CardTitle className="flex items-center gap-2 text-base">
+             <Calendar className="h-5 w-5 text-orange-600" />
+             Other Details
+           </CardTitle>
+         </CardHeader>
+         <CardContent>
+            {customerData.dateOfBirth && (
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium text-gray-700">Date of Birth</Label>
+                  <p className="text-sm font-semibold">{new Date(customerData.dateOfBirth).toLocaleDateString()}</p>
                 </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Input value={getDecryptedPassword()} disabled className="flex-1 bg-gray-50" />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setIsEditingPassword(true)}
-                    className="px-3"
-                  >
-                    <Edit3 className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* TPIN */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-            <Label className="text-sm font-medium text-gray-700">TPIN (4-digit)</Label>
-            <div className="md:col-span-2">
-              {isEditingTpin ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="text"
-                    value={newTpin}
-                    onChange={e => setNewTpin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                    placeholder="Enter 4-digit TPIN"
-                    disabled={isSaving}
-                    maxLength={4}
-                    className="flex-1"
-                  />
-                  <Button size="sm" onClick={handleSaveTpin} disabled={isSaving} className="px-3">
-                    <Save className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleCancelTpinEdit}
-                    disabled={isSaving}
-                    className="px-3"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Input value={getDecryptedTpin()} disabled className="flex-1 bg-gray-50" />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setIsEditingTpin(true)}
-                    className="px-3"
-                  >
-                    <Edit3 className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-        </CardContent>
+            )}
+         </CardContent>
       </Card>
     </div>
   );
