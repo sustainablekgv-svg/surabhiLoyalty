@@ -7,35 +7,25 @@ import {
   orderBy,
   query,
   Timestamp,
-  updateDoc,
-  where,
+  where
 } from 'firebase/firestore';
 import {
   Coins,
-  Edit3,
   Gift,
   Heart,
-  Key,
-  Lock,
   Phone,
   RefreshCw,
-  Save,
   Target,
   TrendingUp,
   User,
-  Wallet,
-  X,
+  Wallet
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
 
-import { Badge } from '../ui/badge';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/auth-context';
-import { encryptText, safeDecryptText } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { ActivityType, CustomerType } from '@/types/types';
 interface CustomerStatsProps {
@@ -48,11 +38,6 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
   const [activities, setActivities] = useState<ActivityType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isEditingPassword, setIsEditingPassword] = useState(false);
-  const [isEditingTpin, setIsEditingTpin] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
-  const [newTpin, setNewTpin] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchCustomerData = async () => {
@@ -100,82 +85,10 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
     fetchCustomerData();
   }, [userId]);
 
-  const handleRefresh = async () => {
+  const handleRefreshing = async () => {
     setIsRefreshing(true);
-    setError(null);
-    try {
-      await fetchCustomerData();
-      setTimeout(() => {
-        toast.success('Data refreshed successfully');
-        setIsRefreshing(false);
-      }, 1000);
-    } catch (error) {
-      // console.error('Error refreshing data:', error);
-      toast.error('Failed to refresh data');
-      setIsRefreshing(false);
-    }
-  };
-
-  const handleSavePassword = async () => {
-    if (!customerData || !newPassword.trim()) {
-      toast.error('Please enter a valid password');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const encryptedPassword = encryptText(newPassword.trim());
-      const docRef = doc(db, 'Customers', userId);
-      await updateDoc(docRef, {
-        customerPassword: encryptedPassword,
-      });
-
-      setCustomerData(prev => (prev ? { ...prev, customerPassword: encryptedPassword } : null));
-      setIsEditingPassword(false);
-      setNewPassword('');
-      toast.success('Password updated successfully');
-    } catch (error) {
-      // console.error('Error updating password:', error);
-      toast.error('Failed to update password');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleSaveTpin = async () => {
-    if (!customerData || !newTpin.trim() || newTpin.trim().length !== 4) {
-      toast.error('Please enter a valid 4-digit TPIN');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const encryptedTpin = encryptText(newTpin.trim());
-      const docRef = doc(db, 'Customers', userId);
-      await updateDoc(docRef, {
-        tpin: encryptedTpin,
-      });
-
-      setCustomerData(prev => (prev ? { ...prev, tpin: encryptedTpin } : null));
-      setIsEditingTpin(false);
-      setNewTpin('');
-      toast.success('TPIN updated successfully');
-    } catch (error) {
-      // console.error('Error updating TPIN:', error);
-      toast.error('Failed to update TPIN');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleCancelPasswordEdit = () => {
-    setIsEditingPassword(false);
-    setNewPassword('');
-  };
-
-  const handleCancelTpinEdit = () => {
-    setIsEditingTpin(false);
-    setNewTpin('');
+    await fetchCustomerData();
+    setIsRefreshing(false);
   };
 
   if (loading) {
@@ -266,36 +179,27 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       borderColor: 'border-purple-200',
     },
     {
-      title: 'Surabhi Coins',
-      value: `₹${(customerData.surabhiBalance || 0).toFixed(2)}`,
-      description: 'Available for purchases',
-      icon: Coins,
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-50',
-      borderColor: 'border-amber-200',
-    },
-    {
-      title: 'Cumulative Amount Spent',
-      value: `₹${(customerData.cumTotal || 0).toFixed(2)}`,
-      description: 'Total amount spent since joining',
+      title: 'Current Wallet Balance',
+      value: `₹${(customerData.walletBalance || 0).toFixed(2)}`,
+      description: 'Your available balance',
       icon: TrendingUp,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
       borderColor: 'border-blue-200',
     },
     {
-      title: 'Cummulative Target Spent',
-      value: `₹${(customerData.cummulativeTarget || 0).toFixed(2)}`,
-      description: customerData.targetMet ? 'Target achieved!' : 'Target to be achieved',
+      title: 'Referral Seva Coins',
+      value: `₹${(customerData.surabhiReferral || 0).toFixed(2)}`,
+      description: 'Coins earned via referrals',
       icon: Target,
-      color: customerData.targetMet ? 'text-green-600' : 'text-orange-600',
-      bgColor: customerData.targetMet ? 'bg-green-50' : 'bg-orange-50',
-      borderColor: customerData.targetMet ? 'border-green-200' : 'border-orange-200',
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-50',
+      borderColor: 'border-orange-200',
     },
     {
-      title: 'Seva Contribution',
-      value: `₹${(customerData.sevaTotal || 0).toFixed(2)}`,
-      description: 'Community welfare fund',
+      title: 'My Surabhi Rating',
+      value: (customerData.surabhiBalance || 0).toString(),
+      description: 'Your customer rating',
       icon: Heart,
       color: 'text-red-600',
       bgColor: 'bg-red-50',
@@ -310,186 +214,31 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       bgColor: 'bg-green-50',
       borderColor: 'border-green-200',
     },
+    {
+      title: 'Shipping Balance',
+      value: `₹${(customerData.shippingBalance || 0).toFixed(2)}`,
+      description: 'Credits for shipping',
+      icon: TrendingUp,
+      color: 'text-indigo-600',
+      bgColor: 'bg-indigo-50',
+      borderColor: 'border-indigo-200',
+    },
   ];
 
   return (
-    <div className="space-y-2 xs:space-y-3 sm:space-y-4">
-      {/* Customer Info Card */}
-      <Card className="shadow-lg border-0 bg-white">
-        <CardContent className="p-2 xs:p-3 sm:p-4">
-          <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-1.5 xs:gap-2 sm:gap-3">
-            <div className="flex items-center justify-between w-full xs:w-auto">
-              <div className="flex items-center gap-1 xs:gap-2 sm:gap-3">
-                <div className="bg-purple-100 p-1 xs:p-1.5 sm:p-2 rounded-full">
-                  <User className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-purple-600" />
-                </div>
-                <div>
-                  <h2 className="text-sm xs:text-base sm:text-lg font-bold break-words">
-                    {customerData.customerName}
-                  </h2>
-                  <div className="text-[9px] xs:text-[10px] sm:text-xs text-gray-600">
-                    Member since {memberSince}
-                    {customerData.demoStore && (
-                      <Badge className="bg-black text-white text-[6px] ml-2  xs:text-[7px] sm:text-[8px] rounded-full px-1 xs:px-1.5 sm:px-2">
-                        Demo Customer
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="h-6 w-6 p-0 xs:hidden"
-              >
-                <RefreshCw className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-              </Button>
-            </div>
-
-            {/* Password Section */}
-            <div className="flex items-center gap-1 xs:gap-2 sm:gap-3 mt-1 xs:mt-0">
-              <div className="bg-green-100 p-1 xs:p-1.5 sm:p-2 rounded-full">
-                <Lock className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-green-600" />
-              </div>
-              <div className="text-left sm:text-right">
-                <p className="text-[9px] xs:text-[10px] sm:text-xs text-gray-600">Your Password</p>
-                {isEditingPassword ? (
-                  <div className="flex items-center gap-1">
-                    <Input
-                      type="text"
-                      value={newPassword}
-                      onChange={e => setNewPassword(e.target.value)}
-                      placeholder="Enter new password"
-                      className="h-6 text-xs w-20 xs:w-24 sm:w-28"
-                      disabled={isSaving}
-                    />
-                    <Button
-                      size="sm"
-                      onClick={handleSavePassword}
-                      disabled={isSaving}
-                      className="h-6 w-6 p-0"
-                    >
-                      <Save className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleCancelPasswordEdit}
-                      disabled={isSaving}
-                      className="h-6 w-6 p-0"
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1">
-                    <p className="text-xs xs:text-sm sm:text-base font-bold">
-                      {customerData.customerPassword
-                        ? safeDecryptText(customerData.customerPassword) ||
-                          customerData.customerPassword
-                        : 'N/A'}
-                    </p>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setIsEditingPassword(true)}
-                      className="h-6 w-6 p-0"
-                    >
-                      <Edit3 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* TPIN Section */}
-            <div className="flex items-center gap-1 xs:gap-2 sm:gap-3 mt-1 xs:mt-0">
-              <div className="bg-blue-100 p-1 xs:p-1.5 sm:p-2 rounded-full">
-                <Key className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-blue-600" />
-              </div>
-              <div className="text-left sm:text-right">
-                <p className="text-[9px] xs:text-[10px] sm:text-xs text-gray-600">Your T Pin</p>
-                {isEditingTpin ? (
-                  <div className="flex items-center gap-1">
-                    <Input
-                      type="text"
-                      value={newTpin}
-                      onChange={e => setNewTpin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                      placeholder="Enter 4-digit TPIN"
-                      className="h-6 text-xs w-20 xs:w-24 sm:w-28"
-                      disabled={isSaving}
-                      maxLength={4}
-                    />
-                    <Button
-                      size="sm"
-                      onClick={handleSaveTpin}
-                      disabled={isSaving}
-                      className="h-6 w-6 p-0"
-                    >
-                      <Save className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleCancelTpinEdit}
-                      disabled={isSaving}
-                      className="h-6 w-6 p-0"
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1">
-                    <p className="text-xs xs:text-sm sm:text-base font-bold">
-                      {customerData.tpin
-                        ? safeDecryptText(customerData.tpin) || customerData.tpin
-                        : 'N/A'}
-                    </p>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setIsEditingTpin(true)}
-                      className="h-6 w-6 p-0"
-                    >
-                      <Edit3 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Phone Section */}
-            <div className="flex items-center gap-1 xs:gap-2 sm:gap-3 mt-1 xs:mt-0">
-              <div className="bg-blue-100 p-1 xs:p-1.5 sm:p-2 rounded-full">
-                <Phone className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 text-blue-600" />
-              </div>
-              <div className="text-left sm:text-right">
-                <p className="text-[9px] xs:text-[10px] sm:text-xs text-gray-600">
-                  Your referral number
-                </p>
-                <p className="text-xs xs:text-sm sm:text-base font-bold">
-                  {customerData.customerMobile}
-                </p>
-              </div>
-            </div>
-
-            {/* Refresh Button for larger screens */}
-            <div className="hidden xs:flex items-center mt-1 xs:mt-0">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="h-8 w-8 p-0"
-              >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="space-y-4">
+      {/* Search and Refresh Button */}
+      <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefreshing}
+            disabled={isRefreshing}
+            className="h-8 w-8 p-0"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </Button>
+      </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-1.5 xs:gap-2 sm:gap-3">

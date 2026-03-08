@@ -1,3 +1,4 @@
+import { ProductReviews } from '@/components/shop/ProductReviews';
 import { ShopLayout } from '@/components/shop/ShopLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { useShop } from '@/hooks/shop-context';
 import { db } from '@/lib/firebase';
 import { Product } from '@/types/shop';
 import { doc, getDoc } from 'firebase/firestore';
-import { Heart, Minus, Plus, Share2, ShoppingCart, X } from 'lucide-react';
+import { Heart, Minus, Plus, Share2, ShoppingCart, Star, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -80,7 +81,10 @@ const ProductDetailsPage = () => {
         : 0;
 
     const decreaseQty = () => setQuantity(prev => Math.max(1, prev - 1));
-    const increaseQty = () => setQuantity(prev => Math.min(product.stock, prev + 1));
+    const increaseQty = () => setQuantity(prev => {
+        const max = product.trackInventory === false ? 999 : product.stock;
+        return Math.min(max, prev + 1);
+    });
 
     return (
         <ShopLayout onBack={handleBack}>
@@ -158,6 +162,17 @@ const ProductDetailsPage = () => {
                                     </Badge>
                                 )}
                                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{product.name}</h1>
+                                
+                                {product.totalReviews ? (
+                                    <div className="flex items-center gap-1.5 mt-2 text-sm text-gray-600">
+                                        <div className="flex gap-0.5">
+                                            {Array(5).fill(0).map((_, i) => (
+                                                <Star key={i} className={`h-4 w-4 ${i < Math.round(product.averageRating || 0) ? 'fill-yellow-400 text-yellow-400' : 'fill-gray-200 text-gray-200'}`} />
+                                            ))}
+                                        </div>
+                                        <span>{product.averageRating} ({product.totalReviews} reviews)</span>
+                                    </div>
+                                ) : null}
                             </div>
                             <Button variant="ghost" size="icon" onClick={() => {
                                 navigator.clipboard.writeText(window.location.href);
@@ -275,6 +290,15 @@ const ProductDetailsPage = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Product Reviews Section */}
+            <ProductReviews 
+                productId={product.id} 
+                productName={product.name} 
+                onReviewAdded={(newAverage, newTotal) => {
+                    setProduct(prev => prev ? { ...prev, averageRating: newAverage, totalReviews: newTotal } : null);
+                }}
+            />
         </ShopLayout>
     );
 };

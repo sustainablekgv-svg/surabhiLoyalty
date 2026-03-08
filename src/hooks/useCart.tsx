@@ -76,7 +76,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: product.name,
         price: product.sellingPrice,
         image: product.images?.[0] || '',
-        maxStock: 999999,
+        maxStock: product.trackInventory === false ? 9999 : (product.stock || 0),
         brandName: product.brandName ?? '',
         brandId: product.brandId ?? '',
         freeShipping: product.freeShipping ?? false,
@@ -122,7 +122,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     let updatedCart = cart.map((item) => {
       if (item.productId === productId) {
-         return { ...item, quantity };
+         const cappedQuantity = Math.min(item.maxStock, quantity);
+         return { ...item, quantity: cappedQuantity };
       }
       return item;
     });

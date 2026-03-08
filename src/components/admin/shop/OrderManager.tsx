@@ -1,23 +1,30 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { PreviewableImage } from '@/components/ui/previewable-image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useAuth } from '@/hooks/auth-context';
 import { isValidImageUrl } from '@/lib/image-utils';
-import { getOrders, updateOrderStatus, updateOrderTotal } from '@/services/shop';
+import { adjustOrderShippingBalance, getOrders, updateOrderStatus, updateOrderTotal } from '@/services/shop';
 import { Order } from '@/types/shop';
 import { Check, Eye, Package, Pencil, Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 export const OrderManager = () => {
+    const { user } = useAuth();
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isEditingTotal, setIsEditingTotal] = useState(false);
     const [newTotal, setNewTotal] = useState('');
+    
+    // Shipping Adjustment State
+    const [adjustmentAmount, setAdjustmentAmount] = useState('');
+    const [isAdjusting, setIsAdjusting] = useState(false);
+    const [showConfirmAdjust, setShowConfirmAdjust] = useState<{type: 'add' | 'deduct', amount: number} | null>(null);
 
     // Filters & Pagination
     const [statusFilter, setStatusFilter] = useState<Order['status'] | 'all'>('all');
@@ -110,6 +117,46 @@ export const OrderManager = () => {
             }
         } catch (error) {
             toast.error("Failed to update status");
+        }
+    };
+
+    const handleAdjustShipping = async () => {
+        if (!selectedOrder || !showConfirmAdjust || !user) return;
+        
+        setIsAdjusting(true);
+        try {
+            await adjustOrderShippingBalance(
+                selectedOrder.id,
+                selectedOrder.userId,
+                showConfirmAdjust.amount,
+                showConfirmAdjust.type === 'add',
+                user
+            );
+            
+            toast.success(`Successfully ${showConfirmAdjust.type === 'add' ? 'added' : 'deducted'} shipping credits.`);
+            
+            // Updating local state to reflect changes (though customer stats is where it matters most, 
+            // tracking it on the order helps avoid confusion)
+            const adjustmentChange = showConfirmAdjust.type === 'add' ? showConfirmAdjust.amount : -showConfirmAdjust.amount;
+            
+            setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { 
+                ...o, 
+                adminShippingAdjustment: (o.adminShippingAdjustment || 0) + adjustmentChange 
+            } : o));
+            
+            setSelectedOrder(prev => prev ? { 
+                ...prev, 
+                adminShippingAdjustment: (prev.adminShippingAdjustment || 0) + adjustmentChange 
+            } : null);
+            
+            setAdjustmentAmount('');
+            setShowConfirmAdjust(null);
+            
+        } catch (error: any) {
+            console.error("Adjustment error", error);
+            toast.error(error.message || "Failed to adjust shipping credits");
+        } finally {
+            setIsAdjusting(false);
         }
     };
 
@@ -259,6 +306,41 @@ export const OrderManager = () => {
                                                             </div>
                                                         </div>
 
+                                                        {/* Shipping Adjustment */}
+                                                        <div className="bg-blue-50 p-4 rounded-md border border-blue-100">
+                                                            <h4 className="font-semibold mb-2 text-blue-900">Admin Shipping Adjustment</h4>
+                                                            <div className="flex flex-col gap-2">
+                                                                <div className="text-sm text-blue-800 mb-2">
+                                                                    Total Adjustments Made to Order: ₹{selectedOrder.adminShippingAdjustment || 0}
+                                                                </div>
+                                                                <div className="flex gap-2 items-center">
+                                                                    <Input 
+                                                                        type="number" 
+                                                                        placeholder="Amount (₹)" 
+                                                                        value={adjustmentAmount}
+                                                                        onChange={(e) => setAdjustmentAmount(e.target.value)}
+                                                                        className="w-32 bg-white"
+                                                                    />
+                                                                    <Button 
+                                                                        variant="default" 
+                                                                        size="sm"
+                                                                        disabled={!adjustmentAmount || parseFloat(adjustmentAmount) <= 0}
+                                                                        onClick={() => setShowConfirmAdjust({ type: 'add', amount: parseFloat(adjustmentAmount) })}
+                                                                    >
+                                                                        Add Credits
+                                                                    </Button>
+                                                                    <Button 
+                                                                        variant="destructive" 
+                                                                        size="sm"
+                                                                        disabled={!adjustmentAmount || parseFloat(adjustmentAmount) <= 0}
+                                                                        onClick={() => setShowConfirmAdjust({ type: 'deduct', amount: parseFloat(adjustmentAmount) })}
+                                                                    >
+                                                                        Deduct Credits
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
                                                         <div>
                                                             <h4 className="font-semibold mb-2">Order Items</h4>
                                                             <div className="border rounded-md divide-y">
@@ -360,6 +442,30 @@ export const OrderManager = () => {
                     Next
                 </Button>
             </div>
+
+            {/* Confirmation Dialog */}
+            <Dialog open={!!showConfirmAdjust} onOpenChange={(open) => !open && setShowConfirmAdjust(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Confirm Shipping Adjustment</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <p>
+                            Are you sure you want to <strong>{showConfirmAdjust?.type === 'add' ? 'add' : 'deduct'} ₹{showConfirmAdjust?.amount}</strong> shipping credits for this order?
+                        </p>
+                        <p className="text-sm text-gray-500 mt-2">
+                            This will create a ledger entry and update the customer's wallet balance immediately.
+                        </p>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowConfirmAdjust(null)} disabled={isAdjusting}>Cancel</Button>
+                        <Button variant={showConfirmAdjust?.type === 'add' ? 'default' : 'destructive'} onClick={handleAdjustShipping} disabled={isAdjusting}>
+                            {isAdjusting ? "Processing..." : "Confirm"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
         </div>
     );
 };

@@ -20,7 +20,7 @@ const ContactUs = () => {
              <MapPin className="h-6 w-6 text-purple-600 mt-1" />
              <div>
                  <h3 className="font-semibold">Address</h3>
-                 <p>Surabhi Loyalty, 123 Main Street<br/>Bangalore, Karnataka, India - 560001</p>
+                 <p>15-158/2 Dhanalakshmi Nagar, M R Palli,<br/>Tirupati, Andhra Pradesh, 517507</p>
              </div>
           </div>
 
@@ -37,7 +37,7 @@ const ContactUs = () => {
              <Mail className="h-6 w-6 text-purple-600 mt-1" />
              <div>
                  <h3 className="font-semibold">Email</h3>
-                 <p><a href="mailto:support@surabhiloyalty.com" className="hover:underline">support@surabhiloyalty.com</a></p>
+                 <p><a href="mailto:sustainablekgv@gmail.com" className="hover:underline">sustainablekgv@gmail.com</a></p>
              </div>
           </div>
         </div>

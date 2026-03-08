@@ -25,6 +25,7 @@ export interface SaleCalculation {
   surabhiCoinsEarned: number;
   goSevaContribution: number;
   referrerSurabhiCoinsEarned: number;
+  shippingCreditsEarned: number;
 }
 
 // --- Utils ---
@@ -80,7 +81,9 @@ export const calculateSale = (
   storeDetails: StoreType,
   paymentMethod: 'wallet' | 'cash' | 'mixed',
   totalSpv?: number,
-  coinsUsedForCalc?: number // NEW: Amount paid via coins
+  coinsUsedForCalc?: number, // NEW: Amount paid via coins
+  shippingCreditsEarned?: number, // NEW: Shipping credits earned
+  shippingCreditsUsed?: number // NEW: Shipping credits used
 ): SaleCalculation => {
   const totalAmount = Number(amount);
   let walletDeduction = 0;
@@ -97,8 +100,8 @@ export const calculateSale = (
   const referralCommission = storeDetails.referralCommission || 0;
 
   // Calculate earnings
-  // NEW LOGIC: Base = SPV - surabhiCoinsUsed
-  const netSpv = Math.max(0, Number(spv) - surabhiCoinsUsed);
+  // NEW LOGIC: Base = SPV - surabhiCoinsUsed - shippingCreditsUsed
+  const netSpv = Math.max(0, Number(spv) - surabhiCoinsUsed - (shippingCreditsUsed || 0));
 
   const surabhiCoinsEarned = customRound((netSpv * selectedCommission) / 100);
   const goSevaContribution = customRound((netSpv * sevaCommission) / 100);
@@ -111,7 +114,8 @@ export const calculateSale = (
     cashPayment,
     surabhiCoinsEarned,
     goSevaContribution,
-    referrerSurabhiCoinsEarned
+    referrerSurabhiCoinsEarned,
+    shippingCreditsEarned: shippingCreditsEarned || 0,
   };
 };
 
@@ -125,9 +129,11 @@ export const processSaleTransaction = async (params: {
     paymentMethod: 'online' | 'cod', // Input type
     paymentDetails?: any,
     totalSpv?: number,
-    surabhiCoinsUsed?: number // NEW param
+    surabhiCoinsUsed?: number, // NEW param
+    shippingCreditsEarned?: number, // NEW
+    shippingCreditsUsed?: number // NEW
 }) => {
-    const { orderId, invoiceId, amount, customer, storeDetails, user, paymentMethod, paymentDetails, totalSpv, surabhiCoinsUsed } = params;
+    const { orderId, invoiceId, amount, customer, storeDetails, user, paymentMethod, paymentDetails, totalSpv, surabhiCoinsUsed, shippingCreditsEarned, shippingCreditsUsed } = params;
     
     // Process both online and COD. 
     // COD in shop is treated as "placed" with pending collection, 
@@ -137,7 +143,7 @@ export const processSaleTransaction = async (params: {
     const methodForCalc = 'cash'; 
     
     // 1. Calculate Sale details
-    const saleCalculation = calculateSale(amount, customer, storeDetails, methodForCalc, totalSpv, surabhiCoinsUsed);
+    const saleCalculation = calculateSale(amount, customer, storeDetails, methodForCalc, totalSpv, surabhiCoinsUsed, shippingCreditsEarned, shippingCreditsUsed);
     
     const spvEntered = totalSpv !== undefined ? totalSpv : amount;
     const adjustedSpv = totalSpv !== undefined ? totalSpv : amount; 
@@ -218,6 +224,7 @@ export const processSaleTransaction = async (params: {
         newBalance: {
             walletBalance: Number(customer.walletBalance.toFixed(2)),
             surabhiBalance: Number((customer.surabhiBalance + saleCalculation.surabhiCoinsEarned).toFixed(2)),
+            shippingBalance: Number(((customer.shippingBalance || 0) + (shippingCreditsEarned || 0) - (shippingCreditsUsed || 0)).toFixed(2)),
         },
         walletCredit: 0,
         walletDebit: 0,
@@ -229,6 +236,10 @@ export const processSaleTransaction = async (params: {
         sevaDebit: 0,
         sevaBalance: Number(((customer.sevaBalanceCurrentMonth || 0) + sevaContribution).toFixed(2)),
         sevaTotal: Number(((customer.sevaTotal || 0) + sevaContribution).toFixed(2)),
+        shippingCredit: Number((shippingCreditsEarned || 0).toFixed(2)),
+        shippingDebit: Number((shippingCreditsUsed || 0).toFixed(2)),
+        shippingBalance: Number(((customer.shippingBalance || 0) + (shippingCreditsEarned || 0) - (shippingCreditsUsed || 0)).toFixed(2)),
+        shippingTotal: Number(((customer.shippingTotal || 0) + (shippingCreditsEarned || 0)).toFixed(2)),
         storeSevaBalance: Number((storeDetails.storeSevaBalance + sevaContribution).toFixed(2)),
     };
     
@@ -245,6 +256,8 @@ export const processSaleTransaction = async (params: {
         sevaBalance: increment(sevaContribution),
         sevaTotal: increment(sevaContribution),
         cumTotal: newCumTotal,
+        shippingBalance: increment((shippingCreditsEarned || 0) - (shippingCreditsUsed || 0)),
+        shippingTotal: increment(shippingCreditsEarned || 0),
         lastTransactionDate: serverTimestamp(),
     };
 

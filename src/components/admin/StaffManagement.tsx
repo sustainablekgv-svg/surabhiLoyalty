@@ -139,6 +139,7 @@ export const StaffManagement = () => {
         surabhiCommission: Number(doc.data().surabhiCommission) || 0,
         sevaCommission: Number(doc.data().sevaCommission) || 0,
         cashOnlyCommission: Number(doc.data().cashOnlyCommission) || 0,
+        shippingCommission: Number(doc.data().shippingCommission) || 0,
         bonusPercentage: Number(doc.data().bonusPercentage) || 0,
         storeStatus: (doc.data().storeStatus as 'active' | 'inactive') || 'active',
         walletEnabled: Boolean(doc.data().walletEnabled !== false),
@@ -461,6 +462,7 @@ export const StaffManagement = () => {
         surabhiCommission: Number(currentStore.surabhiCommission) || 0,
         sevaCommission: Number(currentStore.sevaCommission) || 0,
         cashOnlyCommission: Number(currentStore.cashOnlyCommission) || 0,
+        shippingCommission: Number(currentStore.shippingCommission) || 0,
         bonusPercentage: Number(currentStore.bonusPercentage) || 0,
         storeCurrentBalance: Number(currentStore.storeCurrentBalance) || 0,
         storeSevaBalance: Number(currentStore.storeSevaBalance) || 0,
@@ -505,6 +507,7 @@ export const StaffManagement = () => {
         surabhiCommission: Number(doc.data().surabhiCommission) || 0,
         sevaCommission: Number(doc.data().sevaCommission) || 0,
         cashOnlyCommission: Number(doc.data().cashOnlyCommission) || 0,
+        shippingCommission: Number(doc.data().shippingCommission) || 0,
         bonusPercentage: Number(doc.data().bonusPercentage) || 0,
         storeStatus: (doc.data().storeStatus as 'active' | 'inactive') || 'active',
         walletEnabled: Boolean(doc.data().walletEnabled !== false),
@@ -1460,6 +1463,21 @@ export const StaffManagement = () => {
                       setCurrentStore({
                         ...currentStore,
                         bonusPercentage: Number(parseFloat(e.target.value).toFixed(2)) || 0,
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Shipping (%)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={currentStore?.shippingCommission || 0}
+                    onChange={e =>
+                      setCurrentStore({
+                        ...currentStore,
+                        shippingCommission: Number(parseFloat(e.target.value).toFixed(2)) || 0,
                       })
                     }
                   />

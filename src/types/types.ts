@@ -51,6 +51,11 @@ export interface CustomerType {
   cummulativeTarget: number;
   // carriedForwardTarget?: number;
   targetMet?: boolean;
+  shippingBalance: number;
+  shippingCredit: number;
+  shippingDebit: number;
+  shippingTotal: number;
+  shippingBalanceCurrentMonth: number;
 }
 
 export interface StaffHeaderProps {
@@ -153,6 +158,7 @@ export interface StoreType {
   surabhiCommission: number;
   sevaCommission: number;
   cashOnlyCommission: number;
+  shippingCommission?: number;
   // Bonus settings: percentage-based coins allocation from SPV and running balance
   bonusPercentage?: number;
   storeContactNumber: string;
@@ -212,11 +218,13 @@ export interface CustomerTxType {
   previousBalance?: {
     walletBalance: number;
     surabhiBalance: number;
+    shippingBalance?: number;
   };
 
   newBalance?: {
     walletBalance: number;
     surabhiBalance: number;
+    shippingBalance?: number;
   };
 
   walletCredit: number;
@@ -229,6 +237,10 @@ export interface CustomerTxType {
   sevaDebit: number;
   sevaBalance: number;
   sevaTotal: number;
+  shippingCredit?: number;
+  shippingDebit?: number;
+  shippingBalance?: number;
+  shippingTotal?: number;
   storeSevaBalance: number;
 }
 

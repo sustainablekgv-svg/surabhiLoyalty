@@ -1,6 +1,6 @@
 import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword
 } from 'firebase/auth';
 import { addDoc, collection, doc, getDoc, getDocs, query, Timestamp, where } from 'firebase/firestore';
 
@@ -308,7 +308,12 @@ export const registerCustomer = async (data: RegisterCustomerData): Promise<Cust
       
       quartersPast: 0,
       cummulativeTarget: data.isStudent ? 500 : 1000, 
-      targetMet: false
+      targetMet: false,
+      shippingBalance: 0,
+      shippingCredit: 0,
+      shippingDebit: 0,
+      shippingTotal: 0,
+      shippingBalanceCurrentMonth: 0,
     };
 
     const docRef = await addDoc(customersRef, newCustomer);

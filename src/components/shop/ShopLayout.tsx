@@ -8,6 +8,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Footer } from './Footer';
 
 import { SEO } from '@/components/SEO';
+import { FloatingWhatsApp } from './FloatingWhatsApp';
 
 interface ShopLayoutProps {
   children: React.ReactNode;
@@ -80,6 +81,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({ children, title = 'Shop'
         {children}
       </main>
       <Footer />
+      <FloatingWhatsApp />
     </div>
   );
 };

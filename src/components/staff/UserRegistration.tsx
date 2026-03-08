@@ -292,6 +292,11 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
         cummulativeTarget: 0,
         joinedDate: Timestamp.now(),
         quartersPast: 0,
+        shippingBalance: 0,
+        shippingCredit: 0,
+        shippingDebit: 0,
+        shippingTotal: 0,
+        shippingBalanceCurrentMonth: 0,
       };
 
       // console.log('Creating customer document with data:', newUserData);
