@@ -1,7 +1,7 @@
 
 import { db } from '@/lib/firebase';
 import { Brand, Category, Order, Product } from '@/types/shop';
-import { CustomerType, StoreType } from '@/types/types';
+import { CustomerTxType, CustomerType, StoreType } from '@/types/types';
 import {
     addDoc,
     collection,
@@ -14,11 +14,13 @@ import {
     query,
     serverTimestamp,
     startAfter,
+    Timestamp,
     updateDoc,
     where,
     writeBatch
 } from 'firebase/firestore';
 import { processSaleTransaction } from './sales';
+import { getUserName } from '@/lib/userUtils';
 
 // --- Display Order Helper ---
 const swapDisplayOrder = async (collectionName: string, id1: string, order1: number, id2: string, order2: number) => {
@@ -166,8 +168,20 @@ export const getActiveProducts = async (): Promise<Product[]> => {
   const snapshot = await getDocs(q);
   const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
   
-  // Client-side sort
+// Client-side sort
   return products.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+};
+
+export const getFeaturedProducts = async (): Promise<Product[]> => {
+    const q = query(
+        collection(db, 'products'),
+        where('isActive', '==', true),
+        where('isVisible', '==', true),
+        where('isFeatured', '==', true)
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product))
+        .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
 };
 
 export const getProduct = async (id: string): Promise<Product | null> => {
@@ -608,8 +622,22 @@ export const getOrdersByUser = async (userId: string): Promise<Order[]> => {
 
 export const updateOrderTotal = async (orderId: string, newTotal: number) => {
     const docRef = doc(db, 'orders', orderId);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) throw new Error("Order not found");
+    
+    const currentOrder = docSnap.data() as Order;
+    const newTimeline = [
+        ...(currentOrder.timeline || []),
+        { 
+            status: currentOrder.status, 
+            timestamp: new Date(), 
+            note: `Order total manually updated from ₹${currentOrder.totalAmount.toFixed(2)} to ₹${newTotal.toFixed(2)} by Store Admin` 
+        }
+    ];
+
     await updateDoc(docRef, {
         totalAmount: newTotal,
+        timeline: newTimeline,
         updatedAt: serverTimestamp()
     });
 };
@@ -648,7 +676,7 @@ const getCustomerById = async (userId: string): Promise<CustomerType | null> => 
     }
 };
 
-export const updateOrderStatus = async (orderId: string, status: Order['status'], note?: string) => {
+export const updateOrderStatus = async (orderId: string, status: Order['status'], note?: string, currentUser?: any) => {
     const docRef = doc(db, 'orders', orderId);
     const docSnap = await getDoc(docRef);
     
@@ -657,7 +685,11 @@ export const updateOrderStatus = async (orderId: string, status: Order['status']
     const currentOrder = docSnap.data() as Order;
     const newTimeline = [
         ...(currentOrder.timeline || []),
-        { status, timestamp: new Date(), note: note || `Status updated to ${status}` }
+        { 
+            status, 
+            timestamp: new Date(), 
+            note: note || `Order status updated to ${status.toUpperCase().replace('_', ' ')} by Store Admin` 
+        }
     ];
 
     const updates: any = {
@@ -677,16 +709,37 @@ export const updateOrderStatus = async (orderId: string, status: Order['status']
                 const store = await getStoreByLocation(storeLocation);
                 
                 if (store) {
+                    const itemsTotalAfterCoins = currentOrder.totalAmount - (currentOrder.netShippingCharges || 0) - (currentOrder.adminShippingAdjustment || 0);
+                    const grossPriceOfItems = itemsTotalAfterCoins + (currentOrder.surabhiCoinsUsed || 0);
+                    const grossSpv = currentOrder.items.reduce((acc, item) => acc + (Number(item.spv || 0) * item.quantity), 0);
+                    
+                    // Ratio adjustment for SPV based on coin usage
+                    const adjustedSpv = grossPriceOfItems > 0 
+                        ? (itemsTotalAfterCoins * grossSpv) / grossPriceOfItems 
+                        : grossSpv;
+                    
+                    // The order might already have pre-calculated rewards from Admin Edit
+                    // Use them if they exist to maintain consistency with what admin saw
+                    const rewardOverrides = {
+                        surabhiCoinsEarned: currentOrder.surabhiCoinsEarned,
+                        sevaCoinsEarned: (currentOrder as any).sevaCoinsEarned,
+                        referralBonusEarned: (currentOrder as any).referralBonusEarned
+                    };
+
                     await processSaleTransaction({
                         orderId: currentOrder.id,
                         invoiceId: `INV-${currentOrder.id.slice(0,6).toUpperCase()}`,
                         amount: currentOrder.totalAmount,
                         customer: customer,
                         storeDetails: store,
-                        user: { staffName: 'Online Admin', role: 'admin' },
+                        user: currentUser || { staffName: 'Online Admin', role: 'admin' },
                         paymentMethod: currentOrder.paymentMethod || 'online',
-                        totalSpv: currentOrder.items.reduce((acc, item) => acc + (Number(item.spv || 0) * item.quantity), 0), // Calculate Total SPV from items
-                        surabhiCoinsUsed: currentOrder.surabhiCoinsUsed || 0
+                        totalSpv: adjustedSpv, 
+                        surabhiCoinsUsed: currentOrder.surabhiCoinsUsed || 0,
+                        shippingCreditsEarned: currentOrder.shippingPointsEarned || 0,
+                        shippingCreditsUsed: currentOrder.shippingPointsUsed || 0,
+                        cumTotalAmount: itemsTotalAfterCoins,
+                        rewardOverrides: (rewardOverrides.surabhiCoinsEarned !== undefined) ? rewardOverrides : undefined
                     });
                     updates.rewardsProcessed = true;
                     // Note: Activity log is added by processSaleTransaction
@@ -703,6 +756,18 @@ export const updateOrderStatus = async (orderId: string, status: Order['status']
             updates.rewardsError = "Processing Failed";
         }
     }
+
+    // Activity Log
+    await addDoc(collection(db, 'Activity'), {
+        type: 'order_status_updated',
+        remarks: `Order status updated to ${status.toUpperCase()} ${note ? `(${note})` : ''}`,
+        status,
+        customerName: currentOrder.shippingAddress.fullName,
+        customerMobile: currentOrder.shippingAddress.mobile,
+        createdAt: Timestamp.now(),
+        orderId: orderId,
+        demoStore: (currentOrder as any).demoStore || false
+    });
 
     await updateDoc(docRef, updates);
 };
@@ -731,6 +796,18 @@ export const cancelOrder = async (orderId: string, reason: string) => {
         timeline: newTimeline,
         updatedAt: serverTimestamp()
     });
+
+    // Activity Log
+    await addDoc(collection(db, 'Activity'), {
+        type: 'order_cancelled',
+        remarks: `Order cancelled by user. Reason: ${reason}`,
+        status: 'cancelled',
+        customerName: currentOrder.shippingAddress.fullName,
+        customerMobile: currentOrder.shippingAddress.mobile,
+        createdAt: Timestamp.now(),
+        orderId: orderId,
+        demoStore: (currentOrder as any).demoStore || false
+    });
 };
 
 export const updateOrderAddress = async (orderId: string, newAddress: import('@/types/shop').Address) => {
@@ -739,13 +816,34 @@ export const updateOrderAddress = async (orderId: string, newAddress: import('@/
     if (!docSnap.exists()) throw new Error("Order not found");
     
     const currentOrder = docSnap.data() as Order;
-     if (currentOrder.status !== 'received') {
+     if (currentOrder.status !== 'received' && currentOrder.status !== 'payment_pending') {
         throw new Error("Order details cannot be edited at this stage");
     }
 
+    const newTimeline = [
+        ...(currentOrder.timeline || []),
+        { 
+            status: currentOrder.status, 
+            timestamp: new Date(), 
+            note: `Shipping address updated to: ${newAddress.street}, ${newAddress.city}, ${newAddress.state} by Store Admin` 
+        }
+    ];
+
     await updateDoc(docRef, {
         shippingAddress: newAddress,
+        timeline: newTimeline,
         updatedAt: serverTimestamp()
+    });
+
+    // Activity Log
+    await addDoc(collection(db, 'Activity'), {
+        type: 'order_address_updated',
+        remarks: `Shipping address updated`,
+        customerName: currentOrder.shippingAddress.fullName,
+        customerMobile: currentOrder.shippingAddress.mobile,
+        createdAt: Timestamp.now(),
+        orderId: orderId,
+        demoStore: (currentOrder as any).demoStore || false
     });
 };
 
@@ -787,10 +885,21 @@ export const adjustOrderShippingBalance = async (
             ...(isAddition && { shippingTotal: newShippingTotal })
         });
 
-        // 2. Update Order with tracking field
+        // 2. Update Order with tracking field and timeline
         const currentAdjustment = orderData.adminShippingAdjustment || 0;
+        const newTimeline = [
+            ...(orderData.timeline || []),
+            { 
+                status: orderData.status, 
+                timestamp: new Date(), 
+                note: `Shipping adjustment: ${isAddition ? 'Credit' : 'Debit'} of ₹${amount}. New order total: ₹${(orderData.totalAmount + adjustmentAmount).toFixed(2)}` 
+            }
+        ];
+
         await updateDoc(orderRef, {
             adminShippingAdjustment: currentAdjustment + adjustmentAmount,
+            totalAmount: Number((orderData.totalAmount + adjustmentAmount).toFixed(2)),
+            timeline: newTimeline,
             updatedAt: serverTimestamp()
         });
 
@@ -804,7 +913,7 @@ export const adjustOrderShippingBalance = async (
             storeName: user?.storeLocation || 'Main Store',
             createdAt: Timestamp.fromDate(new Date()),
             paymentMethod: 'wallet', // conceptual
-            processedBy: user?.staffName || 'Admin',
+            processedBy: getUserName(user) || 'Admin',
             invoiceId: `ADJ-${orderId.slice(0,6).toUpperCase()}`,
             remarks: `Manual shipping balance adjustment by Admin (${isAddition ? 'Add' : 'Deduct'} ₹${amount}) for order ${orderId.slice(0,8)}`,
             
@@ -862,11 +971,78 @@ export const adjustOrderShippingBalance = async (
             customerName: customerData.customerName,
             storeLocation: customerData.storeLocation || 'Main Store',
             demoStore: customerData.demoStore || false,
-            date: new Date()
+            createdAt: Timestamp.fromDate(new Date())
         });
 
     } catch (error) {
         console.error("Error adjusting shipping balance:", error);
         throw error;
     }
+};
+
+export const updateOrderItems = async (orderId: string, updates: Partial<Order>, customNote?: string) => {
+    const docRef = doc(db, 'orders', orderId);
+    
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) throw new Error("Order not found");
+    const currentOrder = docSnap.data() as Order;
+    
+    const newTimeline = [
+        ...(currentOrder.timeline || []),
+        { 
+            status: currentOrder.status, 
+            timestamp: new Date(), 
+            note: customNote ? `${customNote} (by Store Admin)` : `Order items/details updated by Store Admin. New Total: ₹${(updates.totalAmount || currentOrder.totalAmount).toFixed(2)}` 
+        }
+    ];
+
+    await updateDoc(docRef, {
+        ...updates,
+        updatedAt: serverTimestamp(),
+        timeline: newTimeline
+    });
+
+    // Activity Log
+    await addDoc(collection(db, 'Activity'), {
+        type: 'order_items_updated',
+        remarks: customNote || `Order details/items adjusted by admin. New Total: ₹${updates.totalAmount || currentOrder.totalAmount}`,
+        amount: updates.totalAmount || currentOrder.totalAmount,
+        customerName: currentOrder.shippingAddress.fullName,
+        customerMobile: currentOrder.shippingAddress.mobile,
+        createdAt: Timestamp.now(),
+        orderId: orderId,
+        demoStore: (currentOrder as any).demoStore || false
+    });
+};
+
+export const addInternalNote = async (orderId: string, note: string, adminName: string) => {
+    const docRef = doc(db, 'orders', orderId);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) throw new Error("Order not found");
+
+    const currentOrder = docSnap.data() as Order;
+    const internalNotes = currentOrder.internalNotes || [];
+
+    await updateDoc(docRef, {
+        internalNotes: [
+            ...internalNotes,
+            {
+                note,
+                adminName,
+                timestamp: new Date()
+            }
+        ],
+        updatedAt: serverTimestamp()
+    });
+};
+
+export const updateGstSlab = async (id: string, slab: { title: string; percentage: number }) => {
+    await updateDoc(doc(db, 'gstSlabs', id), {
+        ...slab,
+        updatedAt: serverTimestamp()
+    });
+};
+
+export const deleteGstSlab = async (id: string) => {
+    await deleteDoc(doc(db, 'gstSlabs', id));
 };

@@ -6,7 +6,7 @@ import { useShop } from '@/hooks/shop-context';
 import { isValidImageUrl } from '@/lib/image-utils';
 import { cn } from '@/lib/utils';
 import { Product } from '@/types/shop';
-import { Heart, ShoppingCart, Trash2 } from 'lucide-react';
+import { Heart, ShoppingCart, Star, Trash2 } from 'lucide-react';
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -73,12 +73,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
         </div>
         
         <h3 
-          className="font-semibold leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors mb-2 text-gray-900 min-h-[2.5rem]"
+          className="font-semibold leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors text-gray-900 min-h-[2.5rem]"
           onClick={() => navigate(`/shop/product/${product.id}`, { state: { from: location.pathname + location.search } })}
           title={product.name}
         >
           {product.name}
         </h3>
+        
+        {product.totalReviews ? (
+            <div className="flex items-center gap-1 mt-1 mb-2 text-[10px] text-gray-500 font-bold">
+                <div className="flex gap-0.5">
+                    {Array(5).fill(0).map((_, i) => (
+                        <Star key={i} className={`h-3 w-3 ${i < Math.round(product.averageRating || 0) ? 'fill-yellow-400 text-yellow-400' : 'fill-gray-200 text-gray-200'}`} />
+                    ))}
+                </div>
+                <span>({product.totalReviews})</span>
+            </div>
+        ) : null}
         
         <div className="mt-auto">
           <div className="flex items-center flex-wrap gap-2 mb-2">

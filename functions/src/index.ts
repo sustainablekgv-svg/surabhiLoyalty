@@ -1,3 +1,4 @@
+import 'dotenv/config';
 /**
  * Import function triggers from their respective submodules:
  *
@@ -35,11 +36,14 @@ import * as auth from './auth';
 import * as cloudflare from './cloudflare';
 import * as ecommerce from './ecommerce';
 import * as quarterly from './quartleryCheck';
+import { syncFirebaseAuthForUpload as syncFirebaseAuthForUploadFn } from './syncAuthForUpload';
 
 export const checkQuarterlyCriteria = quarterly.checkQuarterlyCriteria;
 export const createRazorpayOrder = ecommerce.createRazorpayOrder;
 export const verifyRazorpayPayment = ecommerce.verifyRazorpayPayment;
+export const razorpayWebhook = ecommerce.razorpayWebhook;
 export const createR2UploadUrl = cloudflare.createR2UploadUrl;
 export const deleteImageFromR2 = cloudflare.deleteImageFromR2;
+export const syncFirebaseAuthForUpload = syncFirebaseAuthForUploadFn;
 export const onStaffUpdate = auth.onStaffUpdate;
 export const onCustomerUpdate = auth.onCustomerUpdate;

@@ -5,7 +5,10 @@ import {
   Coins,
   DollarSign,
   RefreshCw,
+  ShoppingCart,
+  Store,
   TrendingUp,
+  Truck,
   UserPlus,
   Users,
   Wallet,
@@ -128,6 +131,8 @@ export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
   }).length;
 
   const totalSurabhiCoins = customers.reduce((sum, c) => sum + (c.surabhiBalance || 0), 0);
+  const totalShippingBalance = customers.reduce((sum, c) => sum + (c.shippingBalance || 0), 0);
+
   // Exclude Seva balance calculations for demo stores
   const rawSevaCoins = currentStore?.demoStore
     ? 0
@@ -167,10 +172,18 @@ export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
     {
       title: 'Surabhi Coins',
       value: totalSurabhiCoins.toFixed(2),
-      change: `${sevaCoinsThisMonth} this month`,
+      change: `${sevaCoinsThisMonth} seva this month`,
       icon: Coins,
       color: 'text-amber-600',
       bgColor: 'bg-amber-50',
+    },
+    {
+      title: 'Shipping Credits',
+      value: `₹${totalShippingBalance.toFixed(2)}`,
+      change: 'Total for store',
+      icon: Truck,
+      color: 'text-indigo-600',
+      bgColor: 'bg-indigo-50',
     },
   ];
 
@@ -318,7 +331,8 @@ export const StoreStats = ({ storeLocation }: StaffStatsProps) => {
                         ₹{(customer.walletBalance || 0).toFixed(2)}
                       </p>
                       <p className="text-[10px] xs:text-xs text-gray-600">
-                        {(customer.surabhiBalance || 0).toFixed(2)} coins
+                        {(customer.surabhiBalance || 0).toFixed(2)} coins • ₹
+                        {(customer.shippingBalance || 0).toFixed(2)} credits
                       </p>
                     </div>
                   </div>

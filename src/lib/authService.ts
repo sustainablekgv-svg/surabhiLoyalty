@@ -1,12 +1,20 @@
 import {
     createUserWithEmailAndPassword,
-    signInWithEmailAndPassword
+    signInWithEmailAndPassword,
+    type User as FirebaseAuthUser,
 } from 'firebase/auth';
-import { addDoc, collection, doc, getDoc, getDocs, query, Timestamp, where } from 'firebase/firestore';
+import { addDoc, arrayUnion, collection, doc, getDoc, getDocs, query, Timestamp, updateDoc, where } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 
 import { encryptText, isEncrypted, safeDecryptText } from '@/lib/encryption';
-import { auth, db } from '@/lib/firebase';
+import { auth, db, functions } from '@/lib/firebase';
+import { storageUtils } from '@/lib/storage';
 import { CustomerType, StaffType, User } from '@/types/types';
+
+const callSyncFirebaseAuthForUpload = httpsCallable<
+  { mobile: string; password: string; appRole: 'admin' | 'staff' | 'customer' },
+  { success: boolean }
+>(functions, 'syncFirebaseAuthForUpload');
 
 export const getCustomerByMobile = async (
   mobile: string,
@@ -150,6 +158,101 @@ export const signInWithFirebase = async (email: string, password: string): Promi
   }
 };
 
+const isValidEmail = (value: string): boolean => {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+};
+
+/** Resolves stored credentials to the password used for Firebase Auth (encrypted or legacy plain). */
+const resolveStoredPasswordForFirebase = (encryptedOrPlain: string | undefined): string | null => {
+  if (!encryptedOrPlain) return null;
+  if (isEncrypted(encryptedOrPlain)) {
+    return safeDecryptText(encryptedOrPlain);
+  }
+  return encryptedOrPlain;
+};
+
+/**
+ * Ensures Firebase Auth has a current user — required for callable Functions (e.g. R2 signed URLs).
+ * Login may have skipped a real Firebase session when tolerateFailure was true; this retries with a firm sign-in.
+ */
+export const getFirebaseUserForFunctions = async (): Promise<FirebaseAuthUser> => {
+  if (auth.currentUser) {
+    return auth.currentUser;
+  }
+
+  const storedUser = storageUtils.getUser() as User | null;
+  if (!storedUser) {
+    throw new Error(
+      'You must be logged in to upload images. Please refresh the page and try again.'
+    );
+  }
+
+  const email =
+    storedUser.role === 'customer'
+      ? (storedUser as CustomerType).customerEmail
+      : (storedUser as StaffType).staffEmail;
+
+  const encryptedPassword =
+    storedUser.role === 'customer'
+      ? (storedUser as CustomerType).customerPassword
+      : (storedUser as StaffType).staffPassword;
+
+  const normalizedEmail = email?.trim();
+  if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
+    throw new Error(
+      'A valid email on your account is required for uploads. Please update your profile or contact support.'
+    );
+  }
+
+  const password = resolveStoredPasswordForFirebase(encryptedPassword);
+  if (!password || password.length < 6) {
+    throw new Error(
+      'Could not restore your secure session for upload. Please log out and log back in.'
+    );
+  }
+
+  const mobile =
+    storedUser.role === 'customer'
+      ? (storedUser as CustomerType).customerMobile
+      : (storedUser as StaffType).staffMobile;
+
+  const appRole = storedUser.role as 'admin' | 'staff' | 'customer';
+
+  const trySignIn = () =>
+    ensureFirebaseAuth(normalizedEmail, password, {
+      allowCreate: storedUser.role !== 'customer',
+      tolerateFailure: false,
+    });
+
+  try {
+    await trySignIn();
+  } catch (err: unknown) {
+    const code = (err as { code?: string })?.code;
+    const msg = err instanceof Error ? err.message : '';
+    const syncThenSignIn =
+      code === 'auth/invalid-credential' ||
+      code === 'auth/wrong-password' ||
+      msg.includes('Firebase Auth user exists but login failed');
+
+    if (syncThenSignIn) {
+      await callSyncFirebaseAuthForUpload({ mobile, password, appRole });
+      await signInWithEmailAndPassword(auth, normalizedEmail, password);
+    } else {
+      throw err;
+    }
+  }
+
+  if (!auth.currentUser) {
+    throw new Error(
+      'Firebase sign-in did not complete. If this persists, contact support.'
+    );
+  }
+
+  return auth.currentUser;
+};
+
 export const ensureFirebaseAuth = async (
   email: string,
   password: string,
@@ -239,6 +342,7 @@ export const registerCustomer = async (data: RegisterCustomerData): Promise<Cust
     // TODO: Add collision check loop if scaling.
 
     let realReferredByMobile: string | null = null;
+    let referrerDocId: string | null = null;
 
     if (data.referredBy) {
          // Check if it's a code
@@ -248,12 +352,15 @@ export const registerCustomer = async (data: RegisterCustomerData): Promise<Cust
          if (!snapshotCode.empty) {
              const referrerData = snapshotCode.docs[0].data() as CustomerType;
              realReferredByMobile = referrerData.customerMobile;
+             referrerDocId = snapshotCode.docs[0].id;
          } else {
              // Fallback: Check if it's a mobile number (Legacy support during transition)
              const qMobile = query(customersRef, where('customerMobile', '==', data.referredBy.trim()));
              const snapshotMobile = await getDocs(qMobile);
              if (!snapshotMobile.empty) {
-                 realReferredByMobile = data.referredBy.trim();
+                 const referrerData = snapshotMobile.docs[0].data() as CustomerType;
+                 realReferredByMobile = referrerData.customerMobile;
+                 referrerDocId = snapshotMobile.docs[0].id;
              }
          }
     }
@@ -317,6 +424,22 @@ export const registerCustomer = async (data: RegisterCustomerData): Promise<Cust
     };
 
     const docRef = await addDoc(customersRef, newCustomer);
+
+    // If there's a referrer, update their document
+    if (referrerDocId) {
+        try {
+            await updateDoc(doc(db, 'Customers', referrerDocId), {
+                referredUsers: arrayUnion({
+                    customerMobile: data.customerMobile,
+                    customerName: data.customerName,
+                    createdAt: Timestamp.now()
+                })
+            });
+        } catch (e) {
+            console.error("Failed to update referrer doc:", e);
+            // We don't throw here as the main registration was successful
+        }
+    }
     
     return {
       ...newCustomer,

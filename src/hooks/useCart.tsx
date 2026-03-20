@@ -55,6 +55,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     productQuantity: item.productQuantity ?? item.weight ?? '',
     weightInKg: item.weightInKg || 0.5,
     unitsOfMeasure: item.unitsOfMeasure ?? '',
+    gst: item.gst ? { title: item.gst.title, percentage: item.gst.percentage } : undefined,
+    originalPrice: item.originalPrice || item.price || 0,
   });
 
   const addToCart = async (product: Product, quantity = 1): Promise<boolean> => {
@@ -86,6 +88,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         productQuantity: product.quantity ?? product.weight ?? '',
         weightInKg: product.weightInKg || 0.5,
         unitsOfMeasure: product.unitsOfMeasure ?? '',
+        gst: product.gst ? { title: product.gst.title, percentage: product.gst.percentage } : undefined,
+        originalPrice: product.price,
       });
     }
 

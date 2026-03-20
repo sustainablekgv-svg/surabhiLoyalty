@@ -1,5 +1,5 @@
 // src/components/CustomerManagement.tsx
-import { collection, getDocs, query, Timestamp, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, getDocs, increment, query, Timestamp, updateDoc, where } from 'firebase/firestore';
 import {
     Coins,
     Edit,
@@ -10,6 +10,8 @@ import {
     MapPin,
     Phone,
     RefreshCw,
+    ShoppingCart,
+    Truck,
     Users,
     Wallet,
 } from 'lucide-react';
@@ -38,6 +40,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { useDebouncedSearch } from '@/hooks/useDebounce';
 import { useActiveStores, useCustomers, useInvalidateQueries } from '@/hooks/useFirebaseQueries';
@@ -45,6 +48,7 @@ import { useFilterPreferences } from '@/hooks/useLocalStorage';
 import { decryptText, encryptText, isEncrypted } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { CustomerType } from '@/types/types';
+import { TransactionHistory } from '../customer/TransactionHistory';
 
 export const CustomerManagement = () => {
   // Use cached data with React Query
@@ -77,6 +81,7 @@ export const CustomerManagement = () => {
   const [editedData, setEditedData] = useState<Partial<CustomerType>>({});
   const [activeTab, setActiveTab] = useState<'customers' | 'decrypt'>('customers');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [shippingAdjustment, setShippingAdjustment] = useState<number>(0);
 
   // Update filter preferences when store filter changes
   const updateFilterStore = (value: string) => {
@@ -105,27 +110,27 @@ export const CustomerManagement = () => {
   //   customer => !demoStoreLocations.includes(customer.storeLocation)
   // );
 
-  // Calculate analytics excluding demo store customers
+  // Calculate analytics using ALL non-demo customers for global context
   const totalStats = {
-    totalCustomers: filteredCustomers.filter(customer => customer.demoStore === false).length,
-    registeredCustomers: filteredCustomers.filter(
+    totalCustomers: customers.filter(customer => customer.demoStore === false).length,
+    registeredCustomers: customers.filter(
       c => c.walletRechargeDone && c.demoStore === false
     ).length,
-    guestCustomers: filteredCustomers.filter(c => !c.walletRechargeDone && c.demoStore === false)
+    guestCustomers: customers.filter(c => !c.walletRechargeDone && c.demoStore === false)
       .length,
-    totalWalletBalance: filteredCustomers
+    totalWalletBalance: customers
       .filter(cust => cust.demoStore === false)
       .reduce((sum, c) => sum + (c.walletBalance || 0), 0),
-    totalSurabhiCoins: filteredCustomers
+    totalSurabhiCoins: customers
       .filter(cust => cust.demoStore === false)
       .reduce((sum, c) => sum + (c.surabhiBalance || 0), 0),
-    totalSevaCoins: filteredCustomers
+    totalSevaCoins: customers
       .filter(cust => cust.demoStore === false)
       .reduce((sum, c) => sum + (c.sevaTotal || 0), 0),
-    totalReferrals: filteredCustomers
-      .filter(cust => cust.demoStore === false)
-      .reduce((sum, c) => sum + (c.referredUsers?.length || 0), 0),
-    activeThisMonth: filteredCustomers
+    totalReferrals: customers
+      .filter(cust => cust.demoStore === false && cust.referredBy !== null && cust.referredBy !== '')
+      .length,
+    activeThisMonth: customers
       .filter(cust => cust.demoStore === false)
       .filter(c => {
         if (!c.lastTransactionDate) return false;
@@ -144,6 +149,10 @@ export const CustomerManagement = () => {
     setIsCustomerDialogOpen(true);
   };
 
+  const getReferralCount = (mobile: string) => {
+    return customers.filter(c => c.referredBy === mobile && c.demoStore === false).length;
+  };
+
   const handleEditClick = (customer: CustomerType) => {
     setEditCustomer(customer);
     setEditedData({
@@ -156,10 +165,12 @@ export const CustomerManagement = () => {
       walletBalance: customer.walletBalance,
       surabhiBalance: customer.surabhiBalance,
       sevaTotal: customer.sevaTotal,
+      shippingBalance: customer.shippingBalance || 0,
       walletRechargeDone: customer.walletRechargeDone,
       tpin: customer.tpin ? (isEncrypted(customer.tpin) ? decryptText(customer.tpin) : customer.tpin) : '',
       customerPassword: customer.customerPassword ? (isEncrypted(customer.customerPassword) ? decryptText(customer.customerPassword) : customer.customerPassword) : '',
     });
+    setShippingAdjustment(0);
     setIsEditDialogOpen(true);
   };
 
@@ -168,7 +179,7 @@ export const CustomerManagement = () => {
     setEditedData(prev => ({
       ...prev,
       [name]:
-        name === 'walletBalance' || name === 'surabhiBalance' || name === 'sevaTotal'
+        name === 'walletBalance' || name === 'surabhiBalance' || name === 'sevaTotal' || name === 'shippingBalance'
           ? Number(parseFloat(value).toFixed(2)) || 0
           : value,
     }));
@@ -221,9 +232,18 @@ export const CustomerManagement = () => {
         walletBalance: editedData.walletBalance,
         surabhiBalance: editedData.surabhiBalance,
         sevaTotal: editedData.sevaTotal,
+        shippingBalance: increment(shippingAdjustment),
         walletRechargeDone: editedData.walletRechargeDone,
         updatedAt: Timestamp.now(),
       };
+
+      if (shippingAdjustment !== 0) {
+          if (shippingAdjustment > 0) {
+              updateData.shippingCredit = increment(shippingAdjustment);
+          } else {
+              updateData.shippingDebit = increment(Math.abs(shippingAdjustment));
+          }
+      }
 
       // Only encrypt and update TPIN if it's provided and not empty
       if (editedData.tpin && editedData.tpin.trim() !== '') {
@@ -241,12 +261,27 @@ export const CustomerManagement = () => {
       // Invalidate customers cache to refetch updated data
       invalidateCustomers();
 
+      // Add activity log for shipping adjustment if needed
+      if (shippingAdjustment !== 0) {
+          await addDoc(collection(db, 'Activity'), {
+              type: 'shipping_adjustment',
+              remarks: `Admin adjusted shipping balance by ${shippingAdjustment > 0 ? '+' : ''}${shippingAdjustment} for ${editedData.customerName}`,
+              amount: shippingAdjustment,
+              customerName: editedData.customerName,
+              customerMobile: editCustomer.customerMobile,
+              storeLocation: editedData.storeLocation,
+              createdAt: Timestamp.now(),
+              demoStore: editCustomer.demoStore || false
+          });
+      }
+
       toast({
         title: 'Success',
         description: 'Customer details updated successfully',
         variant: 'default',
       });
       setIsEditDialogOpen(false);
+      setShippingAdjustment(0);
     } catch (error) {
       // console.error('Error updating customer:', error);
       toast({
@@ -302,7 +337,14 @@ export const CustomerManagement = () => {
           </DialogHeader>
 
           {selectedCustomer && (
-            <div className="grid gap-4 py-4">
+            <Tabs defaultValue="details" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="ledger">Ledger</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="details">
+                <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h4 className="font-medium">Basic Information</h4>
@@ -368,8 +410,12 @@ export const CustomerManagement = () => {
                       {(selectedCustomer.sevaTotal || 0).toFixed(2)}
                     </p>
                     <p>
-                      <span className="text-muted-foreground">This Month:</span>{' '}
-                      {(selectedCustomer.sevaBalanceCurrentMonth || 0).toFixed(2)}
+                      <span className="text-muted-foreground">Shipping Balance:</span> ₹
+                      {(selectedCustomer.shippingBalance || 0).toFixed(2)}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">This Month:</span> ₹
+                      {(selectedCustomer.shippingBalanceCurrentMonth || 0).toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -383,32 +429,43 @@ export const CustomerManagement = () => {
                     {selectedCustomer.referredBy || 'N/A'}
                   </p>
                   <p>
+                    <span className="text-muted-foreground">Total Referred:</span>{' '}
+                    {getReferralCount(selectedCustomer.customerMobile)} users
+                  </p>
+                  <p>
                     <span className="text-muted-foreground">Referral Income:</span>{' '}
                     {selectedCustomer.surabhiReferral
                       ? `₹${selectedCustomer.surabhiReferral.toFixed(2)}`
                       : 'N/A'}
                   </p>
 
-                  {selectedCustomer.referredUsers && selectedCustomer.referredUsers.length > 0 && (
-                    <div>
-                      <p className="font-medium mt-2">Referred Users:</p>
-                      <div className="border rounded p-2 mt-1">
-                        {selectedCustomer.referredUsers.map((user, index) => (
-                          <div
-                            key={index}
-                            className="flex justify-between py-1 border-b last:border-b-0"
-                          >
-                            <span>{user.customerMobile}</span>
-                            <span className="text-muted-foreground">
-                              {user.createdAt instanceof Timestamp
-                                ? user.createdAt.toDate().toLocaleString()
-                                : new Date(user.createdAt).toLocaleString()}
-                            </span>
+                  {/* List of referred users (subset from customers list) */}
+                  {(() => {
+                    const referredOnes = customers.filter(c => c.referredBy === selectedCustomer.customerMobile);
+                    if (referredOnes.length > 0) {
+                      return (
+                        <div>
+                          <p className="font-medium mt-2">Referred Users:</p>
+                          <div className="border rounded p-2 mt-1 max-h-40 overflow-y-auto">
+                            {referredOnes.map((user, index) => (
+                              <div
+                                key={index}
+                                className="flex justify-between py-1 border-b last:border-b-0"
+                              >
+                                <span>{user.customerName} ({user.customerMobile})</span>
+                                <span className="text-muted-foreground">
+                                  {user.createdAt instanceof Timestamp
+                                    ? user.createdAt.toDate().toLocaleDateString()
+                                    : 'N/A'}
+                                </span>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
 
@@ -452,6 +509,14 @@ export const CustomerManagement = () => {
                 </div>
               </div>
             </div>
+          </TabsContent>
+              
+              <TabsContent value="ledger">
+                <div className="py-4">
+                  <TransactionHistory userId={selectedCustomer.id} demoStore={selectedCustomer.demoStore || false} />
+                </div>
+              </TabsContent>
+            </Tabs>
           )}
         </DialogContent>
       </Dialog>
@@ -606,6 +671,33 @@ export const CustomerManagement = () => {
                 value={editedData.sevaTotal || 0}
                 onChange={handleInputChange}
                 className="col-span-3"
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="shippingBalance" className="text-right">
+                Current Shipping Bal
+              </Label>
+              <Input
+                id="shippingBalance"
+                value={(editedData.shippingBalance || 0).toFixed(2)}
+                className="col-span-3"
+                disabled
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="shippingAdjustment" className="text-right text-indigo-600 font-bold">
+                Adjust Shipping (±)
+              </Label>
+              <Input
+                id="shippingAdjustment"
+                name="shippingAdjustment"
+                type="number"
+                value={shippingAdjustment}
+                onChange={(e) => setShippingAdjustment(Number(parseFloat(e.target.value)) || 0)}
+                className="col-span-3 border-indigo-200 focus:ring-indigo-500"
+                placeholder="Ex: +10 or -5"
               />
             </div>
 
@@ -858,7 +950,7 @@ export const CustomerManagement = () => {
                               variant="outline"
                               className="text-[10px] sm:text-xs py-0 sm:py-0.5"
                             >
-                              {customer.referredUsers?.length || 0} referrals
+                              {getReferralCount(customer.customerMobile)} referrals
                             </Badge>
                           </div>
                         </div>
@@ -879,6 +971,14 @@ export const CustomerManagement = () => {
                           <div className="flex items-center gap-1 sm:gap-2 text-amber-600">
                             <Coins className="h-3 w-3" />
                             <span>{customer.surabhiBalance.toFixed(2)} coins</span>
+                          </div>
+                          <div className="flex items-center gap-1 sm:gap-2 text-indigo-600">
+                            <Truck className="h-3 w-3" />
+                            <span>₹{(customer.shippingBalance || 0).toFixed(2)}</span>
+                          </div>
+                          <div className="flex items-center gap-1 sm:gap-2 text-blue-600">
+                            <ShoppingCart className="h-3 w-3" />
+                            <span>₹{(customer.cumTotal || 0).toFixed(2)}</span>
                           </div>
                         </div>
                       </div>

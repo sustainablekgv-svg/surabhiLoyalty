@@ -159,8 +159,7 @@ export interface StoreType {
   sevaCommission: number;
   cashOnlyCommission: number;
   shippingCommission?: number;
-  // Bonus settings: percentage-based coins allocation from SPV and running balance
-  bonusPercentage?: number;
+  bonusPercentage: number;
   storeContactNumber: string;
   storeStatus: 'active' | 'inactive';
   storeCurrentBalance: number;
@@ -180,7 +179,7 @@ export interface AdminHeaderProps {
 
 export interface CustomerTxType {
   id?: string;
-  type: 'recharge' | 'sale' | 'referral' | 'seva_allocation';
+  type: 'recharge' | 'sale' | 'referral' | 'seva_allocation' | 'shipping_adjustment';
   invoiceId?: string; // Optional invoice ID field
   // staffName: string; // Used in recharge
   // Common Fields
@@ -276,7 +275,8 @@ export interface ActivityType {
     | 'referral'
     | 'seva_contribution'
     | 'seva_allocation'
-    | 'surabhi_earn';
+    | 'surabhi_earn'
+    | 'shipping_adjustment';
   remarks: string;
   amount: number;
   customerName: string;
@@ -307,6 +307,9 @@ export interface AccountTxType {
   // Surabhi Point Value fields
   spvEntered?: number;
   adjustedSpv?: number;
+  shippingCredit?: number;
+  shippingDebit?: number;
+  shippingBalance?: number;
   // Store bonus fields
   // Removed Store Bonus fields
 }

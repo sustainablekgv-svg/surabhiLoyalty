@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "surabhiloyalty"
+    "default": "surabhiloyalty",
+    "uat": "surabhiloyalty-uat"
   }
 }

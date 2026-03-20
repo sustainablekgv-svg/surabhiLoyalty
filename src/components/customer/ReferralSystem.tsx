@@ -145,7 +145,7 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
 
   const getShareableLink = () => {
     const baseUrl = window.location.origin;
-    return `${baseUrl}/signup?ref=${userData?.referralCode}`;
+    return `${baseUrl}/ref/${userData?.referralCode}`;
   };
 
   const copyReferralLink = async () => {

@@ -10,7 +10,7 @@ export const WhatsAppIcon = ({ className }: { className?: string }) => (
 );
 
 export const FloatingWhatsApp = () => {
-  const whatsappNumber = "9440925597";
+  const whatsappNumber = "9606979530";
   const message = "Hi Surabhi, I have a query.";
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
 
@@ -19,14 +19,14 @@ export const FloatingWhatsApp = () => {
       href={whatsappUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="fixed bottom-6 right-6 z-50 bg-[#25D366] text-white p-3 md:p-4 rounded-full shadow-lg hover:bg-[#128C7E] transition-all duration-300 transform hover:scale-110 flex items-center justify-center animate-bounce"
+      className="fixed bottom-6 right-6 z-50 bg-[#25D366] text-white p-3 md:p-4 rounded-full shadow-lg hover:bg-[#128C7E] transition-all duration-300 transform hover:scale-110 flex items-center justify-center"
       title="Chat on WhatsApp"
     >
       <WhatsAppIcon className="h-6 w-6 md:h-7 md:w-7" />
-      <span className="absolute -top-1 -right-1 flex h-3 w-3">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+      {/* <span className="absolute -top-1 -right-1 flex h-3 w-3">
+        <span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
         <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-      </span>
+      </span> */}
     </a>
   );
 };

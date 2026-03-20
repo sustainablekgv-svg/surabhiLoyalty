@@ -27,6 +27,7 @@ export interface Product {
     placeOfOrigin?: string[]; // Multiple places of origin
     averageRating?: number;
     totalReviews?: number;
+    gst?: { title: string; percentage: number };
 }
 
 export interface ProductReview {
@@ -77,6 +78,8 @@ export interface CartItem {
     maxStock: number;
     brandName?: string; // Brand name for delivery breakdown
     brandId?: string; // Brand ID for grouping
+    categoryId?: string;
+    categoryName?: string;
     freeShipping?: boolean;
     spv?: number;
     placeOfOrigin?: string[]; // Multiple places of origin
@@ -84,6 +87,9 @@ export interface CartItem {
     productQuantity?: string; // Product quantity display (e.g., "500g")
     weightInKg?: number; // Weight in kg for delivery calculation
     unitsOfMeasure?: string;
+    gst?: { title: string; percentage: number };
+    originalPrice?: number;
+    isAdminUpdated?: boolean;
 }
 
 export interface WishlistItem {
@@ -92,6 +98,7 @@ export interface WishlistItem {
     price: number;
     image: string;
     stock: number;
+    originalPrice?: number;
 }
 
 export interface FilterOptions {
@@ -135,7 +142,32 @@ export interface Order {
     netShippingCharges?: number;
     surabhiCoinsEarned?: number;
     sevaCoinsEarned?: number;
+    referralBonusEarned?: number;
     adminShippingAdjustment?: number;
+    totalTax?: number;
+    paymentId?: string; // Reference to the payment document
+    internalNotes?: {
+        note: string;
+        timestamp: any;
+        adminName: string;
+    }[];
+    createdAt: any;
+    updatedAt: any;
+}
+
+export interface Payment {
+    id: string;
+    orderId: string;
+    userId: string;
+    amount: number;
+    currency: string;
+    status: 'created' | 'authorized' | 'captured' | 'refunded' | 'failed';
+    method: string; // upi, card, netbanking, etc.
+    razorpayOrderId: string;
+    razorpayPaymentId?: string;
+    razorpaySignature?: string;
+    errorReason?: string;
+    metadata?: any;
     createdAt: any;
     updatedAt: any;
 }

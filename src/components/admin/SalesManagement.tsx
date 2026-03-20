@@ -166,6 +166,8 @@ export const SalesManagement = () => {
     totalCashPayments: filteredTransactions.reduce((sum, t) => sum + (t.cashPayment || 0), 0),
     totalRecharges: filteredRecharges.reduce((sum, r) => sum + r.amount, 0),
     totalSurabhiCoinsEarned: filteredTransactions.reduce((sum, t) => sum + (t.surabhiEarned || 0), 0),
+    totalShippingCreditsEarned: filteredTransactions.reduce((sum, t) => sum + (t.shippingCredit || 0), 0),
+    totalShippingCreditsUsed: filteredTransactions.reduce((sum, t) => sum + (t.shippingDebit || 0), 0),
   };
 
   // Check if wallet is enabled for the selected store
@@ -266,6 +268,30 @@ export const SalesManagement = () => {
             </div>
             <p className="text-xl font-bold text-green-900">
               {totalStats.totalSurabhiCoinsEarned.toFixed(2).toLocaleString()}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-purple-50 border-purple-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="h-4 w-4 text-purple-600" />
+              <span className="text-xs font-medium text-purple-600">S. Credits Used</span>
+            </div>
+            <p className="text-xl font-bold text-purple-900">
+              ₹{totalStats.totalShippingCreditsUsed.toFixed(2).toLocaleString()}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-emerald-50 border-emerald-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="h-4 w-4 text-emerald-600" />
+              <span className="text-xs font-medium text-emerald-600">S. Credits Earned</span>
+            </div>
+            <p className="text-xl font-bold text-emerald-900">
+              ₹{totalStats.totalShippingCreditsEarned.toFixed(2).toLocaleString()}
             </p>
           </CardContent>
         </Card>
@@ -413,6 +439,12 @@ export const SalesManagement = () => {
                             Coins Earned
                           </TableHead>
                           <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            S. Credit Used
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                            S. Credit Earned
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                             Cash
                           </TableHead>
                           <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
@@ -466,6 +498,12 @@ export const SalesManagement = () => {
                             </TableCell>
                             <TableCell className="text-green-600">
                               {(transaction.surabhiEarned || 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-purple-600">
+                              ₹{(transaction.shippingDebit || 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-emerald-600">
+                              ₹{(transaction.shippingCredit || 0).toFixed(2)}
                             </TableCell>
                             <TableCell className="text-gray-600">
                               ₹{(transaction.cashPayment || 0).toFixed(2)}

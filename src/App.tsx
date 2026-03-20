@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AnalyticsProvider } from './components/AnalyticsProvider';
 // import CreateAdmin from './components/CreateAdmin';
 import { ProtectedRoute } from '@/components/protectedRoutes';
+import ReferralRedirect from './components/ReferralRedirect';
 import { Toaster as Sonner } from '@/components/ui/sonner';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -43,7 +44,7 @@ const App = () => {
             <ShopProvider>
               <TooltipProvider>
           <Toaster />
-          <Sonner position="top-center" />
+          <Sonner position="top-center" duration={2000} />
           <BrowserRouter>
             <AnalyticsProvider>
               <Routes>
@@ -61,6 +62,7 @@ const App = () => {
                 <Route path="/shop/cart" element={<CartPage />} />
                 <Route path="/shop/wishlist" element={<WishlistPage />} />
                 <Route path="/shop/checkout" element={<CheckoutPage />} />
+                <Route path="/ref/:code" element={<ReferralRedirect />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/signup" element={<SignupPage />} />
                 {/* <Route path="/create-admin" element={<CreateAdmin />} /> */}

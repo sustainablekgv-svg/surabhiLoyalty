@@ -51,7 +51,7 @@ const cleanupInactiveTabs = (): void => {
   // Remove sessions for tabs that are no longer active
   Object.keys(sessions).forEach(tabId => {
     if (
-      !activeTabs.includes(tabId) ||
+      (!activeTabs.includes(tabId) && tabId !== tabSync.getTabId()) ||
       now - sessions[tabId].lastActivity > INACTIVITY_TIMEOUT_MINUTES * 60 * 1000
     ) {
       delete sessions[tabId];

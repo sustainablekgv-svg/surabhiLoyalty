@@ -38,7 +38,7 @@ export const Footer = () => {
             </p>
             <div className="flex items-center gap-4 pt-2">
               <a 
-                href="https://www.instagram.com/sustainable_kgv?igsh=eDlzbmIzenhwZG10" 
+                href="https://www.instagram.com/sustainable_kgv" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-[#E4405F] transition-colors"
@@ -65,7 +65,7 @@ export const Footer = () => {
                 <Linkedin className="h-5 w-5" />
               </a>
               <a 
-                href="https://youtube.com/@sustainablekgv?si=JuUbYUK227J4jNkb" 
+                href="https://youtube.com/@sustainablekgv" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-[#FF0000] transition-colors"

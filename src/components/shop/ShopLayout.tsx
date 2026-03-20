@@ -81,7 +81,6 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({ children, title = 'Shop'
         {children}
       </main>
       <Footer />
-      <FloatingWhatsApp />
     </div>
   );
 };

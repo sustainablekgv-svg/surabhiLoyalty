@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 
 const ShopPage = () => {
     const navigate = useNavigate();
+    // console.log('ShopPage Render', { viewMode, selectedCategory, selectedBrand, locationSearch: location.search });
 
     // Data State (Paginated)
     const [products, setProducts] = useState<Product[]>([]);
@@ -45,6 +46,7 @@ const ShopPage = () => {
     const [viewMode, setViewMode] = useState<'landing' | 'products'>('landing');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [landingPageSelectedCategory, setLandingPageSelectedCategory] = useState<string | null>(null);
     const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
     const [selectedOrigin, setSelectedOrigin] = useState<string | null>(null);
     const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
@@ -139,7 +141,7 @@ const ShopPage = () => {
             try {
                 const [fetchedBrands, fetchedCategoriesData, fetchedOrigins] = await Promise.all([
                     getBrands(), // Fetch all/many for dropdowns
-                    getCategories(200), // Fetch many for dropdowns
+                    getCategories(100), // Fetch many for dropdowns
                     getDocs(query(collection(db, 'origins'), orderBy('name')))
                 ]);
                 
@@ -162,53 +164,29 @@ const ShopPage = () => {
             const lastDoc = isLoadMore ? (customLastDoc || productsLastDoc) : null;
             
             // Build Filter Object
-            const filterOptions = {
-                category: selectedCategory === 'All' ? undefined : selectedCategory || undefined, // Note: selectedCategory stores Name string currently for UI match? 
-                // Ah, wait. selectedCategory state stores NAME string in current UI, but backend expects ID usually. 
-                // Let's check FilterContent. It sets NAME. 
-                // getProducts expects ID generally, but let's check services/shop.ts.
-                // getProducts: `where('categoryId', '==', filters.category)` -> Expects ID.
-                // WE NEED TO FIX THIS MAPPING. Dropdowns should use ID, UI can show Name.
-                
-                // Let's fix selectedCategory to be ID based or map it.
-                // Current UI uses IDs for Brands/Origins but Name for Category buttons?
-                // Let's map Name to ID if needed, or better, store ID.
-                
-                // FIX: map selectedCategory (Name) to ID if possible from filterCategories
-                // Actually, `filterCategories` has IDs. 
-                
+            const filterOptions: import('@/types/shop').FilterOptions = {
+                category: selectedCategory === 'All' ? undefined : selectedCategory || undefined, 
                 brand: selectedBrand === 'all' ? undefined : selectedBrand || undefined,
                 includeInactive: false,
                 sort: sortBy,
                 minPrice: priceRange[0],
                 maxPrice: priceRange[1],
-                // Origin filter isn't in getProducts yet? confirmed: it is NOT.
-                // We'll Client Filter for Origin/SPV/Search if backend doesn't support it?
-                // Or update backend. Implementation plan said "Use getProducts with lastDoc". 
-                // getProducts DOES support price headers.
-                
-                // Search: Firestore has no partial search. We might need Client Side filtering on the PAGE_SIZE chunk?
-                // Or just do name prefix match if we added it?
-                // Let's assume for now we use what we have. 
             };
             
-            // Mapping Category Name to ID for backend query
-            let catId = undefined;
-            if (selectedCategory) {
-                 const found = filterCategories.find(c => c.name === selectedCategory || c.id === selectedCategory);
-                 if (found) catId = found.id;
-                 else catId = selectedCategory; // Fallback if it's already an ID
-            }
+            // Mapping name to ID if needed
+            const category = selectedCategory && selectedCategory !== 'All' 
+                ? filterCategories.find(c => c.name === selectedCategory || c.id === selectedCategory) 
+                : null;
+            const categoryId = category?.id || (selectedCategory === 'All' ? undefined : selectedCategory || undefined);
 
             const constraints = {
-                // ...filterOptions,
-                category: catId,
+                category: categoryId,
                 brand: selectedBrand === 'all' ? undefined : selectedBrand || undefined,
                 minPrice: priceRange[0],
                 maxPrice: priceRange[1],
                 sort: sortBy,
                 includeInactive: false,
-                inStock: true // optional?
+                inStock: true
             };
 
             const result = await getProducts(constraints, lastDoc, PAGE_SIZE);
@@ -313,6 +291,7 @@ const ShopPage = () => {
         if (viewMode === 'landing') {
             fetchBrandsData(false);
             fetchCategoriesData(false);
+            fetchProducts(false); // Fetch products for the landing page section
         } else {
             // Guard: if a category is selected but categories aren't loaded yet, wait to avoid ID mapping failure
             if (selectedCategory && filterCategories.length === 0) {
@@ -343,6 +322,45 @@ const ShopPage = () => {
         // Do NOT switch back to landing view automatically
         navigate('/shop');
     };
+    
+    const onSearchSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (searchQuery.trim()) {
+            navigate(`/shop/filters?q=${encodeURIComponent(searchQuery.trim())}`);
+            setViewMode('products');
+        }
+    };
+
+    const displayedFilterBrands = useMemo(() => {
+        if (!selectedCategory || selectedCategory === 'All') return filterBrands;
+        
+        // Find category ID if selectedCategory is a name (from URL)
+        const category = filterCategories.find(c => c.name === selectedCategory || c.id === selectedCategory);
+        const categoryId = category?.id || selectedCategory;
+
+        return filterBrands.filter(brand => 
+            brand.categoryIds?.includes(categoryId) || 
+            brand.categoryId === categoryId
+        );
+    }, [filterBrands, selectedCategory, filterCategories]);
+
+    const displayedLandingBrands = useMemo(() => {
+        if (!landingPageSelectedCategory || landingPageSelectedCategory === 'All') return brandsList;
+        return brandsList.filter(brand => 
+            brand.categoryIds?.includes(landingPageSelectedCategory) || 
+            brand.categoryId === landingPageSelectedCategory
+        );
+    }, [brandsList, landingPageSelectedCategory]);
+
+    // Reset brand if it's no longer in the filtered list
+    useEffect(() => {
+        if (selectedBrand && selectedBrand !== 'all' && selectedCategory && filterBrands.length > 0) {
+            const isBrandValid = displayedFilterBrands.some(b => b.id === selectedBrand);
+            if (!isBrandValid) {
+                setSelectedBrand(null);
+            }
+        }
+    }, [selectedCategory, displayedFilterBrands, selectedBrand, filterBrands]);
 
     const categoryNames = useMemo(() => filterCategories.map(c => c.name), [filterCategories]);
 
@@ -359,29 +377,36 @@ const ShopPage = () => {
                     >
                         All
                     </Button>
-                    {categoryNames.map(cat => (
+                    {filterCategories.map(cat => (
                         <Button 
-                            key={cat}
-                            variant={selectedCategory === cat ? "default" : "outline"}
+                            key={cat.id}
+                            variant={selectedCategory === cat.id ? "default" : "outline"}
                             size="sm"
-                            onClick={() => setSelectedCategory(cat)}
+                            onClick={() => setSelectedCategory(cat.id)}
                             className="rounded-full"
                         >
-                            {cat}
+                            {cat.name}
                         </Button>
                     ))}
                 </div>
             </div>
 
             <div>
-                <h3 className="mb-2 text-sm font-medium">Brands</h3>
+                <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium">Brands</h3>
+                    {selectedCategory && selectedCategory !== 'All' && (
+                        <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                            Filtered by Category
+                        </span>
+                    )}
+                </div>
                 <Select value={selectedBrand || "all"} onValueChange={(val) => setSelectedBrand(val === "all" ? null : val)}>
                     <SelectTrigger>
                         <SelectValue placeholder="Select Brand" />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Brands</SelectItem>
-                        {filterBrands.map(brand => (
+                        {displayedFilterBrands.map(brand => (
                             <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>
                         ))}
                     </SelectContent>
@@ -467,7 +492,21 @@ const ShopPage = () => {
     const isLandingPage = viewMode === 'landing';
 
     return (
-        <ShopLayout title="Shop">
+        <ShopLayout 
+            title="Shop" 
+            onBack={() => {
+                // If we are on ANY sub-path of /shop (like /shop/filters or /shop/category/:name), 
+                // going back should take us to the main /shop landing page
+                if (location.pathname !== '/shop') {
+                    resetFilters();
+                    setViewMode('landing');
+                    navigate('/shop');
+                } else {
+                    // If we are already on the main /shop page, going back takes us home
+                    navigate('/');
+                }
+            }}
+        >
             <div className="flex flex-col gap-6">
                 
                 {/* 1. Header & Controls */}
@@ -475,14 +514,20 @@ const ShopPage = () => {
                      <Button variant="ghost" size="icon" onClick={() => navigate('/')} title="Go Home" className="-ml-2">
                             <Home className="h-6 w-6" />
                      </Button>
-                     <div className="relative w-full md:w-96">
-                        <Input 
-                            placeholder="Search products..." 
-                            className="pl-9"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
+                     <form onSubmit={onSearchSubmit} className="relative w-full md:w-96 flex gap-2">
+                        <div className="relative flex-1">
+                            {/* <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" /> */}
+                            <Input 
+                                placeholder="Search products..." 
+                                className="pl-10 pr-4 h-10"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                        <Button type="submit" size="sm" className="h-10 px-4 shrink-0">
+                            Search
+                        </Button>
+                    </form>
                     
                     <div className="flex gap-2 w-full md:w-auto">
                         {/* Mobile Filters Trigger - Visible only in Product View */}
@@ -537,7 +582,7 @@ const ShopPage = () => {
                                     <div 
                                         key={cat.id} 
                                         onClick={() => {
-                                            navigate(`/shop/filters?category=${cat.name}`);
+                                            navigate(`/shop/filters?category=${cat.id}`);
                                         }}
                                         className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-4 flex flex-col items-center text-center gap-3"
                                     >
@@ -563,11 +608,37 @@ const ShopPage = () => {
 
                         {/* Brands Section */}
                         <section>
-                            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-                                <LayoutGrid className="h-6 w-6 text-primary" /> Shop by Brand
-                            </h2>
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
+                                <h2 className="text-2xl font-bold flex items-center gap-2">
+                                    <LayoutGrid className="h-6 w-6 text-primary" /> Shop by Brand
+                                </h2>
+                                
+                                {/* Landing Page Category Filter for Brands */}
+                                {/* <div className="flex flex-wrap gap-2 bg-gray-50 p-2 rounded-xl border border-gray-100 w-full md:w-auto">
+                                    <Button 
+                                        variant={landingPageSelectedCategory === null ? "default" : "ghost"} 
+                                        size="sm"
+                                        onClick={() => setLandingPageSelectedCategory(null)}
+                                        className="rounded-lg h-8 text-xs font-bold"
+                                    >
+                                        All Brands
+                                    </Button>
+                                    {filterCategories.slice(0, 10).map(cat => (
+                                        <Button 
+                                            key={cat.id}
+                                            variant={landingPageSelectedCategory === cat.id ? "secondary" : "ghost"}
+                                            size="sm"
+                                            onClick={() => setLandingPageSelectedCategory(cat.id)}
+                                            className={`rounded-lg h-8 text-xs font-bold transition-all ${landingPageSelectedCategory === cat.id ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'text-gray-600 hover:bg-gray-200'}`}
+                                        >
+                                            {cat.name}
+                                        </Button>
+                                    ))}
+                                </div> */}
+                            </div>
+
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                                {brandsList.map(brand => (
+                                {displayedLandingBrands.map(brand => (
                                     <div 
                                         key={brand.id} 
                                         onClick={() => {
@@ -582,7 +653,6 @@ const ShopPage = () => {
                                                 <span className="text-xl font-bold text-gray-400">{brand.name[0]}</span>
                                             )}
                                         </div>
-                                        <h3 className="font-semibold text-gray-800">{brand.name}</h3>
                                     </div>
                                 ))}
                             </div>
@@ -593,6 +663,32 @@ const ShopPage = () => {
                                     </Button>
                                 </div>
                             )}
+                        </section>
+
+                        {/* Recent Products Section */}
+                        <section className="mt-12">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-2xl font-bold flex items-center gap-2">
+                                    <ShoppingBag className="h-6 w-6 text-primary" /> Recently Added
+                                </h2>
+                                <Button 
+                                    variant="link" 
+                                    className="text-primary font-bold"
+                                    onClick={() => {
+                                        navigate('/shop/filters');
+                                        setViewMode('products');
+                                    }}
+                                >
+                                    View All
+                                </Button>
+                            </div>
+                            <div className="flex overflow-x-auto pb-4 gap-4 snap-x snap-mandatory lg:grid lg:grid-cols-4 xl:grid-cols-5 lg:gap-6 lg:overflow-visible">
+                                {products.slice(0, 10).map((product) => (
+                                    <div key={product.id} className="min-w-[280px] sm:min-w-[320px] lg:min-w-0 snap-start">
+                                        <ProductCard product={product} />
+                                    </div>
+                                ))}
+                            </div>
                         </section>
 
                     </div>
@@ -649,10 +745,10 @@ const ShopPage = () => {
                                         >
                                             <LayoutGrid className="h-4 w-4 mr-2" /> Back to Categories
                                         </Button>
-                                        {(selectedCategory || selectedBrand || searchQuery) && (
+                                          {(selectedCategory || selectedBrand || searchQuery) && (
                                             <span className="text-sm font-medium text-gray-600">
                                                 Showing results for 
-                                                {selectedCategory && <span className="text-primary ml-1">{selectedCategory}</span>}
+                                                {selectedCategory && <span className="text-primary ml-1">{filterCategories.find(c => c.id === selectedCategory)?.name || 'Category'}</span>}
                                                 {selectedCategory && selectedBrand && <span className="mx-1">&</span>}
                                                 {selectedBrand && <span className="text-primary ml-1">{filterBrands.find(b => b.id === selectedBrand)?.name || 'Brand'}</span>}
                                                 {selectedOrigin && <span className="mx-1">&</span>}

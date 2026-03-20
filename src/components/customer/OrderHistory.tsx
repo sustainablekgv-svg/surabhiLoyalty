@@ -140,15 +140,27 @@ export const CustomerOrderHistory = () => {
                                         {order.items.map((item, idx) => (
                                             <div key={idx} className="flex gap-4">
                                                 {isValidImageUrl(item.image) ? (
-                                                    <img src={item.image} alt={item.name} className="h-16 w-16 object-cover rounded border" />
+                                                    <img src={item.image} alt={item.name} className="h-16 w-16 object-cover rounded border border-gray-100" />
                                                 ) : (
                                                     <div className="h-16 w-16 bg-gray-100 rounded border flex items-center justify-center">
                                                         <Package className="h-6 w-6 text-gray-400" />
                                                     </div>
                                                 )}
-                                                <div>
-                                                    <h4 className="font-medium">{item.name}</h4>
-                                                    <p className="text-sm text-gray-500">Qty: {item.quantity} × ₹{item.price}</p>
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="font-semibold text-gray-900 truncate">{item.name}</h4>
+                                                    <div className="flex flex-wrap gap-x-4 text-sm text-gray-500 mt-1">
+                                                        <span>Qty: {item.quantity}</span>
+                                                        <span>₹{item.price} each</span>
+                                                        {item.gst && <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded">GST {item.gst.percentage}%</span>}
+                                                    </div>
+                                                    {item.isAdminUpdated && (
+                                                        <Badge variant="outline" className="mt-2 bg-amber-100 text-amber-900 border-amber-300 text-[10px] font-black py-0.5 px-2 animate-pulse">
+                                                            ADJUSTED BY STORE
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                                <div className="text-right font-medium">
+                                                    ₹{item.price * item.quantity}
                                                 </div>
                                             </div>
                                         ))}
@@ -201,31 +213,125 @@ export const CustomerOrderHistory = () => {
                                                         )}
 
                                                         {/* Timeline */}
-                                                        <div className="bg-gray-50 p-4 rounded-lg">
-                                                            <h4 className="font-semibold mb-3 flex items-center"><Clock className="h-4 w-4 mr-2" /> Timeline</h4>
-                                                            <div className="space-y-3">
+                                                        <div className="bg-slate-50 p-6 rounded-xl border border-slate-100">
+                                                            <div className="flex items-center justify-between mb-4">
+                                                                <h4 className="font-bold text-slate-800 flex items-center gap-2">
+                                                                    <Clock className="h-4 w-4 text-indigo-500" /> 
+                                                                    Order Journey
+                                                                </h4>
+                                                                <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-widest bg-white">Live Status</Badge>
+                                                            </div>
+                                                            <div className="space-y-4 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                                                                 {order.timeline?.map((event, i) => (
-                                                                    <div key={i} className="flex gap-3 text-sm">
-                                                                        <div className="w-32 text-gray-500 text-xs pt-0.5">
-                                                                            {event.timestamp?.toDate ? event.timestamp.toDate().toLocaleString() : 'Just now'}
+                                                                    <div key={i} className="flex gap-4 group">
+                                                                        <div className="flex flex-col items-center">
+                                                                            <div className={`w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm mt-1 ${i === (order.timeline?.length || 0) - 1 ? 'bg-indigo-500 ring-4 ring-indigo-100' : 'bg-slate-300'}`}></div>
+                                                                            {i < (order.timeline?.length || 0) - 1 && <div className="w-0.5 flex-1 bg-slate-200 mt-1 mb-1"></div>}
                                                                         </div>
-                                                                        <div>
-                                                                            <div className="font-medium">{event.status.toUpperCase().replace('_', ' ')}</div>
-                                                                            {event.note && <div className="text-gray-500 text-xs">{event.note}</div>}
+                                                                        <div className="flex-1 pb-4">
+                                                                            <div className="flex justify-between items-start mb-1">
+                                                                                <div className="font-black text-slate-900 text-xs uppercase tracking-tight">
+                                                                                    {event.status.toUpperCase().replace('_', ' ')}
+                                                                                    {/* Explicit Admin Label */}
+                                                                                    {event.note?.toLowerCase().includes('admin') || event.note?.toLowerCase().includes('updated') ? (
+                                                                                        <span className="ml-2 text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-black tracking-tighter self-center">MODIFIED BY STORE</span>
+                                                                                    ) : null}
+                                                                                </div>
+                                                                                <div className="text-[10px] font-mono text-slate-400 text-right leading-tight">
+                                                                                    {event.timestamp?.toDate ? (
+                                                                                        <>
+                                                                                            <div className="font-bold text-slate-500">{event.timestamp.toDate().toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</div>
+                                                                                            <div>{event.timestamp.toDate().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</div>
+                                                                                        </>
+                                                                                    ) : (
+                                                                                        <div className="font-bold">JUST NOW</div>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                            {event.note && (
+                                                                                <div className="text-[11px] text-slate-500 bg-white/60 p-2 rounded-lg border border-slate-100/80 italic leading-relaxed">
+                                                                                    {event.note}
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                     </div>
                                                                 ))}
                                                             </div>
                                                         </div>
 
+                                                        {/* Items & Summary */}
+                                                        <div>
+                                                            <h4 className="font-semibold mb-3">Order Summary</h4>
+                                                            <div className="border rounded-lg overflow-hidden divide-y">
+                                                                {order.items.map((item, idx) => (
+                                                                    <div key={idx} className="px-4 py-3 flex justify-between items-center bg-white">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <img src={item.image} alt="" className="h-10 w-10 object-cover rounded" />
+                                                                            <div>
+                                                                                <p className="text-sm font-medium">{item.name}</p>
+                                                                                <p className="text-xs text-gray-500">{item.quantity} × ₹{item.price}</p>
+                                                                                {item.isAdminUpdated && (
+                                                                                    <Badge variant="outline" className="mt-1 bg-amber-100 text-amber-900 border-amber-300 text-[9px] font-black py-0.5 px-2">
+                                                                                        ADJUSTED BY STORE
+                                                                                    </Badge>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="text-sm font-semibold">
+                                                                            ₹{item.price * item.quantity}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                            
+                                                            <div className="mt-4 space-y-2 px-1">
+                                                                <div className="flex justify-between text-sm text-gray-600">
+                                                                    <span>Subtotal</span>
+                                                                    <span>₹{order.items.reduce((acc, i) => acc + (i.price * i.quantity), 0)}</span>
+                                                                </div>
+                                                                {order.totalTax > 0 && (
+                                                                    <div className="flex justify-between text-sm text-gray-600">
+                                                                        <span>Tax (GST)</span>
+                                                                        <span>₹{order.totalTax}</span>
+                                                                    </div>
+                                                                )}
+                                                                {order.adminShippingAdjustment !== 0 && (
+                                                                    <div className="flex justify-between text-sm text-gray-600">
+                                                                        <span>Shipping Adjustment</span>
+                                                                        <span className={order.adminShippingAdjustment && order.adminShippingAdjustment < 0 ? "text-red-500" : "text-green-600"}>
+                                                                            {order.adminShippingAdjustment && order.adminShippingAdjustment > 0 ? '+' : ''}
+                                                                            ₹{order.adminShippingAdjustment || 0}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex justify-between text-base font-bold pt-2 border-t mt-2">
+                                                                    <span>Order Total</span>
+                                                                    <span>₹{order.totalAmount}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
                                                         {/* Address */}
-                                                        <div className="flex justify-between items-start border p-4 rounded-lg">
-                                                            <div>
-                                                                <h4 className="font-semibold mb-1 flex items-center"><MapPin className="h-4 w-4 mr-2" /> Shipping Address</h4>
-                                                                <p className="text-sm">{order.shippingAddress.fullName}</p>
-                                                                <p className="text-sm">{order.shippingAddress.street}</p>
-                                                                <p className="text-sm">{order.shippingAddress.city}, {order.shippingAddress.state} - {order.shippingAddress.zipCode}</p>
-                                                                <p className="text-sm">Ph: {order.shippingAddress.mobile}</p>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            <div className="border p-4 rounded-lg bg-gray-50/50">
+                                                                <h4 className="font-semibold mb-2 flex items-center text-sm uppercase tracking-wider text-gray-500">
+                                                                    <MapPin className="h-4 w-4 mr-2" /> Shipping Address
+                                                                </h4>
+                                                                <div className="text-sm space-y-0.5">
+                                                                    <p className="font-medium">{order.shippingAddress.fullName}</p>
+                                                                    <p>{order.shippingAddress.street}</p>
+                                                                    <p>{order.shippingAddress.city}, {order.shippingAddress.state} - {order.shippingAddress.zipCode}</p>
+                                                                    <p className="pt-1 text-gray-600">Ph: {order.shippingAddress.mobile}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="border p-4 rounded-lg bg-gray-50/50">
+                                                                <h4 className="font-semibold mb-2 flex items-center text-sm uppercase tracking-wider text-gray-500">
+                                                                    <Package className="h-4 w-4 mr-2" /> Payment Details
+                                                                </h4>
+                                                                <div className="text-sm space-y-0.5">
+                                                                    <p><span className="text-gray-500">Method:</span> {order.paymentMethod.toUpperCase()}</p>
+                                                                    <p><span className="text-gray-500">Status:</span> {order.paymentStatus.toUpperCase()}</p>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>

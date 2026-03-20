@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { deleteImageFromR2, uploadImageToR2 } from '@/services/cloudflare';
 import { createCategory, deleteCategory, getCategories, initializeDisplayOrder, reorderCategory, updateCategory } from '@/services/shop';
 import { Category } from '@/types/shop';
-import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Search, Trash2, Upload } from 'lucide-react';
+import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Trash2, Upload } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -225,7 +225,7 @@ export const CategoryManager = () => {
         <div className="space-y-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="relative w-full sm:w-72">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                    {/* <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" /> */}
                     <Input
                         placeholder="Search categories..."
                         className="pl-8"

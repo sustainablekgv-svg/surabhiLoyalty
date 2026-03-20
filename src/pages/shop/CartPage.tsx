@@ -50,7 +50,12 @@ const CartPage = () => {
                     </div>
                     <div className="flex items-center justify-between mt-2">
                         <div className="flex flex-col">
-                            <div className="font-bold text-sm md:text-base">₹{item.price}</div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm md:text-base text-gray-900">₹{item.price}</span>
+                                {item.originalPrice && item.originalPrice > item.price && (
+                                    <span className="text-xs text-gray-400 line-through">₹{item.originalPrice}</span>
+                                )}
+                            </div>
                             {item.spv > 0 && (
                                 <div className="text-[10px] text-purple-600 font-semibold bg-purple-50 px-1.5 py-0.5 rounded-full w-fit">
                                     SPV: {item.spv * item.quantity}
