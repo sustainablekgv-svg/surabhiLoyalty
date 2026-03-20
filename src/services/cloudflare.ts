@@ -1,3 +1,4 @@
+import { getFirebaseUserForFunctions } from '@/lib/authService';
 import { functions } from '@/lib/firebase';
 import { httpsCallable } from 'firebase/functions';
 
@@ -24,6 +25,10 @@ export const uploadImageToR2 = async (file: File, folder: string = 'uploads'): P
     }
 
     try {
+        const user = await getFirebaseUserForFunctions();
+        const token = await user.getIdToken();
+        console.log("Calling createR2UploadUrl. User UID:", user.uid, "Token Length:", token.length);
+        
         // 1. Get Signed URL from Backend
         const createR2UploadUrl = httpsCallable<{ filename: string; contentType: string; folder?: string }, UploadResponse>(
             functions, 
@@ -84,7 +89,7 @@ export const uploadImageToR2 = async (file: File, folder: string = 'uploads'): P
 export const deleteImageFromR2 = async (fileUrl: string): Promise<void> => {
     if (!fileUrl) return;
     try {
-        // console.log(`Attempting to delete image: ${fileUrl}`);
+        await getFirebaseUserForFunctions();
         const deleteFn = httpsCallable<{ fileUrl: string }, { success: boolean; message: string }>(
             functions, 
             'deleteImageFromR2'

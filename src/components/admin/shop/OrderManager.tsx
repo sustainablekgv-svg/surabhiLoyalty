@@ -6,12 +6,16 @@ import { PreviewableImage } from '@/components/ui/previewable-image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAuth } from '@/hooks/auth-context';
+import { db } from '@/lib/firebase';
 import { isValidImageUrl } from '@/lib/image-utils';
-import { adjustOrderShippingBalance, getOrders, updateOrderStatus, updateOrderTotal } from '@/services/shop';
-import { Order } from '@/types/shop';
-import { Check, Eye, Package, Pencil, Search, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { calculateShippingCost, getShippingConfig, getWeightBracketLabel, parseWeightToKg } from '@/services/shipping';
+import { adjustOrderShippingBalance, getOrders, getProducts, getStoreByLocation, updateOrderItems, updateOrderStatus, updateOrderTotal } from '@/services/shop';
+import { CartItem, Order, Product } from '@/types/shop';
+import { collection, getDocs } from 'firebase/firestore';
+import { Check, Package, Pencil, Plus, Search, TrendingUp, Truck, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { getUserName } from '@/lib/userUtils';
 
 export const OrderManager = () => {
     const { user } = useAuth();
@@ -25,6 +29,12 @@ export const OrderManager = () => {
     const [adjustmentAmount, setAdjustmentAmount] = useState('');
     const [isAdjusting, setIsAdjusting] = useState(false);
     const [showConfirmAdjust, setShowConfirmAdjust] = useState<{type: 'add' | 'deduct', amount: number} | null>(null);
+    
+    // Items Editing State
+    const [isEditingItems, setIsEditingItems] = useState(false);
+    const [tempItems, setTempItems] = useState<CartItem[]>([]);
+    const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
+    const [isAddingProduct, setIsAddingProduct] = useState(false);
 
     // Filters & Pagination
     const [statusFilter, setStatusFilter] = useState<Order['status'] | 'all'>('all');
@@ -35,6 +45,25 @@ export const OrderManager = () => {
     const [page, setPage] = useState(1);
     const PAGE_SIZE = 10;
     const [hasMore, setHasMore] = useState(true);
+
+    // Shipping & Calculation Config
+    const [brandsList, setBrandsList] = useState<any[]>([]);
+    const [shippingConfig, setShippingConfig] = useState<any>(null);
+    const [originsList, setOriginsList] = useState<any[]>([]);
+
+    useEffect(() => {
+        const fetchConfig = async () => {
+            const [config, originsSnap, brandsSnap] = await Promise.all([
+                getShippingConfig(),
+                getDocs(collection(db, 'origins')),
+                getDocs(collection(db, 'brands'))
+            ]);
+            setShippingConfig(config);
+            setOriginsList(originsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            setBrandsList(brandsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        };
+        fetchConfig();
+    }, []);
 
     const fetchOrders = async (startAfterDoc?: any) => {
         setLoading(true);
@@ -108,7 +137,7 @@ export const OrderManager = () => {
 
     const handleStatusUpdate = async (orderId: string, newStatus: Order['status']) => {
         try {
-            await updateOrderStatus(orderId, newStatus);
+            await updateOrderStatus(orderId, newStatus, undefined, user);
             toast.success(`Order status updated to ${newStatus}`);
             // Optimistic update
             setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
@@ -119,6 +148,148 @@ export const OrderManager = () => {
             toast.error("Failed to update status");
         }
     };
+
+    const [currentStore, setCurrentStore] = useState<any>(null);
+
+    useEffect(() => {
+        const fetchStore = async () => {
+            if (!selectedOrder) return;
+            const store = await getStoreByLocation(selectedOrder.shippingAddress.state || 'Main Store'); // Approximating store selection
+            setCurrentStore(store);
+        };
+        fetchStore();
+    }, [selectedOrder]);
+
+    // DERIVED SUMMARY LOGIC (Mirroring CheckoutPage.tsx)
+    const orderSummary = useMemo(() => {
+        if (!selectedOrder || !shippingConfig || originsList.length === 0 || brandsList.length === 0) return null;
+
+        const itemsToCalculate = isEditingItems ? tempItems : selectedOrder.items;
+        const postalState = selectedOrder.shippingAddress.state;
+
+        // 1. Group by brand for shipping
+        const groups = itemsToCalculate.reduce<Record<string, any>>((acc, item: CartItem) => {
+            const brandName = item.brandName || 'Other';
+            const originName = (item.placeOfOrigin && item.placeOfOrigin.length > 0) ? item.placeOfOrigin[0] : 'Unknown';
+            const groupKey = brandName;
+        
+            if (!acc[groupKey]) {
+                const originObj = originsList.find(o => o.name && o.name.toLowerCase() === originName.toLowerCase());
+                const brandObj = brandsList.find(b => b.name && b.name.toLowerCase() === brandName.toLowerCase());
+                
+                acc[groupKey] = {
+                    brandName,
+                    originName,
+                    items: [],
+                    weight: 0,
+                    displayWeight: 0,
+                    shipping: 0,
+                    originZone: originObj?.zone || 'A',
+                    groupSpv: 0,
+                    creditPercentage: brandObj?.shippingPercentage ?? (currentStore?.shippingCommission || 0)
+                };
+            }
+            acc[groupKey].items.push(item);
+            
+            const weight = item.weightInKg || parseWeightToKg(item.weight || '0.5kg');
+            acc[groupKey].displayWeight += (weight * item.quantity);
+            acc[groupKey].groupSpv += (item.spv || 0) * item.quantity;
+            
+            if (!item.freeShipping) {
+                acc[groupKey].weight += (weight * item.quantity);
+            }
+            return acc;
+        }, {});
+
+        // 2. Calculate shipping per group
+        if (postalState) {
+            Object.values(groups).forEach(group => {
+                const effectiveWeight = group.weight > 0 ? group.weight : group.displayWeight;
+                if (effectiveWeight > 0) {
+                    const cost = calculateShippingCost(effectiveWeight, group.originZone, postalState, shippingConfig);
+                    group.shipping = cost;
+                    group.bracketLabel = getWeightBracketLabel(effectiveWeight);
+                }
+            });
+        }
+
+        // 3. Totals
+        const subtotal = itemsToCalculate.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const shippingCost = Object.values(groups).reduce((sum: number, g: any) => sum + g.shipping, 0);
+        const totalTax = itemsToCalculate.reduce((sum, item) => {
+            if (!item.gst?.percentage) return sum;
+            return sum + ((item.price * item.gst.percentage) / 100) * item.quantity;
+        }, 0);
+        const totalSpv = itemsToCalculate.reduce((sum, item) => sum + ((item.spv || 0) * item.quantity), 0);
+
+        // 4. Adjustments (Order specific)
+        // Match CheckoutPage.tsx logic: credits are capped by shippingCost, dues are NOT capped.
+        const shippingCreditsUsed = selectedOrder.shippingPointsUsed || 0;
+        const netShippingCharges = Math.max(0, shippingCost - shippingCreditsUsed);
+        
+        const itemsTotalInclTax = subtotal + totalTax;
+        
+        // Match CheckoutPage.tsx logic: Inclusive discount application
+        const totalCoins = Math.min(selectedOrder.surabhiCoinsUsed || 0, itemsTotalInclTax);
+        const discountPercent = itemsTotalInclTax > 0 ? totalCoins / itemsTotalInclTax : 0;
+
+        const totalAdjustedTax = itemsToCalculate.reduce((sum, item) => {
+            if (!item.gst?.percentage) return sum;
+            const originalLineTotal = item.price * item.quantity;
+            const originalTax = (originalLineTotal * item.gst.percentage) / 100;
+            const originalItemTotalInclTax = originalLineTotal + originalTax;
+            
+            const itemDiscount = originalItemTotalInclTax * discountPercent;
+            const adjustedLineTotal = originalItemTotalInclTax - itemDiscount;
+            
+            const gstRate = item.gst.percentage / 100;
+            const adjustedBaseLineTotal = adjustedLineTotal / (1 + gstRate);
+            const adjustedTax = adjustedLineTotal - adjustedBaseLineTotal;
+            
+            return sum + adjustedTax;
+        }, 0);
+
+        const adjustedTotalItemsValue = itemsTotalInclTax - totalCoins;
+        const itemsTotalAfterCoins = adjustedTotalItemsValue; 
+
+        // ASPV Calculation
+        const aggregateAdjustedSpv = itemsTotalInclTax > 0 
+            ? (itemsTotalAfterCoins * totalSpv) / itemsTotalInclTax 
+            : 0;
+
+        const netSpvForEarning = Math.max(0, aggregateAdjustedSpv);
+
+        // Earnings
+        const totalShippingCreditsEarned = totalSpv > 0 ? Object.values(groups).reduce((sum, group) => {
+            const groupShareOfNetSPV = (group.groupSpv / totalSpv) * netSpvForEarning;
+            return sum + ((groupShareOfNetSPV * group.creditPercentage) / 100);
+        }, 0) : 0;
+
+        const surabhiCoinsEarned = currentStore ? Number(((netSpvForEarning * (currentStore.cashOnlyCommission || 0)) / 100).toFixed(2)) : 0;
+        const sevaCoinsEarned = currentStore ? Number(((netSpvForEarning * (currentStore.sevaCommission || 0)) / 100).toFixed(2)) : 0;
+        const referralBonusEarned = currentStore ? Number(((netSpvForEarning * (currentStore.referralCommission || 0)) / 100).toFixed(2)) : 0;
+
+        const totalPayableAmount = itemsTotalAfterCoins + netShippingCharges + (selectedOrder.adminShippingAdjustment || 0);
+
+        return {
+            groups,
+            subtotal,
+            shippingCost,
+            totalTax, // Keeping original tax for reference/DB
+            totalAdjustedTax, // New adjusted tax for display
+            adjustedTaxValue: itemsTotalAfterCoins - totalAdjustedTax, // Adjusted Base
+            totalSpv,
+            itemsTotalInclTax,
+            itemsTotalAfterCoins, // Already updated in previous logic to be adjusted total
+            aggregateAdjustedSpv,
+            totalShippingCreditsEarned,
+            surabhiCoinsEarned,
+            sevaCoinsEarned,
+            referralBonusEarned,
+            totalPayableAmount,
+            netShippingCharges
+        };
+    }, [selectedOrder, tempItems, isEditingItems, shippingConfig, originsList, brandsList, currentStore]);
 
     const handleAdjustShipping = async () => {
         if (!selectedOrder || !showConfirmAdjust || !user) return;
@@ -135,18 +306,18 @@ export const OrderManager = () => {
             
             toast.success(`Successfully ${showConfirmAdjust.type === 'add' ? 'added' : 'deducted'} shipping credits.`);
             
-            // Updating local state to reflect changes (though customer stats is where it matters most, 
-            // tracking it on the order helps avoid confusion)
-            const adjustmentChange = showConfirmAdjust.type === 'add' ? showConfirmAdjust.amount : -showConfirmAdjust.amount;
+            const adjustmentChange = showConfirmAdjust.amount;
             
             setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { 
                 ...o, 
-                adminShippingAdjustment: (o.adminShippingAdjustment || 0) + adjustmentChange 
+                adminShippingAdjustment: (o.adminShippingAdjustment || 0) + adjustmentChange,
+                totalAmount: (o.totalAmount || 0) + adjustmentChange
             } : o));
             
             setSelectedOrder(prev => prev ? { 
                 ...prev, 
-                adminShippingAdjustment: (prev.adminShippingAdjustment || 0) + adjustmentChange 
+                adminShippingAdjustment: (prev.adminShippingAdjustment || 0) + adjustmentChange,
+                totalAmount: (prev.totalAmount || 0) + adjustmentChange
             } : null);
             
             setAdjustmentAmount('');
@@ -157,6 +328,103 @@ export const OrderManager = () => {
             toast.error(error.message || "Failed to adjust shipping credits");
         } finally {
             setIsAdjusting(false);
+        }
+    };
+
+    const handleEditItems = () => {
+        setTempItems([...(selectedOrder?.items || [])]);
+        setIsEditingItems(true);
+    };
+
+    const handleQuantityChange = (index: number, delta: number) => {
+        const newItems = [...tempItems];
+        newItems[index].quantity = Math.max(1, newItems[index].quantity + delta);
+        setTempItems(newItems);
+    };
+
+    const handleRemoveItem = (index: number) => {
+        if (tempItems.length <= 1) {
+            toast.error("An order must have at least one item.");
+            return;
+        }
+        setTempItems(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const fetchCatalog = async () => {
+        if (catalogProducts.length > 0) return;
+        try {
+            const result = await getProducts({ includeInactive: false }, null, 100);
+            setCatalogProducts(result.products);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to load products");
+        }
+    };
+
+    const handleAddProduct = (product: Product) => {
+        const existingIndex = tempItems.findIndex(item => item.productId === product.id);
+        if (existingIndex > -1) {
+            handleQuantityChange(existingIndex, 1);
+        } else {
+            const newItem: CartItem = {
+                productId: product.id,
+                name: product.name,
+                price: product.sellingPrice,
+                image: product.images?.[0] || '',
+                quantity: 1,
+                maxStock: product.stock,
+                brandId: product.brandId,
+                brandName: product.brandName,
+                categoryId: product.categoryId,
+                categoryName: product.categoryName,
+                spv: product.spv,
+                placeOfOrigin: product.placeOfOrigin || [],
+                gst: product.gst,
+                weightInKg: product.weightInKg,
+                unitsOfMeasure: product.unitsOfMeasure,
+                productQuantity: product.quantity || product.weight
+            };
+            setTempItems([...tempItems, newItem]);
+        }
+        setIsAddingProduct(false);
+    };
+
+    const handleSaveItems = async () => {
+        if (!selectedOrder || !orderSummary) return;
+        try {
+            const updatedItems = tempItems.map(tempItem => {
+                const originalItem = selectedOrder.items.find(i => i.productId === tempItem.productId);
+                if (!originalItem || originalItem.quantity !== tempItem.quantity) {
+                    return { ...tempItem, isAdminUpdated: true };
+                }
+                return tempItem;
+            });
+
+            const summary = updatedItems
+                .filter(i => i.isAdminUpdated)
+                .map(i => `${i.name} (Qty: ${i.quantity})`)
+                .join(', ');
+
+            const updates: Partial<Order> = {
+                items: updatedItems,
+                totalAmount: orderSummary.totalPayableAmount,
+                totalTax: orderSummary.totalTax,
+                netShippingCharges: orderSummary.netShippingCharges,
+                shippingPointsEarned: orderSummary.totalShippingCreditsEarned,
+                surabhiCoinsEarned: orderSummary.surabhiCoinsEarned,
+                sevaCoinsEarned: orderSummary.sevaCoinsEarned,
+                referralBonusEarned: orderSummary.referralBonusEarned
+            };
+
+            await updateOrderItems(selectedOrder.id, updates, summary ? `Items updated: ${summary}` : undefined);
+            toast.success("Order updated successfully");
+            
+            fetchOrders(null);
+            setIsEditingItems(false);
+            setSelectedOrder(null);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to save order changes");
         }
     };
 
@@ -243,7 +511,7 @@ export const OrderManager = () => {
                                         <Dialog>
                                             <DialogTrigger asChild>
                                                 <Button size="icon" variant="ghost" onClick={() => setSelectedOrder(order)}>
-                                                    <Eye className="h-4 w-4" />
+                                                    <Pencil className="h-4 w-4" />
                                                 </Button>
                                             </DialogTrigger>
                                             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -269,6 +537,7 @@ export const OrderManager = () => {
                                                                 <div>
                                                                     <h4 className="font-semibold mb-1">Order Status</h4>
                                                                     <Select 
+                                                                        key={`${selectedOrder.id}-${selectedOrder.status}`}
                                                                         value={selectedOrder.status} 
                                                                         onValueChange={(val: Order['status']) => handleStatusUpdate(selectedOrder.id, val)}
                                                                     >
@@ -290,19 +559,112 @@ export const OrderManager = () => {
 
                                                         {/* Timeline */}
                                                         <div>
-                                                            <h4 className="font-semibold mb-2">Order Timeline</h4>
-                                                            <div className="space-y-2">
+                                                            <div className="flex items-center justify-between mb-2">
+                                                                <h4 className="font-semibold">Order Timeline</h4>
+                                                                <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold font-mono">Visible to Customer</span>
+                                                            </div>
+                                                            <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                                                                 {selectedOrder.timeline?.map((event, idx) => (
-                                                                    <div key={idx} className="flex gap-2 text-sm border-l-2 border-gray-200 pl-3">
-                                                                        <div className="w-24 text-gray-500 text-xs shrink-0">
-                                                                            {event.timestamp?.toDate ? event.timestamp.toDate().toLocaleString() : new Date().toLocaleString()}
+                                                                    <div key={idx} className="flex gap-2 text-sm border-l-2 border-slate-200 pl-3 py-1">
+                                                                        <div className="w-28 text-slate-500 text-[10px] font-mono leading-tight shrink-0">
+                                                                            {/* Enhanced Timestamp Formatting */}
+                                                                            {event.timestamp?.toDate ? (
+                                                                                <>
+                                                                                    <div className="font-bold">{event.timestamp.toDate().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                                                                                    <div>{event.timestamp.toDate().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</div>
+                                                                                </>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <div className="font-bold">{new Date().toLocaleDateString()}</div>
+                                                                                    <div>{new Date().toLocaleTimeString()}</div>
+                                                                                </>
+                                                                            )}
                                                                         </div>
-                                                                        <div>
-                                                                            <div className="font-medium">{event.status.toUpperCase().replace('_', ' ')}</div>
-                                                                            {event.note && <div className="text-xs text-gray-500">{event.note}</div>}
+                                                                        <div className="flex-1">
+                                                                            <div className="font-black text-slate-800 text-xs uppercase tracking-tight">{event.status.toUpperCase().replace('_', ' ')}</div>
+                                                                            {event.note && (
+                                                                                <div className="text-[11px] text-slate-600 bg-slate-50 p-1.5 rounded mt-1 border border-slate-100 italic leading-relaxed">
+                                                                                    {event.note}
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                     </div>
                                                                 ))}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Internal Admin Notes (NOT Visible to Customer) */}
+                                                        <div className="bg-slate-900 text-white p-4 rounded-xl border border-slate-800 shadow-xl">
+                                                            <div className="flex items-center justify-between mb-4">
+                                                                <h4 className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
+                                                                    <Pencil className="h-3 w-3" />
+                                                                    Internal Admin Notes
+                                                                </h4>
+                                                                <Badge variant="outline" className="border-slate-700 text-slate-400 text-[9px] font-black uppercase tracking-tighter">Private / Staff Only</Badge>
+                                                            </div>
+
+                                                            <div className="space-y-3 mb-4 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                                                                {(selectedOrder.internalNotes || []).length === 0 ? (
+                                                                    <p className="text-[11px] text-slate-500 italic text-center py-2">No internal notes yet.</p>
+                                                                ) : (
+                                                                    selectedOrder.internalNotes?.map((note, idx) => (
+                                                                        <div key={idx} className="bg-slate-800/50 p-2.5 rounded-lg border border-slate-700/50">
+                                                                            <div className="flex justify-between items-start mb-1 text-[9px] font-bold text-slate-500 border-b border-slate-700/30 pb-1">
+                                                                                <span className="text-indigo-400">By: {note.adminName}</span>
+                                                                                <span className="font-mono">
+                                                                                    {note.timestamp?.toDate ? note.timestamp.toDate().toLocaleString('en-IN') : new Date().toLocaleString()}
+                                                                                </span>
+                                                                            </div>
+                                                                            <p className="text-xs text-slate-300 leading-relaxed pt-1">{note.note}</p>
+                                                                        </div>
+                                                                    ))
+                                                                )}
+                                                            </div>
+
+                                                            <div className="flex gap-2">
+                                                                <Input 
+                                                                    className="bg-slate-800 border-slate-700 text-slate-200 text-xs h-9 focus-visible:ring-indigo-500/50" 
+                                                                    placeholder="Add a private note..." 
+                                                                    id="newInternalNote"
+                                                                    onKeyDown={async (e) => {
+                                                                        if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                                                                            const val = e.currentTarget.value.trim();
+                                                                            const input = e.currentTarget;
+                                                                            try {
+                                                                                const { addInternalNote } = await import('@/services/shop');
+                                                                                await addInternalNote(selectedOrder.id, val, getUserName(user) || 'Admin');
+                                                                                input.value = '';
+                                                                                toast.success("Note added");
+                                                                                // Refresh local state if possible or refetch
+                                                                                fetchOrders(null); 
+                                                                                setSelectedOrder(null); // Close to refresh for now
+                                                                            } catch (err) {
+                                                                                toast.error("Failed to add note");
+                                                                            }
+                                                                        }
+                                                                    }}
+                                                                />
+                                                                <Button 
+                                                                    size="sm" 
+                                                                    className="h-9 bg-indigo-600 hover:bg-indigo-700 text-xs whitespace-nowrap"
+                                                                    onClick={async () => {
+                                                                        const input = document.getElementById('newInternalNote') as HTMLInputElement;
+                                                                        if (input?.value.trim()) {
+                                                                            try {
+                                                                                const { addInternalNote } = await import('@/services/shop');
+                                                                                await addInternalNote(selectedOrder.id, input.value.trim(), getUserName(user) || 'Admin');
+                                                                                input.value = '';
+                                                                                toast.success("Note added");
+                                                                                fetchOrders(null);
+                                                                                setSelectedOrder(null);
+                                                                            } catch (err) {
+                                                                                toast.error("Failed to add note");
+                                                                            }
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    Post
+                                                                </Button>
                                                             </div>
                                                         </div>
 
@@ -316,98 +678,322 @@ export const OrderManager = () => {
                                                                 <div className="flex gap-2 items-center">
                                                                     <Input 
                                                                         type="number" 
-                                                                        placeholder="Amount (₹)" 
+                                                                        placeholder="Amount (e.g. 50 or -50)" 
                                                                         value={adjustmentAmount}
                                                                         onChange={(e) => setAdjustmentAmount(e.target.value)}
-                                                                        className="w-32 bg-white"
+                                                                        className="w-48 bg-white"
                                                                     />
                                                                     <Button 
                                                                         variant="default" 
                                                                         size="sm"
-                                                                        disabled={!adjustmentAmount || parseFloat(adjustmentAmount) <= 0}
-                                                                        onClick={() => setShowConfirmAdjust({ type: 'add', amount: parseFloat(adjustmentAmount) })}
+                                                                        disabled={!adjustmentAmount || parseFloat(adjustmentAmount) === 0}
+                                                                        onClick={() => {
+                                                                            const amt = parseFloat(adjustmentAmount);
+                                                                            setShowConfirmAdjust({ type: amt > 0 ? 'add' : 'deduct', amount: amt });
+                                                                        }}
                                                                     >
-                                                                        Add Credits
-                                                                    </Button>
-                                                                    <Button 
-                                                                        variant="destructive" 
-                                                                        size="sm"
-                                                                        disabled={!adjustmentAmount || parseFloat(adjustmentAmount) <= 0}
-                                                                        onClick={() => setShowConfirmAdjust({ type: 'deduct', amount: parseFloat(adjustmentAmount) })}
-                                                                    >
-                                                                        Deduct Credits
+                                                                        Apply Adjustment
                                                                     </Button>
                                                                 </div>
                                                             </div>
                                                         </div>
 
                                                         <div>
-                                                            <h4 className="font-semibold mb-2">Order Items</h4>
-                                                            <div className="border rounded-md divide-y">
-                                                                {selectedOrder.items.map((item, idx) => (
-                                                                    <div key={idx} className="flex justify-between p-3 items-center">
-                                                                        <div className="flex items-center gap-3">
-                                                                            {isValidImageUrl(item.image) ? (
-                                                                                <PreviewableImage src={item.image} alt={item.name} className="h-10 w-10 rounded object-cover" />
-                                                                            ) : (
-                                                                                <div className="h-10 w-10 bg-gray-100 rounded flex items-center justify-center">
-                                                                                    <Package className="h-5 w-5 text-gray-400" />
+                                                            <div className="flex justify-between items-center mb-2">
+                                                                <h4 className="font-semibold text-lg flex items-center gap-2">
+                                                                    <Package className="h-5 w-5" />
+                                                                    Order Items
+                                                                </h4>
+                                                                {!isEditingItems && (selectedOrder.status === 'received' || selectedOrder.status === 'payment_pending') && (
+                                                                    <Button size="sm" variant="outline" onClick={handleEditItems}>
+                                                                        <Pencil className="h-4 w-4 mr-2" /> Edit Items
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+
+                                                            <div className="border rounded-lg overflow-hidden border-slate-200">
+                                                                {(isEditingItems ? tempItems : selectedOrder.items).map((item, idx) => (
+                                                                    <div key={idx} className="flex justify-between p-4 items-center bg-white hover:bg-slate-50 transition-colors border-b last:border-b-0">
+                                                                        <div className="flex items-center gap-4 flex-1">
+                                                                            <div className="relative">
+                                                                                {isValidImageUrl(item.image) ? (
+                                                                                    <PreviewableImage src={item.image} alt={item.name} className="h-14 w-14 rounded-md object-cover border border-slate-100" />
+                                                                                ) : (
+                                                                                    <div className="h-14 w-14 bg-slate-100 rounded-md flex items-center justify-center">
+                                                                                        <Package className="h-6 w-6 text-slate-400" />
+                                                                                    </div>
+                                                                                )}
+                                                                                {isEditingItems && (
+                                                                                    <Button 
+                                                                                        size="icon" 
+                                                                                        variant="destructive" 
+                                                                                        className="h-6 w-6 rounded-full absolute -top-2 -left-2 shadow-sm"
+                                                                                        onClick={() => handleRemoveItem(idx)}
+                                                                                    >
+                                                                                        <X className="h-3 w-3" />
+                                                                                    </Button>
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <p className="font-bold text-slate-900 truncate">{item.name}</p>
+                                                                                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                                                                                    <span className="text-xs text-slate-500 font-medium">₹{item.price} each</span>
+                                                                                    {item.gst?.percentage !== undefined && <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-full border border-emerald-100 font-semibold self-center">GST: {item.gst.percentage}%</span>}
+                                                                                    {item.spv && <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full border border-blue-100 font-semibold self-center">SPV: {item.spv}</span>}
                                                                                 </div>
-                                                                            )}
-                                                                            <div>
-                                                                                <p className="font-medium text-sm">{item.name}</p>
-                                                                                <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
-                                                                                <div className="flex gap-2 mt-1">
-                                                                                    {item.spv && <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">SPV: {item.spv}</span>}
-                                                                                    {item.placeOfOrigin && <span className="text-[10px] bg-gray-50 text-gray-700 px-1.5 py-0.5 rounded border border-gray-200">Origin: {item.placeOfOrigin}</span>}
+                                                                                <div className="text-[10px] text-slate-400 mt-1 uppercase tracking-tight">
+                                                                                    {item.brandName || 'Brand'} • {item.categoryName || 'Category'}
                                                                                 </div>
                                                                             </div>
                                                                         </div>
-                                                                        <div className="font-medium">
-                                                                            ₹{item.price * item.quantity}
+
+                                                                        <div className="flex items-center gap-6">
+                                                                            {isEditingItems ? (
+                                                                                <div className="flex items-center bg-slate-100 rounded-lg p-1">
+                                                                                    <Button 
+                                                                                        size="icon" 
+                                                                                        variant="ghost" 
+                                                                                        className="h-8 w-8 text-slate-600 hover:text-slate-900"
+                                                                                        onClick={() => handleQuantityChange(idx, -1)}
+                                                                                    >
+                                                                                        -
+                                                                                    </Button>
+                                                                                    <span className="w-8 text-center font-bold text-sm">{item.quantity}</span>
+                                                                                    <Button 
+                                                                                        size="icon" 
+                                                                                        variant="ghost" 
+                                                                                        className="h-8 w-8 text-slate-600 hover:text-slate-900"
+                                                                                        onClick={() => handleQuantityChange(idx, 1)}
+                                                                                    >
+                                                                                        +
+                                                                                    </Button>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <div className="flex flex-col items-end">
+                                                                                    <span className="text-sm font-bold text-slate-700">Qty: {item.quantity}</span>
+                                                                                    <span className="text-[10px] text-slate-400">MRP: ₹{item.price * item.quantity}</span>
+                                                                                </div>
+                                                                            )}
+                                                                            <div className="w-20 text-right font-bold text-slate-900">
+                                                                                ₹{item.price * item.quantity}
+                                                                            </div>
                                                                         </div>
                                                                     </div>
                                                                 ))}
-                                                            </div>
-                                                            <div className="flex justify-end mt-4 pt-4 border-t items-center gap-2">
-                                                                <div className="font-bold flex items-center gap-2">
-                                                                    Total: 
-                                                                    {isEditingTotal ? (
-                                                                        <div className="flex items-center gap-1">
-                                                                            <Input 
-                                                                                type="number" 
-                                                                                value={newTotal} 
-                                                                                onChange={(e) => setNewTotal(e.target.value)}
-                                                                                className="w-24 h-8"
-                                                                            />
-                                                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={handleUpdateTotal}>
-                                                                                <Check className="h-4 w-4" />
-                                                                            </Button>
-                                                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={() => setIsEditingTotal(false)}>
-                                                                                <X className="h-4 w-4" />
-                                                                            </Button>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <span onClick={() => {
-                                                                            if (selectedOrder.status !== 'confirmed' && selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled') {
-                                                                                setNewTotal(selectedOrder.totalAmount.toString());
-                                                                                setIsEditingTotal(true);
-                                                                            }
-                                                                        }} className={selectedOrder.status !== 'confirmed' && selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled' ? "cursor-pointer hover:underline decoration-dashed" : ""}>
-                                                                            ₹{selectedOrder.totalAmount}
-                                                                        </span>
-                                                                    )}
-                                                                    
-                                                                    {!isEditingTotal && selectedOrder.status !== 'confirmed' && selectedOrder.status !== 'delivered' && selectedOrder.status !== 'cancelled' && (
-                                                                        <Button size="icon" variant="ghost" className="h-6 w-6 text-gray-400 hover:text-gray-900" onClick={() => {
-                                                                             setNewTotal(selectedOrder.totalAmount.toString());
-                                                                             setIsEditingTotal(true);
+                                                                
+                                                                {isEditingItems && (
+                                                                    <div className="p-4 bg-slate-50 flex justify-center border-t border-slate-200">
+                                                                        <Dialog open={isAddingProduct} onOpenChange={(open) => {
+                                                                            setIsAddingProduct(open);
+                                                                            if (open) fetchCatalog();
                                                                         }}>
-                                                                            <Pencil className="h-3 w-3" />
-                                                                        </Button>
-                                                                    )}
-                                                                </div>
+                                                                            <DialogTrigger asChild>
+                                                                                <Button variant="outline" size="sm" className="bg-white hover:bg-slate-100 border-dashed border-2">
+                                                                                    <Plus className="h-4 w-4 mr-2" /> Add More Products
+                                                                                </Button>
+                                                                            </DialogTrigger>
+                                                                            <DialogContent className="max-w-md max-h-[70vh] flex flex-col p-0 overflow-hidden">
+                                                                                <DialogHeader className="p-4 border-b">
+                                                                                    <DialogTitle>Add Product to Order</DialogTitle>
+                                                                                </DialogHeader>
+                                                                                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                                                                                    {catalogProducts.map(product => (
+                                                                                        <div 
+                                                                                            key={product.id} 
+                                                                                            className="flex items-center gap-3 p-3 border rounded-lg hover:bg-slate-100 cursor-pointer transition-colors"
+                                                                                            onClick={() => handleAddProduct(product)}
+                                                                                        >
+                                                                                            {isValidImageUrl(product.images?.[0]) ? (
+                                                                                                <img src={product.images[0]} alt="" className="h-10 w-10 object-cover rounded shadow-sm" />
+                                                                                            ) : (
+                                                                                                <div className="h-10 w-10 bg-slate-100 rounded flex items-center justify-center">
+                                                                                                    <Package className="h-5 w-5 text-slate-400" />
+                                                                                                </div>
+                                                                                            )}
+                                                                                            <div className="flex-1 min-w-0">
+                                                                                                <p className="text-sm font-bold truncate">{product.name}</p>
+                                                                                                <p className="text-xs text-slate-500">₹{product.sellingPrice} • Stock: {product.stock}</p>
+                                                                                            </div>
+                                                                                            <Plus className="h-4 w-4 text-slate-400" />
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            </DialogContent>
+                                                                        </Dialog>
+                                                                    </div>
+                                                                )}
                                                             </div>
+
+                                                        {/* Brand Wise Shipping Breakdown */}
+                                                        {orderSummary && (
+                                                            <div className="py-3 items-center space-y-2.5 border-b border-slate-100 bg-slate-50/50 rounded-xl px-4 my-4">
+                                                                <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 flex justify-between items-center">
+                                                                    <span className="flex items-center gap-2"><Truck className="h-3 w-3" /> Brand Delivery Details</span>
+                                                                    <span className="text-amber-600 underline underline-offset-4 decoration-2">Per Brand Breakdown</span>
+                                                                </p>
+                                                                {Object.values(orderSummary.groups).map((group: any) => (
+                                                                    <div key={group.brandName} className="flex justify-between items-center">
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-sm font-black text-slate-800">{group.brandName}</span>
+                                                                            <div className="flex items-center gap-1.5 ">
+                                                                                <span className="text-[11px] text-slate-400 font-bold">{group.bracketLabel} • {group.displayWeight.toFixed(2)}kg</span>
+                                                                            </div>
+                                                                        </div>
+                                                                        <span className="text-sm font-black text-slate-900 font-mono">₹{group.shipping.toFixed(2)}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+
+                                                        <div className="mt-4 p-6 bg-slate-50 rounded-xl border border-slate-200">
+                                                            <h4 className="font-black text-slate-900 mb-4 uppercase text-[10px] tracking-[0.2em] flex items-center gap-2">
+                                                                <span className="h-1 w-4 bg-slate-900 rounded-full"></span>
+                                                                Order Financial Summary
+                                                            </h4>
+                                                            {orderSummary && (
+                                                                <div className="space-y-4">
+                                                                    <div className="space-y-2.5 text-sm font-medium text-slate-600">
+                                                                        <div className="flex justify-between p-3 bg-purple-50 rounded-lg">
+                                                                            <span className="font-bold text-purple-900">Items Total (Excl Tax)</span>
+                                                                            <span className="text-purple-600 font-bold">₹{orderSummary.subtotal.toFixed(2)}</span>
+                                                                        </div>
+                                                                        
+                                                                        {(selectedOrder.surabhiCoinsUsed || 0) > 0 && (
+                                                                            <div className="flex justify-between p-3 bg-amber-50 rounded-lg">
+                                                                                <span className="font-bold text-amber-900">
+                                                                                    Surabhi Coins Applied ({(((selectedOrder.surabhiCoinsUsed || 0) / (orderSummary.subtotal || 1)) * 100).toFixed(1)}%)
+                                                                                </span>
+                                                                                <span className="text-amber-600 font-bold">-{(selectedOrder.surabhiCoinsUsed || 0).toFixed(2)}</span>
+                                                                            </div>
+                                                                        )}
+
+                                                                        <div className="flex justify-between p-3 bg-slate-100 rounded-lg">
+                                                                            <span className="font-medium text-slate-700">Adjusted Total Items Value</span>
+                                                                            <span className="text-slate-900 font-bold">₹{orderSummary.adjustedTaxValue.toFixed(2)}</span>
+                                                                        </div>
+
+                                                                        <div className="flex justify-between p-3 bg-slate-100 rounded-lg">
+                                                                            <span className="font-medium text-slate-700">Adjusted Tax value</span>
+                                                                            <span className="text-slate-900 font-bold">₹{orderSummary.totalAdjustedTax.toFixed(2)}</span>
+                                                                        </div>
+                                                                        
+                                                                        <div className="flex justify-between p-3 bg-emerald-50 rounded-lg font-black text-emerald-900">
+                                                                            <span className="uppercase text-[10px] tracking-widest">Adjusted Items Total(Incl Tax)</span>
+                                                                            <span className="text-lg">₹{orderSummary.itemsTotalAfterCoins.toFixed(2)}</span>
+                                                                        </div>
+
+                                                                        <div className="flex justify-between items-center p-3 bg-indigo-50 rounded-lg">
+                                                                            <span className="font-bold text-indigo-900">Total Shipping (Brand Sum)</span>
+                                                                            <span className="text-indigo-600 font-bold">₹{orderSummary.shippingCost.toFixed(2)}</span>
+                                                                        </div>
+
+                                                                        {(selectedOrder.shippingPointsUsed !== undefined && selectedOrder.shippingPointsUsed !== 0) && (
+                                                                            <div className={`flex justify-between p-3 rounded-lg font-bold italic ${(selectedOrder.shippingPointsUsed ?? 0) > 0 ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'}`}>
+                                                                                <span>{(selectedOrder.shippingPointsUsed ?? 0) > 0 ? 'Shipping Credits Applied (Capped at Fee)' : 'Previous Shipping Dues (Added Total)'}</span>
+                                                                                <span>{(selectedOrder.shippingPointsUsed ?? 0) > 0 ? '-' : '+'}₹{Math.abs(selectedOrder.shippingPointsUsed ?? 0).toFixed(2)}</span>
+                                                                            </div>
+                                                                        )}
+
+                                                                        {(selectedOrder.adminShippingAdjustment || 0) !== 0 && (
+                                                                            <div className="flex justify-between p-3 bg-blue-50/50 rounded-lg font-bold">
+                                                                                <span className="text-blue-900 border-b border-blue-200">Admin Balance Adjustment</span>
+                                                                                <span className={(selectedOrder.adminShippingAdjustment || 0) < 0 ? "text-red-600" : "text-emerald-600"}>
+                                                                                    {(selectedOrder.adminShippingAdjustment || 0) > 0 ? '+' : ''}{(selectedOrder.adminShippingAdjustment || 0).toFixed(2)}
+                                                                                </span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+
+                                                                    <div className="pt-4 border-t border-slate-300">
+                                                                        <div className="flex justify-between items-end">
+                                                                            <div>
+                                                                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">Final Payable Amount</p>
+                                                                                <div className="flex items-center gap-2">
+                                                                                    {isEditingTotal ? (
+                                                                                        <div className="flex items-center gap-1 bg-white p-1 rounded-lg shadow-sm border border-slate-200">
+                                                                                            <Input 
+                                                                                                type="number" 
+                                                                                                value={newTotal} 
+                                                                                                onChange={(e) => setNewTotal(e.target.value)}
+                                                                                                className="w-32 h-10 text-right font-black text-xl border-0 focus-visible:ring-0"
+                                                                                            />
+                                                                                            <Button size="icon" variant="ghost" className="h-10 w-10 text-emerald-600 hover:bg-emerald-50" onClick={handleUpdateTotal}>
+                                                                                                <Check className="h-5 w-5" />
+                                                                                            </Button>
+                                                                                            <Button size="icon" variant="ghost" className="h-10 w-10 text-red-600 hover:bg-red-50" onClick={() => setIsEditingTotal(false)}>
+                                                                                                <X className="h-5 w-5" />
+                                                                                            </Button>
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <div className="flex items-center gap-3">
+                                                                                            <h2 
+                                                                                                className={`text-4xl font-black text-slate-900 leading-none tracking-tighter ${!['confirmed', 'delivered', 'cancelled'].includes(selectedOrder.status) ? "cursor-pointer hover:text-slate-600 transition-colors" : ""}`}
+                                                                                                onClick={() => {
+                                                                                                    if (!['confirmed', 'delivered', 'cancelled'].includes(selectedOrder.status)) {
+                                                                                                        setNewTotal(orderSummary.totalPayableAmount.toFixed(2));
+                                                                                                        setIsEditingTotal(true);
+                                                                                                    }
+                                                                                                }}
+                                                                                            >
+                                                                                                ₹{orderSummary.totalPayableAmount.toFixed(2)}
+                                                                                            </h2>
+                                                                                            {!['confirmed', 'delivered', 'cancelled'].includes(selectedOrder.status) && (
+                                                                                                <Pencil 
+                                                                                                    className="h-4 w-4 text-slate-300 cursor-pointer hover:text-slate-900 transition-colors" 
+                                                                                                    onClick={() => {
+                                                                                                        setNewTotal(orderSummary.totalPayableAmount.toFixed(2));
+                                                                                                        setIsEditingTotal(true);
+                                                                                                    }}
+                                                                                                />
+                                                                                            )}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Rewards Projection */}
+                                                                    <div className="pt-5 border-t border-slate-200">
+                                                                        <div className="flex flex-col gap-1 mb-4">
+                                                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                                                                                <TrendingUp className="h-3 w-3" />
+                                                                                Projected Order Earnings (ASPV: {orderSummary.aggregateAdjustedSpv.toFixed(2)})
+                                                                            </p>
+                                                                        </div>
+                                                                        <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                                                                            <div className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm">
+                                                                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">Surabhi Coins</span>
+                                                                                <span className="text-sm font-black text-green-600">{orderSummary.surabhiCoinsEarned}</span>
+                                                                            </div>
+                                                                            <div className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm">
+                                                                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">Shipping Credit</span>
+                                                                                <span className="text-sm font-black text-emerald-600">₹{orderSummary.totalShippingCreditsEarned.toFixed(2)}</span>
+                                                                            </div>
+                                                                            <div className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm">
+                                                                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">Seva Pool</span>
+                                                                                <span className="text-sm font-black text-blue-600">₹{orderSummary.sevaCoinsEarned.toFixed(2)}</span>
+                                                                            </div>
+                                                                            <div className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm">
+                                                                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">Referral Bonus</span>
+                                                                                <span className="text-sm font-black text-indigo-600">₹{orderSummary.referralBonusEarned.toFixed(2)}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            
+                                                            {isEditingItems && (
+                                                                <div className="mt-6 flex gap-3">
+                                                                    <Button variant="outline" className="flex-1 font-bold" onClick={() => setIsEditingItems(false)}>
+                                                                        Cancel
+                                                                    </Button>
+                                                                    <Button className="flex-1 font-bold bg-slate-900" onClick={handleSaveItems}>
+                                                                        Save Changes
+                                                                    </Button>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                         </div>
                                                     </div>
                                                 )}
@@ -451,7 +1037,7 @@ export const OrderManager = () => {
                     </DialogHeader>
                     <div className="py-4">
                         <p>
-                            Are you sure you want to <strong>{showConfirmAdjust?.type === 'add' ? 'add' : 'deduct'} ₹{showConfirmAdjust?.amount}</strong> shipping credits for this order?
+                            Are you sure you want to <strong>{showConfirmAdjust?.amount > 0 ? 'add' : 'deduct'} ₹{Math.abs(showConfirmAdjust?.amount || 0)}</strong> shipping credits for this order?
                         </p>
                         <p className="text-sm text-gray-500 mt-2">
                             This will create a ledger entry and update the customer's wallet balance immediately.

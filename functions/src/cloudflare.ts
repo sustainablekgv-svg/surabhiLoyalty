@@ -1,6 +1,12 @@
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions/v2';
+
+// Initialize Firebase Admin if not already initialized
+if (admin.apps.length === 0) {
+    admin.initializeApp();
+}
 
 // Shared R2 Client Initialization
 const getR2Client = () => {
@@ -10,13 +16,14 @@ const getR2Client = () => {
     const bucketName = process.env.CLOUDFLARE_BUCKET_NAME; // Needed by caller usually, but kept for env check
 
     if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
-         console.error("Missing Cloudflare R2 configuration:", { 
-             hasAccountId: !!accountId, 
-             hasAccessKey: !!accessKeyId, 
-             hasSecret: !!secretAccessKey, 
-             hasBucket: !!bucketName 
-         });
-         throw new functions.https.HttpsError('internal', "Server configuration error: Missing R2 credentials.");
+         const missing = [];
+         if (!accountId) missing.push("CLOUDFLARE_ACCOUNT_ID");
+         if (!accessKeyId) missing.push("CLOUDFLARE_ACCESS_KEY_ID");
+         if (!secretAccessKey) missing.push("CLOUDFLARE_SECRET_ACCESS_KEY");
+         if (!bucketName) missing.push("CLOUDFLARE_BUCKET_NAME");
+         
+         console.error("Missing Cloudflare R2 configuration details:", missing.join(", "));
+         throw new functions.https.HttpsError('internal', `Server configuration error: Missing R2 credentials (${missing.join(", ")}).`);
     }
 
     const client = new S3Client({
@@ -31,24 +38,34 @@ const getR2Client = () => {
     return { client, bucketName, accountId }; // Return needed config
 };
 
+// Define allowed origins
+const allowedOrigins = [
+  "https://surabhiloyalty.web.app",
+  "https://surabhiloyalty-uat.web.app",
+  "https://surabhiloyalty.firebaseapp.com",
+  "https://surabhiloyalty-uat.firebaseapp.com",
+  /http:\/\/localhost:\d+/
+];
+
 export const createR2UploadUrl = functions.https.onCall({ 
-    cors: [
-        'http://localhost:5173', 
-        'http://localhost:3000', 
-        'https://surabhi-loyalty.web.app', 
-        'https://surabhiloyalty.web.app',
-        'https://surabhiloyalty.firebaseapp.com',
-        'https://sustainablekgv.com',
-        'https://www.sustainablekgv.com'
-    ]
+    cors: allowedOrigins
 }, async (request) => {
-  // console.log("createR2UploadUrl called with data:", request.data);
+  const authHeader = request.rawRequest.headers['authorization'];
+  const origin = request.rawRequest.headers['origin'];
+  
+  console.log("createR2UploadUrl called", { 
+    auth: request.auth ? `UID:${request.auth.uid}` : "UNAUTHENTICATED",
+    origin,
+    authHeader: authHeader ? "Present" : "Missing"
+  });
 
   if (!request.auth) {
-    console.warn("Unauthenticated attempt");
+    const authHeader = request.rawRequest.headers['authorization'];
+    const origin = request.rawRequest.headers['origin'];
+    console.warn("Unauthenticated attempt", { authHeader: authHeader ? "Present" : "Missing", origin });
     throw new functions.https.HttpsError(
       'unauthenticated',
-      'The function must be called while authenticated.'
+      `The function must be called while authenticated. (Auth Header: ${authHeader ? 'Present' : 'Missing'}, Origin: ${origin})`
     );
   }
 
@@ -96,15 +113,7 @@ export const createR2UploadUrl = functions.https.onCall({
 });
 
 export const deleteImageFromR2 = functions.https.onCall({
-    cors: [
-        'http://localhost:5173', 
-        'http://localhost:3000', 
-        'https://surabhi-loyalty.web.app', 
-        'https://surabhiloyalty.web.app',
-        'https://surabhiloyalty.firebaseapp.com',
-        'https://sustainablekgv.com',
-        'https://www.sustainablekgv.com'
-    ]
+    cors: allowedOrigins
 }, async (request) => {
     if (!request.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');

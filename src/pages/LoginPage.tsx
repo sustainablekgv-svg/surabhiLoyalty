@@ -1,4 +1,4 @@
-import { ArrowLeft, Coins, Eye, EyeOff, Lock, Phone, Shield, UserCircle, Users } from 'lucide-react';
+import { ArrowLeft, Coins, Eye, EyeOff, Phone, Shield, UserCircle, Users } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -8,11 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/auth-context';
 
@@ -184,7 +184,7 @@ const LoginPage = () => {
                     Mobile Number
                   </Label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    {/* <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
                     <Input
                       id="mobile"
                       name="mobile"
@@ -204,7 +204,7 @@ const LoginPage = () => {
                     Password
                   </Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    {/* <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
                     <Input
                       id="password"
                       name="password"
@@ -226,7 +226,7 @@ const LoginPage = () => {
                 </div>
 
                 {/* Forgot Password Link */}
-                <div className="text-right">
+                <div className="text-right">  
                   <button
                     type="button"
                     onClick={handleForgotPassword}

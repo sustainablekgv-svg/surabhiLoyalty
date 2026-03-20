@@ -1,22 +1,72 @@
+import { useAuth } from '@/hooks/auth-context';
 import {
     ArrowRight,
     CheckCircle,
     Heart,
+    LayoutDashboard,
     LogIn,
+    LogOut,
     Phone,
     ShoppingBag,
     Star,
     Users
 } from 'lucide-react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
+import { FloatingWhatsApp } from '@/components/shop/FloatingWhatsApp';
 import { Footer } from '@/components/shop/Footer';
+import { ProductCard } from '@/components/shop/ProductCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { getFeaturedProducts } from '@/services/shop';
+import { Product } from '@/types/shop';
 
 const LandingPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const { user, logout, isAuthenticated } = useAuth();
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const getDashboardPath = () => {
+    if (!user) return '/login';
+    switch (user.role) {
+      case 'admin': return '/admin/dashboard';
+      case 'staff': return '/staff/dashboard';
+      case 'customer': return '/customer/dashboard';
+      default: return '/customer/dashboard';
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
+  };
+
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) {
+      navigate(`/signup?ref=${ref}`);
+    }
+
+    const fetchFeatured = async () => {
+        try {
+            const products = await getFeaturedProducts();
+            setFeaturedProducts(products);
+        } catch (error) {
+            console.error("Error fetching featured products", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchFeatured();
+  }, [searchParams, navigate]);
 
   const handleLoginClick = () => {
     navigate('/login', { state: { from: location } });
@@ -79,14 +129,36 @@ const LandingPage = () => {
                 <ShoppingBag className="h-4 w-4" />
                 Shop Now
               </Button>
-              <Button
-              onClick={handleLoginClick}
-              className="bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2"
-            >
-              <LogIn className="h-4 w-4" />
-              <span className="hidden sm:inline">Login</span>
-            </Button>
-          </div>
+              
+              {isAuthenticated ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    onClick={() => navigate(getDashboardPath())}
+                    className="font-medium text-gray-700 hover:text-purple-600 transition-colors hidden sm:flex items-center gap-2"
+                  >
+                    <LayoutDashboard className="h-4 w-4" />
+                    Dashboard
+                  </Button>
+                  <Button
+                    onClick={handleLogout}
+                    variant="outline"
+                    className="border-purple-200 text-purple-700 hover:bg-purple-50 font-medium px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span className="hidden sm:inline">Logout</span>
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  onClick={handleLoginClick}
+                  className="bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2"
+                >
+                  <LogIn className="h-4 w-4" />
+                  <span className="hidden sm:inline">Login</span>
+                </Button>
+              )}
+            </div>
         </div>
       </div>
     </header>
@@ -106,7 +178,7 @@ const LandingPage = () => {
             <span className="bg-gradient-to-r from-purple-600 to-amber-500 bg-clip-text text-transparent">
               Rewards
             </span>{' '}
-            with Every Purchase
+            With Every Rupee Spent
           </h1>
 
           <p className="text-lg sm:text-xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
@@ -115,14 +187,25 @@ const LandingPage = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Button
-              onClick={handleLoginClick}
-              size="lg"
-              className="bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white font-medium px-8 py-4 rounded-lg transition-all duration-200 flex items-center gap-2 text-lg"
-            >
-              Get Started
-              <ArrowRight className="h-5 w-5" />
-            </Button>
+            {isAuthenticated ? (
+              <Button
+                onClick={() => navigate(getDashboardPath())}
+                size="lg"
+                className="bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white font-medium px-8 py-4 rounded-lg transition-all duration-200 flex items-center gap-2 text-lg shadow-lg hover:shadow-xl"
+              >
+                Go to Dashboard
+                <LayoutDashboard className="h-5 w-5" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleLoginClick}
+                size="lg"
+                className="bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white font-medium px-8 py-4 rounded-lg transition-all duration-200 flex items-center gap-2 text-lg"
+              >
+                Get Started
+                <ArrowRight className="h-5 w-5" />
+              </Button>
+            )}
 
             <Button
               onClick={() => navigate('/shop')}
@@ -134,13 +217,55 @@ const LandingPage = () => {
               Shop Now
             </Button>
 
-            <div className="flex items-center gap-2 text-gray-600">
-              <Phone className="h-4 w-4" />
-              <span className="text-sm">Need help? Call 9606979530</span>
-            </div>
+            {isAuthenticated && (
+              <Button
+                onClick={handleLogout}
+                size="lg"
+                variant="ghost"
+                className="text-gray-500 hover:text-red-600 font-medium px-6 py-4 rounded-lg transition-all duration-200 flex items-center gap-2 text-lg"
+              >
+                <LogOut className="h-5 w-5" />
+                Logout
+              </Button>
+            )}
+
+            {!isAuthenticated && (
+              <div className="flex items-center gap-2 text-gray-600">
+                <Phone className="h-4 w-4" />
+                <span className="text-sm">Need help? Call 9606979530</span>
+              </div>
+            )}
           </div>
         </div>
       </section>
+
+      {/* Featured Products Section */}
+      {!loading && featuredProducts.length > 0 && (
+          <section className="container mx-auto px-4 py-8 sm:py-12 border-t border-purple-100">
+              <div className="flex flex-col gap-8">
+                  <div className="text-center">
+                      <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Featured Products</h2>
+                      <p className="text-gray-600">Handpicked premium products just for you</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                      {featuredProducts.map(product => (
+                          <ProductCard key={product.id} product={product} />
+                      ))}
+                  </div>
+
+                  <div className="text-center">
+                    <Button 
+                        variant="link" 
+                        onClick={() => navigate('/shop')}
+                        className="text-purple-600 font-semibold"
+                    >
+                        View All Products →
+                    </Button>
+                  </div>
+              </div>
+          </section>
+      )}
 
       {/* Features Section */}
       <section className="container mx-auto px-4 py-16">
@@ -260,25 +385,58 @@ const LandingPage = () => {
       {/* CTA Section */}
       <section className="container mx-auto px-4 py-16">
         <div className="bg-gradient-to-r from-purple-600 to-amber-500 rounded-2xl p-8 sm:p-12 text-center text-white">
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4">Ready to start the journey?</h2>
+          <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+            {isAuthenticated ? 'Continue your journey' : 'Ready to start the journey?'}
+          </h2>
           <p className="text-lg sm:text-xl mb-8 opacity-90 max-w-2xl mx-auto">
-            Join thousands of satisfied customers who are already earning rewards with every
-            purchase.
+            Join thousands of satisfied customers who are already earning rewards with every purchase.
           </p>
-          <Button
-            onClick={handleLoginClick}
-            size="lg"
-            variant="secondary"
-            className="bg-white text-purple-600 hover:bg-gray-100 font-medium px-8 py-4 rounded-lg transition-all duration-200 flex items-center gap-2 mx-auto text-lg"
-          >
-            <LogIn className="h-5 w-5" />
-            Login to Your Account
-          </Button>
+          <div className="flex flex-col sm:flex-row justify-center gap-6">
+            <Button
+              onClick={() => navigate(isAuthenticated ? getDashboardPath() : '/login')}
+              size="lg"
+              className="bg-white text-slate-900 hover:bg-slate-50 font-black px-10 py-5 rounded-2xl transition-all duration-300 flex items-center gap-3 text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1"
+            >
+              {isAuthenticated ? (
+                <>
+                  <LayoutDashboard className="h-6 w-6 text-purple-600" />
+                  Go to Dashboard
+                </>
+              ) : (
+                <>
+                  <LogIn className="h-6 w-6 text-purple-600" />
+                  Start the Journey
+                </>
+              )}
+            </Button>
+            
+            <Button
+              onClick={() => navigate('/shop')}
+              size="lg"
+              className="bg-white text-slate-900 hover:bg-slate-50 font-black px-10 py-5 rounded-2xl transition-all duration-300 flex items-center gap-3 text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1"
+            >
+                <ShoppingBag className="h-6 w-6 text-purple-600" />
+                Shop Now
+            </Button>
+
+            {isAuthenticated && (
+              <Button
+                onClick={handleLogout}
+                size="lg"
+                variant="outline"
+                className="bg-slate-900/40 text-white border-2 border-white/40 hover:bg-slate-900/60 hover:border-white/60 font-black px-10 py-5 rounded-2xl transition-all duration-300 flex items-center gap-3 text-lg backdrop-blur-md shadow-xl hover:shadow-2xl hover:-translate-y-1"
+              >
+                <LogOut className="h-6 w-6 text-amber-400" />
+                Logout Now
+              </Button>
+            )}
+          </div>
         </div>
       </section>
 
       {/* Footer */}
       <Footer />
+      <FloatingWhatsApp />
     </div>
   );
 };

@@ -300,6 +300,15 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
                   <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Seva Debit
                   </TableHead>
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
+                    Ship Credit
+                  </TableHead>
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
+                    Ship Debit
+                  </TableHead>
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
+                    Ship Bal
+                  </TableHead>
                   {/* <TableHead className="text-right">Seva Current</TableHead> */}
                   <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Seva Total
@@ -349,6 +358,15 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
                       <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
                         {tx.sevaDebit ? Number(tx.sevaDebit).toFixed(2) : '-'}
                       </TableCell>
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right text-blue-600">
+                        {tx.shippingCredit ? Number(tx.shippingCredit).toFixed(2) : '-'}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right text-red-600">
+                        {tx.shippingDebit ? Number(tx.shippingDebit).toFixed(2) : '-'}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right font-bold text-blue-900">
+                        {tx.shippingBalance ? Number(tx.shippingBalance).toFixed(2) : '0.00'}
+                      </TableCell>
                       {/* <TableCell className="text-right font-medium">{tx.sevaBalance}</TableCell> */}
                       <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right font-medium">
                         {Number(tx.sevaTotal).toFixed(2)}
@@ -361,7 +379,7 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
                 ) : (
                   <TableRow>
                     <TableCell
-                      colSpan={13}
+                      colSpan={16}
                       className="text-center py-6 xs:py-8 sm:py-10 text-gray-500 text-[10px] xs:text-xs"
                     >
                       No transactions found

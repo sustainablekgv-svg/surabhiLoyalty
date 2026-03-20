@@ -48,8 +48,6 @@ const WishlistPage = () => {
                             id: item.productId,
                             name: item.name,
                             description: '',
-                            price: item.price,
-                            sellingPrice: item.price,
                             weight: '',
                             stock: item.stock,
                             images: [item.image],
@@ -58,6 +56,8 @@ const WishlistPage = () => {
                             brandId: '',
                             brandName: '',
                             isActive: true,
+                            price: item.originalPrice || item.price, // MRP
+                            sellingPrice: item.price, // Selling Price
                             createdAt: new Date(),
                             updatedAt: new Date()
                         });

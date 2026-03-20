@@ -1,28 +1,28 @@
 // components/StaffStoreManagement.tsx
 import {
-    addDoc,
-    collection,
-    deleteDoc,
-    doc,
-    getDocs,
-    query,
-    serverTimestamp,
-    setDoc,
-    Timestamp,
-    updateDoc,
-    where,
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  query,
+  serverTimestamp,
+  setDoc,
+  Timestamp,
+  updateDoc,
+  where,
 } from 'firebase/firestore';
 import {
-    Edit,
-    Key,
-    MapPin,
-    PlusCircle,
-    RefreshCw,
-    Shield,
-    Store,
-    Trash2,
-    User,
-    UserPlus,
+  Edit,
+  Key,
+  MapPin,
+  PlusCircle,
+  RefreshCw,
+  Shield,
+  Store,
+  Trash2,
+  User,
+  UserPlus,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -34,30 +34,30 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/table';
 import { decryptText, encryptText } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
@@ -845,6 +845,7 @@ export const StaffManagement = () => {
                     <TableHead className="text-xs xs:text-sm">Cash Only %</TableHead>
                     <TableHead className="text-xs xs:text-sm">Seva %</TableHead>
                     <TableHead className="text-xs xs:text-sm">Bonus %</TableHead>
+                    <TableHead className="text-xs xs:text-sm">Shipping %</TableHead>
                     {/* <TableHead>Status</TableHead> */}
                     {/* <TableHead>Created</TableHead>
                   <TableHead>Updated</TableHead> */}
@@ -900,6 +901,7 @@ export const StaffManagement = () => {
                       </TableCell>
                       <TableCell className="text-xs xs:text-sm">{store.sevaCommission}%</TableCell>
                       <TableCell className="text-xs xs:text-sm">{store.bonusPercentage || 0}%</TableCell>
+                      <TableCell className="text-xs xs:text-sm">{store.shippingCommission || 0}%</TableCell>
                       <TableCell>
                         <div className="flex flex-col xs:flex-row gap-1 xs:gap-2">
                           <Button

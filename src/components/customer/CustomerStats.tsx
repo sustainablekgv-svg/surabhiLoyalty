@@ -1,9 +1,9 @@
 import {
   collection,
   doc,
-  getDoc,
   getDocs,
   limit,
+  onSnapshot,
   orderBy,
   query,
   Timestamp,
@@ -15,8 +15,10 @@ import {
   Heart,
   Phone,
   RefreshCw,
+  ShoppingCart,
   Target,
   TrendingUp,
+  Truck,
   User,
   Wallet
 } from 'lucide-react';
@@ -40,55 +42,72 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetchCustomerData = async () => {
+  useEffect(() => {
     if (!userId) return;
 
     setLoading(true);
-    try {
-      // Fetch the customer document with the given userId
-      const docRef = doc(db, 'Customers', userId);
-      const docSnap = await getDoc(docRef);
+    const docRef = doc(db, 'Customers', userId);
 
-      if (docSnap.exists()) {
-        const customer = { id: docSnap.id, ...docSnap.data() } as CustomerType;
-        setCustomerData(customer);
+    const unsubscribe = onSnapshot(
+      docRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const customer = { id: docSnap.id, ...docSnap.data() } as CustomerType;
+          setCustomerData(customer);
 
-        // Only fetch activities if customer has a mobile number
-        if (customer.customerMobile) {
-          const activitiesQuery = query(
-            collection(db, 'Activity'),
-            where('customerMobile', '==', customer.customerMobile),
-            orderBy('createdAt', 'desc'),
-            limit(3)
-          );
+          // Fetch activities for this customer
+          if (customer.customerMobile) {
+            const activitiesQuery = query(
+              collection(db, 'Activity'),
+              where('customerMobile', '==', customer.customerMobile),
+              orderBy('createdAt', 'desc'),
+              limit(3)
+            );
 
-          const querySnapshot = await getDocs(activitiesQuery);
-          const activitiesData = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-          })) as ActivityType[];
-
-          setActivities(activitiesData);
+            getDocs(activitiesQuery).then((querySnapshot) => {
+              const activitiesData = querySnapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+              })) as ActivityType[];
+              setActivities(activitiesData);
+            });
+          }
+        } else {
+          setError('No customer data found');
         }
-      } else {
-        setError('No customer data found');
+        setLoading(false);
+      },
+      (err) => {
+        // console.error('Error listening to customer data:', err);
+        setError('Failed to fetch customer data');
+        setLoading(false);
       }
-    } catch (err) {
-      // console.error('Error fetching customer data:', err);
-      setError('Failed to fetch customer data');
-    } finally {
-      setLoading(false);
-    }
-  };
+    );
 
-  useEffect(() => {
-    fetchCustomerData();
+    return () => unsubscribe();
   }, [userId]);
 
   const handleRefreshing = async () => {
+    if (!customerData?.customerMobile) return;
     setIsRefreshing(true);
-    await fetchCustomerData();
-    setIsRefreshing(false);
+    try {
+      const activitiesQuery = query(
+        collection(db, 'Activity'),
+        where('customerMobile', '==', customerData.customerMobile),
+        orderBy('createdAt', 'desc'),
+        limit(3)
+      );
+      const querySnapshot = await getDocs(activitiesQuery);
+      const activitiesData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as ActivityType[];
+      setActivities(activitiesData);
+    } catch (err) {
+      // console.error('Error refreshing activities:', err);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   if (loading) {
@@ -162,6 +181,8 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
         return <Target className="h-4 w-4 text-amber-600" />;
       case 'surabhi_earn':
         return <Coins className="h-4 w-4 text-amber-600" />;
+      case 'shipping_adjustment':
+        return <Truck className="h-4 w-4 text-indigo-600" />;
       case 'signup':
       default:
         return <User className="h-4 w-4 text-gray-600" />;
@@ -179,49 +200,85 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       borderColor: 'border-purple-200',
     },
     {
-      title: 'Current Wallet Balance',
-      value: `₹${(customerData.walletBalance || 0).toFixed(2)}`,
+      title: 'Surabhi  Balance',
+      value: `₹${(customerData.surabhiBalance || 0).toFixed(2)}`,
       description: 'Your available balance',
       icon: TrendingUp,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
       borderColor: 'border-blue-200',
     },
+    // {
+    //   title: 'Referral Coins Earned',
+    //   value: `₹${(customerData.surabhiReferral || 0).toFixed(2)}`,
+    //   description: 'Coins earned via referrals',
+    //   icon: Target,
+    //   color: 'text-orange-600',
+    //   bgColor: 'bg-orange-50',
+    //   borderColor: 'border-orange-200',
+    // },
+    // {
+    //   title: 'My Surabhi Rating',
+    //   value: (customerData.surabhiBalance || 0).toString(),
+    //   description: 'Your customer rating',
+    //   icon: Heart,
+    //   color: 'text-red-600',
+    //   bgColor: 'bg-red-50',
+    //   borderColor: 'border-red-200',
+    // },
+    // {
+    //   title: 'Total Referrals',
+    //   value: totalReferrals.toString(),
+    //   description: 'Friends you referred',
+    //   icon: Gift,
+    //   color: 'text-green-600',
+    //   bgColor: 'bg-green-50',
+    //   borderColor: 'border-green-200',
+    // },
     {
-      title: 'Referral Seva Coins',
-      value: `₹${(customerData.surabhiReferral || 0).toFixed(2)}`,
-      description: 'Coins earned via referrals',
-      icon: Target,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      borderColor: 'border-orange-200',
+      title: 'Shipping Credit Balance',
+      value: `₹${(customerData.shippingBalance || 0).toFixed(2)}`,
+      description: 'Available shipping credits',
+      icon: Truck,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+      borderColor: 'border-purple-200',
     },
+    // {
+    //   title: 'Lifetime Shipping Credits',
+    //   value: `₹${(customerData.shippingTotal || 0).toFixed(2)}`,
+    //   description: 'Total credits earned',
+    //   icon: TrendingUp,
+    //   color: 'text-emerald-600',
+    //   bgColor: 'bg-emerald-50',
+    //   borderColor: 'border-emerald-200',
+    // },
     {
-      title: 'My Surabhi Rating',
-      value: (customerData.surabhiBalance || 0).toString(),
-      description: 'Your customer rating',
+      title: 'Lifetime Seva Balance',
+      value: `₹${(customerData.sevaTotal || 0).toFixed(2)}`,
+      description: 'Total Seva Contributions',
       icon: Heart,
       color: 'text-red-600',
       bgColor: 'bg-red-50',
       borderColor: 'border-red-200',
     },
     {
-      title: 'Total Referrals',
-      value: totalReferrals.toString(),
-      description: 'Friends you referred',
-      icon: Gift,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
-      borderColor: 'border-green-200',
+      title: 'Cumulative Amount Spent',
+      value: `₹${(customerData.cumTotal || 0).toFixed(2)}`,
+      description: 'Total sales value since joining',
+      icon: ShoppingCart,
+      color: 'text-emerald-600',
+      bgColor: 'bg-emerald-50',
+      borderColor: 'border-emerald-200',
     },
     {
-      title: 'Shipping Balance',
-      value: `₹${(customerData.shippingBalance || 0).toFixed(2)}`,
-      description: 'Credits for shipping',
-      icon: TrendingUp,
-      color: 'text-indigo-600',
-      bgColor: 'bg-indigo-50',
-      borderColor: 'border-indigo-200',
+      title: 'Cumulative Target Spend',
+      value: `₹${(customerData.cummulativeTarget || 0).toFixed(2)}`,
+      description: 'Quarterly spending target',
+      icon: Target,
+      color: 'text-rose-600',
+      bgColor: 'bg-rose-50',
+      borderColor: 'border-rose-200',
     },
   ];
 
@@ -304,7 +361,9 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
                                     ? 'Seva Allocation'
                                     : activity.type === 'surabhi_earn'
                                       ? 'Surabhi Coins Earned'
-                                      : 'Account Activity'}
+                                      : activity.type === 'shipping_adjustment'
+                                        ? 'Shipping Adjustment'
+                                        : 'Account Activity'}
                         </p>
                         <p className="text-[9px] sm:text-[10px] text-gray-600 break-words">
                           {activity.createdAt && formatActivityDate(activity.createdAt)} •{' '}

@@ -3,29 +3,30 @@ import { db } from '@/lib/firebase';
 import { AccountTxType, CustomerTxType, CustomerType, StoreType } from '@/types/types';
 import { updateCustomerQuarterlyTarget } from '@/utils/quarterlyTargets';
 import {
-    addDoc,
-    collection,
-    doc,
-    getDocs,
-    increment,
-    query,
-    serverTimestamp,
-    Timestamp,
-    updateDoc,
-    where
+  addDoc,
+  collection,
+  doc,
+  getDocs,
+  increment,
+  query,
+  serverTimestamp,
+  Timestamp,
+  updateDoc,
+  where
 } from 'firebase/firestore';
+import { getUserName } from '@/lib/userUtils';
 
 // --- Types ---
 
-export interface SaleCalculation {
-  totalAmount: number;
-  surabhiCoinsUsed: number;
-  walletDeduction: number;
+export interface SaleCalculation { 
+  totalAmount: number; 
+  surabhiCoinsUsed: number; 
+  walletDeduction: number; 
   cashPayment: number;
-  surabhiCoinsEarned: number;
-  goSevaContribution: number;
+  surabhiCoinsEarned: number; 
+  goSevaContribution: number; 
   referrerSurabhiCoinsEarned: number;
-  shippingCreditsEarned: number;
+  shippingCreditsEarned: number; 
 }
 
 // --- Utils ---
@@ -100,8 +101,10 @@ export const calculateSale = (
   const referralCommission = storeDetails.referralCommission || 0;
 
   // Calculate earnings
-  // NEW LOGIC: Base = SPV - surabhiCoinsUsed - shippingCreditsUsed
-  const netSpv = Math.max(0, Number(spv) - surabhiCoinsUsed - (shippingCreditsUsed || 0));
+  // NEW LOGIC: If totalSpv is provided, it's already adjusted for coins (from shop.ts or staff UI). 
+  // If not provided, we subtract coins here.
+  const baseSpv = totalSpv !== undefined ? Number(totalSpv) : (Number(spv) - surabhiCoinsUsed);
+  const netSpv = Math.max(0, baseSpv);
 
   const surabhiCoinsEarned = customRound((netSpv * selectedCommission) / 100);
   const goSevaContribution = customRound((netSpv * sevaCommission) / 100);
@@ -129,11 +132,18 @@ export const processSaleTransaction = async (params: {
     paymentMethod: 'online' | 'cod', // Input type
     paymentDetails?: any,
     totalSpv?: number,
-    surabhiCoinsUsed?: number, // NEW param
-    shippingCreditsEarned?: number, // NEW
-    shippingCreditsUsed?: number // NEW
+    surabhiCoinsUsed?: number, 
+    shippingCreditsEarned?: number, 
+    shippingCreditsUsed?: number, 
+    cumTotalAmount?: number,
+    // NEW: Optional overrides for rewards
+    rewardOverrides?: {
+        surabhiCoinsEarned?: number;
+        sevaCoinsEarned?: number;
+        referralBonusEarned?: number;
+    }
 }) => {
-    const { orderId, invoiceId, amount, customer, storeDetails, user, paymentMethod, paymentDetails, totalSpv, surabhiCoinsUsed, shippingCreditsEarned, shippingCreditsUsed } = params;
+    const { orderId, invoiceId, amount, customer, storeDetails, user, paymentMethod, paymentDetails, totalSpv, surabhiCoinsUsed, shippingCreditsEarned, shippingCreditsUsed, cumTotalAmount, rewardOverrides } = params;
     
     // Process both online and COD. 
     // COD in shop is treated as "placed" with pending collection, 
@@ -143,7 +153,14 @@ export const processSaleTransaction = async (params: {
     const methodForCalc = 'cash'; 
     
     // 1. Calculate Sale details
-    const saleCalculation = calculateSale(amount, customer, storeDetails, methodForCalc, totalSpv, surabhiCoinsUsed, shippingCreditsEarned, shippingCreditsUsed);
+    let saleCalculation = calculateSale(amount, customer, storeDetails, methodForCalc, totalSpv, surabhiCoinsUsed, shippingCreditsEarned, shippingCreditsUsed);
+    
+    // Apply overrides if provided (for E-commerce consistency)
+    if (rewardOverrides) {
+        if (rewardOverrides.surabhiCoinsEarned !== undefined) saleCalculation.surabhiCoinsEarned = rewardOverrides.surabhiCoinsEarned;
+        if (rewardOverrides.sevaCoinsEarned !== undefined) saleCalculation.goSevaContribution = rewardOverrides.sevaCoinsEarned;
+        if (rewardOverrides.referralBonusEarned !== undefined) saleCalculation.referrerSurabhiCoinsEarned = rewardOverrides.referralBonusEarned;
+    }
     
     const spvEntered = totalSpv !== undefined ? totalSpv : amount;
     const adjustedSpv = totalSpv !== undefined ? totalSpv : amount; 
@@ -172,7 +189,7 @@ export const processSaleTransaction = async (params: {
         sevaBalance: Number(((Number(storeDetails?.storeSevaBalance) || 0) + (Number(sevaContribution) || 0)).toFixed(2)),
         currentBalance: Number(((Number(storeDetails?.storeCurrentBalance) || 0) + amount - amount + adminCutTx).toFixed(2)), // Store gets adminCut/profit added?
         adminCurrentBalance: Number((-storeDetails.storeCurrentBalance + adminCutTx).toFixed(2)), 
-        remarks: `Online sale for ${customer.customerName} via Order #${orderId}`,
+        remarks: `Online sale for ${customer.customerName} via Order #${orderId} (Processed by ${getUserName(user) || 'System'})`,
         spvEntered: Number(spvEntered.toFixed(2)),
         adjustedSpv: Number(adjustedSpv.toFixed(2)),
     };
@@ -198,10 +215,10 @@ export const processSaleTransaction = async (params: {
         storeLocation: customer.storeLocation || storeDetails.storeName,
         storeName: storeDetails.storeName,
         createdAt: Timestamp.fromDate(new Date()),
-        paymentMethod: 'online', // Mapped
-        processedBy: 'Online System',
+        paymentMethod: paymentMethod, // Mapped
+        processedBy: user?.staffName || user?.customerName || 'Online System',
         invoiceId: invoiceId,
-        remarks: `Online Order #${orderId}`,
+        remarks: `Online Order #${orderId} (Processed by ${getUserName(user) || 'System'})`,
         amount: amount,
         surabhiEarned: Number(surabhiEarnedAdj.toFixed(2)),
         sevaEarned: Number(sevaContribution.toFixed(2)),
@@ -212,8 +229,8 @@ export const processSaleTransaction = async (params: {
         adjustedSpv: Number(adjustedSpv.toFixed(2)),
         surabhiEarnedAdj: Number(surabhiEarnedAdj.toFixed(2)),
         sevaEarnedAdj: Number(sevaEarnedAdj.toFixed(2)),
-        surabhiUsed: 0,
-        walletDeduction: 0,
+        surabhiUsed: Number(saleCalculation.surabhiCoinsUsed.toFixed(2)),
+        walletDeduction: Number(saleCalculation.walletDeduction.toFixed(2)),
         cashPayment: Number(saleCalculation.cashPayment.toFixed(2)),
         
         // Balances 
@@ -229,9 +246,9 @@ export const processSaleTransaction = async (params: {
         walletCredit: 0,
         walletDebit: 0,
         walletBalance: Number(customer.walletBalance.toFixed(2)),
-        surabhiDebit: 0,
+        surabhiDebit: Number(saleCalculation.surabhiCoinsUsed.toFixed(2)),
         surabhiCredit: Number(saleCalculation.surabhiCoinsEarned.toFixed(2)),
-        surabhiBalance: Number((customer.surabhiBalance + saleCalculation.surabhiCoinsEarned).toFixed(2)),
+        surabhiBalance: Number((customer.surabhiBalance - saleCalculation.surabhiCoinsUsed + saleCalculation.surabhiCoinsEarned).toFixed(2)),
         sevaCredit: Number(sevaContribution.toFixed(2)),
         sevaDebit: 0,
         sevaBalance: Number(((customer.sevaBalanceCurrentMonth || 0) + sevaContribution).toFixed(2)),
@@ -247,7 +264,9 @@ export const processSaleTransaction = async (params: {
 
     // 6. Update Customer Document
     const customerRef = doc(db, 'Customers', customer.id);
-    const newCumTotal = customRound((customer.cumTotal || 0) + amount);
+    // Use cumTotalAmount if provided (for online orders to exclude shipping), otherwise use amount
+    const additionToCumTotal = cumTotalAmount !== undefined ? cumTotalAmount : amount;
+    const newCumTotal = customRound((customer.cumTotal || 0) + additionToCumTotal);
     const isEligible = customer.isStudent ? newCumTotal >= 499 : newCumTotal >= 999;
     const shouldUpdateEligibility = isEligible && customer.saleElgibility !== true;
 
@@ -306,7 +325,7 @@ export const processSaleTransaction = async (params: {
                   storeName: referrer.storeLocation,
                   createdAt: Timestamp.fromDate(new Date()),
                   paymentMethod: 'admin',
-                  processedBy: 'Online System',
+                  processedBy: getUserName(user) || 'Online System',
                   invoiceId: invoiceId,
                   remarks: `Referral bonus for online order by ${customer.customerName}`,
                   amount: 0,

@@ -32,3 +32,6 @@ dist-ssr
 *.sln
 *.sw?
 *.txt
+
+scripts/prod-key.json
+scripts/uat-key.json

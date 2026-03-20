@@ -1,11 +1,10 @@
-import { ArrowLeft, Calendar, CheckCircle, Coins, KeyRound, Loader2, Lock, Phone, User, UserCircle, Users } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Coins, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -211,7 +210,7 @@ const SignupPage = () => {
               <div className="space-y-2">
                 <Label htmlFor="customerName">Full Name *</Label>
                 <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    {/* <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
                     <Input id="customerName" name="customerName" placeholder="Enter your full name" value={formData.customerName} onChange={handleInputChange} className="pl-10" required />
                 </div>
               </div>
@@ -219,7 +218,7 @@ const SignupPage = () => {
               <div className="space-y-2">
                 <Label htmlFor="customerMobile">Mobile Number *</Label>
                 <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    {/* <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
                     <Input id="customerMobile" name="customerMobile" type="tel" placeholder="Enter mobile number" value={formData.customerMobile} onChange={handleInputChange} className="pl-10" required />
                 </div>
               </div>
@@ -228,26 +227,22 @@ const SignupPage = () => {
                   <div className="space-y-2">
                     <Label htmlFor="dateOfBirth">Date of Birth *</Label>
                     <div className="relative">
-                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 z-10" />
-                        <DatePicker
-                            date={formData.dateOfBirth ? new Date(formData.dateOfBirth) : undefined}
-                            onDateChange={(date) => {
-                                handleInputChange({
-                                    target: {
-                                        name: 'dateOfBirth',
-                                        value: date ? date.toLocaleDateString('en-CA') : '' // Format as YYYY-MM-DD
-                                    }
-                                } as any)
-                            }}
-                            placeholder="Select date of birth *"
-                            className="w-full h-12 pl-10"
+                        <Input
+                            type="date"
+                            id="dateOfBirth"
+                            name="dateOfBirth"
+                            value={formData.dateOfBirth}
+                            onChange={handleInputChange}
+                            className="w-full h-12 px-3 text-base text-gray-700 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+                            required
                         />
+                        {/* Custom styling placeholder handled by native input placeholder semantics if needed */}
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="gender">Gender *</Label>
                     <div className="relative">
-                        <UserCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 z-10" />
+                        {/* <UserCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 z-10" /> */}
                         <Select value={formData.gender} onValueChange={handleGenderChange}>
                             <SelectTrigger className="h-12 w-full pl-10">
                                 <SelectValue placeholder="Select" />
@@ -277,7 +272,7 @@ const SignupPage = () => {
               <div className="space-y-2">
                 <Label htmlFor="referredBy">Referral Code / Number (Optional)</Label>
                 <div className="relative">
-                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    {/* <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
                     <Input 
                         id="referredBy" 
                         name="referredBy" 
@@ -307,7 +302,7 @@ const SignupPage = () => {
                 <div className="space-y-2">
                   <Label htmlFor="customerPassword">Password *</Label>
                   <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      {/* <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
                       <Input 
                         id="customerPassword" 
                         name="customerPassword" 
@@ -330,7 +325,7 @@ const SignupPage = () => {
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Confirm Password *</Label>
                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      {/* <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
                       <Input id="confirmPassword" name="confirmPassword" type="password" placeholder="Confirm password" value={formData.confirmPassword} onChange={handleInputChange} className="pl-10" required />
                   </div>
                 </div>
@@ -338,7 +333,7 @@ const SignupPage = () => {
               <div className="space-y-2">
                 <Label htmlFor="tpin">TPIN (4 Digits) *</Label>
                  <div className="relative">
-                    <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    {/* <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
                     <Input 
                         id="tpin" 
                         name="tpin" 

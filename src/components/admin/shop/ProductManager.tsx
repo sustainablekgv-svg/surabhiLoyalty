@@ -14,10 +14,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { db } from '@/lib/firebase';
 import { isValidImageUrl } from '@/lib/image-utils';
 import { deleteImageFromR2 } from '@/services/cloudflare';
-import { createProduct, deleteProduct, getBrands, getCategories, getProducts, initializeDisplayOrder, reorderProduct, updateProduct } from '@/services/shop';
+import { createProduct, deleteGstSlab, deleteProduct, getBrands, getCategories, getProducts, initializeDisplayOrder, reorderProduct, updateGstSlab, updateProduct } from '@/services/shop';
 import { Brand, Category, Product } from '@/types/shop';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
-import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Trash2 } from 'lucide-react';
+import { collection, doc, getDocs, orderBy, query, setDoc } from 'firebase/firestore';
+import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Star, Trash2 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -34,6 +34,12 @@ export const ProductManager = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterBrandId, setFilterBrandId] = useState<string>('all');
     const [sortConfig, setSortConfig] = useState<{ key: keyof Product, direction: 'asc' | 'desc' } | null>(null);
+    const [gstSlabs, setGstSlabs] = useState<{id: string, title: string, percentage: number}[]>([]);
+    
+    // GST Form State
+    const [isGstDialogOpen, setIsGstDialogOpen] = useState(false);
+    const [editingGst, setEditingGst] = useState<{id: string, title: string, percentage: number} | null>(null);
+    const [newGst, setNewGst] = useState({ title: '', percentage: '' });
 
     const handleSort = (key: keyof Product) => {
         setSortConfig(current => {
@@ -68,7 +74,10 @@ export const ProductManager = () => {
         isVisible: true,
         spv: '',
         trackInventory: false,
-        placeOfOrigin: [] as string[] // Multi-select support
+        placeOfOrigin: [] as string[], // Multi-select support
+        gstTitle: '',
+        gstPercentage: '',
+        isFeatured: false
     });
 
     const fetchData = async () => {
@@ -88,6 +97,12 @@ export const ProductManager = () => {
             const originsSnapshot = await getDocs(query(collection(db, 'origins'), orderBy('name')));
             const fetchedOrigins = originsSnapshot.docs.map(d => ({ id: d.id, name: d.data().name }));
             setOrigins(fetchedOrigins);
+
+            try {
+                const gstSnapshot = await getDocs(collection(db, 'gstSlabs'));
+                const fetchedGst = gstSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
+                setGstSlabs(fetchedGst);
+            } catch(e) { console.error("Could not fetch GST slabs", e) }
 
             // Fetch ALL active/inactive products (limit 1000)
             const result = await getProducts({ includeInactive: true, sort: 'order' }, null, 1000);
@@ -164,6 +179,62 @@ export const ProductManager = () => {
 
     // Image upload is now handled by MultiImageUpload component
 
+    const handleCreateGst = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            if (!newGst.title || !newGst.percentage) {
+                toast.error("Please fill all GST fields");
+                return;
+            }
+            const percentage = Number(newGst.percentage);
+            if (isNaN(percentage) || percentage < 0) {
+                toast.error("GST percentage must be a valid positive number");
+                return;
+            }
+            
+            const id = newGst.title.toLowerCase().replace(/[^a-z0-9]/g, '-');
+            await setDoc(doc(db, 'gstSlabs', id), {
+                title: newGst.title,
+                percentage: percentage
+            });
+            
+            setGstSlabs([...gstSlabs, { id, title: newGst.title, percentage }]);
+            setFormData({ ...formData, gstTitle: newGst.title, gstPercentage: percentage.toString() });
+            setNewGst({ title: '', percentage: '' });
+            toast.success("GST Slab created successfully");
+        } catch (error) {
+            console.error("Error creating GST slab", error);
+            toast.error("Failed to create GST slab");
+        }
+    };
+
+    const handleUpdateGst = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingGst) return;
+        try {
+            const percentage = Number(newGst.percentage);
+            await updateGstSlab(editingGst.id, { title: newGst.title, percentage });
+            
+            setGstSlabs(gstSlabs.map(g => g.id === editingGst.id ? { ...g, title: newGst.title, percentage } : g));
+            setEditingGst(null);
+            setNewGst({ title: '', percentage: '' });
+            toast.success("GST Slab updated successfully");
+        } catch (error) {
+            toast.error("Failed to update GST slab");
+        }
+    };
+
+    const handleDeleteGst = async (id: string) => {
+        if (!confirm("Are you sure? This will not remove GST from existing products but they will no longer have a reference to this slab.")) return;
+        try {
+            await deleteGstSlab(id);
+            setGstSlabs(gstSlabs.filter(g => g.id !== id));
+            toast.success("GST Slab deleted");
+        } catch (error) {
+            toast.error("Failed to delete GST slab");
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -224,7 +295,12 @@ export const ProductManager = () => {
                 isActive: true,
                 spv,
                 trackInventory: formData.trackInventory,
-                placeOfOrigin: formData.placeOfOrigin // Array of origins
+                placeOfOrigin: formData.placeOfOrigin, // Array of origins
+                isFeatured: formData.isFeatured,
+                gst: formData.gstTitle && formData.gstPercentage ? {
+                    title: formData.gstTitle,
+                    percentage: Number(formData.gstPercentage)
+                } : undefined
             };
 
             if (editingProduct) {
@@ -322,7 +398,10 @@ export const ProductManager = () => {
             variantType: '',
             isVisible: true,
             trackInventory: false,
-            placeOfOrigin: []
+            placeOfOrigin: [],
+            gstTitle: '',
+            gstPercentage: '',
+            isFeatured: false
         });
     };
 
@@ -348,7 +427,10 @@ export const ProductManager = () => {
             isVisible: product.isVisible ?? true,
             spv: product.spv?.toString() || '',
             trackInventory: product.trackInventory || false,
-            placeOfOrigin: product.placeOfOrigin || []
+            placeOfOrigin: product.placeOfOrigin || [],
+            gstTitle: product.gst?.title || '',
+            gstPercentage: product.gst?.percentage?.toString() || '',
+            isFeatured: product.isFeatured || false
         });
     };
 
@@ -555,9 +637,42 @@ export const ProductManager = () => {
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label>Variant Type (Optional)</Label>
-                                <Input value={formData.variantType} onChange={e => setFormData({ ...formData, variantType: e.target.value })} placeholder="e.g. Color, Size" />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Variant Type (Optional)</Label>
+                                    <Input value={formData.variantType} onChange={e => setFormData({ ...formData, variantType: e.target.value })} placeholder="e.g. Color, Size" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="flex justify-between items-center">
+                                        GST Slab
+                                        <Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={() => setIsGstDialogOpen(true)}>
+                                            + Add New GST
+                                        </Button>
+                                    </Label>
+                                    <Select 
+                                        value={formData.gstTitle || "__none__"} 
+                                        onValueChange={(value) => {
+                                            if (value === "__none__") {
+                                                setFormData({ ...formData, gstTitle: '', gstPercentage: '' });
+                                            } else {
+                                                const selected = gstSlabs.find(g => g.title === value);
+                                                if (selected) setFormData({ ...formData, gstTitle: selected.title, gstPercentage: selected.percentage.toString() });
+                                            }
+                                        }}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select GST" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="__none__">None</SelectItem>
+                                            {gstSlabs.map(slab => (
+                                                <SelectItem key={slab.id} value={slab.title}>
+                                                    {slab.title} ({slab.percentage}%)
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                             
                             <div className="flex gap-4">
@@ -598,6 +713,18 @@ export const ProductManager = () => {
                                         Toggle visibility for customers.
                                     </p>
                                 </div>
+
+                                <div className="flex items-center space-x-2 border p-3 rounded-md flex-1">
+                                    <Switch
+                                        id="isFeatured"
+                                        checked={formData.isFeatured}
+                                        onCheckedChange={(checked) => setFormData({...formData, isFeatured: checked})}
+                                    />
+                                    <Label htmlFor="isFeatured">Featured (Star)</Label>
+                                    <p className="text-xs text-muted-foreground ml-2">
+                                        Show on home page.
+                                    </p>
+                                </div>
                             </div>
 
                             <div className="space-y-2">
@@ -613,6 +740,74 @@ export const ProductManager = () => {
                                 {editingProduct ? 'Update' : 'Create'} Product
                             </Button>
                         </form>
+                    </DialogContent>
+                </Dialog>
+
+                <Dialog open={isGstDialogOpen} onOpenChange={(open) => {
+                    setIsGstDialogOpen(open);
+                    if (!open) {
+                        setEditingGst(null);
+                        setNewGst({ title: '', percentage: '' });
+                    }
+                }}>
+                    <DialogContent className="max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Manage GST Slabs</DialogTitle>
+                        </DialogHeader>
+                        
+                        <div className="space-y-4">
+                            <div className="border rounded-md p-2 max-h-48 overflow-y-auto">
+                                <Table>
+                                    <TableBody>
+                                        {gstSlabs.map(slab => (
+                                            <TableRow key={slab.id}>
+                                                <TableCell className="py-2">
+                                                    {slab.title} ({slab.percentage}%)
+                                                </TableCell>
+                                                <TableCell className="py-2 text-right">
+                                                    <div className="flex justify-end gap-1">
+                                                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => {
+                                                            setEditingGst(slab);
+                                                            setNewGst({ title: slab.title, percentage: slab.percentage.toString() });
+                                                        }}>
+                                                            <Edit className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500" onClick={() => handleDeleteGst(slab.id)}>
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+
+                            <form onSubmit={editingGst ? handleUpdateGst : handleCreateGst} className="space-y-4 pt-4 border-t">
+                                <h4 className="text-sm font-medium">{editingGst ? 'Edit GST Slab' : 'Add New GST Slab'}</h4>
+                                <div className="space-y-2">
+                                    <Label>Title (e.g. Standard 18%)</Label>
+                                    <Input required value={newGst.title} onChange={e => setNewGst({ ...newGst, title: e.target.value })} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Percentage (e.g. 18)</Label>
+                                    <Input type="number" required value={newGst.percentage} onChange={e => setNewGst({ ...newGst, percentage: e.target.value })} />
+                                </div>
+                                <div className="flex gap-2">
+                                    {editingGst && (
+                                        <Button type="button" variant="outline" className="flex-1" onClick={() => {
+                                            setEditingGst(null);
+                                            setNewGst({ title: '', percentage: '' });
+                                        }}>
+                                            Cancel
+                                        </Button>
+                                    )}
+                                    <Button type="submit" className="flex-1">
+                                        {editingGst ? 'Update Slab' : 'Create Slab'}
+                                    </Button>
+                                </div>
+                            </form>
+                        </div>
                     </DialogContent>
                 </Dialog>
             </div>
@@ -634,15 +829,20 @@ export const ProductManager = () => {
                             <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort('stock')}>
                                 Stock {sortConfig?.key === 'stock' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                             </TableHead>
+                            <TableHead>GST</TableHead>
+                            <TableHead>Featured</TableHead>
                             <TableHead>Visibility</TableHead>
+                            <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort('averageRating')}>
+                                Rating {sortConfig?.key === 'averageRating' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                            </TableHead>
                             <TableHead>Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
-                            <TableRow><TableCell colSpan={8} className="text-center py-8">Loading...</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={12} className="text-center py-8">Loading...</TableCell></TableRow>
                         ) : products.length === 0 ? (
-                            <TableRow><TableCell colSpan={8} className="text-center py-8">No products found</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={12} className="text-center py-8">No products found</TableCell></TableRow>
                         ) : (
                             products.map(product => (
                                 <TableRow key={product.id}>
@@ -690,9 +890,48 @@ export const ProductManager = () => {
                                         </span>
                                     </TableCell>
                                     <TableCell>
+                                        {product.gst ? (
+                                            <div className="text-xs">
+                                                <div className="font-medium">{product.gst.percentage}%</div>
+                                                <div className="text-[10px] text-gray-400">{product.gst.title}</div>
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-gray-400 border px-1 rounded">N/A</span>
+                                        )}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Button 
+                                            size="icon" 
+                                            variant="ghost" 
+                                            className={product.isFeatured ? "text-amber-500" : "text-gray-300"}
+                                            onClick={async () => {
+                                                try {
+                                                    await updateProduct(product.id, { isFeatured: !product.isFeatured });
+                                                    fetchData();
+                                                    toast.success(product.isFeatured ? "Removed from featured" : "Added to featured");
+                                                } catch (e) {
+                                                    toast.error("Failed to update featured status");
+                                                }
+                                            }}
+                                        >
+                                            <Star className={`h-5 w-5 ${product.isFeatured ? "fill-current" : ""}`} />
+                                        </Button>
+                                    </TableCell>
+                                    <TableCell>
                                         <span className={`px-2 py-1 rounded text-xs ${product.isVisible !== false ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
                                             {product.isVisible !== false ? 'Visible' : 'Hidden'}
                                         </span>
+                                    </TableCell>
+                                    <TableCell>
+                                        {product.totalReviews ? (
+                                            <div className="flex items-center gap-1 text-xs">
+                                                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                                <span className="font-bold">{product.averageRating}</span>
+                                                <span className="text-gray-400">({product.totalReviews})</span>
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-gray-400">0 Reviews</span>
+                                        )}
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex gap-2">
@@ -702,14 +941,14 @@ export const ProductManager = () => {
                                             <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => handleDelete(product)}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
-                                                <div className="flex flex-col gap-0.5">
-                                                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleReorder(product, 'up')}>
-                                                        <ArrowUp className="h-3 w-3" />
-                                                    </Button>
-                                                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleReorder(product, 'down')}>
-                                                        <ArrowDown className="h-3 w-3" />
-                                                    </Button>
-                                                </div>
+                                            <div className="flex flex-col gap-0.5">
+                                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleReorder(product, 'up')}>
+                                                    <ArrowUp className="h-3 w-3" />
+                                                </Button>
+                                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleReorder(product, 'down')}>
+                                                    <ArrowDown className="h-3 w-3" />
+                                                </Button>
+                                            </div>
                                         </div>
                                     </TableCell>
                                 </TableRow>

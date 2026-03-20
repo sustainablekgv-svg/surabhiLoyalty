@@ -139,6 +139,9 @@ export const AdminStats = () => {
         const totalSurabhiCoins = customers
           .filter(customer => customer.demoStore === false)
           .reduce((sum, customer) => sum + (customer.surabhiBalance || 0), 0);
+        const totalShippingCredits = customers
+          .filter(customer => customer.demoStore === false)
+          .reduce((sum, customer) => sum + (customer.shippingBalance || 0), 0);
         const totalSevaPool = sevaPoolAmount;
 
         // Update stats cards
@@ -163,6 +166,13 @@ export const AdminStats = () => {
             icon: Coins,
             color: 'text-purple-600',
             bgColor: 'bg-purple-50',
+          },
+          {
+            title: 'Shipping Credits ATM',
+            value: `₹${(totalShippingCredits || 0).toFixed(2)}`,
+            icon: TrendingUp,
+            color: 'text-indigo-600',
+            bgColor: 'bg-indigo-50',
           },
           {
             title: 'Seva Pool',

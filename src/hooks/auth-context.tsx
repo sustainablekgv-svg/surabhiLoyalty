@@ -7,11 +7,12 @@ import {
     ensureFirebaseAuth,
     verifyUserExists,
 } from '@/lib/authService';
+import { safeDecryptText } from '@/lib/encryption';
 import { auth } from '@/lib/firebase';
 import { sessionManager } from '@/lib/sessionManager';
 import { storageUtils } from '@/lib/storage';
 import { tabSync } from '@/lib/tabSync';
-import { User } from '@/types/types';
+import { User, StaffType, CustomerType } from '@/types/types';
 
 interface AuthContextType {
   user: User | null;
@@ -82,6 +83,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (userExists) {
         setUser(storedUser);
         sessionManager.updateActivity();
+
+        // Ensure Firebase Auth is also active if not already
+        // This is critical for httpsCallable functions like image upload
+        if (!auth.currentUser) {
+          const email = storedUser.role === 'customer' 
+            ? (storedUser as CustomerType).customerEmail 
+            : (storedUser as StaffType).staffEmail;
+          
+          const encryptedPassword = storedUser.role === 'customer'
+            ? (storedUser as CustomerType).customerPassword
+            : (storedUser as StaffType).staffPassword;
+
+          if (email && encryptedPassword) {
+            const password = safeDecryptText(encryptedPassword);
+            if (password) {
+              // console.log('[Auth] Attempting automatic Firebase re-authentication');
+              ensureFirebaseAuth(email, password, { 
+                allowCreate: false, 
+                tolerateFailure: true 
+              }).catch(() => {
+                 // console.warn('[Auth] Automatic Firebase re-authentication failed');
+              });
+            }
+          }
+        }
       } else {
         storageUtils.clearAll();
       }
@@ -101,21 +127,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const initAuth = async () => {
       try {
-        // Only the main tab should handle Firebase auth state changes
-        if (sessionManager.isMainTab()) {
-          unsubscribe = onAuthStateChanged(auth, async firebaseUser => {
-            if (!isInitialized) {
-              await initializeAuth();
-            }
+        // Every tab should listen to its own Firebase auth state changes
+        // to ensure auth.currentUser is populated and httpsCallable works.
+        unsubscribe = onAuthStateChanged(auth, async firebaseUser => {
+          if (!isInitialized) {
+            await initializeAuth();
+          }
 
-            // Broadcast auth state change to other tabs
-            tabSync.broadcast('AUTH_STATE_CHANGE', {
-              user: firebaseUser ? { uid: firebaseUser.uid, email: firebaseUser.email } : null,
-              timestamp: Date.now(),
-            });
+          // Broadcast auth state change to other tabs
+          tabSync.broadcast('AUTH_STATE_CHANGE', {
+            user: firebaseUser ? { uid: firebaseUser.uid, email: firebaseUser.email } : null,
+            timestamp: Date.now(),
           });
-          setAuthUnsubscribe(() => unsubscribe);
-        }
+        });
+        setAuthUnsubscribe(() => unsubscribe);
 
         // Set up tab synchronization listeners
         const logoutUnsubscribe = tabSync.subscribe('LOGOUT', message => {
@@ -193,8 +218,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Try to sign in with Firebase if email exists
       const email = userData.role === 'customer' 
-        ? (userData as import('@/types/types').CustomerType).customerEmail 
-        : (userData as import('@/types/types').StaffType).staffEmail;
+        ? (userData as CustomerType).customerEmail 
+        : (userData as StaffType).staffEmail;
 
       const normalizedEmail = email?.trim();
       const shouldAttemptFirebaseAuth =
@@ -225,10 +250,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = async (): Promise<void> => {
     setIsLoading(true);
     try {
-      // Only sign out from Firebase if this is the main tab
-      if (sessionManager.isMainTab()) {
-        await signOut(auth);
-      }
+      // Sign out from Firebase in this tab
+      await signOut(auth);
 
       // Clear session for this tab (this will broadcast to other tabs)
       sessionManager.clearSession();
