@@ -65,7 +65,7 @@ export function hasMetQuarterlyTarget(customer: CustomerType): boolean {
   //   return true;
   // }
 
-  // For subsequent quarters: cumulative target = 2000 * (quarters completed - 1)
+  // For subsequent quarters: cumulative target = 2000 * quartersPast
   const cummulativeTarget = 2000 * quartersPast;
 
   return customer.cumTotal >= cummulativeTarget;
@@ -89,7 +89,7 @@ export function updateCustomerQuarterlyTarget(customer: CustomerType): Partial<C
   //   targetMet = true;
   //   coinsFrozen = false;
   // } else {
-  // Cumulative target for subsequent quarters: 2000 * (quarters completed - 1)
+  // Cumulative target for subsequent quarters: 2000 * quartersPast
   newTarget = 2000 * quartersPast;
   targetMet = customer.cumTotal >= newTarget;
   coinsFrozen = !targetMet;

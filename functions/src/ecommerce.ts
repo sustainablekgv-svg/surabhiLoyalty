@@ -135,7 +135,7 @@ export const razorpayWebhook = functions.https.onRequest({ cors: true }, async (
     }
 
     const event = req.body;
-    console.log('Razorpay Webhook Event:', event.event);
+    // console.log('Razorpay Webhook Event:', event.event);
 
     try {
         if (event.event === 'payment.captured') {

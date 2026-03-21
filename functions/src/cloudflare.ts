@@ -1,7 +1,9 @@
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import type { Response } from 'express';
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions/v2';
+import { onRequest, type Request } from 'firebase-functions/v2/https';
 
 // Initialize Firebase Admin if not already initialized
 if (admin.apps.length === 0) {
@@ -38,26 +40,89 @@ const getR2Client = () => {
     return { client, bucketName, accountId }; // Return needed config
 };
 
-// Define allowed origins
-const allowedOrigins = [
-  "https://surabhiloyalty.web.app",
-  "https://surabhiloyalty-uat.web.app",
-  "https://surabhiloyalty.firebaseapp.com",
-  "https://surabhiloyalty-uat.firebaseapp.com",
-  /http:\/\/localhost:\d+/
-];
+/**
+ * Callable: allow browser clients; preflight must reach Cloud Run with public invoker.
+ * R2 endpoints still require Firebase Auth (`request.auth`).
+ */
+const callableOpts = {
+  cors: true as const,
+  invoker: 'public' as const,
+  region: 'us-central1' as const,
+};
+
+/** Origins allowed for HTTP delete CORS (explicit reflection; avoids callable preflight issues). */
+const httpDeleteAllowedOrigins = new Set([
+  'https://surabhiloyalty.web.app',
+  'https://surabhiloyalty-uat.web.app',
+  'https://surabhiloyalty.firebaseapp.com',
+  'https://surabhiloyalty-uat.firebaseapp.com',
+  'https://sustainablekgv.com',
+  'https://www.sustainablekgv.com',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+]);
+
+function setHttpDeleteCors(req: Request, res: Response): void {
+  const origin = req.headers.origin;
+  if (origin && httpDeleteAllowedOrigins.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  res.setHeader('Access-Control-Max-Age', '3600');
+}
+
+/** Shared R2 delete implementation (callable + HTTP). */
+async function deleteR2ObjectByKeyOrUrl(key: string | undefined, fileUrl: string | undefined): Promise<string> {
+  const { client, bucketName } = getR2Client();
+  let targetKey = key;
+
+  if (!targetKey && fileUrl) {
+    const publicUrl = process.env.CLOUDFLARE_PUBLIC_URL;
+    if (publicUrl && fileUrl.startsWith(publicUrl)) {
+      targetKey = fileUrl.replace(`${publicUrl}/`, '');
+    } else {
+      try {
+        const urlObj = new URL(fileUrl);
+        const pathParts = urlObj.pathname.split('/');
+        if (pathParts.length >= 3 && pathParts[1] === bucketName) {
+          targetKey = pathParts.slice(2).join('/');
+        } else {
+          targetKey = urlObj.pathname.substring(1);
+        }
+      } catch {
+        console.warn('Could not parse fileUrl', fileUrl);
+      }
+    }
+  }
+
+  if (!targetKey) {
+    throw new functions.https.HttpsError('invalid-argument', 'Could not determine file key');
+  }
+
+  await client.send(
+    new DeleteObjectCommand({
+      Bucket: bucketName,
+      Key: targetKey,
+    })
+  );
+
+  return targetKey;
+}
 
 export const createR2UploadUrl = functions.https.onCall({ 
-    cors: allowedOrigins
+    ...callableOpts
 }, async (request) => {
   const authHeader = request.rawRequest.headers['authorization'];
   const origin = request.rawRequest.headers['origin'];
   
-  console.log("createR2UploadUrl called", { 
-    auth: request.auth ? `UID:${request.auth.uid}` : "UNAUTHENTICATED",
-    origin,
-    authHeader: authHeader ? "Present" : "Missing"
-  });
+//   console.log("createR2UploadUrl called", { 
+//     auth: request.auth ? `UID:${request.auth.uid}` : "UNAUTHENTICATED",
+//     origin,
+//     authHeader: authHeader ? "Present" : "Missing"
+//   });
 
   if (!request.auth) {
     const authHeader = request.rawRequest.headers['authorization'];
@@ -113,7 +178,7 @@ export const createR2UploadUrl = functions.https.onCall({
 });
 
 export const deleteImageFromR2 = functions.https.onCall({
-    cors: allowedOrigins
+    ...callableOpts
 }, async (request) => {
     if (!request.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');
@@ -125,49 +190,88 @@ export const deleteImageFromR2 = functions.https.onCall({
     }
 
     try {
-        const { client, bucketName } = getR2Client();
-        let targetKey = key;
-        
-        // Extract key from URL if not provided directly
-        if (!targetKey && fileUrl) {
-           const publicUrl = process.env.CLOUDFLARE_PUBLIC_URL;
-           if (publicUrl && fileUrl.startsWith(publicUrl)) {
-               targetKey = fileUrl.replace(`${publicUrl}/`, '');
-           } else {
-               // Fallback or R2 direct URL format parsing if needed
-               // Standard format: https://<account>.r2.cloudflarestorage.com/<bucket>/<key>
-               try {
-                  const urlObj = new URL(fileUrl);
-                  const pathParts = urlObj.pathname.split('/');
-                  // If path is /bucket/folder/file
-                  if (pathParts.length >= 3 && pathParts[1] === bucketName) {
-                      targetKey = pathParts.slice(2).join('/');
-                  } else {
-                      // Maybe custom domain or simplified structure
-                      targetKey = urlObj.pathname.substring(1); // remove leading slash
-                  }
-               } catch (e) {
-                   console.warn("Could not parse fileUrl", fileUrl);
-               }
-           }
-        }
-
-        if (!targetKey) {
-            throw new functions.https.HttpsError('invalid-argument', 'Could not determine file key');
-        }
-
-        // console.log(`Deleting object from R2: ${targetKey}`);
-
-        const command = new DeleteObjectCommand({
-            Bucket: bucketName,
-            Key: targetKey,
-        });
-
-        await client.send(command);
-
+        const targetKey = await deleteR2ObjectByKeyOrUrl(key, fileUrl);
         return { success: true, message: `Deleted ${targetKey}` };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error deleting image from R2:', error);
-        throw new functions.https.HttpsError('internal', error.message || 'Delete failed');
+        if (error instanceof functions.https.HttpsError) {
+            throw error;
+        }
+        const msg =
+            error instanceof Error ? error.message : typeof error === 'string' ? error : 'Delete failed';
+        throw new functions.https.HttpsError('internal', msg);
     }
 });
+
+/**
+ * HTTP + explicit CORS for browsers where callable preflight fails (custom domains / Cloud Run).
+ * Auth: Authorization: Bearer &lt;Firebase ID token&gt;. Body JSON: `{ "fileUrl": "..." }` or `{ "key": "..." }`.
+ */
+export const deleteImageFromR2Http = onRequest(
+  {
+    region: 'us-central1',
+    invoker: 'public',
+  },
+  async (req: Request, res: Response) => {
+    setHttpDeleteCors(req, res);
+
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
+      return;
+    }
+
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      res.status(401).json({ error: 'Missing or invalid Authorization header' });
+      return;
+    }
+
+    const idToken = authHeader.slice('Bearer '.length).trim();
+    try {
+      await admin.auth().verifyIdToken(idToken);
+    } catch (e) {
+      console.warn('deleteImageFromR2Http: invalid ID token', e);
+      res.status(401).json({ error: 'Invalid or expired ID token' });
+      return;
+    }
+
+    let body: { key?: string; fileUrl?: string };
+    try {
+      if (req.rawBody && req.rawBody.length > 0) {
+        body = JSON.parse(req.rawBody.toString('utf8')) as { key?: string; fileUrl?: string };
+      } else if (req.body && typeof req.body === 'object') {
+        body = req.body as { key?: string; fileUrl?: string };
+      } else {
+        body = {};
+      }
+    } catch {
+      res.status(400).json({ error: 'Invalid JSON body' });
+      return;
+    }
+
+    const { key, fileUrl } = body;
+    if (!key && !fileUrl) {
+      res.status(400).json({ error: 'Must provide key or fileUrl' });
+      return;
+    }
+
+    try {
+      const targetKey = await deleteR2ObjectByKeyOrUrl(key, fileUrl);
+      res.status(200).json({ success: true, message: `Deleted ${targetKey}` });
+    } catch (error: unknown) {
+      console.error('deleteImageFromR2Http R2 error:', error);
+      if (error instanceof functions.https.HttpsError) {
+        const status = error.code === 'invalid-argument' ? 400 : 500;
+        res.status(status).json({ error: error.message });
+        return;
+      }
+      const msg = error instanceof Error ? error.message : 'Delete failed';
+      res.status(500).json({ error: msg });
+    }
+  }
+);

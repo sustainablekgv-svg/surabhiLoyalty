@@ -59,7 +59,7 @@ import { AdminHeaderProps, StoreType } from '@/types/types';
 
 import { format } from 'date-fns';
 export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
-  console.log('AdminHeader Render. User:', user?.id, user?.staffName); // DEBUG LOG
+  // console.log('AdminHeader Render. User:', user?.id, user?.staffName); // DEBUG LOG
   const [stores, setStores] = useState<StoreType[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<StaffType>>({

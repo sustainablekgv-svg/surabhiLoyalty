@@ -39,7 +39,6 @@ export const checkQuarterlyCriteria = functions.scheduler.onSchedule(
       const currentQuartersPast = (data.quartersPast || 0) + 1;
 
       // Calculate quarterly target: First quarter has no target, subsequent quarters: 2000 * (quarters-1)
-      const isStudent = data.isStudent || false;
       const cumTotal = data.cumTotal || 0;
       let cummulativeTarget = 0;
       let coinsFrozen = false;
@@ -51,8 +50,8 @@ export const checkQuarterlyCriteria = functions.scheduler.onSchedule(
       //   targetMet = true;
       //   coinsFrozen = false;
       // } else {
-      // For subsequent quarters: cumulative target = 2000 * (quarters completed - 1)
-      cummulativeTarget = isStudent ? 500 * currentQuartersPast : 2000 * currentQuartersPast;
+      // For subsequent quarters: cumulative target = 2000 * quartersPast
+      cummulativeTarget = 2000 * currentQuartersPast;
       targetMet = cumTotal >= cummulativeTarget;
       coinsFrozen = !targetMet; // Freeze coins if cumulative target not met
       // }
