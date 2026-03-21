@@ -115,15 +115,6 @@ async function deleteR2ObjectByKeyOrUrl(key: string | undefined, fileUrl: string
 export const createR2UploadUrl = functions.https.onCall({ 
     ...callableOpts
 }, async (request) => {
-  const authHeader = request.rawRequest.headers['authorization'];
-  const origin = request.rawRequest.headers['origin'];
-  
-//   console.log("createR2UploadUrl called", { 
-//     auth: request.auth ? `UID:${request.auth.uid}` : "UNAUTHENTICATED",
-//     origin,
-//     authHeader: authHeader ? "Present" : "Missing"
-//   });
-
   if (!request.auth) {
     const authHeader = request.rawRequest.headers['authorization'];
     const origin = request.rawRequest.headers['origin'];
