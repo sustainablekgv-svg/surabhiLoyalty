@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import './ensureGcpRuntimeCredentials';
 /**
  * Import function triggers from their respective submodules:
  *
@@ -44,6 +45,8 @@ export const verifyRazorpayPayment = ecommerce.verifyRazorpayPayment;
 export const razorpayWebhook = ecommerce.razorpayWebhook;
 export const createR2UploadUrl = cloudflare.createR2UploadUrl;
 export const deleteImageFromR2 = cloudflare.deleteImageFromR2;
+/** HTTP variant with explicit CORS — use from web clients when callable preflight fails. */
+export const deleteImageFromR2Http = cloudflare.deleteImageFromR2Http;
 export const syncFirebaseAuthForUpload = syncFirebaseAuthForUploadFn;
 export const onStaffUpdate = auth.onStaffUpdate;
 export const onCustomerUpdate = auth.onCustomerUpdate;

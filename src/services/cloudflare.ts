@@ -26,8 +26,8 @@ export const uploadImageToR2 = async (file: File, folder: string = 'uploads'): P
 
     try {
         const user = await getFirebaseUserForFunctions();
-        const token = await user.getIdToken();
-        console.log("Calling createR2UploadUrl. User UID:", user.uid, "Token Length:", token.length);
+        const token = await user.getIdToken(true);
+        // console.log("Calling createR2UploadUrl. User UID:", user.uid, "Token Length:", token.length);
         
         // 1. Get Signed URL from Backend
         const createR2UploadUrl = httpsCallable<{ filename: string; contentType: string; folder?: string }, UploadResponse>(
@@ -35,12 +35,33 @@ export const uploadImageToR2 = async (file: File, folder: string = 'uploads'): P
             'createR2UploadUrl'
         );
         
-        // console.log(`Requesting signed URL for ${file.name} (${file.type}) in folder ${folder}...`);
-        const { data } = await createR2UploadUrl({
+        const requestPayload = {
             filename: file.name,
             contentType: file.type,
             folder
-        });
+        };
+
+        // First attempt with refreshed token; retry once after another forced refresh
+        // to handle edge cases where callable still receives stale auth context.
+        let data: UploadResponse;
+        try {
+            const response = await createR2UploadUrl(requestPayload);
+            data = response.data;
+        } catch (firstErr: any) {
+            const code = firstErr?.code as string | undefined;
+            const shouldRetry =
+                code === 'functions/unauthenticated' ||
+                code === 'functions/internal' ||
+                code === 'unauthenticated';
+
+            if (!shouldRetry) {
+                throw firstErr;
+            }
+
+            await user.getIdToken(true);
+            const retryResponse = await createR2UploadUrl(requestPayload);
+            data = retryResponse.data;
+        }
 
         const { signedUrl, fileUrl } = data;
 
@@ -89,15 +110,34 @@ export const uploadImageToR2 = async (file: File, folder: string = 'uploads'): P
 export const deleteImageFromR2 = async (fileUrl: string): Promise<void> => {
     if (!fileUrl) return;
     try {
-        await getFirebaseUserForFunctions();
-        const deleteFn = httpsCallable<{ fileUrl: string }, { success: boolean; message: string }>(
-            functions, 
-            'deleteImageFromR2'
-        );
-        await deleteFn({ fileUrl });
-        // console.log(`Successfully requested deletion for: ${fileUrl}`);
+        const user = await getFirebaseUserForFunctions();
+        const token = await user.getIdToken(true);
+        const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined;
+        if (!projectId) {
+            throw new Error('Missing VITE_FIREBASE_PROJECT_ID');
+        }
+        // HTTP endpoint: explicit CORS for custom domains (callable preflight can fail on Cloud Run).
+        const url = `https://us-central1-${projectId}.cloudfunctions.net/deleteImageFromR2Http`;
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ fileUrl }),
+        });
+        if (!res.ok) {
+            let errMsg = `Delete failed (${res.status})`;
+            try {
+                const data = (await res.json()) as { error?: string };
+                if (data?.error) errMsg = data.error;
+            } catch {
+                /* ignore */
+            }
+            throw new Error(errMsg);
+        }
     } catch (error) {
         console.error("Failed to delete image from R2:", error);
-        // Clean-up should not block user flow, so we log but don't re-throw typically
+        throw error;
     }
 };

@@ -414,7 +414,7 @@ export const registerCustomer = async (data: RegisterCustomerData): Promise<Cust
       surbhiTotal: 0,
       
       quartersPast: 0,
-      cummulativeTarget: data.isStudent ? 500 : 1000, 
+      cummulativeTarget: 0, 
       targetMet: false,
       shippingBalance: 0,
       shippingCredit: 0,
