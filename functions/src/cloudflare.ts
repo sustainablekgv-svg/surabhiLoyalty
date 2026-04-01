@@ -1,6 +1,6 @@
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import type { Response } from 'express';
+
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions/v2';
 import { onRequest, type Request } from 'firebase-functions/v2/https';
@@ -63,7 +63,7 @@ const httpDeleteAllowedOrigins = new Set([
   'http://127.0.0.1:5173',
 ]);
 
-function setHttpDeleteCors(req: Request, res: Response): void {
+function setHttpDeleteCors(req: Request, res: any): void {
   const origin = req.headers.origin;
   if (origin && httpDeleteAllowedOrigins.has(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
@@ -203,7 +203,7 @@ export const deleteImageFromR2Http = onRequest(
     region: 'us-central1',
     invoker: 'public',
   },
-  async (req: Request, res: Response) => {
+  async (req: Request, res: any) => {
     setHttpDeleteCors(req, res);
 
     if (req.method === 'OPTIONS') {

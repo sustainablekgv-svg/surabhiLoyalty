@@ -653,6 +653,7 @@ const ShopPage = () => {
                                                 <span className="text-xl font-bold text-gray-400">{brand.name[0]}</span>
                                             )}
                                         </div>
+                                        <h3 className="font-semibold text-gray-800 text-sm px-1">{brand.name}</h3>
                                     </div>
                                 ))}
                             </div>
