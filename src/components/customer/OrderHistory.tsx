@@ -84,7 +84,10 @@ export const CustomerOrderHistory = () => {
     };
     
     const getStatusStep = (status: Order['status']) => {
-        const steps = ['payment_pending', 'received', 'confirmed', 'in_transit', 'delivered'];
+        const steps = ['pending', 'paid', 'confirmed', 'in_transit', 'delivered'];
+        // Mapping multiple technical statuses to consolidated user steps
+        if (status === 'payment_pending') return 0;
+        if (status === 'received') return 1;
         if (status === 'cancelled') return -1;
         return steps.indexOf(status);
     };
@@ -125,10 +128,12 @@ export const CustomerOrderHistory = () => {
                                         <Badge className={`
                                             ${order.status === 'delivered' ? 'bg-green-100 text-green-800' : 
                                               order.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
+                                              order.status === 'paid' || order.status === 'received' ? 'bg-emerald-100 text-emerald-800' :
                                               order.status === 'payment_pending' ? 'bg-orange-100 text-orange-800' :
+                                              order.status === 'pending' ? 'bg-slate-100 text-slate-800' :
                                               'bg-blue-100 text-blue-800'} border-0 px-3 py-1
                                         `}>
-                                            {order.status.toUpperCase().replace('_', ' ')}
+                                            {order.status === 'received' ? 'PAID' : order.status.toUpperCase().replace('_', ' ')}
                                         </Badge>
                                     </div>
                                 </div>
@@ -191,20 +196,20 @@ export const CustomerOrderHistory = () => {
                                                             <div className="relative">
                                                                 <div className="absolute left-0 top-1/2 w-full h-1 bg-gray-200 -z-10"></div>
                                                                 <div className="flex justify-between">
-                                                                    {['Payment Pending', 'Received', 'Confirmed', 'In Transit', 'Delivered'].map((step, index) => {
+                                                                    {['Placed', 'Paid', 'Confirmed', 'In Transit', 'Delivered'].map((step, index) => {
                                                                         const currentStep = getStatusStep(order.status);
                                                                         const isCompleted = index <= currentStep;
                                                                         const isCurrent = index === currentStep;
                                                                         
                                                                         return (
-                                                                            <div key={step} className="flex flex-col items-center bg-white px-2">
+                                                                            <div key={step} className="flex flex-col items-center bg-white px-1">
                                                                                 <div className={`
-                                                                                    w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2
+                                                                                    w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold border-2 transition-colors
                                                                                     ${isCompleted ? 'bg-green-500 border-green-500 text-white' : 'bg-white border-gray-300 text-gray-400'}
                                                                                 `}>
-                                                                                    {index + 1}
+                                                                                    {isCompleted && !isCurrent ? '✓' : index + 1}
                                                                                 </div>
-                                                                                <span className={`text-xs mt-1 ${isCurrent ? 'font-bold text-gray-900' : 'text-gray-500'}`}>{step}</span>
+                                                                                <span className={`text-[9px] sm:text-xs mt-1 ${isCurrent ? 'font-bold text-gray-900' : 'text-gray-500'}`}>{step}</span>
                                                                             </div>
                                                                         )
                                                                     })}

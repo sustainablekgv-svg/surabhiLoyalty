@@ -33,7 +33,7 @@ const SignupPage = () => {
     dateOfBirth: '',
     storeLocation: 'Sustainable KGV Online',
     referredBy: referralCode || '',
-    tpin: '',
+
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,13 +130,8 @@ const SignupPage = () => {
     //     return;
     // }
 
-    if (!formData.customerName || !formData.customerMobile || !formData.dateOfBirth || !formData.gender || !formData.storeLocation || !formData.customerPassword || !formData.tpin) {
+    if (!formData.customerName || !formData.customerMobile || !formData.dateOfBirth || !formData.gender || !formData.storeLocation || !formData.customerPassword) {
         toast.error("All fields are mandatory");
-        return;
-    }
-
-    if (!/^\d{4}$/.test(formData.tpin)) {
-        toast.error("TPIN must be exactly 4 digits");
         return;
     }
 
@@ -160,7 +155,6 @@ const SignupPage = () => {
         referredBy: formData.referredBy || null,
         isStudent: isStudent,
         demoStore: false, 
-        tpin: formData.tpin, 
         // Initial defaults handled in service
       });
 
@@ -330,28 +324,6 @@ const SignupPage = () => {
                   </div>
                 </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="tpin">TPIN (4 Digits) *</Label>
-                 <div className="relative">
-                    {/* <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
-                    <Input 
-                        id="tpin" 
-                        name="tpin" 
-                        type="password" 
-                        inputMode="numeric"
-                        maxLength={4}
-                        placeholder="Set 4-digit PIN" 
-                        value={formData.tpin} 
-                        onChange={(e) => {
-                            const val = e.target.value.replace(/\D/g, '').slice(0, 4);
-                            handleInputChange({ target: { name: 'tpin', value: val } } as any);
-                        }} 
-                        className="pl-10" 
-                        required 
-                    />
-                </div>
-                <p className="text-xs text-muted-foreground">Used for verifying transactions</p>
-              </div>
 
               <Button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white font-medium py-3 rounded-lg mt-4" disabled={isLoading}>
                 {isLoading ? 'Creating Account...' : 'Sign Up'}

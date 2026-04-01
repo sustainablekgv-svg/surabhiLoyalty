@@ -86,14 +86,14 @@ type AppRole = "customer" | "staff" | "admin";
 export const syncFirebaseAuthForUpload = functions.https.onCall(
   { cors: allowedOrigins },
   async (request) => {
-    console.log("!!! CRITICAL_SYNC_CALL !!!");
+    // console.log("!!! CRITICAL_SYNC_CALL !!!");
     const { mobile, password, appRole } = request.data as {
       mobile?: string;
       password?: string;
       appRole?: AppRole;
     };
 
-    console.log(`syncFirebaseAuthForUpload start for ${mobile} (${appRole})`);
+    // console.log(`syncFirebaseAuthForUpload start for ${mobile} (${appRole})`);
 
     if (!mobile || !password || !appRole) {
       throw new functions.https.HttpsError(
@@ -139,11 +139,12 @@ export const syncFirebaseAuthForUpload = functions.https.onCall(
           );
         }
 
-        const email = String(data.customerEmail || "").trim();
+        const email = String(data.customerEmail || "").trim() || `${mobile}@sustainablekgv.com`;
+        
         if (!isValidEmail(email)) {
           throw new functions.https.HttpsError(
             "failed-precondition",
-            "Account needs a valid email for uploads"
+            "Account needs a valid email or mobile number for sync"
           );
         }
 
@@ -153,7 +154,7 @@ export const syncFirebaseAuthForUpload = functions.https.onCall(
           displayName: data.customerName || "Customer",
           docId: doc.id,
         });
-        console.log(`Sync success for customer ${mobile}`);
+        // console.log(`Sync success for customer ${mobile}`);
         return { success: true };
       }
 
@@ -217,11 +218,12 @@ export const syncFirebaseAuthForUpload = functions.https.onCall(
         }
       }
 
-      const email = String(data.staffEmail || "").trim();
+      const email = String(data.staffEmail || "").trim() || `${mobile}@sustainablekgv.com`;
+      
       if (!isValidEmail(email)) {
         throw new functions.https.HttpsError(
           "failed-precondition",
-          "Account needs a valid email for uploads"
+          "Account needs a valid email or mobile number for sync"
         );
       }
 
@@ -233,7 +235,7 @@ export const syncFirebaseAuthForUpload = functions.https.onCall(
         disabled: data.staffStatus === "inactive",
       });
 
-      console.log(`Sync success for ${appRole} ${mobile}`);
+      // console.log(`Sync success for ${appRole} ${mobile}`);
       return { success: true };
     } catch (e: unknown) {
       if (e instanceof functions.https.HttpsError) {
@@ -276,7 +278,7 @@ async function upsertAuthUser(opts: {
     // 1. Try finding by UID (docId)
     try {
       await admin.auth().getUser(docId);
-      console.log(`Auth user found by UID ${docId}, updating.`);
+      // console.log(`Auth user found by UID ${docId}, updating.`);
       try {
         await admin.auth().updateUser(docId, {
           email,
@@ -313,7 +315,7 @@ async function upsertAuthUser(opts: {
     // 2. Try finding by Email
     try {
       const existingEmailUser = await admin.auth().getUserByEmail(email);
-      console.log(`Auth user found by email ${email} but different UID ${existingEmailUser.uid}. Re-syncing.`);
+      // console.log(`Auth user found by email ${email} but different UID ${existingEmailUser.uid}. Re-syncing.`);
       // Delete old user to allow creating one with correct UID (docId)
       await admin.auth().deleteUser(existingEmailUser.uid);
     } catch (e: any) {
@@ -358,7 +360,7 @@ async function upsertAuthUser(opts: {
         throw createErr;
       }
     }
-    console.log(`Auth user created for ${email} with UID ${docId}`);
+    // console.log(`Auth user created for ${email} with UID ${docId}`);
   } catch (err: unknown) {
     console.error(`upsertAuthUser error for ${email}/${docId}:`, err);
     throw err;

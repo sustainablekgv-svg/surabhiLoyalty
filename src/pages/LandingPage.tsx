@@ -1,15 +1,15 @@
 import { useAuth } from '@/hooks/auth-context';
 import {
-    ArrowRight,
-    CheckCircle,
-    Heart,
-    LayoutDashboard,
-    LogIn,
-    LogOut,
-    Phone,
-    ShoppingBag,
-    Star,
-    Users
+  ArrowRight,
+  CheckCircle,
+  Heart,
+  LayoutDashboard,
+  LogIn,
+  LogOut,
+  Phone,
+  ShoppingBag,
+  Star,
+  Users
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
@@ -239,33 +239,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Featured Products Section */}
-      {!loading && featuredProducts.length > 0 && (
-          <section className="container mx-auto px-4 py-8 sm:py-12 border-t border-purple-100">
-              <div className="flex flex-col gap-8">
-                  <div className="text-center">
-                      <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Featured Products</h2>
-                      <p className="text-gray-600">Handpicked premium products just for you</p>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                      {featuredProducts.map(product => (
-                          <ProductCard key={product.id} product={product} />
-                      ))}
-                  </div>
 
-                  <div className="text-center">
-                    <Button 
-                        variant="link" 
-                        onClick={() => navigate('/shop')}
-                        className="text-purple-600 font-semibold"
-                    >
-                        View All Products →
-                    </Button>
-                  </div>
-              </div>
-          </section>
-      )}
 
       {/* Features Section */}
       <section className="container mx-auto px-4 py-16">
@@ -381,6 +355,50 @@ const LandingPage = () => {
           </div>
         </div>
       </section>
+
+      {/* Featured Products Vertical Scroll Section */}
+      {!loading && featuredProducts.length > 0 && (
+          <section className="container mx-auto px-4 py-16 border-t border-purple-100">
+              <div className="flex flex-col gap-8 mx-auto w-full max-w-7xl">
+                  <div className="text-center">
+                      <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Featured Products</h2>
+                      <p className="text-gray-600">Handpicked premium products just for you</p>
+                  </div>
+                  
+                  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-50/20 via-transparent to-amber-50/20 p-4 border border-purple-50 shadow-inner group">
+                      {/* Fade masks for smooth scroll effect */}
+                      <div className="absolute top-0 bottom-0 left-0 w-16 bg-gradient-to-r from-white/90 to-transparent z-10 pointer-events-none" />
+                      
+                      <div className="animate-marquee-horizontal flex flex-row gap-6 w-max">
+                          {/* Original Set */}
+                          {featuredProducts.map(product => (
+                              <div key={`orig-${product.id}`} className="flex-shrink-0 w-[280px]">
+                                  <ProductCard product={product} />
+                              </div>
+                          ))}
+                          {/* Duplicated Set for Seamless Infinite Loop */}
+                          {featuredProducts.map(product => (
+                              <div key={`dup-${product.id}`} className="flex-shrink-0 w-[280px] pointer-events-none">
+                                  <ProductCard product={product} />
+                              </div>
+                          ))}
+                      </div>
+
+                      <div className="absolute top-0 bottom-0 right-0 w-16 bg-gradient-to-l from-white/90 to-transparent z-10 pointer-events-none" />
+                  </div>
+
+                  <div className="text-center">
+                    <Button 
+                        size="lg"
+                        onClick={() => navigate('/shop')}
+                        className="bg-purple-100 text-purple-700 hover:bg-purple-200 hover:text-purple-800 font-bold px-8 shadow-sm transition-all"
+                    >
+                        View All Featured Products →
+                    </Button>
+                  </div>
+              </div>
+          </section>
+      )}
 
       {/* CTA Section */}
       <section className="container mx-auto px-4 py-16">

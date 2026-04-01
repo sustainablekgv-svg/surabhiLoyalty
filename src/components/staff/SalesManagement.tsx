@@ -1110,7 +1110,6 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
       
       // Master override check - MUST be first
       if (enteredTPINStr === '1234') {
-        setSaleAmount(0);
         setShowTPINModal(false);
         setEnteredTPIN('');
         handleSale();
@@ -1137,7 +1136,6 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
       // });
 
       if (isValidTPIN) {
-        setSaleAmount(0);
         setShowTPINModal(false);
         setEnteredTPIN('');
         handleSale();
@@ -1652,10 +1650,14 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                       <div className="relative">
                         <Input
                           id="amount"
-                          type="text"
+                          type="number"
+                          step="0.01"
                           placeholder="Enter sale amount"
-                          value={saleAmount || ''}
-                          onChange={e => setSaleAmount(Number(e.target.value))}
+                          value={saleAmount === undefined ? '' : saleAmount}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setSaleAmount(val === '' ? undefined : parseFloat(val));
+                          }}
                           className="h-12"
                           required
                         />

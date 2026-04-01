@@ -123,13 +123,14 @@ export const razorpayWebhook = functions.https.onRequest({ cors: true }, async (
         return;
     }
 
-    // Verify signature
+    // Verify signature using raw body for robustness
     const expectedSignature = crypto
         .createHmac('sha256', razorpayWebhookSecret)
-        .update(JSON.stringify(req.body))
+        .update(req.rawBody)
         .digest('hex');
 
     if (signature !== expectedSignature) {
+        console.error('Razorpay Webhook Signature Verification Failed');
         res.status(400).send('Invalid signature');
         return;
     }
@@ -163,15 +164,21 @@ export const razorpayWebhook = functions.https.onRequest({ cors: true }, async (
                     paymentStatus: 'paid',
                     status: 'received',
                     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    timeline: admin.firestore.FieldValue.arrayUnion({
+                        status: 'paid',
+                        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                        note: `Online Payment Successful (ID: ${payment.id})`
+                    })
                 });
             }
         } else if (event.event === 'payment.failed') {
             const payment = event.payload.payment.entity;
             const orderId = payment.order_id;
+            const errorMsg = payment.error_description || 'Payment Failed';
 
             await db.collection('payments').doc(orderId).update({
                 status: 'failed',
-                errorReason: payment.error_description,
+                errorReason: errorMsg,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
 
@@ -181,9 +188,15 @@ export const razorpayWebhook = functions.https.onRequest({ cors: true }, async (
                 .get();
 
             if (!ordersSnap.empty) {
-                await ordersSnap.docs[0].ref.update({
+                const orderDoc = ordersSnap.docs[0];
+                await orderDoc.ref.update({
                     paymentStatus: 'failed',
                     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    timeline: admin.firestore.FieldValue.arrayUnion({
+                        status: 'payment_failed',
+                        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                        note: `Payment failed: ${errorMsg}`
+                    })
                 });
             }
         }

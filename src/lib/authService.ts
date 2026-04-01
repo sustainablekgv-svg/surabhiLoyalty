@@ -1,7 +1,7 @@
 import {
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
-    type User as FirebaseAuthUser,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  type User as FirebaseAuthUser,
 } from 'firebase/auth';
 import { addDoc, arrayUnion, collection, doc, getDoc, getDocs, query, Timestamp, updateDoc, where } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -189,34 +189,36 @@ export const getFirebaseUserForFunctions = async (): Promise<FirebaseAuthUser> =
     );
   }
 
-  const email =
+  const mobile =
+    storedUser.role === 'customer'
+      ? (storedUser as CustomerType).customerMobile
+      : (storedUser as StaffType).staffMobile;
+
+  // FALLBACK: If real email is missing, use a virtual email for Firebase Auth based on mobile
+  const rawEmail =
     storedUser.role === 'customer'
       ? (storedUser as CustomerType).customerEmail
       : (storedUser as StaffType).staffEmail;
+
+  const normalizedEmail = rawEmail?.trim() || `${mobile}@sustainablekgv.com`;
+
+  if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
+    throw new Error(
+      'A valid email or mobile number is required for payments. Please contact support.'
+    );
+  }
 
   const encryptedPassword =
     storedUser.role === 'customer'
       ? (storedUser as CustomerType).customerPassword
       : (storedUser as StaffType).staffPassword;
 
-  const normalizedEmail = email?.trim();
-  if (!normalizedEmail || !isValidEmail(normalizedEmail)) {
-    throw new Error(
-      'A valid email on your account is required for uploads. Please update your profile or contact support.'
-    );
-  }
-
   const password = resolveStoredPasswordForFirebase(encryptedPassword);
   if (!password || password.length < 6) {
     throw new Error(
-      'Could not restore your secure session for upload. Please log out and log back in.'
+      'Could not restore your secure session for payment. Please log out and log back in.'
     );
   }
-
-  const mobile =
-    storedUser.role === 'customer'
-      ? (storedUser as CustomerType).customerMobile
-      : (storedUser as StaffType).staffMobile;
 
   const appRole = storedUser.role as 'admin' | 'staff' | 'customer';
 
@@ -308,7 +310,7 @@ interface RegisterCustomerData {
   referredBy: string | null;
   isStudent: boolean;
   demoStore: boolean;
-  tpin: string;
+  tpin?: string;
 }
 
 export const registerCustomer = async (data: RegisterCustomerData): Promise<CustomerType> => {
@@ -383,7 +385,7 @@ export const registerCustomer = async (data: RegisterCustomerData): Promise<Cust
       createdAt: Timestamp.now(),
       joinedDate: Timestamp.now(),
       
-      tpin: encryptText(data.tpin),
+      tpin: data.tpin ? encryptText(data.tpin) : '',
       
       walletRechargeDone: false,
       saleElgibility: true,

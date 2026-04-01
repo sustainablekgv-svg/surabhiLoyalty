@@ -101,3 +101,29 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes marquee-vertical {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+
+.animate-marquee-vertical {
+  animation: marquee-vertical 40s linear infinite;
+}
+
+.animate-marquee-vertical:hover {
+  animation-play-state: paused;
+}
+
+@keyframes marquee-horizontal {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee-horizontal {
+  animation: marquee-horizontal 30s linear infinite;
+}
+
+.animate-marquee-horizontal:hover {
+  animation-play-state: paused;
+}

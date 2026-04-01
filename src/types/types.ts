@@ -21,7 +21,7 @@ export interface CustomerType {
   referredBy: string | null;
   referredUsers: { customerMobile: string; customerName: string; createdAt: Timestamp }[] | null;
   customerPassword: string;
-  tpin: string;
+  tpin?: string;
   createdAt: Timestamp;
   walletRechargeDone: boolean;
   saleElgibility: boolean;

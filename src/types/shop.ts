@@ -126,7 +126,7 @@ export interface Order {
     userId: string;
     items: CartItem[];
     totalAmount: number;
-    status: 'payment_pending' | 'received' | 'confirmed' | 'in_transit' | 'delivered' | 'cancelled';
+    status: 'pending' | 'payment_pending' | 'paid' | 'received' | 'confirmed' | 'in_transit' | 'delivered' | 'cancelled';
     paymentMethod: 'cod' | 'online';
     paymentStatus: 'pending' | 'paid' | 'failed';
     shippingAddress: Address;

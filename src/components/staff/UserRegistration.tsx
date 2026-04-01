@@ -55,7 +55,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
     gender: '',
     isStudent: false,
     dateOfBirth: undefined as Date | undefined,
-    tpin: '',
+
     district: '',
     city: '',
   });
@@ -162,7 +162,6 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
       !formData.customerName ||
       !formData.customerMobile ||
       !formData.customerPassword ||
-      !formData.tpin ||
       !formData.gender
     ) {
       // console.log('Validation failed - missing required fields');
@@ -186,10 +185,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
       return;
     }
 
-    if (!/^\d{4}$/.test(formData.tpin)) {
-      toast.error('TPIN must be 4 digits');
-      return;
-    }
+
 
     if (formData.referredBy && !/^\d{10}$/.test(formData.referredBy)) {
       toast.error('Referral number must be 10 digits');
@@ -264,7 +260,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
         referredBy: formData.referredBy.trim() !== '' ? formData.referredBy : null,
         referredUsers: null,
         customerPassword: encryptText(formData.customerPassword),
-        tpin: encryptText(formData.tpin),
+
         createdAt: Timestamp.now(),
         walletRechargeDone: false,
         saleElgibility: false,
@@ -339,7 +335,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
         gender: '',
         isStudent: false,
         dateOfBirth: undefined,
-        tpin: '',
+
         district: '',
         city: '',
       });
@@ -387,20 +383,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
     toast.success('Secure password generated!');
   };
 
-  const generateTPIN = () => {
-    if (
-      !formData.customerName ||
-      !formData.customerMobile ||
-      !formData.customerEmail ||
-      !formData.customerPassword
-    ) {
-      toast.error('Please fill name, mobile and email first');
-      return;
-    }
-    const tpin = Math.floor(1000 + Math.random() * 9000).toString();
-    setFormData({ ...formData, tpin });
-    toast.success('4-digit TPIN generated!');
-  };
+
 
   const clearReferral = () => {
     setFormData({ ...formData, referredBy: '' });
@@ -667,47 +650,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                   </div>
                 </div>
 
-                {/* TPIN Field */}
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <label htmlFor="tpin" className="block text-sm font-medium text-gray-700">
-                      TPIN (4 digits) <span className="text-red-500">*</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={generateTPIN}
-                      disabled={
-                        !formData.customerName ||
-                        !formData.customerMobile ||
-                        !formData.customerEmail ||
-                        !formData.customerPassword
-                      }
-                      className={`text-xs px-2 py-1 rounded ${
-                        !formData.customerName ||
-                        !formData.customerMobile ||
-                        !formData.customerEmail ||
-                        !formData.customerPassword
-                          ? 'text-gray-400 cursor-not-allowed'
-                          : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
-                      }`}
-                    >
-                      Generate TPIN
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      id="tpin"
-                      type="password"
-                      placeholder="Enter 4-digit TPIN"
-                      value={formData.tpin}
-                      onChange={e => setFormData({ ...formData, tpin: e.target.value })}
-                      className="w-full pl-12 pr-3 py-2 h-12 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      maxLength={4}
-                      required
-                    />
-                  </div>
-                </div>
+
 
                 {/* Referral Field */}
                 <div className="space-y-2">

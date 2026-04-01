@@ -5,6 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/auth-context';
 import { useShop } from '@/hooks/shop-context';
 import { addAddress, getAddresses } from '@/lib/addressService';
@@ -106,7 +107,9 @@ const CheckoutPage = () => {
   // Calculate totals by brand + origin for breakdown
   // FIXED: Case insensitive matching for origins
     // Rewards projections
-  const storeLocation = user && 'storeLocation' in user ? user.storeLocation : 'Main Store';
+  // Hardcoded to Sustainable KGV Online to ensure proper shipping credit % (5%) is applied 
+  // rather than the potentially 0% physical store location of the user.
+  const storeLocation = 'Sustainable KGV Online';
   const [currentStore, setCurrentStore] = useState<any>(null);
 
   useEffect(() => {
@@ -407,6 +410,22 @@ const CheckoutPage = () => {
 
   const loadRazorpay = () => {
     return new Promise((resolve) => {
+      // If already loaded in window
+      if ((window as any).Razorpay) {
+        resolve(true);
+        return;
+      }
+
+      // Check for existing script tag
+      const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+      if (existingScript) {
+        existingScript.addEventListener('load', () => resolve(true));
+        existingScript.addEventListener('error', () => resolve(false));
+        // Fallback: if already loaded but event missed
+        setTimeout(() => resolve(!!(window as any).Razorpay), 500);
+        return;
+      }
+
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.onload = () => resolve(true);
@@ -414,6 +433,20 @@ const CheckoutPage = () => {
       document.body.appendChild(script);
     });
   };
+
+  // Pre-load Razorpay script when Online tab is clicked
+  useEffect(() => {
+    if (paymentMethod === 'online') {
+        const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+        if (!existingScript) {
+            loadRazorpay().then(success => {
+                if (success) {
+                    // console.log("Razorpay script pre-loaded successfully");
+                }
+            });
+        }
+    }
+  }, [paymentMethod]);
 
   const processAddressSave = async (currentAddress: Address) => {
     if (!saveNewAddress || !user || !user.id) return;
@@ -442,172 +475,219 @@ const CheckoutPage = () => {
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length === 0) {
-        toast.error("Your cart is empty");
-        return;
+      toast.error("Your cart is empty");
+      return;
     }
 
     if (!formData.state || !formData.street || !formData.zipCode || !formData.mobile) {
-        toast.error("Please fill in all required address fields");
-        return;
+      toast.error("Please fill in all required address fields");
+      return;
     }
 
     setLoading(true);
     try {
-      if (paymentMethod === 'cod') {
-          // COD Flow
-          const orderData = {
-              items: adjustedCart, // DRILL DOWN EFFECT
-              totalAmount: totalPayableAmount,
-              totalTax: totalAdjustedTax,
-              shippingAddress: formData,
-              paymentMethod: 'cod',
-              paymentStatus: 'pending',
-              shippingPointsEarned: totalShippingCreditsEarned,
-              shippingPointsUsed: shippingCreditsUsed,
-              shippingCreditsDebited: shippingCreditsUsed > 0 ? shippingCreditsUsed : 0,
-              netShippingCharges: netShippingCharges,
-              surabhiCoinsUsed: redeemedCoinsTotal,
-              surabhiCoinsEarned: surabhiCoinsEarned,
-              sevaCoinsEarned: sevaPoolEarned,
-              referralBonusEarned: referralBonusEarned
-          };
-          
-          await createOrder(orderData as any); 
-          
-          // Activity Log
-          await addDoc(collection(db, 'Activity'), {
-              type: 'order_placed',
-              remarks: `New COD Order of ₹${orderData.totalAmount.toFixed(2)} placed`,
-              amount: orderData.totalAmount,
-              customerName: formData.fullName,
-              customerMobile: formData.mobile,
-              storeLocation: currentStore?.storeName || 'Online',
-              paymentMethod: 'cod',
-              createdAt: Timestamp.now(),
-              demoStore: (user as any)?.demoStore || false
-          });
-          
-          // Save address if requested
-          await processAddressSave(formData);
+      if (paymentMethod === 'online') {
+        if (totalPayableAmount < 1) {
+          toast.error("Online payment requires a minimum amount of ₹1. Please use Manual / QR Pay for zero amount orders.");
+          setLoading(false);
+          return;
+        }
 
-          // Sales processing deferred to Admin Confirmation
-          // Coins and Referrals will be calculated when order status is set to 'confirmed'
+        const scriptLoaded = await loadRazorpay();
+        if (!scriptLoaded) {
+          toast.error("Failed to load payment gateway. Please check your internet connection and try again.");
+          setLoading(false);
+          return;
+        }
 
-          clearCart();
-          toast.success("Order placed successfully!");
-          navigate('/shop');
-      } else {
-          // Razorpay Flow
-          const res = await loadRazorpay();
-          if (!res) {
-              toast.error('Razorpay SDK failed to load. Are you online?');
-              return;
-          }
-
-          // 1. Create Razorpay Order via Cloud Function
-          const { functions } = await import('@/lib/firebase');
-          const { httpsCallable } = await import('firebase/functions');
-          const createRazorpayOrderFn = httpsCallable(functions, 'createRazorpayOrder');
-          const verifyRazorpayPaymentFn = httpsCallable(functions, 'verifyRazorpayPayment');
-          
-          // Razorpay expects amount in paise, but our cloud function handles the conversion (* 100)
-          const razorpayOrderRes = await createRazorpayOrderFn({ 
-              amount: totalPayableAmount, 
-              currency: 'INR',
-              userId: user?.id 
-          });
-          const orderDetails = razorpayOrderRes.data as any;
-
-          const options = {
-              key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_YOUR_KEY_ID',
-              amount: orderDetails.amount,
-              currency: orderDetails.currency,
-              name: 'Surabhi Loyalty',
-              description: 'Order Payment',
-              order_id: orderDetails.id,
-              handler: async function (response: any) {
-                  // Verify Payment
-                  try {
-                      setLoading(true);
-                      const verifyRes = await verifyRazorpayPaymentFn({
-                          razorpay_order_id: response.razorpay_order_id,
-                          razorpay_payment_id: response.razorpay_payment_id,
-                          razorpay_signature: response.razorpay_signature
-                      });
-
-                      if ((verifyRes.data as any).success) {
-                          // Payment Success - Create Order in DB
-                          const orderData = {
-                              items: adjustedCart, // DRILL DOWN EFFECT
-                              totalAmount: totalPayableAmount,
-                              totalTax: totalAdjustedTax,
-                              shippingAddress: formData,
-                              paymentMethod: 'online',
-                              paymentStatus: 'paid',
-                              paymentDetails: {
-                                  razorpay_order_id: response.razorpay_order_id,
-                                  razorpay_payment_id: response.razorpay_payment_id
-                              },
-                              shippingPointsEarned: totalShippingCreditsEarned,
-                              shippingPointsUsed: shippingCreditsUsed,
-                              shippingCreditsDebited: shippingCreditsUsed > 0 ? shippingCreditsUsed : 0,
-                              netShippingCharges: netShippingCharges,
-                              surabhiCoinsUsed: redeemedCoinsTotal,
-                              surabhiCoinsEarned: surabhiCoinsEarned,
-                              sevaCoinsEarned: sevaPoolEarned,
-                              referralBonusEarned: referralBonusEarned
-                          };
-                          await createOrder(orderData as any);
-
-                          // Activity Log
-                          await addDoc(collection(db, 'Activity'), {
-                              type: 'order_placed',
-                              remarks: `New Online Order of ₹${totalPayableAmount.toFixed(2)} placed`,
-                              amount: totalPayableAmount,
-                              customerName: formData.fullName,
-                              customerMobile: formData.mobile,
-                              storeLocation: currentStore?.storeName || 'Online',
-                              paymentMethod: 'online',
-                              createdAt: Timestamp.now(),
-                              demoStore: (user as any)?.demoStore || false
-                          });
-                          
-                          // Sales processing deferred to Admin Confirmation
-                          // Coins and Referrals will be calculated when order status is set to 'confirmed'
-                          
-                          // Save new address if requested
-                          await processAddressSave(formData);
-
-                          clearCart();
-                          toast.success("Payment Successful! Order placed.");
-                          navigate('/shop');
-                      } else {
-                           toast.error("Payment Verification Failed");
-                      }
-                  } catch (err) {
-                      console.error(err);
-                      toast.error("Payment Verification Error");
-                  }
-              },
-              prefill: {
-                  name: formData.fullName,
-                  contact: formData.mobile
-              },
-              theme: {
-                  color: '#3399cc'
-              }
-          };
-
-          const paymentObject = new (window as any).Razorpay(options);
-          paymentObject.open();
+        if (!(window as any).Razorpay) {
+            toast.error("Razorpay SDK not found. Please refresh the page.");
+            setLoading(false);
+            return;
+        }
       }
 
+      if (paymentMethod === 'cod') {
+        // COD Flow
+        const orderData = {
+          items: adjustedCart,
+          totalAmount: totalPayableAmount,
+          totalTax: totalAdjustedTax,
+          shippingAddress: formData,
+          paymentMethod: 'cod',
+          paymentStatus: 'pending',
+          shippingPointsEarned: totalShippingCreditsEarned,
+          shippingPointsUsed: shippingCreditsUsed,
+          shippingCreditsDebited: shippingCreditsUsed > 0 ? shippingCreditsUsed : 0,
+          netShippingCharges: netShippingCharges,
+          surabhiCoinsUsed: redeemedCoinsTotal,
+          surabhiCoinsEarned: surabhiCoinsEarned,
+          sevaCoinsEarned: sevaPoolEarned,
+          referralBonusEarned: referralBonusEarned
+        };
+
+        await createOrder(orderData as any);
+
+        await addDoc(collection(db, 'Activity'), {
+          type: 'order_placed',
+          remarks: `New COD Order of ₹${orderData.totalAmount.toFixed(2)} placed`,
+          amount: orderData.totalAmount,
+          customerName: formData.fullName,
+          customerMobile: formData.mobile,
+          storeLocation: currentStore?.storeName || 'Online',
+          paymentMethod: 'cod',
+          createdAt: Timestamp.now(),
+          demoStore: (user as any)?.demoStore || false
+        });
+
+        await processAddressSave(formData);
+        clearCart();
+        toast.success("Order placed successfully!");
+        navigate('/shop');
+      } else {
+        toast.loading("Initiating secure payment...", { id: 'razorpay-loading' });
+        
+        // Ensure Firebase Auth is active for callable functions
+        try {
+            const { getFirebaseUserForFunctions } = await import('@/lib/authService');
+            await getFirebaseUserForFunctions();
+        } catch (authErr: any) {
+            console.error("Firebase Re-auth Error:", authErr);
+            toast.error(authErr.message || "Session expired. Please log out and back in.", { id: 'razorpay-loading' });
+            setLoading(false);
+            return;
+        }
+
+        const { functions } = await import('@/lib/firebase');
+        const { httpsCallable } = await import('firebase/functions');
+        const createRazorpayOrderFn = httpsCallable(functions, 'createRazorpayOrder');
+        const verifyRazorpayPaymentFn = httpsCallable(functions, 'verifyRazorpayPayment');
+
+        let orderDetails: any;
+        try {
+            const razorpayOrderRes = await createRazorpayOrderFn({
+                amount: totalPayableAmount,
+                currency: 'INR',
+                userId: user?.id
+            });
+            orderDetails = razorpayOrderRes.data as any;
+        } catch (err: any) {
+            console.error("Razorpay Order Creation Error:", err);
+            toast.error("Failed to create secure payment order. Please try again.", { id: 'razorpay-loading' });
+            setLoading(false);
+            return;
+        }
+
+        toast.loading("Opening payment gateway...", { id: 'razorpay-loading' });
+        
+        let firebaseOrderId: string | null = null;
+        try {
+            firebaseOrderId = await createOrder({
+                items: adjustedCart,
+                totalAmount: totalPayableAmount,
+                totalTax: totalAdjustedTax,
+                shippingAddress: formData,
+                paymentMethod: 'online',
+                paymentStatus: 'pending',
+                status: 'pending',
+                shippingPointsEarned: totalShippingCreditsEarned,
+                shippingPointsUsed: shippingCreditsUsed,
+                shippingCreditsDebited: shippingCreditsUsed > 0 ? shippingCreditsUsed : 0,
+                netShippingCharges: netShippingCharges,
+                surabhiCoinsUsed: redeemedCoinsTotal,
+                surabhiCoinsEarned: surabhiCoinsEarned,
+                sevaCoinsEarned: sevaPoolEarned,
+                referralBonusEarned: referralBonusEarned,
+                demoStore: (user as any)?.demoStore || false,
+                paymentDetails: {
+                    razorpay_order_id: orderDetails.id,
+                    status: 'created'
+                }
+            } as any);
+        } catch (err: any) {
+            console.error("Firestore Order Creation Error:", err);
+            toast.error("Failed to record order details. Please try again.", { id: 'razorpay-loading' });
+            setLoading(false);
+            return;
+        }
+        
+        toast.dismiss('razorpay-loading');
+
+        const options = {
+          key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_YOUR_KEY_ID',
+          amount: orderDetails.amount,
+          currency: orderDetails.currency,
+          name: 'Surabhi Loyalty',
+          description: 'Order Payment',
+          order_id: orderDetails.id,
+          handler: async function (response: any) {
+            try {
+              setLoading(true);
+              const verifyRes = await verifyRazorpayPaymentFn({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              });
+
+              if ((verifyRes.data as any).success) {
+                const { updateDoc, doc } = await import('firebase/firestore');
+                const orderRef = doc(db, 'orders', firebaseOrderId!);
+                await updateDoc(orderRef, {
+                  paymentStatus: 'paid',
+                  status: 'received',
+                  'paymentDetails.razorpay_payment_id': response.razorpay_payment_id,
+                  'paymentDetails.razorpay_signature': response.razorpay_signature,
+                  updatedAt: Timestamp.now()
+                });
+
+                await addDoc(collection(db, 'Activity'), {
+                  type: 'order_placed',
+                  remarks: `Online Payment Success for Order ₹${totalPayableAmount.toFixed(2)}`,
+                  amount: totalPayableAmount,
+                  customerName: formData.fullName,
+                  customerMobile: formData.mobile,
+                  storeLocation: currentStore?.storeName || 'Online',
+                  paymentMethod: 'online',
+                  createdAt: Timestamp.now(),
+                  demoStore: (user as any)?.demoStore || false
+                });
+
+                await processAddressSave(formData);
+                clearCart();
+                toast.success("Payment Successful! Order placed.");
+                navigate('/shop');
+              } else {
+                toast.error("Payment Verification Failed");
+              }
+            } catch (err) {
+              console.error(err);
+              toast.error("Payment Verification Error");
+            } finally {
+              setLoading(false);
+            }
+          },
+          prefill: {
+            name: formData.fullName,
+            contact: formData.mobile
+          },
+          theme: {
+            color: '#3399cc'
+          },
+          modal: {
+            ondismiss: function () {
+              setLoading(false);
+            }
+          }
+        };
+
+        const paymentObject = new (window as any).Razorpay(options);
+        paymentObject.open();
+      }
     } catch (error) {
       console.error(error);
-      toast.error("Failed to initiate order");
+      toast.error("Failed to initiate order. Please try again.");
     } finally {
-      if (paymentMethod === 'cod') setLoading(false); // For online, loading stays until modal opens? Actually we should turn it off.
-      else setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -634,7 +714,7 @@ const CheckoutPage = () => {
   return (
     <ShopLayout title="Checkout" onBack={() => navigate('/shop/cart')}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col-reverse lg:grid lg:grid-cols-5 gap-8 items-start">
+        <div className="flex flex-col lg:grid lg:grid-cols-5 gap-8 items-start">
           {/* Left Column: Address & Payment (40%) */}
           <div className="w-full lg:col-span-2 space-y-8">
             <Card className="border shadow-sm bg-white rounded-xl overflow-hidden">
@@ -836,96 +916,137 @@ const CheckoutPage = () => {
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
-                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 md:p-8">
-                        <div className="flex flex-col items-center gap-8">
-                            <div className="bg-white p-4 rounded-2xl shadow-md border border-slate-200 shrink-0 transform transition-transform hover:scale-105">
-                                <img 
-                                    src="/qr.jpeg" 
-                                    alt="Payment QR Code" 
-                                    className="h-64 w-64 md:h-80 md:w-80 object-contain" 
-                                    onError={(e) => {
-                                        e.currentTarget.src = 'https://placehold.co/400x400?text=Scan+to+Pay';
-                                    }}
-                                />
+                    <Tabs value={paymentMethod} onValueChange={(val: any) => setPaymentMethod(val)} className="w-full">
+                        <TabsList className="grid w-full grid-cols-2 mb-6">
+                            <TabsTrigger value="cod" className="text-xs font-bold">Manual / QR Pay</TabsTrigger>
+                            <TabsTrigger value="online" className="text-xs font-bold">Online (Razorpay)</TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="cod" className="mt-0">
+                            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 md:p-8">
+                                <div className="flex flex-col items-center gap-8">
+                                    <div className="bg-white p-4 rounded-2xl shadow-md border border-slate-200 shrink-0 transform transition-transform hover:scale-105">
+                                        <img 
+                                            src="/qr.jpeg" 
+                                            alt="Payment QR Code" 
+                                            className="h-64 w-64 md:h-80 md:w-80 object-contain" 
+                                            onError={(e) => {
+                                                e.currentTarget.src = 'https://placehold.co/400x400?text=Scan+to+Pay';
+                                            }}
+                                        />
+                                    </div>
+                                    
+                                    <div className="w-full text-center space-y-6 max-w-xl">
+                                        <div>
+                                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Scan & Pay Instantly</h3>
+                                            <p className="text-sm text-slate-500 font-medium mt-2">Safe, secure and direct bank transfer via any UPI app.</p>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <div className="bg-slate-900 rounded-2xl p-6 md:p-8 shadow-xl border border-slate-800 flex flex-col items-center gap-6 group transition-all hover:scale-[1.01]">
+                                                 <div className="flex flex-col items-center gap-2">
+                                                     <span className="text-[12px] font-black text-slate-400 uppercase tracking-[0.3em]">Official UPI ID</span>
+                                                     <span className="text-2xl md:text-3xl font-mono font-black text-white selection:bg-white/20 break-all text-center">
+                                                         sustainablekgv@okicici
+                                                     </span>
+                                                 </div>
+                                                 
+                                                 <Button 
+                                                    variant="secondary" 
+                                                    size="lg" 
+                                                    onClick={() => handleCopy('sustainablekgv@okicici', 'UPI ID')}
+                                                    className={`h-14 px-8 w-full sm:w-auto font-black text-lg rounded-xl shadow-lg flex items-center justify-center gap-3 transition-all ${copiedField === 'UPI ID' ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-white text-slate-900 hover:bg-slate-100'}`}
+                                                 >
+                                                    {copiedField === 'UPI ID' ? (
+                                                        <><Check className="h-6 w-6" /> Copied!</>
+                                                    ) : (
+                                                        <><Copy className="h-6 w-6" /> Copy UPI ID</>
+                                                    )}
+                                                 </Button>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col items-center gap-2 group hover:border-green-500 transition-colors">
+                                                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">WhatsApp Support</span>
+                                                     <span className="text-sm font-mono font-black text-slate-800">9606979530</span>
+                                                     <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        onClick={() => window.open('https://wa.me/919606979530', '_blank')}
+                                                        className="h-7 px-2 text-green-600 hover:bg-green-50"
+                                                     >
+                                                        <MessageSquare className="h-3 w-3 mr-1" /> WhatsApp
+                                                     </Button>
+                                                </div>
+
+                                                <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col items-center gap-2 group hover:border-slate-900 transition-colors">
+                                                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Direct Call</span>
+                                                     <span className="text-sm font-mono font-black text-slate-800">9606979530</span>
+                                                     <Button 
+                                                        variant="ghost" 
+                                                        size="sm"
+                                                        onClick={() => window.location.href = 'tel:9606979530'}
+                                                        className="h-7 px-2 text-slate-900 hover:bg-slate-100"
+                                                     >
+                                                        <Phone className="h-3 w-3 mr-1" /> Call Now
+                                                     </Button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-4 text-left">
+                                            <p className="font-black text-[11px] text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                                                <span className="h-1 w-4 bg-slate-900 rounded-full"></span>
+                                                Payment Steps
+                                            </p>
+                                            {[
+                                                "Scan the QR code above or pay to the UPI ID.",
+                                                "Important: Take a screenshot of the payment confirmation.",
+                                                "Share the screenshot on WhatsApp with your name/order details."
+                                            ].map((step, i) => (
+                                                <div key={i} className="flex gap-4 items-start">
+                                                    <span className="flex-shrink-0 h-6 w-6 rounded-lg bg-slate-900 text-white flex items-center justify-center text-[11px] font-black shadow-sm">{i+1}</span>
+                                                    <span className="text-sm text-slate-600 font-medium leading-normal">{step}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            
-                            <div className="w-full text-center space-y-6 max-w-xl">
-                                <div>
-                                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">Scan & Pay Instantly</h3>
-                                    <p className="text-sm text-slate-500 font-medium mt-2">Safe, secure and direct bank transfer via any UPI app.</p>
+                        </TabsContent>
+                        
+                        <TabsContent value="online" className="mt-0">
+                            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-8 text-center space-y-6">
+                                <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 inline-block">
+                                    <img 
+                                        src="https://upload.wikimedia.org/wikipedia/commons/8/89/Razorpay_logo.svg" 
+                                        alt="Razorpay" 
+                                        className="h-12 w-auto mx-auto"
+                                    />
                                 </div>
-
-                                <div className="space-y-4">
-                                    <div className="bg-slate-900 rounded-2xl p-6 md:p-8 shadow-xl border border-slate-800 flex flex-col items-center gap-6 group transition-all hover:scale-[1.01]">
-                                         <div className="flex flex-col items-center gap-2">
-                                             <span className="text-[12px] font-black text-slate-400 uppercase tracking-[0.3em]">Official UPI ID</span>
-                                             <span className="text-2xl md:text-3xl font-mono font-black text-white selection:bg-white/20 break-all text-center">
-                                                 sustainablekgv@okicici
-                                             </span>
-                                         </div>
-                                         
-                                         <Button 
-                                            variant="secondary" 
-                                            size="lg" 
-                                            onClick={() => handleCopy('sustainablekgv@okicici', 'UPI ID')}
-                                            className={`h-14 px-8 w-full sm:w-auto font-black text-lg rounded-xl shadow-lg flex items-center justify-center gap-3 transition-all ${copiedField === 'UPI ID' ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-white text-slate-900 hover:bg-slate-100'}`}
-                                         >
-                                            {copiedField === 'UPI ID' ? (
-                                                <><Check className="h-6 w-6" /> Copied!</>
-                                            ) : (
-                                                <><Copy className="h-6 w-6" /> Copy UPI ID</>
-                                            )}
-                                         </Button>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col items-center gap-2 group hover:border-green-500 transition-colors">
-                                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">WhatsApp Support</span>
-                                             <span className="text-sm font-mono font-black text-slate-800">9606979530</span>
-                                             <Button 
-                                                variant="ghost" 
-                                                size="sm" 
-                                                onClick={() => window.open('https://wa.me/919606979530', '_blank')}
-                                                className="h-7 px-2 text-green-600 hover:bg-green-50"
-                                             >
-                                                <MessageSquare className="h-3 w-3 mr-1" /> WhatsApp
-                                             </Button>
-                                        </div>
-
-                                        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col items-center gap-2 group hover:border-slate-900 transition-colors">
-                                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Direct Call</span>
-                                             <span className="text-sm font-mono font-black text-slate-800">9606979530</span>
-                                             <Button 
-                                                variant="ghost" 
-                                                size="sm"
-                                                onClick={() => window.location.href = 'tel:9606979530'}
-                                                className="h-7 px-2 text-slate-900 hover:bg-slate-100"
-                                             >
-                                                <Phone className="h-3 w-3 mr-1" /> Call Now
-                                             </Button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-4 text-left">
-                                    <p className="font-black text-[11px] text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                                        <span className="h-1 w-4 bg-slate-900 rounded-full"></span>
-                                        Payment Steps
+                                <div className="space-y-2">
+                                    <h3 className="text-xl font-black text-slate-900">Secure Online Payment</h3>
+                                    <p className="text-sm text-slate-500 font-medium max-w-xs mx-auto">
+                                        Pay securely via Credit/Debit Cards, NetBanking, UPI or Wallets.
                                     </p>
-                                    {[
-                                        "Scan the QR code above or pay to the UPI ID.",
-                                        "Important: Take a screenshot of the payment confirmation.",
-                                        "Share the screenshot on WhatsApp with your name/order details."
-                                    ].map((step, i) => (
-                                        <div key={i} className="flex gap-4 items-start">
-                                            <span className="flex-shrink-0 h-6 w-6 rounded-lg bg-slate-900 text-white flex items-center justify-center text-[11px] font-black shadow-sm">{i+1}</span>
-                                            <span className="text-sm text-slate-600 font-medium leading-normal">{step}</span>
-                                        </div>
-                                    ))}
                                 </div>
+                                <div className="flex justify-center gap-3">
+                                    <div className="h-8 w-12 bg-white rounded border border-slate-100 flex items-center justify-center grayscale opacity-50">
+                                        <span className="text-[8px] font-bold">VISA</span>
+                                    </div>
+                                    <div className="h-8 w-12 bg-white rounded border border-slate-100 flex items-center justify-center grayscale opacity-50">
+                                        <span className="text-[8px] font-bold">UPI</span>
+                                    </div>
+                                    <div className="h-8 w-12 bg-white rounded border border-slate-100 flex items-center justify-center grayscale opacity-50">
+                                        <span className="text-[8px] font-bold">GPay</span>
+                                    </div>
+                                </div>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                                    Trusted by millions of businesses
+                                </p>
                             </div>
-                        </div>
-                    </div>
+                        </TabsContent>
+                    </Tabs>
                 </CardContent>
             </Card>
           </div>
@@ -964,7 +1085,14 @@ const CheckoutPage = () => {
                                                 </p>
                                             </div>
                                         </td>
-                                        <td className="px-1.5 py-3 text-center text-sm font-bold text-slate-600">{item.quantity}</td>
+                                        <td className="px-1.5 py-3 text-center">
+                                            <div className="flex flex-col items-center">
+                                                <span className="text-sm font-bold text-slate-600">{item.quantity}</span>
+                                                <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">
+                                                    {item.quantity} x {item.productQuantity || item.weight || '1'} {item.unitsOfMeasure === 'pcs' ? 'pc' : (item.unitsOfMeasure || '')}
+                                                </span>
+                                            </div>
+                                        </td>
                                         <td className="px-1.5 py-3 text-right text-sm font-medium text-slate-600 whitespace-nowrap">
                                             ₹{item.originalLineTotal.toFixed(2)}
                                         </td>
@@ -985,7 +1113,11 @@ const CheckoutPage = () => {
                                                     ADJUSTED
                                                 </span>
                                             </td>
-                                            <td className="px-1.5 py-2 text-center text-sm font-bold text-slate-400">-</td>
+                                            <td className="px-1.5 py-2 text-center">
+                                                <div className="flex flex-col items-center">
+                                                    <span className="text-sm font-bold text-slate-400">-</span>
+                                                </div>
+                                            </td>
                                             <td className="px-1.5 py-2 text-right text-sm font-black text-slate-900 whitespace-nowrap">
                                                 ₹{(item.adjustedPrice * item.quantity).toFixed(2)}
                                             </td>
@@ -1046,9 +1178,14 @@ const CheckoutPage = () => {
                             <span className="text-indigo-600">Brand Wise</span>
                         </p>
                         {Object.values(productsByGroup).map((group) => (
-                            <div key={group.brandName} className="flex justify-between items-center">
-                                <span className="text-xs font-bold text-slate-700">{group.brandName}</span>
-                                <span className="text-xs font-black text-slate-900">₹{group.shipping.toFixed(2)}</span>
+                            <div key={group.brandName} className="grid grid-cols-2 gap-4 items-center border-b border-indigo-100/30 pb-2 mb-2 last:border-0 last:pb-0 last:mb-0">
+                                <div className="flex flex-col">
+                                    <span className="text-xs font-bold text-slate-700">{group.brandName}</span>
+                                    <span className="text-[9px] text-indigo-500 font-medium leading-none mt-1">Total Weight: {group.displayWeight.toFixed(2)}kg</span>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-xs font-black text-slate-900">₹{group.shipping.toFixed(2)}</span>
+                                </div>
                             </div>
                         ))}
                     </div>
