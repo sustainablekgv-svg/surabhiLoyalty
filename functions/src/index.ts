@@ -39,7 +39,6 @@ import * as ecommerce from './ecommerce';
 import * as quarterly from './quartleryCheck';
 import { syncFirebaseAuthForUpload as syncFirebaseAuthForUploadFn } from './syncAuthForUpload';
 
-export { processSaleFromExternal } from "./externalSale";
 export const checkQuarterlyCriteria = quarterly.checkQuarterlyCriteria;
 export const createRazorpayOrder = ecommerce.createRazorpayOrder;
 export const verifyRazorpayPayment = ecommerce.verifyRazorpayPayment;
