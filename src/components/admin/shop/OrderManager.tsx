@@ -13,7 +13,7 @@ import { adjustOrderShippingBalance, getOrders, getProducts, getStoreByLocation,
 import { CartItem, Order, Product } from '@/types/shop';
 import { collection, getDocs } from 'firebase/firestore';
 import { Check, Package, Pencil, Plus, Search, TrendingUp, Truck, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { getUserName } from '@/lib/userUtils';
 
@@ -214,20 +214,19 @@ export const OrderManager = () => {
         }
 
         // 3. Totals
-        const subtotal = itemsToCalculate.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const shippingCost = Object.values(groups).reduce((sum: number, g: any) => sum + g.shipping, 0);
+        const itemsTotalInclTax = itemsToCalculate.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         const totalTax = itemsToCalculate.reduce((sum, item) => {
             if (!item.gst?.percentage) return sum;
-            return sum + ((item.price * item.gst.percentage) / 100) * item.quantity;
+            const gstRate = item.gst.percentage / 100;
+            const baseLineTotal = (item.price * item.quantity) / (1 + gstRate);
+            return sum + ((item.price * item.quantity) - baseLineTotal);
         }, 0);
+        const subtotal = itemsTotalInclTax - totalTax;
         const totalSpv = itemsToCalculate.reduce((sum, item) => sum + ((item.spv || 0) * item.quantity), 0);
 
-        // 4. Adjustments (Order specific)
-        // Match CheckoutPage.tsx logic: credits are capped by shippingCost, dues are NOT capped.
+        const shippingCost = Object.values(groups).reduce((sum: number, g: any) => sum + g.shipping, 0);
         const shippingCreditsUsed = selectedOrder.shippingPointsUsed || 0;
         const netShippingCharges = Math.max(0, shippingCost - shippingCreditsUsed);
-        
-        const itemsTotalInclTax = subtotal + totalTax;
         
         // Match CheckoutPage.tsx logic: Inclusive discount application
         const totalCoins = Math.min(selectedOrder.surabhiCoinsUsed || 0, itemsTotalInclTax);
@@ -235,9 +234,7 @@ export const OrderManager = () => {
 
         const totalAdjustedTax = itemsToCalculate.reduce((sum, item) => {
             if (!item.gst?.percentage) return sum;
-            const originalLineTotal = item.price * item.quantity;
-            const originalTax = (originalLineTotal * item.gst.percentage) / 100;
-            const originalItemTotalInclTax = originalLineTotal + originalTax;
+            const originalItemTotalInclTax = item.price * item.quantity;
             
             const itemDiscount = originalItemTotalInclTax * discountPercent;
             const adjustedLineTotal = originalItemTotalInclTax - itemDiscount;
@@ -271,23 +268,46 @@ export const OrderManager = () => {
 
         const totalPayableAmount = itemsTotalAfterCoins + netShippingCharges + (selectedOrder.adminShippingAdjustment || 0);
 
+        const adjustedItems = itemsToCalculate.map(item => {
+            const gstRate = (item.gst?.percentage || 0) / 100;
+            const originalTotalInclTax = item.price * item.quantity;
+            const originalTax = originalTotalInclTax - (originalTotalInclTax / (1 + gstRate));
+            const originalBase = originalTotalInclTax - originalTax;
+            
+            const itemDiscount = originalTotalInclTax * discountPercent;
+            const adjustedLineTotal = originalTotalInclTax - itemDiscount;
+            const adjustedBaseLineTotal = adjustedLineTotal / (1 + gstRate);
+            const adjustedTax = adjustedLineTotal - adjustedBaseLineTotal;
+            
+            return {
+                ...item,
+                originalBase,
+                originalTax,
+                originalTotalInclTax,
+                adjustedBaseLineTotal,
+                adjustedTax,
+                adjustedLineTotal
+            };
+        });
+
         return {
             groups,
             subtotal,
             shippingCost,
-            totalTax, // Keeping original tax for reference/DB
-            totalAdjustedTax, // New adjusted tax for display
-            adjustedTaxValue: itemsTotalAfterCoins - totalAdjustedTax, // Adjusted Base
+            totalTax,
+            totalAdjustedTax,
+            adjustedTaxValue: itemsTotalAfterCoins - totalAdjustedTax,
             totalSpv,
             itemsTotalInclTax,
-            itemsTotalAfterCoins, // Already updated in previous logic to be adjusted total
+            itemsTotalAfterCoins,
             aggregateAdjustedSpv,
             totalShippingCreditsEarned,
             surabhiCoinsEarned,
             sevaCoinsEarned,
             referralBonusEarned,
             totalPayableAmount,
-            netShippingCharges
+            netShippingCharges,
+            adjustedItems
         };
     }, [selectedOrder, tempItems, isEditingItems, shippingConfig, originsList, brandsList, currentStore]);
 
@@ -296,28 +316,30 @@ export const OrderManager = () => {
         
         setIsAdjusting(true);
         try {
+            const magnitude = Math.abs(showConfirmAdjust.amount);
             await adjustOrderShippingBalance(
                 selectedOrder.id,
                 selectedOrder.userId,
-                showConfirmAdjust.amount,
+                magnitude,
                 showConfirmAdjust.type === 'add',
                 user
             );
             
             toast.success(`Successfully ${showConfirmAdjust.type === 'add' ? 'added' : 'deducted'} shipping credits.`);
             
-            const adjustmentChange = showConfirmAdjust.amount;
+            const adjustmentDelta =
+                showConfirmAdjust.type === 'add' ? magnitude : -magnitude;
             
             setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { 
                 ...o, 
-                adminShippingAdjustment: (o.adminShippingAdjustment || 0) + adjustmentChange,
-                totalAmount: (o.totalAmount || 0) + adjustmentChange
+                adminShippingAdjustment: (o.adminShippingAdjustment || 0) + adjustmentDelta,
+                totalAmount: (o.totalAmount || 0) + adjustmentDelta
             } : o));
             
             setSelectedOrder(prev => prev ? { 
                 ...prev, 
-                adminShippingAdjustment: (prev.adminShippingAdjustment || 0) + adjustmentChange,
-                totalAmount: (prev.totalAmount || 0) + adjustmentChange
+                adminShippingAdjustment: (prev.adminShippingAdjustment || 0) + adjustmentDelta,
+                totalAmount: (prev.totalAmount || 0) + adjustmentDelta
             } : null);
             
             setAdjustmentAmount('');
@@ -408,7 +430,7 @@ export const OrderManager = () => {
             const updates: Partial<Order> = {
                 items: updatedItems,
                 totalAmount: orderSummary.totalPayableAmount,
-                totalTax: orderSummary.totalTax,
+                totalTax: orderSummary.totalAdjustedTax,
                 netShippingCharges: orderSummary.netShippingCharges,
                 shippingPointsEarned: orderSummary.totalShippingCreditsEarned,
                 surabhiCoinsEarned: orderSummary.surabhiCoinsEarned,
@@ -692,10 +714,11 @@ export const OrderManager = () => {
                                                                     <Button 
                                                                         variant="default" 
                                                                         size="sm"
-                                                                        disabled={!adjustmentAmount || parseFloat(adjustmentAmount) === 0}
+                                                                        disabled={!adjustmentAmount.trim() || !Number.isFinite(parseFloat(adjustmentAmount)) || parseFloat(adjustmentAmount) === 0}
                                                                         onClick={() => {
                                                                             const amt = parseFloat(adjustmentAmount);
-                                                                            setShowConfirmAdjust({ type: amt > 0 ? 'add' : 'deduct', amount: amt });
+                                                                            if (!Number.isFinite(amt) || amt === 0) return;
+                                                                            setShowConfirmAdjust({ type: amt > 0 ? 'add' : 'deduct', amount: Math.abs(amt) });
                                                                         }}
                                                                     >
                                                                         Apply Adjustment
@@ -717,76 +740,112 @@ export const OrderManager = () => {
                                                                 )}
                                                             </div>
 
-                                                            <div className="border rounded-lg overflow-hidden border-slate-200">
-                                                                {(isEditingItems ? tempItems : selectedOrder.items).map((item, idx) => (
-                                                                    <div key={idx} className="flex justify-between p-4 items-center bg-white hover:bg-slate-50 transition-colors border-b last:border-b-0">
-                                                                        <div className="flex items-center gap-4 flex-1">
-                                                                            <div className="relative">
-                                                                                {isValidImageUrl(item.image) ? (
-                                                                                    <PreviewableImage src={item.image} alt={item.name} className="h-14 w-14 rounded-md object-cover border border-slate-100" />
-                                                                                ) : (
-                                                                                    <div className="h-14 w-14 bg-slate-100 rounded-md flex items-center justify-center">
-                                                                                        <Package className="h-6 w-6 text-slate-400" />
-                                                                                    </div>
-                                                                                )}
-                                                                                {isEditingItems && (
-                                                                                    <Button 
-                                                                                        size="icon" 
-                                                                                        variant="destructive" 
-                                                                                        className="h-6 w-6 rounded-full absolute -top-2 -left-2 shadow-sm"
-                                                                                        onClick={() => handleRemoveItem(idx)}
-                                                                                    >
-                                                                                        <X className="h-3 w-3" />
-                                                                                    </Button>
-                                                                                )}
-                                                                            </div>
-                                                                            <div className="flex-1 min-w-0">
-                                                                                <p className="font-bold text-slate-900 truncate">{item.name}</p>
-                                                                                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
-                                                                                    <span className="text-xs text-slate-500 font-medium">₹{item.price} each</span>
-                                                                                    {item.gst?.percentage !== undefined && <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-full border border-emerald-100 font-semibold self-center">GST: {item.gst.percentage}%</span>}
-                                                                                    {item.spv && <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-full border border-blue-100 font-semibold self-center">SPV: {item.spv}</span>}
-                                                                                </div>
-                                                                                <div className="text-[10px] text-slate-400 mt-1 uppercase tracking-tight">
-                                                                                    {item.brandName || 'Brand'} • {item.categoryName || 'Category'}
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
+                                                            <div className="w-full overflow-hidden border border-slate-200 rounded-xl">
+                                                                <table className="w-full text-left border-collapse table-auto">
+                                                                    <thead className="bg-slate-50 border-b border-slate-200">
+                                                                        <tr className="border-b border-slate-200">
+                                                                            <th className="pl-4 pr-2 py-3 text-[11px] font-black uppercase text-slate-500 tracking-wider">Product</th>
+                                                                            <th className="px-1.5 py-3 text-[11px] font-black uppercase text-slate-500 text-center tracking-wider">Qty</th>
+                                                                            <th className="px-1.5 py-3 text-[11px] font-black uppercase text-slate-500 text-right tracking-wider">Base</th>
+                                                                            <th className="px-1.5 py-3 text-[11px] font-black uppercase text-slate-500 text-right tracking-wider">Tax</th>
+                                                                            <th className="pl-2 pr-4 py-3 text-[11px] font-black uppercase text-slate-500 text-right tracking-wider">Total</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody className="divide-y divide-slate-100 italic">
+                                                                        {(orderSummary?.adjustedItems || []).map((item, idx) => (
+                                                                            <React.Fragment key={idx}>
+                                                                                {/* Original Row */}
+                                                                                <tr className="bg-white hover:bg-slate-50/50 transition-colors">
+                                                                                    <td className="pl-4 pr-2 py-3 relative">
+                                                                                        {isEditingItems && (
+                                                                                            <Button 
+                                                                                                size="icon" 
+                                                                                                variant="destructive" 
+                                                                                                className="h-5 w-5 rounded-full absolute -top-1 -left-1 shadow-sm z-10"
+                                                                                                onClick={() => handleRemoveItem(idx)}
+                                                                                            >
+                                                                                                <X className="h-3 w-3" />
+                                                                                            </Button>
+                                                                                        )}
+                                                                                        <div className="flex items-center gap-3">
+                                                                                            {isValidImageUrl(item.image) ? (
+                                                                                                <PreviewableImage src={item.image} alt={item.name} className="h-10 w-10 rounded-md object-cover border border-slate-100 flex-shrink-0" />
+                                                                                            ) : (
+                                                                                                <div className="h-10 w-10 bg-slate-100 rounded-md flex items-center justify-center flex-shrink-0">
+                                                                                                    <Package className="h-4 w-4 text-slate-400" />
+                                                                                                </div>
+                                                                                            )}
+                                                                                            <div className="min-w-0">
+                                                                                                <p className="font-bold text-slate-900 text-xs truncate leading-tight">{item.name}</p>
+                                                                                                <div className="flex items-center gap-2 mt-0.5">
+                                                                                                    <span className="text-[10px] text-amber-600 font-bold uppercase tracking-tight">SPV: {item.spv}</span>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </td>
+                                                                                    <td className="px-1.5 py-3 text-center">
+                                                                                        {isEditingItems ? (
+                                                                                            <div className="flex items-center justify-center bg-slate-100 rounded-lg p-0.5">
+                                                                                                <Button 
+                                                                                                    size="icon" 
+                                                                                                    variant="ghost" 
+                                                                                                    className="h-6 w-6 text-slate-600"
+                                                                                                    onClick={() => handleQuantityChange(idx, -1)}
+                                                                                                >
+                                                                                                    -
+                                                                                                </Button>
+                                                                                                <span className="w-6 text-center font-bold text-xs">{item.quantity}</span>
+                                                                                                <Button 
+                                                                                                    size="icon" 
+                                                                                                    variant="ghost" 
+                                                                                                    className="h-6 w-6 text-slate-600"
+                                                                                                    onClick={() => handleQuantityChange(idx, 1)}
+                                                                                                >
+                                                                                                    +
+                                                                                                </Button>
+                                                                                            </div>
+                                                                                        ) : (
+                                                                                            <span className="text-sm font-bold text-slate-600">{item.quantity}</span>
+                                                                                        )}
+                                                                                    </td>
+                                                                                    <td className="px-1.5 py-3 text-right text-xs font-medium text-slate-600 whitespace-nowrap">
+                                                                                        ₹{item.originalBase.toFixed(2)}
+                                                                                    </td>
+                                                                                    <td className="px-1.5 py-3 text-right text-xs font-medium text-slate-600 whitespace-nowrap">
+                                                                                        ₹{item.originalTax.toFixed(2)}
+                                                                                        <span className="block text-[8px] text-slate-400 font-black">({item.gst?.percentage || 0}%)</span>
+                                                                                    </td>
+                                                                                    <td className="pl-2 pr-4 py-3 text-right text-xs font-black text-slate-900 whitespace-nowrap">
+                                                                                        ₹{item.originalTotalInclTax.toFixed(2)}
+                                                                                    </td>
+                                                                                </tr>
 
-                                                                        <div className="flex items-center gap-6">
-                                                                            {isEditingItems ? (
-                                                                                <div className="flex items-center bg-slate-100 rounded-lg p-1">
-                                                                                    <Button 
-                                                                                        size="icon" 
-                                                                                        variant="ghost" 
-                                                                                        className="h-8 w-8 text-slate-600 hover:text-slate-900"
-                                                                                        onClick={() => handleQuantityChange(idx, -1)}
-                                                                                    >
-                                                                                        -
-                                                                                    </Button>
-                                                                                    <span className="w-8 text-center font-bold text-sm">{item.quantity}</span>
-                                                                                    <Button 
-                                                                                        size="icon" 
-                                                                                        variant="ghost" 
-                                                                                        className="h-8 w-8 text-slate-600 hover:text-slate-900"
-                                                                                        onClick={() => handleQuantityChange(idx, 1)}
-                                                                                    >
-                                                                                        +
-                                                                                    </Button>
-                                                                                </div>
-                                                                            ) : (
-                                                                                <div className="flex flex-col items-end">
-                                                                                    <span className="text-sm font-bold text-slate-700">Qty: {item.quantity}</span>
-                                                                                    <span className="text-[10px] text-slate-400">MRP: ₹{item.price * item.quantity}</span>
-                                                                                </div>
-                                                                            )}
-                                                                            <div className="w-20 text-right font-bold text-slate-900">
-                                                                                ₹{item.price * item.quantity}
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                ))}
-                                                                
+                                                                                {/* Adjusted Row (Only if coins used) */}
+                                                                                {(selectedOrder.surabhiCoinsUsed || 0) > 0 && (
+                                                                                    <tr className="bg-slate-50/30">
+                                                                                        <td className="pl-4 pr-2 py-2">
+                                                                                            <span className="inline-flex items-center px-1 py-0.5 rounded bg-slate-900 text-white text-[7px] font-black uppercase tracking-widest leading-none">
+                                                                                                ADJUSTED
+                                                                                            </span>
+                                                                                        </td>
+                                                                                        <td className="px-1.5 py-2 text-center text-slate-300">-</td>
+                                                                                        <td className="px-1.5 py-2 text-right text-xs font-black text-slate-900 whitespace-nowrap">
+                                                                                            ₹{item.adjustedBaseLineTotal.toFixed(2)}
+                                                                                        </td>
+                                                                                        <td className="px-1.5 py-2 text-right text-xs font-black text-slate-900 whitespace-nowrap">
+                                                                                            ₹{item.adjustedTax.toFixed(2)}
+                                                                                            <span className="block text-[8px] text-slate-400 font-black">({item.gst?.percentage || 0}%)</span>
+                                                                                        </td>
+                                                                                        <td className="pl-2 pr-4 py-2 text-right text-xs font-black text-slate-900 whitespace-nowrap">
+                                                                                            ₹{item.adjustedLineTotal.toFixed(2)}
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                )}
+                                                                            </React.Fragment>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+
                                                                 {isEditingItems && (
                                                                     <div className="p-4 bg-slate-50 flex justify-center border-t border-slate-200">
                                                                         <Dialog open={isAddingProduct} onOpenChange={(open) => {
@@ -832,71 +891,82 @@ export const OrderManager = () => {
 
                                                         {/* Brand Wise Shipping Breakdown */}
                                                         {orderSummary && (
-                                                            <div className="py-3 items-center space-y-2.5 border-b border-slate-100 bg-slate-50/50 rounded-xl px-4 my-4">
-                                                                <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 flex justify-between items-center">
-                                                                    <span className="flex items-center gap-2"><Truck className="h-3 w-3" /> Brand Delivery Details</span>
-                                                                    <span className="text-amber-600 underline underline-offset-4 decoration-2">Per Brand Breakdown</span>
+                                                            <div className="py-3 space-y-2.5 border border-indigo-100 bg-indigo-50/30 rounded-xl px-4 my-4">
+                                                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1 flex justify-between items-center">
+                                                                    <span>Delivery Breakdown</span>
+                                                                    <span className="text-indigo-600">Brand Wise</span>
                                                                 </p>
                                                                 {Object.values(orderSummary.groups).map((group: any) => (
-                                                                    <div key={group.brandName} className="flex justify-between items-center">
+                                                                    <div key={group.brandName} className="grid grid-cols-2 gap-4 items-center border-b border-indigo-100/30 pb-2 mb-2 last:border-0 last:pb-0 last:mb-0">
                                                                         <div className="flex flex-col">
-                                                                            <span className="text-sm font-black text-slate-800">{group.brandName}</span>
-                                                                            <div className="flex items-center gap-1.5 ">
-                                                                                <span className="text-[11px] text-slate-400 font-bold">{group.bracketLabel} • {group.displayWeight.toFixed(2)}kg</span>
-                                                                            </div>
+                                                                            <span className="text-xs font-bold text-slate-700">{group.brandName}</span>
+                                                                            <span className="text-[9px] text-indigo-500 font-medium leading-none mt-1">Total Weight: {group.displayWeight.toFixed(2)}kg</span>
                                                                         </div>
-                                                                        <span className="text-sm font-black text-slate-900 font-mono">₹{group.shipping.toFixed(2)}</span>
+                                                                        <div className="text-right">
+                                                                            <span className="text-xs font-black text-slate-900">₹{group.shipping.toFixed(2)}</span>
+                                                                        </div>
                                                                     </div>
                                                                 ))}
                                                             </div>
                                                         )}
 
-                                                        <div className="mt-4 p-6 bg-slate-50 rounded-xl border border-slate-200">
-                                                            <h4 className="font-black text-slate-900 mb-4 uppercase text-[10px] tracking-[0.2em] flex items-center gap-2">
-                                                                <span className="h-1 w-4 bg-slate-900 rounded-full"></span>
-                                                                Order Financial Summary
-                                                            </h4>
+                                                        <div className="mt-8 p-0 bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden">
+                                                            <div className="bg-slate-50 border-b border-slate-100 p-6">
+                                                                <h4 className="font-black text-slate-900 uppercase text-[10px] tracking-[0.2em] flex items-center gap-2">
+                                                                    <span className="h-1 w-4 bg-slate-900 rounded-full"></span>
+                                                                    Order Financial Summary
+                                                                </h4>
+                                                            </div>
                                                             {orderSummary && (
-                                                                <div className="space-y-4">
-                                                                    <div className="space-y-2.5 text-sm font-medium text-slate-600">
-                                                                        <div className="flex justify-between p-3 bg-purple-50 rounded-lg">
-                                                                            <span className="font-bold text-purple-900">Items Total (Excl Tax)</span>
-                                                                            <span className="text-purple-600 font-bold">₹{orderSummary.subtotal.toFixed(2)}</span>
+                                                                <div className="p-6 space-y-4">
+                                                                    <div className="space-y-3 text-sm font-medium text-slate-600">
+                                                                        <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+                                                                            <span className="text-sm font-medium text-purple-900">Items Total (Excl Tax)</span>
+                                                                            <span className="font-bold text-purple-600">₹{orderSummary.subtotal.toFixed(2)}</span>
+                                                                        </div>
+
+                                                                        <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+                                                                            <span className="text-sm font-medium text-indigo-900 font-bold italic">Total SPV Points</span>
+                                                                            <span className="font-bold text-indigo-600 font-mono italic">{orderSummary.totalSpv.toFixed(2)}</span>
                                                                         </div>
                                                                         
                                                                         {(selectedOrder.surabhiCoinsUsed || 0) > 0 && (
-                                                                            <div className="flex justify-between p-3 bg-amber-50 rounded-lg">
-                                                                                <span className="font-bold text-amber-900">
-                                                                                    Surabhi Coins Applied ({(((selectedOrder.surabhiCoinsUsed || 0) / (orderSummary.subtotal || 1)) * 100).toFixed(1)}%)
+                                                                            <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
+                                                                                <span className="text-sm font-medium text-amber-900">
+                                                                                    Surabhi Coins Applied ({(((selectedOrder.surabhiCoinsUsed || 0) / (orderSummary.itemsTotalInclTax || 1)) * 100).toFixed(1)}%)
                                                                                 </span>
-                                                                                <span className="text-amber-600 font-bold">-{(selectedOrder.surabhiCoinsUsed || 0).toFixed(2)}</span>
+                                                                                <span className="font-bold text-amber-600">-{(selectedOrder.surabhiCoinsUsed || 0).toFixed(2)}</span>
                                                                             </div>
                                                                         )}
 
-                                                                        <div className="flex justify-between p-3 bg-slate-100 rounded-lg">
-                                                                            <span className="font-medium text-slate-700">Adjusted Total Items Value</span>
-                                                                            <span className="text-slate-900 font-bold">₹{orderSummary.adjustedTaxValue.toFixed(2)}</span>
+                                                                        <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-lg">
+                                                                            <span className="text-sm font-medium text-slate-700">Adjusted Total Items Value</span>
+                                                                            <span className="font-bold text-slate-900">₹{orderSummary.adjustedTaxValue.toFixed(2)}</span>
                                                                         </div>
 
-                                                                        <div className="flex justify-between p-3 bg-slate-100 rounded-lg">
-                                                                            <span className="font-medium text-slate-700">Adjusted Tax value</span>
-                                                                            <span className="text-slate-900 font-bold">₹{orderSummary.totalAdjustedTax.toFixed(2)}</span>
+                                                                        <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-lg">
+                                                                            <span className="text-sm font-medium text-slate-700">Adjusted Tax value</span>
+                                                                            <span className="font-bold text-slate-900">₹{orderSummary.totalAdjustedTax.toFixed(2)}</span>
                                                                         </div>
                                                                         
-                                                                        <div className="flex justify-between p-3 bg-emerald-50 rounded-lg font-black text-emerald-900">
-                                                                            <span className="uppercase text-[10px] tracking-widest">Adjusted Items Total(Incl Tax)</span>
-                                                                            <span className="text-lg">₹{orderSummary.itemsTotalAfterCoins.toFixed(2)}</span>
+                                                                        <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
+                                                                            <span className="text-sm font-medium text-emerald-900 font-bold">Adjusted Items Total(Incl Tax)</span>
+                                                                            <span className="font-bold text-emerald-600">₹{orderSummary.itemsTotalAfterCoins.toFixed(2)}</span>
                                                                         </div>
 
-                                                                        <div className="flex justify-between items-center p-3 bg-indigo-50 rounded-lg">
-                                                                            <span className="font-bold text-indigo-900">Total Shipping (Brand Sum)</span>
-                                                                            <span className="text-indigo-600 font-bold">₹{orderSummary.shippingCost.toFixed(2)}</span>
+                                                                        <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
+                                                                            <span className="text-sm font-medium text-indigo-900">Total Delivery Charges</span>
+                                                                            <span className="font-bold text-indigo-600">₹{orderSummary.shippingCost.toFixed(2)}</span>
                                                                         </div>
 
                                                                         {(selectedOrder.shippingPointsUsed !== undefined && selectedOrder.shippingPointsUsed !== 0) && (
-                                                                            <div className={`flex justify-between p-3 rounded-lg font-bold italic ${(selectedOrder.shippingPointsUsed ?? 0) > 0 ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'}`}>
-                                                                                <span>{(selectedOrder.shippingPointsUsed ?? 0) > 0 ? 'Shipping Credits Applied (Capped at Fee)' : 'Previous Shipping Dues (Added Total)'}</span>
-                                                                                <span>{(selectedOrder.shippingPointsUsed ?? 0) > 0 ? '-' : '+'}₹{Math.abs(selectedOrder.shippingPointsUsed ?? 0).toFixed(2)}</span>
+                                                                            <div className={`flex items-center justify-between p-3 rounded-lg ${selectedOrder.shippingPointsUsed > 0 ? 'bg-blue-50' : 'bg-red-50'}`}>
+                                                                                <span className={`text-sm font-black ${selectedOrder.shippingPointsUsed > 0 ? 'text-blue-900' : 'text-red-900'}`}>
+                                                                                    {selectedOrder.shippingPointsUsed > 0 ? 'Shipping Credits Applied (Capped at Fee)' : 'Previous Shipping Dues (Added Total)'}
+                                                                                </span>
+                                                                                <span className={`font-bold ${selectedOrder.shippingPointsUsed > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                                                                    {selectedOrder.shippingPointsUsed > 0 ? '-' : '+'}₹{Math.abs(selectedOrder.shippingPointsUsed).toFixed(2)}
+                                                                                </span>
                                                                             </div>
                                                                         )}
 
@@ -913,7 +983,7 @@ export const OrderManager = () => {
                                                                     <div className="pt-4 border-t border-slate-300">
                                                                         <div className="flex justify-between items-end">
                                                                             <div>
-                                                                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">Final Payable Amount</p>
+                                                                                <p className="text-xs font-black uppercase text-slate-400 tracking-wider mb-1">Total Payable Amount</p>
                                                                                 <div className="flex items-center gap-2">
                                                                                     {isEditingTotal ? (
                                                                                         <div className="flex items-center gap-1 bg-white p-1 rounded-lg shadow-sm border border-slate-200">
@@ -933,7 +1003,7 @@ export const OrderManager = () => {
                                                                                     ) : (
                                                                                         <div className="flex items-center gap-3">
                                                                                             <h2 
-                                                                                                className={`text-4xl font-black text-slate-900 leading-none tracking-tighter ${!['confirmed', 'delivered', 'cancelled'].includes(selectedOrder.status) ? "cursor-pointer hover:text-slate-600 transition-colors" : ""}`}
+                                                                                                className={`text-5xl font-black text-slate-900 leading-none tracking-tighter ${!['confirmed', 'delivered', 'cancelled'].includes(selectedOrder.status) ? "cursor-pointer hover:text-slate-600 transition-colors" : ""}`}
                                                                                                 onClick={() => {
                                                                                                     if (!['confirmed', 'delivered', 'cancelled'].includes(selectedOrder.status)) {
                                                                                                         setNewTotal(orderSummary.totalPayableAmount.toFixed(2));
@@ -955,6 +1025,10 @@ export const OrderManager = () => {
                                                                                         </div>
                                                                                     )}
                                                                                 </div>
+                                                                                <p className="text-[10px] text-slate-400 font-black uppercase mt-3 flex items-center gap-2">
+                                                                                    <span className="h-1 w-4 bg-slate-200 rounded-full"></span>
+                                                                                    Inclusive of GST & Delivery Fees
+                                                                                </p>
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -1043,10 +1117,10 @@ export const OrderManager = () => {
                     </DialogHeader>
                     <div className="py-4">
                         <p>
-                            Are you sure you want to <strong>{showConfirmAdjust?.amount > 0 ? 'add' : 'deduct'} ₹{Math.abs(showConfirmAdjust?.amount || 0)}</strong> shipping credits for this order?
+                            Are you sure you want to <strong>{showConfirmAdjust?.type === 'add' ? 'add' : 'deduct'} ₹{Math.abs(showConfirmAdjust?.amount || 0)}</strong> to this customer&apos;s shipping credit balance for this order?
                         </p>
                         <p className="text-sm text-gray-500 mt-2">
-                            This will create a ledger entry and update the customer's wallet balance immediately.
+                            This will create a ledger entry and update the customer&apos;s shipping balance immediately. Order total is adjusted to match.
                         </p>
                     </div>
                     <DialogFooter>

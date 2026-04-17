@@ -200,6 +200,10 @@ export interface CustomerTxType {
   referralEarned?: number;
   referredBy?: string | null;
   adminProft?: number;
+  /** Full admin cut (total SPV × all commission % incl. bonus) — staff sale ledger */
+  adminCut?: number;
+  /** Gross SPV on sale before coin adjustment: sale amount × SPV multiplier */
+  totalSpv?: number;
   // New Surabhi Point Value fields (additive, does not alter existing logic)
   // spvEntered: raw SPV input entered by staff during sale
   // adjustedSpv: (sale value - coins used) * spvEntered / sale value
@@ -240,6 +244,7 @@ export interface CustomerTxType {
   shippingDebit?: number;
   shippingBalance?: number;
   shippingTotal?: number;
+  shippingAmount?: number;
   storeSevaBalance: number;
 }
 
@@ -307,9 +312,12 @@ export interface AccountTxType {
   // Surabhi Point Value fields
   spvEntered?: number;
   adjustedSpv?: number;
+  /** Gross SPV basis (pre–coin-adjustment pool) for admin cut */
+  totalSpv?: number;
   shippingCredit?: number;
   shippingDebit?: number;
   shippingBalance?: number;
+  shippingAmount?: number;
   // Store bonus fields
   // Removed Store Bonus fields
 }

@@ -170,7 +170,8 @@ export const useTransactions = () => {
     queryKey: [QUERY_KEYS.TRANSACTIONS],
     queryFn: async (): Promise<CustomerTxType[]> => {
       const transactionsRef = collection(db, 'CustomerTx');
-      const q = query(transactionsRef, where('amount', '>', 0), orderBy('createdAt', 'desc'));
+      // Same ordering as customer dashboard (no amount filter — referrals etc. stay visible)
+      const q = query(transactionsRef, orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(q);
       return snapshot.docs.map(doc => ({
         id: doc.id,

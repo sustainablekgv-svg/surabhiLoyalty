@@ -37,6 +37,7 @@ import * as auth from './auth';
 import * as cloudflare from './cloudflare';
 import * as ecommerce from './ecommerce';
 import * as quarterly from './quartleryCheck';
+import { sendSaleNotificationSms as sendSaleNotificationSmsFn } from './saleSms';
 import { syncFirebaseAuthForUpload as syncFirebaseAuthForUploadFn } from './syncAuthForUpload';
 
 export const checkQuarterlyCriteria = quarterly.checkQuarterlyCriteria;
@@ -50,3 +51,5 @@ export const deleteImageFromR2Http = cloudflare.deleteImageFromR2Http;
 export const syncFirebaseAuthForUpload = syncFirebaseAuthForUploadFn;
 export const onStaffUpdate = auth.onStaffUpdate;
 export const onCustomerUpdate = auth.onCustomerUpdate;
+/** A2Z SMS: notify customer after a sale (credentials in Cloud Function env). */
+export const sendSaleNotificationSms = sendSaleNotificationSmsFn;

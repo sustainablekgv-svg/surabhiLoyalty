@@ -44,6 +44,7 @@ import { useAuth } from '@/hooks/auth-context';
 import { decryptText, isEncrypted } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { getUserMobile, getUserName } from '@/lib/userUtils';
+import { notifyCustomerSaleSms } from '@/services/saleSmsNotification';
 import {
   AccountTxType,
   ActivityType,
@@ -55,6 +56,12 @@ import {
   StoreType,
 } from '@/types/types';
 import { hasMetQuarterlyTarget } from '@/utils/quarterlyTargets';
+import {
+  adjustedSpvGrossFromNormalized,
+  computeSaleAdminCut,
+  computeSaleAdminProfit,
+  totalSpvGrossFromSale,
+} from '@/utils/saleAdminSpv';
 
 // Custom rounding function: floor if decimal < 0.5, ceil if decimal >= 0.5
 const customRound = (value: number): number => {
@@ -76,27 +83,6 @@ const fetchCustomerByMobile = async (mobile: string): Promise<CustomerType | nul
   }
 };
 
-// Admin cut is now based on Surabhi Point Value (SPV) rather than sale value.
-// It also includes the store's Bonus % in the admin cut calculation.
-const calculateAdminCut = (
-  spvBase: number,
-  storeDetails: StoreType,
-  paymentMethod?: 'wallet' | 'cash' | 'mixed'
-) => {
-  if (!storeDetails) return 0;
-  const surabhiCommissionForEarn =
-    paymentMethod === 'cash' || paymentMethod === 'mixed'
-      ? storeDetails.cashOnlyCommission
-      : storeDetails.surabhiCommission;
-
-  const surabhiPart = customRound(spvBase * (surabhiCommissionForEarn / 100));
-  const referralPart = customRound(spvBase * (storeDetails.referralCommission / 100));
-  const sevaPart = customRound(spvBase * (storeDetails.sevaCommission / 100));
-  const shippingPart = customRound(spvBase * ((storeDetails.shippingCommission || 0) / 100));
-  const bonusPart = customRound(spvBase * ((storeDetails.bonusPercentage || 0) / 100));
-  return referralPart + sevaPart + surabhiPart + shippingPart + bonusPart;
-};
-
 // Generate a unique invoice ID or use the provided one
 const generateInvoiceId = (storePrefix: string) => {
   const timestamp = new Date().getTime();
@@ -116,6 +102,10 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
   const [shippingCreditsToUse, setShippingCreditsToUse] = useState<number>(0);
   const [shippingFee, setShippingFee] = useState<number | undefined>(undefined);
   const [spvEntered, setSpvEntered] = useState<string>('1');
+  /** Empty = use calculated net cash (items − coins + net shipping payable). */
+  const [manualNetCashStr, setManualNetCashStr] = useState('');
+  /** Empty = use calculated adjusted SPV from multiplier formula. */
+  const [manualAdjustedSpvStr, setManualAdjustedSpvStr] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [customers, setCustomers] = useState<CustomerType[]>([]);
   const [isFetchingCustomers, setIsFetchingCustomers] = useState(false);
@@ -182,17 +172,36 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         // No invoice ID provided, generate a new one
         txInvoiceId = generateInvoiceId(storeDetails.storePrefix);
       }
-      // Adjusted SPV and adjusted earnings computation (additive, does not alter existing logic)
-      const spvValue = parseFloat(spvEntered) || 0;
-      const adjustedSpv =
-        saleAmount > 0
-          ? Number(
-              (
-                ((saleAmount - saleCalculation.surabhiCoinsUsed) * spvValue) /
-                saleAmount
-              ).toFixed(2)
-            )
-          : 0;
+      // SPV: staff enters Total SPV for the full sale (same unit as online grossSpvWeight).
+      // Adjusted SPV is reduced proportionally when Surabhi coins are used.
+      const adjustedSpv = getEffectiveAdjustedSpv();
+      const totalSpvGross = Number((parseFloat(spvEntered) || 0).toFixed(2));
+      const adjustedSpvGross = Number(adjustedSpv.toFixed(2));
+      const shippingCreditsEarnedFinal = customRound(
+        (adjustedSpv * (storeDetails.shippingCommission || 0)) / 100
+      );
+      const effectiveNetCash = getEffectiveNetCash();
+      const adminCutForSale = computeSaleAdminCut(totalSpvGross, storeDetails, paymentMethod);
+      const adminProfitForSale = computeSaleAdminProfit(
+        totalSpvGross,
+        adjustedSpvGross,
+        storeDetails,
+        paymentMethod,
+        saleCalculation.surabhiCoinsUsed
+      );
+      // AccountTx (store ledger): credit = net cash received; debit = item amount − admin cut + net shipping payable
+      const accountTxCredit =
+        paymentMethod === 'wallet' ? 0 : Number(effectiveNetCash.toFixed(2));
+      const accountTxDebit = Number(
+        (
+          saleCalculation.itemAmount -
+          adminCutForSale +
+          saleCalculation.netShippingPayable
+        ).toFixed(2)
+      );
+      const storeCb0 = Number(storeDetails.storeCurrentBalance || 0);
+      const adminCbRaw = Number(storeDetails.adminCurrentBalance);
+      const adminCb0 = Number.isFinite(adminCbRaw) ? adminCbRaw : -storeCb0;
       const surabhiCommissionForEarn =
         paymentMethod === 'cash' || paymentMethod === 'mixed'
           ? storeDetails.cashOnlyCommission
@@ -209,7 +218,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
       const newShippingBalance = customRound(
         (selectedCustomer.shippingBalance || 0)
         - saleCalculation.shippingCreditsUsed
-        + saleCalculation.shippingCreditsEarned
+        + shippingCreditsEarnedFinal
       );
       // const newSurbhiTotal = customRound((selectedCustomer.surbhiTotal || 0) + surabhiEarnedAdj);
       // console.log('Is it comig here in line 261', newWalletBalance, newSurabhiCoins);
@@ -225,7 +234,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
 
       // Exclude seva balance calculations for demo stores
       const sevaContribution = sevaEarnedAdj;
-      const adminProfitTakenInSale = calculateAdminProfit();
+      const adminProfitTakenInSale = adminProfitForSale;
 
       const newSevaBalance = Number(
         ((selectedCustomer.sevaBalance || 0) + sevaContribution).toFixed(2)
@@ -260,7 +269,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         sevaBalance: newSevaBalance,
         sevaTotal: newSevaTotal,
         shippingBalance: newShippingBalance,
-        shippingTotal: increment(saleCalculation.shippingCreditsEarned),
+        shippingTotal: increment(shippingCreditsEarnedFinal),
         lastTransactionDate: serverTimestamp(),
         updatedAt: serverTimestamp(),
         ...(shouldUpdateEligibility ? { saleElgibility: true } : {}),
@@ -341,35 +350,33 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
 
       // Add AccountTx record(s) based on payment method
       if (paymentMethod === 'wallet') {
-        const adminCutTx = calculateAdminCut(spvValue, storeDetails, paymentMethod);
+        const adminCutTx = adminCutForSale;
         // console.log('The line in 694 adminCutTx is', adminCutTx);
         const walletAccountTxData: Omit<AccountTxType, 'id'> = {
           createdAt: Timestamp.fromDate(new Date()),
           storeName: storeDetails.storeName,
           customerName: selectedCustomer.customerName,
           customerMobile: selectedCustomer.customerMobile,
-          adminProfit: calculateAdminProfit(),
+          adminProfit: adminProfitForSale,
           type: 'sale',
           amount: saleCalculation.totalAmount,
           invoiceId: txInvoiceId, // Add invoice ID for consistency
-          credit: Number((0).toFixed(2)),
-          debit: Number((saleCalculation.totalAmount - adminCutTx).toFixed(2)),
+          credit: accountTxCredit,
+          debit: accountTxDebit,
           adminCut: Number(adminCutTx.toFixed(2)),
-          adminCurrentBalance: Number(
-            (-(storeDetails.storeCurrentBalance || 0) + saleCalculation.totalAmount - adminCutTx).toFixed(2)
-          ),
-          currentBalance: Number(
-            ((storeDetails.storeCurrentBalance || 0) - saleCalculation.totalAmount + adminCutTx).toFixed(2)
-          ),
+          adminCurrentBalance: Number((adminCb0 - accountTxCredit + accountTxDebit).toFixed(2)),
+          currentBalance: Number((storeCb0 + accountTxCredit - accountTxDebit).toFixed(2)),
           sevaBalance: Number((selectedCustomer.sevaBalance || 0).toFixed(2)),
           remarks: `Wallet sale for ${selectedCustomer.customerName} (${selectedCustomer.customerMobile})`,
           demoStore: storeDetails.demoStore || false,
           // SPV fields
           spvEntered: Number((parseFloat(spvEntered) || 0).toFixed(2)),
           adjustedSpv: Number(adjustedSpv.toFixed(2)),
-          shippingCredit: saleCalculation.shippingCreditsEarned,
+          totalSpv: totalSpvGross,
+          shippingCredit: shippingCreditsEarnedFinal,
           shippingDebit: saleCalculation.shippingCreditsUsed,
-          shippingBalance: (selectedCustomer.shippingBalance || 0) + saleCalculation.shippingCreditsEarned - saleCalculation.shippingCreditsUsed,
+          shippingBalance: (selectedCustomer.shippingBalance || 0) + shippingCreditsEarnedFinal - saleCalculation.shippingCreditsUsed,
+          shippingAmount: saleCalculation.shippingFee,
         };
         await addDoc(collection(db, 'AccountTx'), walletAccountTxData);
 
@@ -378,7 +385,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           type: 'sale',
           customerMobile: selectedCustomer.customerMobile,
           customerName: selectedCustomer.customerName,
-          demoStore: storeDetails.demoStore || false,
+          demoStore: demoStore,
           storeLocation: storeLocation,
           storeName: user.storeLocation,
           createdAt: Timestamp.fromDate(new Date()),
@@ -391,7 +398,9 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           surabhiEarned: Number(surabhiEarnedAdj.toFixed(2)),
           sevaEarned: Number(sevaContribution.toFixed(2)),
           referralEarned: 0,
-          adminProft: calculateAdminProfit(),
+          adminProft: adminProfitForSale,
+          adminCut: adminCutForSale,
+          totalSpv: totalSpvGross,
           // SPV fields
           spvEntered: Number((parseFloat(spvEntered) || 0).toFixed(2)),
           adjustedSpv: Number(adjustedSpv.toFixed(2)),
@@ -423,10 +432,11 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           surabhiDebit: Number(saleCalculation.surabhiCoinsUsed.toFixed(2)),
           surabhiCredit: Number(surabhiEarnedAdj.toFixed(2)),
           surabhiBalance: newSurabhiCoins,
-          shippingCredit: saleCalculation.shippingCreditsEarned,
+          shippingCredit: shippingCreditsEarnedFinal,
           shippingDebit: saleCalculation.shippingCreditsUsed,
           shippingBalance: newShippingBalance,
-          shippingTotal: (selectedCustomer.shippingTotal || 0) + saleCalculation.shippingCreditsEarned,
+          shippingTotal: (selectedCustomer.shippingTotal || 0) + shippingCreditsEarnedFinal,
+          shippingAmount: saleCalculation.shippingFee,
           sevaCredit: Number(sevaContribution.toFixed(2)),
           sevaDebit: Number((0).toFixed(2)),
           sevaBalance: Number(((selectedCustomer.sevaBalance || 0) + sevaContribution).toFixed(2)),
@@ -468,19 +478,6 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           // );
         }
       } else if (paymentMethod === 'cash') {
-        // credit = actual cash received = Net Cash Payment
-        // debit = Net Cash Payment - Sum of all percentages (surabhi, referral, seva, shipping)
-        const totalCommissionPercentages = 
-          storeDetails.cashOnlyCommission + 
-          storeDetails.referralCommission + 
-          storeDetails.sevaCommission + 
-          (storeDetails.shippingCommission || 0) +
-          (storeDetails.bonusPercentage || 0);
-        
-        const netCashPaymentUI = (saleCalculation.itemAmount - saleCalculation.surabhiCoinsUsed) + saleCalculation.netShippingPayable;
-        const cashCredit = Number(netCashPaymentUI.toFixed(2));
-        const cashDebit = Number((saleAmount  - (spvValue * (totalCommissionPercentages / 100))).toFixed(2));
-
         const cashAccountTxData: Omit<AccountTxType, 'id'> = {
           createdAt: Timestamp.fromDate(new Date()),
           storeName: storeDetails.storeName,
@@ -490,36 +487,26 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           demoStore: storeDetails.demoStore || false,
           customerName: selectedCustomer.customerName,
           customerMobile: selectedCustomer.customerMobile,
-          credit: cashCredit,
-          adminCut: calculateAdminProfit(),
-          adminProfit: calculateAdminProfit(),
-          debit: cashDebit,
+          credit: accountTxCredit,
+          adminCut: adminCutForSale,
+          adminProfit: adminProfitForSale,
+          debit: accountTxDebit,
           sevaBalance: Number(
             (
               (Number(storeDetails?.storeSevaBalance) || 0) + (Number(sevaContribution) || 0)
             ).toFixed(2)
           ),
-          currentBalance: Number(
-            (
-              (Number(storeDetails?.storeCurrentBalance) || 0) +
-              cashCredit -
-              cashDebit
-            ).toFixed(2)
-          ),
-          adminCurrentBalance: Number(
-            (
-              (Number(storeDetails?.adminCurrentBalance) || -storeDetails.storeCurrentBalance) -
-              cashCredit +
-              cashDebit
-            ).toFixed(2)
-          ),
+          currentBalance: Number((storeCb0 + accountTxCredit - accountTxDebit).toFixed(2)),
+          adminCurrentBalance: Number((adminCb0 - accountTxCredit + accountTxDebit).toFixed(2)),
           remarks: `Cash sale for ${selectedCustomer.customerName} (${selectedCustomer.customerMobile})`,
           // SPV fields
           spvEntered: Number((parseFloat(spvEntered) || 0).toFixed(2)),
           adjustedSpv: Number(adjustedSpv.toFixed(2)),
-          shippingCredit: saleCalculation.shippingCreditsEarned,
+          totalSpv: totalSpvGross,
+          shippingCredit: shippingCreditsEarnedFinal,
           shippingDebit: saleCalculation.shippingCreditsUsed,
-          shippingBalance: (selectedCustomer.shippingBalance || 0) + saleCalculation.shippingCreditsEarned - saleCalculation.shippingCreditsUsed,
+          shippingBalance: (selectedCustomer.shippingBalance || 0) + shippingCreditsEarnedFinal - saleCalculation.shippingCreditsUsed,
+          shippingAmount: saleCalculation.shippingFee,
         };
         await addDoc(collection(db, 'AccountTx'), cashAccountTxData);
 
@@ -543,7 +530,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           type: 'sale',
           customerMobile: selectedCustomer.customerMobile,
           customerName: selectedCustomer.customerName,
-          demoStore: storeDetails.demoStore || false,
+          demoStore: demoStore,
           storeLocation: storeLocation,
           storeName: user.storeLocation,
           createdAt: Timestamp.fromDate(new Date()),
@@ -555,7 +542,9 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           amount: saleCalculation.totalAmount,
           surabhiEarned: Number(surabhiEarnedAdj.toFixed(2)),
           sevaEarned: Number(sevaContribution.toFixed(2)),
-          adminProft: calculateAdminProfit(),
+          adminProft: adminProfitForSale,
+          adminCut: adminCutForSale,
+          totalSpv: totalSpvGross,
           // SPV fields
           spvEntered: Number((parseFloat(spvEntered) || 0).toFixed(2)),
           adjustedSpv: Number(adjustedSpv.toFixed(2)),
@@ -564,7 +553,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           // Sale-Specific Fields
           surabhiUsed: Number(saleCalculation.surabhiCoinsUsed.toFixed(2)),
           walletDeduction: Number(saleCalculation.walletDeduction.toFixed(2)),
-          cashPayment: Number(saleCalculation.cashPayment.toFixed(2)),
+          cashPayment: Number(effectiveNetCash.toFixed(2)),
 
           // Balance fields
           previousBalance: {
@@ -585,12 +574,13 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             (selectedCustomer.walletBalance - saleCalculation.walletDeduction).toFixed(2)
           ),
           surabhiDebit: Number(saleCalculation.surabhiCoinsUsed.toFixed(2)),
-          surabhiCredit: Number(saleCalculation.surabhiCoinsEarned.toFixed(2)),
+          surabhiCredit: Number(surabhiEarnedAdj.toFixed(2)),
           surabhiBalance: newSurabhiCoins,
-          shippingCredit: saleCalculation.shippingCreditsEarned,
+          shippingCredit: shippingCreditsEarnedFinal,
           shippingDebit: saleCalculation.shippingCreditsUsed,
           shippingBalance: newShippingBalance,
-          shippingTotal: (selectedCustomer.shippingTotal || 0) + saleCalculation.shippingCreditsEarned,
+          shippingTotal: (selectedCustomer.shippingTotal || 0) + shippingCreditsEarnedFinal,
+          shippingAmount: saleCalculation.shippingFee,
           sevaCredit: Number(sevaContribution.toFixed(2)),
           sevaDebit: Number((0).toFixed(2)),
           sevaBalance: Number(
@@ -634,19 +624,6 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         }
       } else {
         if (saleCalculation.cashPayment > 0) {
-          // credit = actual cash received = Net Cash Payment
-          // debit = Net Cash Payment - Sum of all percentages (surabhi, referral, seva, shipping)
-          const totalCommissionPercentagesMixed = 
-            storeDetails.cashOnlyCommission + 
-            storeDetails.referralCommission + 
-            storeDetails.sevaCommission + 
-            (storeDetails.shippingCommission || 0) +
-            (storeDetails.bonusPercentage || 0);
-
-          const netCashPaymentUIMixed = (saleCalculation.itemAmount - saleCalculation.surabhiCoinsUsed) + saleCalculation.netShippingPayable;
-          const mixedCashCredit = Number(netCashPaymentUIMixed.toFixed(2));
-          const mixedCashDebit = Number((saleAmount  - (spvValue * (totalCommissionPercentagesMixed / 100))).toFixed(2));
-
           const mixedAccountTxData: Omit<AccountTxType, 'id'> = {
             createdAt: Timestamp.fromDate(new Date()),
             storeName: storeDetails.storeName,
@@ -656,24 +633,12 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             customerName: selectedCustomer.customerName,
             demoStore: storeDetails.demoStore || false,
             customerMobile: selectedCustomer.customerMobile,
-            adminCut: calculateAdminProfit(),
-            adminProfit: calculateAdminProfit(),
-            credit: mixedCashCredit,
-            debit: mixedCashDebit,
-            adminCurrentBalance: Number(
-              (
-                (Number(storeDetails?.adminCurrentBalance) || -storeDetails.storeCurrentBalance) -
-                mixedCashCredit +
-                mixedCashDebit
-              ).toFixed(2)
-            ),
-            currentBalance: Number(
-              (
-                (Number(storeDetails?.storeCurrentBalance) || 0) +
-                mixedCashCredit -
-                mixedCashDebit
-              ).toFixed(2)
-            ),
+            adminCut: adminCutForSale,
+            adminProfit: adminProfitForSale,
+            credit: accountTxCredit,
+            debit: accountTxDebit,
+            adminCurrentBalance: Number((adminCb0 - accountTxCredit + accountTxDebit).toFixed(2)),
+            currentBalance: Number((storeCb0 + accountTxCredit - accountTxDebit).toFixed(2)),
             sevaBalance: Number(
               (
                 (Number(storeDetails?.storeSevaBalance) || 0) + (Number(sevaContribution) || 0)
@@ -683,9 +648,11 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             // SPV fields
             spvEntered: Number((parseFloat(spvEntered) || 0).toFixed(2)),
             adjustedSpv: Number(adjustedSpv.toFixed(2)),
-            shippingCredit: saleCalculation.shippingCreditsEarned,
+            totalSpv: totalSpvGross,
+            shippingCredit: shippingCreditsEarnedFinal,
             shippingDebit: saleCalculation.shippingCreditsUsed,
-            shippingBalance: (selectedCustomer.shippingBalance || 0) + saleCalculation.shippingCreditsEarned - saleCalculation.shippingCreditsUsed,
+            shippingBalance: (selectedCustomer.shippingBalance || 0) + shippingCreditsEarnedFinal - saleCalculation.shippingCreditsUsed,
+            shippingAmount: saleCalculation.shippingFee,
           };
 
           await addDoc(collection(db, 'AccountTx'), mixedAccountTxData);
@@ -711,7 +678,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             type: 'sale',
             customerMobile: selectedCustomer.customerMobile,
             customerName: selectedCustomer.customerName,
-            demoStore: storeDetails.demoStore || false,
+            demoStore: demoStore,
             storeLocation: storeLocation,
             storeName: user.storeLocation,
             createdAt: Timestamp.fromDate(new Date()),
@@ -725,7 +692,9 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             sevaEarned: Number(sevaContribution.toFixed(2)),
             referralEarned: 0,
             referredBy: selectedCustomer.referredBy || '',
-            adminProft: calculateAdminProfit(),
+            adminProft: adminProfitForSale,
+            adminCut: adminCutForSale,
+            totalSpv: totalSpvGross,
             // SPV fields
             spvEntered: Number((parseFloat(spvEntered) || 0).toFixed(2)),
             adjustedSpv: Number(adjustedSpv.toFixed(2)),
@@ -734,7 +703,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             // Sale-Specific Fields
             surabhiUsed: Number(saleCalculation.surabhiCoinsUsed.toFixed(2)),
             walletDeduction: Number(saleCalculation.walletDeduction.toFixed(2)),
-            cashPayment: Number(saleCalculation.cashPayment.toFixed(2)),
+            cashPayment: Number(effectiveNetCash.toFixed(2)),
 
             // Balance fields
             previousBalance: {
@@ -757,10 +726,11 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             surabhiDebit: Number(saleCalculation.surabhiCoinsUsed.toFixed(2)),
             surabhiCredit: Number(surabhiEarnedAdj.toFixed(2)),
             surabhiBalance: newSurabhiCoins,
-            shippingCredit: saleCalculation.shippingCreditsEarned,
+            shippingCredit: shippingCreditsEarnedFinal,
             shippingDebit: saleCalculation.shippingCreditsUsed,
             shippingBalance: newShippingBalance,
-            shippingTotal: (selectedCustomer.shippingTotal || 0) + saleCalculation.shippingCreditsEarned,
+            shippingTotal: (selectedCustomer.shippingTotal || 0) + shippingCreditsEarnedFinal,
+            shippingAmount: saleCalculation.shippingFee,
             sevaCredit: Number(sevaContribution.toFixed(2)),
             sevaDebit: Number((0).toFixed(2)),
             sevaBalance: Number(
@@ -829,7 +799,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
       if (
         (paymentMethod === 'cash' || paymentMethod === 'mixed') &&
         selectedCustomer.referredBy &&
-        saleCalculation.referrerSurabhiCoinsEarned > 0
+        referralEarnedAdj > 0
         //  &&
         // Only process if not already processed for wallet payment
         // !(paymentMethod === 'mixed' && saleCalculation?.walletDeduction > 0)
@@ -839,7 +809,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           const referrer = await fetchCustomerByMobile(selectedCustomer.referredBy);
 
           if (referrer) {
-            const referralAmount = saleCalculation.referrerSurabhiCoinsEarned;
+            const referralAmount = referralEarnedAdj;
             const referrerRef = doc(db, 'Customers', referrer.id); // Assuming you have id field
             // console.log('The referrer id is', referrerRef);
             // Update referrer's balances - only update Surabhi balance without modifying referredUsers
@@ -979,6 +949,17 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
 
       toast.success(`Sale of ₹${saleAmount} completed successfully!`);
 
+      if (!demoStore) {
+        void notifyCustomerSaleSms({
+          phone: selectedCustomer.customerMobile,
+          customerName: selectedCustomer.customerName,
+          amount: saleCalculation.totalAmount,
+          invoiceId: txInvoiceId,
+          paymentMethod,
+          storeName: storeDetails?.storeName || user?.storeLocation,
+        });
+      }
+
       // Send WhatsApp sale confirmation
       // try {
       //   await whatsappService.sendSaleConfirmation(
@@ -1055,11 +1036,11 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         return {
           id: doc.id,
           ...(data as CustomerType),
-          mobile: data.mobile,
+          customerMobile: data.customerMobile || data.mobile,
           cumTotal: data.cumTotal || 0,
           joinedDate: data.joinedDate || data.createdAt || Timestamp.now(),
           cummulativeTarget: data.cummulativeTarget || 0,
-          insFrozen: data.coinsFrozen || false,
+          coinsFrozen: data.coinsFrozen || false,
         };
       });
 
@@ -1164,12 +1145,12 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           return {
             id: doc.id,
             ...(data as CustomerType),
-            mobile: data.mobile, // Using mobile as identifier
+            customerMobile: data.customerMobile || data.mobile, // Ensure mobile is mapped correctly
             // Ensure required properties exist with defaults
             cumTotal: data.cumTotal || 0,
             joinedDate: data.joinedDate || data.createdAt || Timestamp.now(),
             cummulativeTarget: data.cummulativeTarget || 0,
-            insFrozen: data.coinsFrozen || false,
+            coinsFrozen: data.coinsFrozen || false,
           };
         });
         setCustomers(customersData);
@@ -1198,6 +1179,9 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           const updatedCustomerData = {
             id: docSnapshot.id,
             ...(docSnapshot.data() as CustomerType),
+            customerMobile: docSnapshot.data()?.customerMobile || docSnapshot.data()?.mobile,
+            cumTotal: docSnapshot.data()?.cumTotal || 0,
+            coinsFrozen: docSnapshot.data()?.coinsFrozen || false,
           };
           setSelectedCustomer(updatedCustomerData);
         }
@@ -1270,11 +1254,18 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
     }
   }, [selectedCustomer, saleAmount, shippingFee]);
 
-  const calculateAdminProfit = () => {
-    if (!storeDetails) return 0;
-    const spvValue = parseFloat(spvEntered) || 0;
-    return calculateAdminCut(spvValue, storeDetails, paymentMethod);
-  };
+  useEffect(() => {
+    setManualNetCashStr('');
+    setManualAdjustedSpvStr('');
+  }, [
+    saleAmount,
+    surabhiCoinsToUse,
+    shippingFee,
+    shippingCreditsToUse,
+    spvEntered,
+    paymentMethod,
+    selectedCustomer?.customerMobile,
+  ]);
 
   // Calculate sale details with accurate payment logic
   const calculateSale = () => {
@@ -1389,19 +1380,114 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
   const CustomRound = (val: number) => Math.round(val * 100) / 100;
 
   const saleCalculation = saleAmount ? calculateSale() : null;
-  // Derived Adjusted SPV for UI display; guard against division by zero
-  const spvValueMultiplier = parseFloat(spvEntered) || 0;
-  const adjustedSpvDisplay =
-    saleAmount && saleAmount > 0
-      ? Number(
-          (
-            ((saleAmount - saleCalculation.surabhiCoinsUsed) * spvValueMultiplier) /
-            saleAmount
-          ).toFixed(2)
+
+  const getComputedAdjustedSpv = (): number => {
+    if (!saleAmount || saleAmount <= 0 || !saleCalculation?.isValid) return 0;
+    const totalSpvEntered = parseFloat(spvEntered) || 0;
+    const ratio =
+      saleAmount > 0
+        ? (saleAmount - (saleCalculation.surabhiCoinsUsed || 0)) / saleAmount
+        : 0;
+    return Number((Math.max(0, totalSpvEntered * ratio)).toFixed(2));
+  };
+
+  const getEffectiveAdjustedSpv = (): number => {
+    const t = manualAdjustedSpvStr.trim();
+    const p = parseFloat(t);
+    if (t !== '' && Number.isFinite(p)) return Math.max(0, p);
+    return getComputedAdjustedSpv();
+  };
+
+  const getComputedNetCash = (): number => {
+    if (!saleCalculation?.isValid) return 0;
+    return Number(
+      (
+        (saleCalculation.itemAmount - saleCalculation.surabhiCoinsUsed) +
+        saleCalculation.netShippingPayable
+      ).toFixed(2)
+    );
+  };
+
+  const getEffectiveNetCash = (): number => {
+    if (!saleCalculation?.isValid) return 0;
+    const t = manualNetCashStr.trim();
+    const p = parseFloat(t);
+    // Any value typed in the Net Cash Payment field wins over calculated defaults
+    if (t !== '' && Number.isFinite(p)) {
+      return Math.max(0, p);
+    }
+    if (saleCalculation.cashPayment <= 0) {
+      return paymentMethod === 'wallet' ? 0 : getComputedNetCash();
+    }
+    if (paymentMethod === 'mixed') {
+      return Number(saleCalculation.cashPayment.toFixed(2));
+    }
+    return getComputedNetCash();
+  };
+
+  const adjustedSpvDisplay = getComputedAdjustedSpv();
+
+  const getSpvGrossForDisplay = () => {
+    if (!saleCalculation?.isValid) return { total: 0, adjusted: 0 };
+    const total = Number((parseFloat(spvEntered) || 0).toFixed(2));
+    const adjusted = Number((getEffectiveAdjustedSpv() || 0).toFixed(2));
+    return { total, adjusted };
+  };
+
+  const { total: totalSpvGrossUi, adjusted: adjustedSpvGrossUi } = getSpvGrossForDisplay();
+
+  const adminCutDisplay =
+    storeDetails && saleCalculation?.isValid
+      ? computeSaleAdminCut(totalSpvGrossUi, storeDetails, paymentMethod)
+      : 0;
+  const adminProfitDisplay =
+    storeDetails && saleCalculation?.isValid
+      ? computeSaleAdminProfit(
+          totalSpvGrossUi,
+          adjustedSpvGrossUi,
+          storeDetails,
+          paymentMethod,
+          saleCalculation.surabhiCoinsUsed
         )
       : 0;
-  const adminProfitTaken = calculateAdminProfit();
-  // console.log('THe adminProfit taken is', adminProfitTaken);
+
+  const commissionCashOrWalletPct =
+    paymentMethod === 'cash' || paymentMethod === 'mixed'
+      ? storeDetails?.cashOnlyCommission ?? 0
+      : storeDetails?.surabhiCommission ?? 0;
+  const adminCutPctSum =
+    (commissionCashOrWalletPct || 0) +
+    (storeDetails?.referralCommission || 0) +
+    (storeDetails?.sevaCommission || 0) +
+    (storeDetails?.bonusPercentage || 0) +
+    (storeDetails?.shippingCommission || 0);
+  const adminProfitNonBonusPctSum =
+    (commissionCashOrWalletPct || 0) +
+    (storeDetails?.referralCommission || 0) +
+    (storeDetails?.sevaCommission || 0) +
+    (storeDetails?.shippingCommission || 0);
+
+  const rewardBaseSpv = getEffectiveAdjustedSpv();
+  const surabhiCommissionForEarnUi =
+    paymentMethod === 'cash' || paymentMethod === 'mixed'
+      ? storeDetails?.cashOnlyCommission ?? 0
+      : storeDetails?.surabhiCommission ?? 0;
+  const displaySurabhiEarned =
+    storeDetails && saleCalculation?.isValid
+      ? Number(((rewardBaseSpv * surabhiCommissionForEarnUi) / 100).toFixed(2))
+      : 0;
+  const displaySevaEarned =
+    storeDetails && saleCalculation?.isValid
+      ? Number(((rewardBaseSpv * (storeDetails.sevaCommission || 0)) / 100).toFixed(2))
+      : 0;
+  const displayReferralEarned =
+    storeDetails && saleCalculation?.isValid
+      ? Number(((rewardBaseSpv * (storeDetails.referralCommission || 0)) / 100).toFixed(2))
+      : 0;
+  const displayShippingCreditsEarned =
+    storeDetails && saleCalculation?.isValid
+      ? customRound((rewardBaseSpv * (storeDetails.shippingCommission || 0)) / 100)
+      : 0;
 
   // console.log("The line 253 is", saleCalculation?.totalAmount)
 
@@ -1556,10 +1642,10 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                           )}
                         </div>
                         <p className="font-medium text-green-600">
-                          ₹{customer.walletBalance.toFixed(2)}
+                          ₹{(customer.walletBalance || 0).toFixed(2)}
                         </p>
                         <p className="text-amber-600">
-                          {customer.surabhiBalance.toFixed(2)} Surabhi Balance
+                          {(customer.surabhiBalance || 0).toFixed(2)} Surabhi Balance
                         </p>
                         <p className="text-indigo-600 text-xs mt-1">
                           ₹{(customer.shippingBalance || 0).toFixed(2)} Shipping Credits
@@ -1614,11 +1700,11 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                   <div className="grid grid-cols-3 gap-4 text-sm">
                     <div>
                       <p className="text-blue-700">Wallet Balance</p>
-                      <p className="font-bold">₹{selectedCustomer.walletBalance.toFixed(2)}</p>
+                      <p className="font-bold">₹{(selectedCustomer.walletBalance || 0).toFixed(2)}</p>
                     </div>
                     <div>
                       <p className="text-amber-700">Surabhi Coins</p>
-                      <p className="font-bold">{selectedCustomer.surabhiBalance.toFixed(2)}</p>
+                      <p className="font-bold">{(selectedCustomer.surabhiBalance || 0).toFixed(2)}</p>
                     </div>
                     <div>
                       <p className="text-purple-700">Last Purchase</p>
@@ -1779,21 +1865,21 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
 
 
 
-                  {/* Surabhi Point Value multiplier */}
+                  {/* Total SPV (entered for full sale) */}
                   <div className="space-y-2">
-                    <Label htmlFor="spv" className="text-gray-700 font-bold">SPV Multiplier</Label>
+                    <Label htmlFor="spv" className="text-gray-700 font-bold">Total SPV</Label>
                     <div className="relative">
                       <Input
                         id="spv"
                         type="text"
-                        placeholder="Enter SPV Multiplier (e.g. 1)"
+                        placeholder="Enter Total SPV for this sale (e.g. 250)"
                         value={spvEntered}
                         onChange={e => setSpvEntered(e.target.value)}
                         className="pl-14 h-12"
                       />
                     </div>
                     <p className="text-[10px] text-gray-500 italic pb-1">
-                      Formula: Adjusted SPV = ((Sale Amount - Coins Used) × Multiplier) / Sale Amount
+                      Formula: Adjusted SPV = Total SPV × (Sale Amount − Coins Used) / Sale Amount
                     </p>
                   </div>
 
@@ -1861,7 +1947,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                           {/* Net items total = Items Total (Excl Tax) - Surabhi Coins Applied */}
                           <div className="flex items-center justify-between p-3 bg-blue-50/50 rounded-lg border border-blue-100">
                             <span className="text-sm font-medium text-blue-900 font-bold">Net items total</span>
-                            <span className="font-bold text-blue-600">₹{((saleAmount || 0) - saleCalculation.surabhiCoinsUsed).toFixed(2)}</span>
+                            <span className="font-bold text-blue-600">₹{((saleAmount || 0) - (saleCalculation.surabhiCoinsUsed || 0)).toFixed(2)}</span>
                           </div>
                                {shippingFee && shippingFee > 0 && (
                         <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-lg border border-indigo-100/50">
@@ -1881,7 +1967,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
 
                       <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
                         <span className="text-sm font-medium text-emerald-900">Adjusted Items Total</span>
-                        <span className="font-bold text-emerald-600">₹{(saleCalculation.itemAmount - saleCalculation.surabhiCoinsUsed).toFixed(2)}</span>
+                        <span className="font-bold text-emerald-600">₹{((saleCalculation.itemAmount || 0) - (saleCalculation.surabhiCoinsUsed || 0)).toFixed(2)}</span>
                       </div>
 
                       {saleCalculation.shippingCreditsUsed > 0 && (
@@ -1890,7 +1976,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                             Shipping Coins Applied
                           </span>
                           <span className="font-bold text-purple-600">
-                            -₹{saleCalculation.shippingCreditsUsed.toFixed(2)}
+                            -₹{(saleCalculation.shippingCreditsUsed || 0).toFixed(2)}
                           </span>
                         </div>
                       )}
@@ -1899,7 +1985,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                         <div className="flex items-center justify-between p-3 bg-indigo-50 border border-indigo-100/50 rounded-lg">
                           <span className="text-sm font-medium text-indigo-900">Net Shipping Payable</span>
                           <span className="font-bold text-indigo-600">
-                            ₹{saleCalculation.netShippingPayable.toFixed(2)}
+                            ₹{(saleCalculation.netShippingPayable || 0).toFixed(2)}
                           </span>
                         </div>
                       )}
@@ -1921,7 +2007,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                             Wallet Deduction
                           </span>
                           <span className="font-bold text-blue-600">
-                            ₹{saleCalculation.walletDeduction.toFixed(2)}
+                            ₹{(saleCalculation.walletDeduction || 0).toFixed(2)}
                           </span>
                         </div>
                       )}
@@ -1936,31 +2022,55 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                       )} */}
 
                       {saleCalculation.cashPayment > 0 && (
-                        <div className="flex items-center justify-between p-3 bg-green-100 border border-green-200 rounded-lg">
-                          <div className="flex flex-col">
+                        <div className="p-3 bg-green-100 border border-green-200 rounded-lg space-y-2">
+                          <div className="flex flex-col gap-0.5">
                             <span className="text-sm font-bold text-green-900">Net Cash Payment</span>
-                            <span className="text-[10px] text-green-700">(Items - Coins) + (Shipping - Shipping Coins)</span>
+                            <span className="text-[10px] text-green-700">
+                              Calculated: ₹{getComputedNetCash().toFixed(2)} — edit to override amount
+                              recorded as cash received
+                            </span>
                           </div>
-                          <span className="text-lg font-black text-green-800">
-                            ₹{(
-                              (saleCalculation.itemAmount - saleCalculation.surabhiCoinsUsed) +
-                              saleCalculation.netShippingPayable
-                            ).toFixed(2)}
-                          </span>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min={0}
+                            className="h-10 bg-white font-semibold text-green-900"
+                            placeholder={getComputedNetCash().toFixed(2)}
+                            value={manualNetCashStr}
+                            onChange={e => setManualNetCashStr(e.target.value)}
+                          />
+                          <p className="text-xs font-black text-green-800">
+                            Using: ₹{getEffectiveNetCash().toFixed(2)}
+                          </p>
                         </div>
                       )}
 
-                      {saleCalculation.cashPayment > 0 && (
-                        <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                          <span className="text-sm font-medium text-purple-900">Adjusted SPV</span>
-                          <span className="font-bold text-purple-600">
-                            {adjustedSpvDisplay.toFixed(2)}
-                          </span>
+                      {saleCalculation?.isValid && (
+                        <div className="p-3 bg-purple-50 rounded-lg border border-purple-100 space-y-2">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-sm font-medium text-purple-900">Adjusted SPV</span>
+                            <span className="text-[10px] text-purple-700">
+                              Calculated: {(adjustedSpvDisplay || 0).toFixed(2)} — edit to override reward
+                              basis (Surabhi, Seva, referral, shipping credit)
+                            </span>
+                          </div>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min={0}
+                            className="h-10 bg-white font-semibold text-purple-800"
+                            placeholder={(adjustedSpvDisplay || 0).toFixed(2)}
+                            value={manualAdjustedSpvStr}
+                            onChange={e => setManualAdjustedSpvStr(e.target.value)}
+                          />
+                          <p className="text-xs font-bold text-purple-600">
+                            Using: {(getEffectiveAdjustedSpv() || 0).toFixed(2)}
+                          </p>
                         </div>
                       )}
 
                       {(paymentMethod === 'cash' || paymentMethod === 'mixed') &&
-                        saleCalculation.surabhiCoinsEarned > 0 && (
+                        displaySurabhiEarned > 0 && (
                           <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
                             <span className="text-sm font-medium text-indigo-900">
                               Surabhi Coins Earned{' '}
@@ -1970,7 +2080,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                               %
                             </span>
                             <span className="font-bold text-indigo-600">
-                              +{saleCalculation.surabhiCoinsEarned.toFixed(2)}{' '}
+                              +{displaySurabhiEarned.toFixed(2)}{' '}
                             </span>
                           </div>
                         )}
@@ -1988,30 +2098,55 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                       )} */}
 
                       {(paymentMethod === 'cash' || paymentMethod === 'mixed') &&
-                        saleCalculation.goSevaContribution > 0 && (
+                        displaySevaEarned > 0 && (
                           <div className="flex items-center justify-between p-3 bg-pink-50 rounded-lg">
                             <span className="text-sm font-medium text-pink-900">
                               Seva Contribution {storeDetails.sevaCommission}%
                             </span>
                             <span className="font-bold text-pink-600">
-                              +{saleCalculation.goSevaContribution}{' '}
+                              +{displaySevaEarned.toFixed(2)}{' '}
                             </span>
                           </div>
                         )}
 
                       {(paymentMethod === 'cash' || paymentMethod === 'mixed') &&
-                        saleCalculation.referrerSurabhiCoinsEarned > 0 &&
+                        displayReferralEarned > 0 &&
                         selectedCustomer.referredBy && (
                           <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
                             <span className="text-sm font-medium text-yellow-900">
                               Referral Bonus {storeDetails.referralCommission}%
                             </span>
                             <span className="font-bold text-yellow-600">
-                              +{saleCalculation.referrerSurabhiCoinsEarned.toFixed(2)} Referral to{' '}
+                              +{displayReferralEarned.toFixed(2)} Referral to{' '}
                               {selectedCustomer.referredBy}{' '}
                             </span>
                           </div>
                         )}
+
+                      {saleCalculation?.isValid && storeDetails && (
+                        <>
+                          <div className="flex items-center justify-between p-3 bg-slate-100 rounded-lg border border-slate-200">
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium text-slate-800">Admin cut</span>
+                              <span className="text-[10px] text-slate-600">
+                                Admin cut = Total SPV ({totalSpvGrossUi.toFixed(2)}) × {adminCutPctSum.toFixed(2)}%
+                              </span>
+                            </div>
+                            <span className="font-bold text-slate-900">₹{adminCutDisplay.toFixed(2)}</span>
+                          </div>
+                          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium text-slate-800">Admin profit</span>
+                              <span className="text-[10px] text-slate-600">
+                                {saleCalculation.surabhiCoinsUsed > 0
+                                  ? `Admin profit = (Total SPV − Adj. SPV) × ${adminProfitNonBonusPctSum.toFixed(2)}% + Total SPV × ${(storeDetails.bonusPercentage || 0).toFixed(2)}%`
+                                  : `Admin profit = Total SPV × ${(storeDetails.bonusPercentage || 0).toFixed(2)}% (no coin redemption)`}
+                              </span>
+                            </div>
+                            <span className="font-bold text-slate-900">₹{adminProfitDisplay.toFixed(2)}</span>
+                          </div>
+                        </>
+                      )}
 
                       <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg border border-indigo-100">
                         <div className="flex flex-col">
@@ -2021,7 +2156,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
                           {/* <span className="text-[10px] text-gray-500 italic">Automatically calculated</span> */}
                         </div>
                         <span className="text-lg font-bold text-indigo-700">
-                          +₹{saleCalculation.shippingCreditsEarned.toFixed(2)}
+                          +₹{displayShippingCreditsEarned.toFixed(2)}
                         </span>
                       </div>
                     </div>

@@ -146,6 +146,13 @@ const Accounts = () => {
           sevaBalance: txData.sevaBalance || 0,
           adminCurrentBalance: txData.adminCurrentBalance || 0,
           remarks: txData.remarks || '',
+          // Include shipping and SPV fields
+          adjustedSpv: txData.adjustedSpv || 0,
+          totalSpv: txData.totalSpv ?? 0,
+          shippingCredit: txData.shippingCredit || 0,
+          shippingDebit: txData.shippingDebit || 0,
+          shippingBalance: txData.shippingBalance || 0,
+          shippingAmount: txData.shippingAmount || 0,
         };
 
         transactions.push(tx);
@@ -792,13 +799,29 @@ const Accounts = () => {
                       Amount
                     </TableHead>
                     <TableHead className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
-                      SPV
+                      Adj. SPV
                     </TableHead>
+                    <TableHead className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
+                      Total SPV
+                    </TableHead>
+                    {/* Admin view: flip vs AccountTx — ledger debit shown as Credit, ledger credit as Debit */}
                     <TableHead className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
                       Credit
                     </TableHead>
                     <TableHead className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
                       Debit
+                    </TableHead>
+                    <TableHead className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
+                      Ship Fee
+                    </TableHead>
+                    <TableHead className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
+                      Ship Credit
+                    </TableHead>
+                    <TableHead className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
+                      Ship Debit
+                    </TableHead>
+                    <TableHead className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
+                      Ship Bal
                     </TableHead>
                     <TableHead className="hidden lg:table-cell text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4 whitespace-nowrap">
                       Admin Cut
@@ -859,22 +882,39 @@ const Accounts = () => {
                         {tx.adjustedSpv ? Number(tx.adjustedSpv).toFixed(2) : '0.00'}
                       </TableCell>
                       <TableCell className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
-                        <span className={tx.debit >= 0 ? 'text-green-600' : 'text-red-600'}>
-                          {tx.debit >= 0 ? '+' : ''}₹{Math.abs(tx.debit).toFixed(2)}
+                        {tx.totalSpv != null && tx.totalSpv > 0 ? Number(tx.totalSpv).toFixed(2) : '—'}
+                      </TableCell>
+                      <TableCell className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                        <span className={tx.debit > 0 ? 'text-green-600' : 'text-gray-500'}>
+                          {tx.debit > 0 ? `₹${Number(tx.debit).toFixed(2)}` : '—'}
                         </span>
                       </TableCell>
                       <TableCell className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
-                        <span className={tx.credit >= 0 ? 'text-red-600' : 'text-green-600'}>
-                          {tx.credit >= 0 ? '' : '+'}₹{Math.abs(tx.credit).toFixed(2)}
+                        <span className={tx.credit > 0 ? 'text-red-600' : 'text-gray-500'}>
+                          {tx.credit > 0 ? `₹${Number(tx.credit).toFixed(2)}` : '—'}
                         </span>
                       </TableCell>
+                      <TableCell className="text-right font-medium text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
+                        {tx.shippingAmount ? `₹${Number(tx.shippingAmount).toFixed(2)}` : '-'}
+                      </TableCell>
+                      <TableCell className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4 text-blue-600">
+                        {tx.shippingCredit ? `₹${Number(tx.shippingCredit).toFixed(2)}` : '-'}
+                      </TableCell>
+                      <TableCell className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4 text-red-600">
+                        {tx.shippingDebit ? `₹${Number(tx.shippingDebit).toFixed(2)}` : '-'}
+                      </TableCell>
+                      <TableCell className="text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4 font-bold text-blue-900">
+                        ₹{(tx.shippingBalance || 0).toFixed(2)}
+                      </TableCell>
                       <TableCell className="hidden lg:table-cell text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
-                        {tx.adminCut > 0 ? `₹${Number(tx.adminCut).toFixed(2)}` : '-'}
+                        {tx.adminCut != null && tx.adminCut > 0
+                          ? `₹${Number(tx.adminCut).toFixed(2)}`
+                          : '—'}
                       </TableCell>
                       <TableCell className="hidden xl:table-cell text-right text-xs xs:text-sm py-2 xs:py-3 sm:py-4">
-                        {Number(tx.adminProfit) && tx.adminProfit > 0
+                        {tx.adminProfit != null && tx.adminProfit > 0
                           ? `₹${Number(tx.adminProfit).toFixed(2)}`
-                          : '-'}
+                          : '—'}
                       </TableCell>
                       {/* Removed Store Bonus Coins column */}
                       <TableCell className="text-right font-medium text-xs xs:text-sm py-2 xs:py-3 sm:py-4">

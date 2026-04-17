@@ -966,11 +966,11 @@ export const CustomerManagement = () => {
                           </div>
                           <div className="flex items-center gap-1 sm:gap-2 text-purple-600">
                             <Wallet className="h-3 w-3" />
-                            <span>₹{customer.walletBalance.toFixed(2)}</span>
+                            <span>₹{(customer.walletBalance || 0).toFixed(2)}</span>
                           </div>
                           <div className="flex items-center gap-1 sm:gap-2 text-amber-600">
                             <Coins className="h-3 w-3" />
-                            <span>{customer.surabhiBalance.toFixed(2)} coins</span>
+                            <span>{(customer.surabhiBalance || 0).toFixed(2)} coins</span>
                           </div>
                           <div className="flex items-center gap-1 sm:gap-2 text-indigo-600">
                             <Truck className="h-3 w-3" />

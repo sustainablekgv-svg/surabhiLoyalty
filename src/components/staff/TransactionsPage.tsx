@@ -44,13 +44,12 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [isFiltering, setIsFiltering] = useState(false);
   const [activeTab, setActiveTab] = useState<'sales' | 'recharges'>('sales');
 
   // Use caching hooks
   const { data: allTransactions = [], isLoading, error } = useTransactions();
   const { invalidateTransactions } = useInvalidateQueries();
-  const debouncedSearchTerm = useDebouncedSearch(searchTerm, 300);
+  const { debouncedSearchTerm, isSearching } = useDebouncedSearch(searchTerm, 300);
   const [filterPreferences, setFilterPreferences] = useFilterPreferences({
     startDate: '',
     endDate: '',
@@ -59,8 +58,9 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
   // console.log('All transactions are', allTransactions);
   // Filter transactions based on search term, date range, store location, and tab
   const filteredTransactions = allTransactions
-    // ?.filter(tx => tx.demoStore === demoStore)
     ?.filter(transaction => {
+      if ((transaction.demoStore ?? false) !== demoStore) return false;
+
       // Filter by store location
       if (storeLocation && transaction.storeLocation !== storeLocation) return false;
 
@@ -68,18 +68,15 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
       const transactionType = activeTab === 'sales' ? 'sale' : 'recharge';
       if (transaction.type !== transactionType) return false;
 
-      // Filter by amount > 0
-      // if (transaction.amount <= 0) return false;
-
       // Filter by search term (customer mobile or name)
       if (debouncedSearchTerm) {
-        const debouncedSearchTerm: string | null = null;
-        const searchLower =
-          typeof debouncedSearchTerm === 'string' ? debouncedSearchTerm.toLowerCase() : '';
+        const searchLower = debouncedSearchTerm.toLowerCase();
         const matchesSearch =
           (transaction.customerMobile?.toLowerCase() || '').includes(searchLower) ||
           (transaction.customerName?.toLowerCase() || '').includes(searchLower) ||
-          (transaction.id.toLowerCase() || '').includes(searchLower);
+          (transaction.id?.toLowerCase() || '').includes(searchLower) ||
+          (transaction.invoiceId?.toLowerCase() || '').includes(searchLower) ||
+          (transaction.storeLocation?.toLowerCase() || '').includes(searchLower);
         if (!matchesSearch) return false;
       }
 
@@ -208,7 +205,7 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
               {/* <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
               <Input
                 id="search"
-                placeholder="Search by name or mobile..."
+                placeholder="Search name, mobile, invoice, or location..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className="pl-14 h-12"
@@ -340,7 +337,7 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
                   <Loader2 className="h-8 w-8 animate-spin text-green-500" />
                   <p>Loading transactions...</p>
                 </div>
-              ) : isFiltering ? (
+              ) : isSearching ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-4">
                   <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
                   <p>Applying filters...</p>
@@ -362,11 +359,17 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <Table className="min-w-[600px]">
+                  <Table className="min-w-[1200px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                           Invoice ID
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Date & Time
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Location
                         </TableHead>
                         <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                           Customer
@@ -374,38 +377,68 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
                         <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                           Mobile
                         </TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
-                          Amount
+                        <TableHead className="text-right whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Sale amt
+                        </TableHead>
+                        <TableHead className="text-right whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Surabhi Credit
+                        </TableHead>
+                        <TableHead className="text-right whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Surabhi Debit
+                        </TableHead>
+                        <TableHead className="text-right whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Surabhi Balance
+                        </TableHead>
+                        <TableHead className="text-right whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Adj. SPV
+                        </TableHead>
+                        <TableHead className="text-right whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Total SPV
+                        </TableHead>
+                        <TableHead className="text-right whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Admin cut
+                        </TableHead>
+                        <TableHead className="text-right whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Admin profit
+                        </TableHead>
+                        <TableHead className="text-right whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Seva Credit
+                        </TableHead>
+                        <TableHead className="text-right whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Seva Debit
+                        </TableHead>
+                        <TableHead className="text-right whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Ship Fee
+                        </TableHead>
+                        <TableHead className="text-right whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Ship Credit
+                        </TableHead>
+                        <TableHead className="text-right whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Ship Debit
+                        </TableHead>
+                        <TableHead className="text-right whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Ship Bal
+                        </TableHead>
+                        <TableHead className="text-right whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Seva Total
                         </TableHead>
                         <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                           Payment
                         </TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                        <TableHead className="text-right whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                           Wallet
                         </TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
-                          Surabhi
+                        <TableHead className="text-right whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Coins used
                         </TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
-                          SPV
-                        </TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
-                          Seva
-                        </TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                        <TableHead className="text-right whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                           Cash
                         </TableHead>
                         <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
-                          Store
-                        </TableHead>
-                        {/* <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
-                          Type
-                        </TableHead> */}
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
-                          Date
-                        </TableHead>
-                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                           Staff
+                        </TableHead>
+                        <TableHead className="whitespace-nowrap py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                          Remarks
                         </TableHead>
                       </TableRow>
                     </TableHeader>
@@ -415,7 +448,13 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
                         .map(tx => (
                           <TableRow key={tx.id} className="hover:bg-gray-50">
                             <TableCell className="font-medium py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
-                              <span className="font-bold">{tx.invoiceId || 'N/A'}</span>
+                              <span className="font-bold">{tx.invoiceId || 'NA'}</span>
+                            </TableCell>
+                            <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm whitespace-nowrap">
+                              {formatTimestamp(tx.createdAt)}
+                            </TableCell>
+                            <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                              {tx.storeLocation}
                             </TableCell>
                             <TableCell className="font-medium">
                               <span className="font-bold">{tx.customerName}</span>
@@ -423,42 +462,70 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
                             <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                               {tx.customerMobile}
                             </TableCell>
-                            <TableCell className="font-bold">₹{tx.amount?.toFixed(2)}</TableCell>
+                            <TableCell className="text-right font-bold">
+                              ₹{tx.amount != null ? Number(tx.amount).toFixed(2) : '0.00'}
+                            </TableCell>
+                            <TableCell className="text-right py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                              {tx.surabhiCredit ? Number(tx.surabhiCredit).toFixed(2) : '-'}
+                            </TableCell>
+                            <TableCell className="text-right py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                              {tx.surabhiDebit ? Number(tx.surabhiDebit).toFixed(2) : '-'}
+                            </TableCell>
+                            <TableCell className="text-right font-medium py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                              {tx.surabhiBalance != null ? Number(tx.surabhiBalance).toFixed(2) : '-'}
+                            </TableCell>
+                            <TableCell className="text-right py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                              {tx.adjustedSpv ? Number(tx.adjustedSpv).toFixed(2) : '-'}
+                            </TableCell>
+                            <TableCell className="text-right py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                              {tx.totalSpv != null ? Number(tx.totalSpv).toFixed(2) : '—'}
+                            </TableCell>
+                            <TableCell className="text-right py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                              {tx.adminCut != null ? `₹${Number(tx.adminCut).toFixed(2)}` : '—'}
+                            </TableCell>
+                            <TableCell className="text-right py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                              {tx.adminProft != null ? `₹${Number(tx.adminProft).toFixed(2)}` : '—'}
+                            </TableCell>
+                            <TableCell className="text-right py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                              {tx.sevaCredit ? Number(tx.sevaCredit).toFixed(2) : '-'}
+                            </TableCell>
+                            <TableCell className="text-right py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                              {tx.sevaDebit ? Number(tx.sevaDebit).toFixed(2) : '-'}
+                            </TableCell>
+                            <TableCell className="text-right py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                              {tx.shippingAmount ? Number(tx.shippingAmount).toFixed(2) : '-'}
+                            </TableCell>
+                            <TableCell className="text-right text-blue-600 py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                              {tx.shippingCredit ? Number(tx.shippingCredit).toFixed(2) : '-'}
+                            </TableCell>
+                            <TableCell className="text-right text-red-600 py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                              {tx.shippingDebit ? Number(tx.shippingDebit).toFixed(2) : '-'}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-blue-900 py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                              {tx.shippingBalance != null
+                                ? Number(tx.shippingBalance).toFixed(2)
+                                : '0.00'}
+                            </TableCell>
+                            <TableCell className="text-right font-medium py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
+                              {tx.sevaTotal != null ? Number(tx.sevaTotal).toFixed(2) : '-'}
+                            </TableCell>
                             <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                               {tx.paymentMethod === 'mixed' ? 'mixed' : tx.paymentMethod || 'cash'}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="text-right">
                               {tx.walletDeduction ? Number(tx.walletDeduction).toFixed(2) : '0.00'}
                             </TableCell>
-                            <TableCell>
-                              {tx.surabhiUsed ? Number(tx.surabhiUsed).toFixed(2) : '0.00'}
+                            <TableCell className="text-right">
+                              {Number(tx.surabhiDebit ?? tx.surabhiUsed ?? 0).toFixed(2)}
                             </TableCell>
-                            <TableCell>
-                              {tx.adjustedSpv ? Number(tx.adjustedSpv).toFixed(2) : '0.00'}
-                            </TableCell>
-                            <TableCell>
-                              {tx.sevaEarned ? Number(tx.sevaEarned).toFixed(2) : '0.00'}
-                            </TableCell>
-                            <TableCell>
+                            <TableCell className="text-right">
                               ₹{tx.cashPayment ? Number(tx.cashPayment).toFixed(2) : '0.00'}
-                            </TableCell>
-                            <TableCell>{tx.storeLocation}</TableCell>
-                            {/* <TableCell>
-                              {tx.demoStore ? (
-                                <Badge variant="destructive" className="text-xs">
-                                  Demo
-                                </Badge>
-                              ) : (
-                                <span className="inline-flex items-center rounded-full bg-primary px-2.5 py-0.5 text-xs font-medium text-primary-foreground">
-                                  Live
-                                </span>
-                              )}
-                            </TableCell> */}
-                            <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
-                              {formatTimestamp(tx.createdAt)}
                             </TableCell>
                             <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm">
                               {tx.processedBy || 'system'}
+                            </TableCell>
+                            <TableCell className="py-2 xs:py-3 text-[10px] xs:text-xs sm:text-sm max-w-[220px] whitespace-normal break-words">
+                              {tx.remarks || '-'}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -489,7 +556,7 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
                   <Loader2 className="h-8 w-8 animate-spin text-green-500" />
                   <p>Loading recharges...</p>
                 </div>
-              ) : isFiltering ? (
+              ) : isSearching ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-4">
                   <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
                   <p>Applying filters...</p>

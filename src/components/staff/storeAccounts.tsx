@@ -23,18 +23,14 @@ const StoreAccounts = ({
   storeLocation,
   userRole,
   demoStore,
-}: StoreAccountsProps & { userRole: string; demoStore: boolean }) => {
+}: StoreAccountsProps & { demoStore: boolean }) => {
   const { user, logout, isLoading: authLoading } = useAuth();
   const [allTransactions, setAllTransactions] = useState<AccountTxType[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [updatingTx, setUpdatingTx] = useState<string | null>(null);
-
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
-
-  const isAdmin = userRole === 'admin';
 
   // Calculate pagination for all transactions
   const indexOfLastRecord = currentPage * recordsPerPage;
@@ -74,6 +70,7 @@ const StoreAccounts = ({
         const data = doc.data();
         txData.push({
           id: doc.id,
+          invoiceId: data.invoiceId,
           createdAt: data.createdAt,
           storeName: data.storeName,
           customerName: data.customerName,
@@ -82,17 +79,25 @@ const StoreAccounts = ({
           amount: data.amount || 0,
           debit: data.debit || 0,
           credit: data.credit || 0,
-          adminProfit: data.adminProfit || 0,
+          adminProfit: data.adminProfit ?? 0,
           currentBalance: data.currentBalance || 0,
           sevaBalance: data.sevaBalance || 0,
           remarks: data.remarks || '',
           adminCurrentBalance: data.adminCurrentBalance || 0,
-          adminCut: data.adminCut || 0,
+          adminCut: data.adminCut ?? 0,
           demoStore: data.demoStore || false,
+          spvEntered: data.spvEntered,
+          adjustedSpv: data.adjustedSpv ?? 0,
+          totalSpv: data.totalSpv,
+          shippingCredit: data.shippingCredit,
+          shippingDebit: data.shippingDebit,
+          shippingBalance: data.shippingBalance,
+          shippingAmount: data.shippingAmount,
         });
       });
 
-      setAllTransactions(txData);
+      const filtered = txData.filter(tx => (tx.demoStore ?? false) === demoStore);
+      setAllTransactions(filtered);
     } catch (err) {
       // console.error('Error fetching transactions:', err);
     } finally {
@@ -116,7 +121,7 @@ const StoreAccounts = ({
   useEffect(() => {
     setCurrentPage(1);
     fetchAllTransactions();
-  }, [storeLocation]);
+  }, [storeLocation, demoStore]);
 
   if (loading) {
     return (
@@ -144,62 +149,117 @@ const StoreAccounts = ({
           <CardTitle>Accounts History</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Type</TableHead>
-                {/* <TableHead>Store Type</TableHead> */}
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="text-right">Credit</TableHead>
-                <TableHead className="text-right">Debit</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
-                <TableHead>Description</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentRecords.map(tx => (
-                <TableRow key={tx.id}>
-                  <TableCell>{formatTimestamp(tx.createdAt)}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        tx.type === 'recharge'
-                          ? 'default'
-                          : tx.type === 'sale'
-                            ? 'secondary'
-                            : 'outline'
-                      }
-                    >
-                      {tx.type}
-                    </Badge>
-                  </TableCell>
-                  {/* <TableCell>
-                    <Badge variant={tx.demoStore ? 'destructive' : 'default'}>
-                      {tx.demoStore ? 'Demo' : 'Live'}
-                    </Badge>
-                  </TableCell> */}
-                  <TableCell className="text-right">
-                    {tx.amount >= 0 ? '+' : ''}₹{tx.amount.toFixed(2)}
-                  </TableCell>
-                  <TableCell className="text-right text-green-600">
-                    {tx.credit > 0 ? `+₹${tx.credit.toFixed(2)}` : '-'}
-                  </TableCell>
-                  <TableCell className="text-right text-red-600">
-                    {tx.debit > 0 ? `-₹${tx.debit.toFixed(2)}` : '-'}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {tx.currentBalance > 0
-                      ? `+₹${tx.currentBalance.toFixed(2)}`
-                      : `-₹${tx.currentBalance.toFixed(2)}`}
-                  </TableCell>
-                  <TableCell className="whitespace-normal break-words max-w-md">
-                    {tx.remarks}
-                  </TableCell>
+          <div className="overflow-x-auto rounded-md border">
+            <Table className="min-w-[1100px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="hidden md:table-cell whitespace-nowrap">Date</TableHead>
+                  <TableHead className="whitespace-nowrap">Invoice</TableHead>
+                  <TableHead className="whitespace-nowrap">Type</TableHead>
+                  <TableHead className="hidden md:table-cell whitespace-nowrap">Customer</TableHead>
+                  <TableHead className="hidden lg:table-cell whitespace-nowrap">Mobile</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Amount</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Adj. SPV</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Total SPV</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Credit</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Debit</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Ship Fee</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Ship Cr</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Ship Dr</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Ship Bal</TableHead>
+                  <TableHead className="hidden lg:table-cell text-right whitespace-nowrap">
+                    Admin cut
+                  </TableHead>
+                  <TableHead className="hidden xl:table-cell text-right whitespace-nowrap">
+                    Admin profit
+                  </TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Store bal</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Admin bal</TableHead>
+                  <TableHead className="hidden md:table-cell whitespace-nowrap max-w-[200px]">
+                    Remarks
+                  </TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {currentRecords.map(tx => (
+                  <TableRow key={tx.id}>
+                    <TableCell className="hidden md:table-cell whitespace-nowrap text-sm">
+                      {formatTimestamp(tx.createdAt)}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-sm font-medium">
+                      <span className="md:hidden block text-xs text-gray-500">
+                        {formatTimestamp(tx.createdAt)}
+                      </span>
+                      {tx.invoiceId || '—'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          tx.type === 'recharge'
+                            ? 'default'
+                            : tx.type === 'sale'
+                              ? 'secondary'
+                              : 'outline'
+                        }
+                      >
+                        {tx.type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-sm">{tx.customerName}</TableCell>
+                    <TableCell className="hidden lg:table-cell text-sm">{tx.customerMobile}</TableCell>
+                    <TableCell className="text-right text-sm">₹{Math.abs(tx.amount).toFixed(2)}</TableCell>
+                    <TableCell className="text-right text-sm">
+                      {tx.adjustedSpv ? Number(tx.adjustedSpv).toFixed(2) : '0.00'}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">
+                      {tx.totalSpv != null && tx.totalSpv > 0 ? Number(tx.totalSpv).toFixed(2) : '—'}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">
+                      <span className={tx.credit > 0 ? 'text-green-600' : 'text-gray-500'}>
+                        {tx.credit > 0 ? `₹${Number(tx.credit).toFixed(2)}` : '—'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right text-sm">
+                      <span className={tx.debit > 0 ? 'text-red-600' : 'text-gray-500'}>
+                        {tx.debit > 0 ? `₹${Number(tx.debit).toFixed(2)}` : '—'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right text-sm">
+                      {tx.shippingAmount ? `₹${Number(tx.shippingAmount).toFixed(2)}` : '—'}
+                    </TableCell>
+                    <TableCell className="text-right text-sm text-blue-600">
+                      {tx.shippingCredit ? `₹${Number(tx.shippingCredit).toFixed(2)}` : '—'}
+                    </TableCell>
+                    <TableCell className="text-right text-sm text-red-600">
+                      {tx.shippingDebit ? `₹${Number(tx.shippingDebit).toFixed(2)}` : '—'}
+                    </TableCell>
+                    <TableCell className="text-right text-sm font-medium text-blue-900">
+                      ₹{(tx.shippingBalance ?? 0).toFixed(2)}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell text-right text-sm">
+                      {tx.adminCut != null && tx.adminCut > 0
+                        ? `₹${Number(tx.adminCut).toFixed(2)}`
+                        : '—'}
+                    </TableCell>
+                    <TableCell className="hidden xl:table-cell text-right text-sm">
+                      {tx.adminProfit != null && tx.adminProfit > 0
+                        ? `₹${Number(tx.adminProfit).toFixed(2)}`
+                        : '—'}
+                    </TableCell>
+                    <TableCell className="text-right text-sm font-medium">
+                      ₹{Number(tx.currentBalance).toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right text-sm font-medium">
+                      ₹{Number(tx.adminCurrentBalance).toFixed(2)}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell whitespace-normal break-words max-w-md text-sm">
+                      {tx.remarks}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
 
           {/* Pagination Controls */}
           {allTransactions.length > 0 && (
