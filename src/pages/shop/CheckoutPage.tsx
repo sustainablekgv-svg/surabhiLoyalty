@@ -11,6 +11,7 @@ import { useShop } from '@/hooks/shop-context';
 import { addAddress, getAddresses } from '@/lib/addressService';
 import { db } from '@/lib/firebase';
 import { getUserName } from '@/lib/userUtils';
+import { notifyCoinsRedeemedSms, notifyOrderPlacedSms } from '@/services/ojivaSmsNotification';
 import { calculateShippingCost, getWeightBracketLabel, INDIAN_STATES, parseWeightToKg } from '@/services/shipping';
 import { Address, CartItem } from '@/types/shop';
 import { hasMetQuarterlyTarget } from '@/utils/quarterlyTargets';
@@ -537,7 +538,7 @@ const CheckoutPage = () => {
           referralBonusEarned: referralBonusEarned
         };
 
-        await createOrder(orderData as any);
+        const codOrderId = await createOrder(orderData as any);
 
         await addDoc(collection(db, 'Activity'), {
           type: 'order_placed',
@@ -552,6 +553,31 @@ const CheckoutPage = () => {
         });
 
         await processAddressSave(formData);
+
+        if (!(user as any)?.demoStore && codOrderId) {
+          // Fire-and-forget — SMS failures must not block checkout.
+          void notifyOrderPlacedSms({
+            phone: formData.mobile,
+            customerName: formData.fullName,
+            orderId: codOrderId,
+            amount: orderData.totalAmount,
+            storeName: currentStore?.storeName || 'Online',
+          });
+
+          if (redeemedCoinsTotal > 0 || shippingCreditsUsed > 0) {
+            const customerSurabhiBalance = Number((user as any)?.surabhiBalance || 0);
+            void notifyCoinsRedeemedSms({
+              phone: formData.mobile,
+              customerName: formData.fullName,
+              orderOrInvoiceId: codOrderId,
+              amount: orderData.totalAmount,
+              surabhiCoinsUsed: redeemedCoinsTotal,
+              shippingCreditsUsed: shippingCreditsUsed,
+              balance: customerSurabhiBalance,
+            });
+          }
+        }
+
         clearCart();
         toast.success("Order placed successfully!");
         navigate('/shop');
@@ -664,6 +690,30 @@ const CheckoutPage = () => {
                 });
 
                 await processAddressSave(formData);
+
+                if (!(user as any)?.demoStore && firebaseOrderId) {
+                  void notifyOrderPlacedSms({
+                    phone: formData.mobile,
+                    customerName: formData.fullName,
+                    orderId: firebaseOrderId,
+                    amount: totalPayableAmount,
+                    storeName: currentStore?.storeName || 'Online',
+                  });
+
+                  if (redeemedCoinsTotal > 0 || shippingCreditsUsed > 0) {
+                    const customerSurabhiBalance = Number((user as any)?.surabhiBalance || 0);
+                    void notifyCoinsRedeemedSms({
+                      phone: formData.mobile,
+                      customerName: formData.fullName,
+                      orderOrInvoiceId: firebaseOrderId,
+                      amount: totalPayableAmount,
+                      surabhiCoinsUsed: redeemedCoinsTotal,
+                      shippingCreditsUsed: shippingCreditsUsed,
+                      balance: customerSurabhiBalance,
+                    });
+                  }
+                }
+
                 clearCart();
                 toast.success("Payment Successful! Order placed.");
                 navigate('/shop');
@@ -958,7 +1008,7 @@ const CheckoutPage = () => {
                                                  <div className="flex flex-col items-center gap-2">
                                                      <span className="text-[12px] font-black text-slate-400 uppercase tracking-[0.3em]">Official UPI ID</span>
                                                      <span className="text-2xl md:text-3xl font-mono font-black text-white selection:bg-white/20 break-all text-center">
-                                                         sustainablekgv@okicici
+                                                         sustainablekgv@cnrb
                                                      </span>
                                                  </div>
                                                  

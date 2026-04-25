@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { OtpVerifyDialog } from '@/components/auth/OtpVerifyDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -115,33 +116,48 @@ const SignupPage = () => {
 
   // const [isPasswordValid, setIsPasswordValid] = useState(false);
   const [isPasswordTouched, setIsPasswordTouched] = useState(false);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const validateForm = (): boolean => {
     setIsPasswordTouched(true);
 
     if (formData.customerPassword !== formData.confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
+      toast.error('Passwords do not match');
+      return false;
     }
 
-    // if (!isPasswordValid) {
-    //     toast.error("Please choose a stronger password");
-    //     return;
-    // }
-
-    if (!formData.customerName || !formData.customerMobile || !formData.dateOfBirth || !formData.gender || !formData.storeLocation || !formData.customerPassword) {
-        toast.error("All fields are mandatory");
-        return;
+    if (
+      !formData.customerName ||
+      !formData.customerMobile ||
+      !formData.dateOfBirth ||
+      !formData.gender ||
+      !formData.storeLocation ||
+      !formData.customerPassword
+    ) {
+      toast.error('All fields are mandatory');
+      return false;
     }
 
-    if (!formData.storeLocation) {
-        toast.error("Please select a store location");
-        return;
+    const cleanedMobile = formData.customerMobile.replace(/\D/g, '');
+    if (cleanedMobile.length !== 10) {
+      toast.error('Please enter a valid 10-digit mobile number');
+      return false;
     }
 
+    return true;
+  };
+
+  // Step 1: validate locally → open OTP dialog. The dialog auto-issues an OTP
+  // to the entered mobile (server enforces "phone not already registered").
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    setOtpDialogOpen(true);
+  };
+
+  // Step 2: only after the OTP is verified do we actually create the account.
+  const handleOtpVerified = async () => {
     setIsLoading(true);
-
     try {
       const isStudent = formData.dateOfBirth ? calculateAge(formData.dateOfBirth) < 25 : false;
 
@@ -154,11 +170,10 @@ const SignupPage = () => {
         storeLocation: formData.storeLocation,
         referredBy: formData.referredBy || null,
         isStudent: isStudent,
-        demoStore: false, 
-        // Initial defaults handled in service
+        demoStore: false,
       });
 
-      toast.success('Registration successful! Please login.');
+      toast.success('Mobile verified — registration successful! Please login.');
       navigate('/login', { state: { from } });
     } catch (error: any) {
       toast.error(error.message || 'Registration failed. Please try again.');
@@ -326,12 +341,20 @@ const SignupPage = () => {
 
 
               <Button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white font-medium py-3 rounded-lg mt-4" disabled={isLoading}>
-                {isLoading ? 'Creating Account...' : 'Sign Up'}
+                {isLoading ? 'Creating Account...' : 'Verify Mobile & Sign Up'}
               </Button>
             </form>
           </CardContent>
         </Card>
       </div>
+
+      <OtpVerifyDialog
+        open={otpDialogOpen}
+        onOpenChange={setOtpDialogOpen}
+        phone={formData.customerMobile}
+        context="signup"
+        onVerified={handleOtpVerified}
+      />
     </div>
   );
 };

@@ -19,6 +19,11 @@ import {
     where,
     writeBatch
 } from 'firebase/firestore';
+import {
+    notifyCoinsCreditedSms,
+    notifyOrderStatusSms,
+} from '@/services/ojivaSmsNotification';
+import { notifyCustomerSaleSms } from '@/services/saleSmsNotification';
 import { processSaleTransaction } from './sales';
 import { getUserName } from '@/lib/userUtils';
 
@@ -734,7 +739,8 @@ export const updateOrderStatus = async (orderId: string, status: Order['status']
                         storeDetails: store,
                         user: currentUser || { staffName: 'Online Admin', role: 'admin' },
                         paymentMethod: currentOrder.paymentMethod || 'online',
-                        totalSpv: adjustedSpv, 
+                        totalSpv: adjustedSpv,
+                        grossSpvWeight: grossSpv,
                         surabhiCoinsUsed: currentOrder.surabhiCoinsUsed || 0,
                         shippingCreditsEarned: currentOrder.shippingPointsEarned || 0,
                         shippingCreditsUsed: currentOrder.shippingPointsUsed || 0,
@@ -742,6 +748,40 @@ export const updateOrderStatus = async (orderId: string, status: Order['status']
                         rewardOverrides: (rewardOverrides.surabhiCoinsEarned !== undefined) ? rewardOverrides : undefined
                     });
                     updates.rewardsProcessed = true;
+
+                    if (!(currentOrder as any).demoStore) {
+                        const invId = `INV-${currentOrder.id.slice(0, 6).toUpperCase()}`;
+                        void notifyCustomerSaleSms({
+                            phone: customer.customerMobile,
+                            customerName: customer.customerName,
+                            amount: currentOrder.totalAmount,
+                            invoiceId: invId,
+                            paymentMethod: currentOrder.paymentMethod || 'online',
+                            storeName: store.storeName,
+                        });
+
+                        // OJIVA: detail the coin breakdown earned on this order.
+                        const surabhiEarned = Number(currentOrder.surabhiCoinsEarned || 0);
+                        const sevaEarned = Number((currentOrder as any).sevaCoinsEarned || 0);
+                        const shippingEarned = Number(currentOrder.shippingPointsEarned || 0);
+
+                        if (surabhiEarned > 0 || sevaEarned > 0 || shippingEarned > 0) {
+                            const newSurabhiBalance =
+                                Number(customer.surabhiBalance || 0) +
+                                surabhiEarned -
+                                Number(currentOrder.surabhiCoinsUsed || 0);
+                            void notifyCoinsCreditedSms({
+                                phone: customer.customerMobile,
+                                customerName: customer.customerName,
+                                orderOrInvoiceId: currentOrder.id,
+                                amount: currentOrder.totalAmount,
+                                surabhiCoins: surabhiEarned,
+                                sevaCoins: sevaEarned,
+                                shippingCoins: shippingEarned,
+                                balance: newSurabhiBalance,
+                            });
+                        }
+                    }
                     // Note: Activity log is added by processSaleTransaction
                 } else {
                     console.error("Store not found for rewards processing");
@@ -768,6 +808,23 @@ export const updateOrderStatus = async (orderId: string, status: Order['status']
         orderId: orderId,
         demoStore: (currentOrder as any).demoStore || false
     });
+
+    // OJIVA SMS for downstream status changes (in transit / delivered / cancelled).
+    // 'confirmed' already triggers the rewards SMS above, so skip it here.
+    const NOTIFY_STATUSES: Array<Order['status']> = ['in_transit', 'delivered', 'cancelled'];
+    if (
+        !(currentOrder as any).demoStore &&
+        NOTIFY_STATUSES.includes(status) &&
+        currentOrder.shippingAddress?.mobile
+    ) {
+        void notifyOrderStatusSms({
+            phone: currentOrder.shippingAddress.mobile,
+            customerName: currentOrder.shippingAddress.fullName,
+            orderId: orderId,
+            status,
+            storeName: (currentOrder as any).storeName,
+        });
+    }
 
     await updateDoc(docRef, updates);
 };
@@ -867,16 +924,18 @@ export const adjustOrderShippingBalance = async (
         if (!customerSnap.exists()) throw new Error("Customer not found");
         const customerData = customerSnap.data() as CustomerType;
 
-        const adjustmentAmount = isAddition ? amount : -amount;
-        
-        // Ensure deduction doesn't exceed current balance
-        if (!isAddition && (customerData.shippingBalance || 0) < amount) {
-            throw new Error("Insufficient shipping balance to deduct");
+        const magnitude = Math.abs(Number(amount));
+        if (!Number.isFinite(magnitude) || magnitude <= 0) {
+            throw new Error("Invalid adjustment amount");
         }
 
+        const adjustmentAmount = isAddition ? magnitude : -magnitude;
+
+        // Admin adjustments are allowed to drive the shipping balance below zero.
+        // Resulting balance may be negative if a deduction exceeds the current balance.
         const newShippingBalance = Number(((customerData.shippingBalance || 0) + adjustmentAmount).toFixed(2));
         const newShippingTotal = isAddition 
-            ? Number(((customerData.shippingTotal || 0) + amount).toFixed(2)) 
+            ? Number(((customerData.shippingTotal || 0) + magnitude).toFixed(2)) 
             : (customerData.shippingTotal || 0);
 
         // 1. Update Customer Balance
@@ -892,7 +951,7 @@ export const adjustOrderShippingBalance = async (
             { 
                 status: orderData.status, 
                 timestamp: new Date(), 
-                note: `Shipping adjustment: ${isAddition ? 'Credit' : 'Debit'} of ₹${amount}. New order total: ₹${(orderData.totalAmount + adjustmentAmount).toFixed(2)}` 
+                note: `Shipping adjustment: ${isAddition ? 'Credit' : 'Debit'} of ₹${magnitude}. New order total: ₹${(orderData.totalAmount + adjustmentAmount).toFixed(2)}` 
             }
         ];
 
@@ -915,9 +974,9 @@ export const adjustOrderShippingBalance = async (
             paymentMethod: 'wallet', // conceptual
             processedBy: getUserName(user) || 'Admin',
             invoiceId: `ADJ-${orderId.slice(0,6).toUpperCase()}`,
-            remarks: `Manual shipping balance adjustment by Admin (${isAddition ? 'Add' : 'Deduct'} ₹${amount}) for order ${orderId.slice(0,8)}`,
+            remarks: `Manual shipping balance adjustment by Admin (${isAddition ? 'Add' : 'Deduct'} ₹${magnitude}) for order ${orderId.slice(0,8)}`,
             
-            amount: amount,
+            amount: magnitude,
             surabhiEarned: 0,
             sevaEarned: 0,
             referralEarned: 0,
@@ -950,8 +1009,8 @@ export const adjustOrderShippingBalance = async (
             sevaBalance: Number((customerData.sevaBalance || 0).toFixed(2)),
             sevaTotal: Number((customerData.sevaTotal || 0).toFixed(2)),
             
-            shippingCredit: isAddition ? amount : 0,
-            shippingDebit: !isAddition ? amount : 0,
+            shippingCredit: isAddition ? magnitude : 0,
+            shippingDebit: !isAddition ? magnitude : 0,
             shippingBalance: newShippingBalance,
             shippingTotal: newShippingTotal,
             
@@ -966,7 +1025,7 @@ export const adjustOrderShippingBalance = async (
         await addDoc(collection(db, 'Activity'), {
             type: 'shipping_adjustment',
             remarks: customerTxData.remarks,
-            amount: amount,
+            amount: magnitude,
             customerMobile: customerData.customerMobile,
             customerName: customerData.customerName,
             storeLocation: customerData.storeLocation || 'Main Store',

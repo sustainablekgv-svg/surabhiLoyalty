@@ -176,12 +176,27 @@ export const CustomerManagement = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    const isNumericField =
+      name === 'walletBalance' ||
+      name === 'surabhiBalance' ||
+      name === 'sevaTotal' ||
+      name === 'shippingBalance';
+
+    if (isNumericField) {
+      // Admins are explicitly allowed to set wallet / surabhi / shipping balances negative.
+      // Preserve the raw string while typing (so '-' / '-0.5' work) and coerce to a number on save.
+      const parsed = parseFloat(value);
+      const numeric = Number.isFinite(parsed) ? Number(parsed.toFixed(2)) : 0;
+      setEditedData(prev => ({
+        ...prev,
+        [name]: numeric,
+      }));
+      return;
+    }
+
     setEditedData(prev => ({
       ...prev,
-      [name]:
-        name === 'walletBalance' || name === 'surabhiBalance' || name === 'sevaTotal' || name === 'shippingBalance'
-          ? Number(parseFloat(value).toFixed(2)) || 0
-          : value,
+      [name]: value,
     }));
   };
 
@@ -640,9 +655,11 @@ export const CustomerManagement = () => {
                 id="walletBalance"
                 name="walletBalance"
                 type="number"
-                value={editedData.walletBalance || 0}
+                step="any"
+                value={editedData.walletBalance ?? 0}
                 onChange={handleInputChange}
                 className="col-span-3"
+                placeholder="Negative values allowed (admin override)"
               />
             </div>
 
@@ -654,9 +671,11 @@ export const CustomerManagement = () => {
                 id="surabhiBalance"
                 name="surabhiBalance"
                 type="number"
-                value={editedData.surabhiBalance || 0}
+                step="any"
+                value={editedData.surabhiBalance ?? 0}
                 onChange={handleInputChange}
                 className="col-span-3"
+                placeholder="Negative values allowed (admin override)"
               />
             </div>
 
@@ -668,7 +687,8 @@ export const CustomerManagement = () => {
                 id="sevaTotal"
                 name="sevaTotal"
                 type="number"
-                value={editedData.sevaTotal || 0}
+                step="any"
+                value={editedData.sevaTotal ?? 0}
                 onChange={handleInputChange}
                 className="col-span-3"
               />
@@ -680,7 +700,7 @@ export const CustomerManagement = () => {
               </Label>
               <Input
                 id="shippingBalance"
-                value={(editedData.shippingBalance || 0).toFixed(2)}
+                value={(editedData.shippingBalance ?? 0).toFixed(2)}
                 className="col-span-3"
                 disabled
               />
@@ -694,10 +714,14 @@ export const CustomerManagement = () => {
                 id="shippingAdjustment"
                 name="shippingAdjustment"
                 type="number"
+                step="any"
                 value={shippingAdjustment}
-                onChange={(e) => setShippingAdjustment(Number(parseFloat(e.target.value)) || 0)}
+                onChange={(e) => {
+                  const parsed = parseFloat(e.target.value);
+                  setShippingAdjustment(Number.isFinite(parsed) ? parsed : 0);
+                }}
                 className="col-span-3 border-indigo-200 focus:ring-indigo-500"
-                placeholder="Ex: +10 or -5"
+                placeholder="Ex: +10 or -5 (negatives allowed)"
               />
             </div>
 
@@ -966,11 +990,11 @@ export const CustomerManagement = () => {
                           </div>
                           <div className="flex items-center gap-1 sm:gap-2 text-purple-600">
                             <Wallet className="h-3 w-3" />
-                            <span>₹{customer.walletBalance.toFixed(2)}</span>
+                            <span>₹{(customer.walletBalance || 0).toFixed(2)}</span>
                           </div>
                           <div className="flex items-center gap-1 sm:gap-2 text-amber-600">
                             <Coins className="h-3 w-3" />
-                            <span>{customer.surabhiBalance.toFixed(2)} coins</span>
+                            <span>{(customer.surabhiBalance || 0).toFixed(2)} coins</span>
                           </div>
                           <div className="flex items-center gap-1 sm:gap-2 text-indigo-600">
                             <Truck className="h-3 w-3" />

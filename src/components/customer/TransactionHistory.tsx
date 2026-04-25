@@ -58,6 +58,8 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
     try {
       if (isInitial) {
         setLoading(true);
+        setLastVisible(null);
+        setHasMore(true);
       } else {
         setLoadingMore(true);
       }
@@ -108,10 +110,12 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
         setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
       }
 
-      const txData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...(doc.data() as CustomerTxType),
-      })) as CustomerTxType[];
+      const txData = querySnapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...(doc.data() as CustomerTxType),
+        }))
+        .filter(tx => (tx.demoStore ?? false) === demoStore) as CustomerTxType[];
 
       if (isInitial) {
         setTransactions(txData);
@@ -129,7 +133,7 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
 
   useEffect(() => {
     fetchTransactions(true);
-  }, [userId, recordsPerPage]);
+  }, [userId, recordsPerPage, demoStore]);
 
   const handleLoadMore = () => {
     if (!loadingMore && hasMore) {
@@ -173,9 +177,14 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
     }).format(amount);
   };
 
-  const filteredTransactions = transactions.filter(tx =>
-    tx.storeLocation?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const q = searchTerm.toLowerCase().trim();
+  const filteredTransactions = transactions.filter(tx => {
+    if (!q) return true;
+    return (
+      (tx.storeLocation?.toLowerCase() || '').includes(q) ||
+      (tx.invoiceId?.toLowerCase() || '').includes(q)
+    );
+  });
 
   if (loading) {
     return (
@@ -230,7 +239,7 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
               <div className="relative flex-1">
                 <Search className="absolute left-2 xs:left-3 top-1/2 -translate-y-1/2 h-3 xs:h-3.5 w-3 xs:w-3.5 text-gray-400" />
                 <Input
-                  placeholder="Search by location..."
+                  placeholder="Search by location or invoice..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   className="pl-8 xs:pl-10 h-8 xs:h-9 text-[10px] xs:text-xs"
@@ -261,7 +270,7 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
 
         <CardContent className="px-3 xs:px-4 sm:px-6 pb-3 xs:pb-4 sm:pb-6">
           <div className="rounded-md border overflow-x-auto">
-            <Table className="min-w-[900px]">
+            <Table className="min-w-[1100px]">
               <TableHeader className="bg-gray-50">
                 <TableRow className="hover:bg-gray-50">
                   <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium">
@@ -272,6 +281,9 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
                   </TableHead>
                   <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium">
                     Location
+                  </TableHead>
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
+                    Sale amt
                   </TableHead>
                   {/* <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Wallet Credit
@@ -292,13 +304,25 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
                     Surabhi Balance
                   </TableHead>
                   <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
-                    SPV
+                    Adj. SPV
+                  </TableHead>
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
+                    Total SPV
+                  </TableHead>
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
+                    Admin cut
+                  </TableHead>
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
+                    Admin profit
                   </TableHead>
                   <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Seva Credit
                   </TableHead>
                   <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Seva Debit
+                  </TableHead>
+                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
+                    Ship Fee
                   </TableHead>
                   <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Ship Credit
@@ -331,6 +355,9 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
                       <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs">
                         {tx.storeLocation}
                       </TableCell>
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right font-medium">
+                        {tx.type === 'sale' && tx.amount != null ? formatCurrency(tx.amount) : '—'}
+                      </TableCell>
                       {/* <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
                         {tx.walletCredit ? formatCurrency(tx.walletCredit) : '-'}
                       </TableCell>
@@ -353,10 +380,22 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
                         {tx.adjustedSpv ? Number(tx.adjustedSpv).toFixed(2) : '-'}
                       </TableCell>
                       <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
+                        {tx.totalSpv != null ? Number(tx.totalSpv).toFixed(2) : '—'}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
+                        {tx.adminCut != null ? formatCurrency(tx.adminCut) : '—'}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
+                        {tx.adminProft != null ? formatCurrency(tx.adminProft) : '—'}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
                         {tx.sevaCredit ? Number(tx.sevaCredit).toFixed(2) : '-'}
                       </TableCell>
                       <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
                         {tx.sevaDebit ? Number(tx.sevaDebit).toFixed(2) : '-'}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right font-medium">
+                        {tx.shippingAmount ? Number(tx.shippingAmount).toFixed(2) : '-'}
                       </TableCell>
                       <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right text-blue-600">
                         {tx.shippingCredit ? Number(tx.shippingCredit).toFixed(2) : '-'}
@@ -379,7 +418,7 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
                 ) : (
                   <TableRow>
                     <TableCell
-                      colSpan={16}
+                      colSpan={19}
                       className="text-center py-6 xs:py-8 sm:py-10 text-gray-500 text-[10px] xs:text-xs"
                     >
                       No transactions found

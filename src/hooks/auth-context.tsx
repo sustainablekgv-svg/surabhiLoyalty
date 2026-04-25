@@ -13,6 +13,8 @@ import { sessionManager } from '@/lib/sessionManager';
 import { storageUtils } from '@/lib/storage';
 import { tabSync } from '@/lib/tabSync';
 import { User, StaffType, CustomerType } from '@/types/types';
+import { db } from '@/lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -183,6 +185,45 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, [initializeAuth, isInitialized]);
 
+  // Real-time listener for user data
+  useEffect(() => {
+    let unsubscribeDoc: (() => void) | undefined;
+
+    if (user && isInitialized) {
+      const collectionName = user.role === 'customer' ? 'customers' : 'staff';
+      const userDocId = user.role === 'customer' 
+        ? (user as CustomerType).customerMobile 
+        : (user as StaffType).staffMobile;
+
+      if (userDocId) {
+        unsubscribeDoc = onSnapshot(doc(db, collectionName, userDocId), (snapshot) => {
+          if (snapshot.exists()) {
+            const updatedData = { ...snapshot.data(), id: snapshot.id, role: user.role } as User;
+            
+            // Only update if data actually changed significantly (to avoid unnecessary re-renders)
+            // But for simple objects, we can just update.
+            // Also update localStorage so it persists on refresh
+            setUser(prevUser => {
+              if (JSON.stringify(prevUser) !== JSON.stringify(updatedData)) {
+                storageUtils.setUser(updatedData);
+                return updatedData;
+              }
+              return prevUser;
+            });
+          }
+        }, (error) => {
+          console.error(`Error in user real-time listener:`, error);
+        });
+      }
+    }
+
+    return () => {
+      if (unsubscribeDoc) {
+        unsubscribeDoc();
+      }
+    };
+  }, [user?.role, (user as CustomerType)?.customerMobile, (user as StaffType)?.staffMobile, isInitialized]);
+
   const updateActivity = useCallback(() => {
     if (user) {
       sessionManager.updateActivity();
@@ -205,7 +246,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       if (!userData) {
-        throw new Error('Invalid credentials');
+        throw new Error('Authentication failed: No user data returned');
       }
 
       const isValidEmail = (value: string) => {

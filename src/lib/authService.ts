@@ -25,36 +25,49 @@ export const getCustomerByMobile = async (
     const q = query(customersRef, where('customerMobile', '==', mobile));
     const querySnapshot = await getDocs(q);
 
-    if (!querySnapshot.empty) {
-      const customerDoc = querySnapshot.docs[0];
-      const customerData = customerDoc.data() as CustomerType;
-
-      // Compare password with stored password (encrypted or plain)
-      if (customerData.customerPassword) {
-        let passwordMatch = false;
-
-        if (isEncrypted(customerData.customerPassword)) {
-          // Try to decrypt the stored password
-          const decryptedStoredPassword = safeDecryptText(customerData.customerPassword);
-          passwordMatch = decryptedStoredPassword === password;
-        } else {
-          // Direct comparison for unencrypted passwords (backward compatibility)
-          passwordMatch = customerData.customerPassword === password;
-        }
-
-        if (passwordMatch) {
-          return {
-            ...customerData,
-            id: customerDoc.id,
-            role: 'customer', // Ensure role is set
-          };
-        }
-      }
+    if (querySnapshot.empty) {
+      throw new Error('User not found');
     }
-    return null;
-  } catch (error) {
+
+    const customerDoc = querySnapshot.docs[0];
+    const customerData = customerDoc.data() as CustomerType;
+
+    // Compare password with stored password (encrypted or plain)
+    if (!customerData.customerPassword) {
+      throw new Error('User has no password set');
+    }
+
+    let passwordMatch = false;
+
+    if (isEncrypted(customerData.customerPassword)) {
+      // Try to decrypt the stored password
+      const decryptedStoredPassword = safeDecryptText(customerData.customerPassword);
+      console.log('[DEBUG] [Customer] Decrypted password successfully?', decryptedStoredPassword !== null);
+      if (decryptedStoredPassword !== null) {
+        console.log('[DEBUG] [Customer] Input length:', password.length, 'Decrypted length:', decryptedStoredPassword.length);
+      }
+      passwordMatch = decryptedStoredPassword === password;
+    } else {
+      // Direct comparison for unencrypted passwords (backward compatibility)
+      console.log('[DEBUG] [Customer] Password is not encrypted, doing plain text comparison');
+      passwordMatch = customerData.customerPassword === password;
+    }
+
+    if (passwordMatch) {
+      return {
+        ...customerData,
+        id: customerDoc.id,
+        role: 'customer', // Ensure role is set
+      };
+    } else {
+      throw new Error('Incorrect password');
+    }
+  } catch (error: any) {
     // console.error('Error fetching customer:', error);
-    throw new Error('Failed to authenticate customer');
+    if (error.message === 'User not found' || error.message === 'Incorrect password' || error.message === 'User has no password set') {
+      throw error;
+    }
+    throw new Error('Failed to authenticate customer: ' + (error?.message || ''));
   }
 };
 
@@ -70,36 +83,42 @@ export const getStaffByMobile = async (
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
-      return null;
+      throw new Error('Staff user not found');
     }
 
     // Get the first matching document (assuming mobile is unique)
     const doc = querySnapshot.docs[0];
     const staffData = doc.data() as StaffType;
     // console.log('The line 36 is', staffData);
+    
     // Compare password with stored password (encrypted or plain)
-    if (staffData.staffPassword) {
-      let passwordMatch = false;
+    if (!staffData.staffPassword) {
+      throw new Error('Staff user has no password set');
+    }
 
-      if (isEncrypted(staffData.staffPassword)) {
-        // Try to decrypt the stored password
-        const decryptedStoredPassword = safeDecryptText(staffData.staffPassword);
-        passwordMatch = decryptedStoredPassword === password;
-      } else {
-        // Direct comparison for unencrypted passwords (backward compatibility)
-        passwordMatch = staffData.staffPassword === password;
-      }
+    let passwordMatch = false;
 
-      if (!passwordMatch) {
-        return null;
+    if (isEncrypted(staffData.staffPassword)) {
+      // Try to decrypt the stored password
+      const decryptedStoredPassword = safeDecryptText(staffData.staffPassword);
+      console.log('[DEBUG] Decrypted password successfully?', decryptedStoredPassword !== null);
+      if (decryptedStoredPassword !== null) {
+        console.log('[DEBUG] Input length:', password.length, 'Decrypted length:', decryptedStoredPassword.length);
       }
+      passwordMatch = decryptedStoredPassword === password;
     } else {
-      return null;
+      // Direct comparison for unencrypted passwords (backward compatibility)
+      console.log('[DEBUG] Password is not encrypted, doing plain text comparison');
+      passwordMatch = staffData.staffPassword === password;
+    }
+
+    if (!passwordMatch) {
+      throw new Error('Incorrect password');
     }
 
     // Verify role if specified
     if (role && staffData.role !== role) {
-      return null;
+      throw new Error(`Role mismatch: Expected ${role} but found ${staffData.role}`);
     }
 
     // Check if staff status is active
@@ -265,13 +284,6 @@ export const ensureFirebaseAuth = async (
   } catch (error: any) {
     const code = error?.code as string | undefined;
 
-    // If password mismatch but Firestore verified, and we allow tolerance, let it pass.
-    // This allows users to login even if Auth is out of sync, enabling them to update password later.
-    if (options.tolerateFailure && (code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/missing-password')) {
-         console.warn(`Bypassing Firebase Auth login error (${code}) as tolerateFailure is true.`);
-         return;
-    }
-
     // Only try to create if the user definitely doesn't exist
     const shouldTryCreate = options.allowCreate && code === 'auth/user-not-found';
 
@@ -281,19 +293,34 @@ export const ensureFirebaseAuth = async (
         return;
       } catch (createError: any) {
         console.error('Error creating Firebase user:', createError);
-        
+
         // If creating failed because user exists (race condition or confusion), tolerate it if requested
         if (createError?.code === 'auth/email-already-in-use') {
            if (options.tolerateFailure) {
                console.warn('Bypassing user creation error (email-already-in-use) as tolerateFailure is true.');
-               return; 
+               return;
            }
            throw new Error(
             'Firebase Auth user exists but login failed. Password mismatch suspected.'
            );
         }
+        if (options.tolerateFailure) {
+          console.warn(`[ensureFirebaseAuth] tolerated user-create failure (${createError?.code || 'unknown'}); proceeding without Firebase Auth session.`);
+          return;
+        }
         throw createError;
       }
+    }
+
+    // Caller (e.g. LoginPage) has already verified the password against the
+    // Firestore-stored encrypted credential; an out-of-sync / missing /
+    // network-failed Firebase Auth login should NEVER block app login.
+    // It only means callable Cloud Functions (image upload etc.) won't work
+    // until Auth is synced. So when tolerateFailure is true we swallow
+    // *every* error, not just the three password codes.
+    if (options.tolerateFailure) {
+      console.warn(`[ensureFirebaseAuth] tolerated Firebase Auth error (${code || 'unknown'}); proceeding with Firestore-validated session.`);
+      return;
     }
 
     throw error;

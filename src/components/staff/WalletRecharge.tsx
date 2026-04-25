@@ -40,6 +40,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/auth-context';
 import { db } from '@/lib/firebase';
 import { getUserMobile, getUserName } from '@/lib/userUtils';
+import { notifyWalletRechargeSms } from '@/services/ojivaSmsNotification';
 import {
   AccountTxType,
   ActivityType,
@@ -756,6 +757,21 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
       toast.success(successMessage, {
         description: successDescription,
       });
+
+      // OJIVA SMS — recharge confirmation with full coin breakdown.
+      if (!demoStore) {
+        const newWalletBalance = Number(
+          ((selectedCustomer.walletBalance || 0) + rechargeAmountNum).toFixed(2)
+        );
+        void notifyWalletRechargeSms({
+          phone: selectedCustomer.customerMobile,
+          customerName: selectedCustomer.customerName,
+          amount: rechargeAmountNum,
+          surabhiCoinsEarned: surabhiCoinsEarned,
+          sevaAmountEarned: sevaAmountEarned,
+          newWalletBalance: newWalletBalance,
+        });
+      }
 
       // Send WhatsApp recharge confirmation
       // try {

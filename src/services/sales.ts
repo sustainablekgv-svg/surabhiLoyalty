@@ -3,6 +3,11 @@ import { db } from '@/lib/firebase';
 import { AccountTxType, CustomerTxType, CustomerType, StoreType } from '@/types/types';
 import { updateCustomerQuarterlyTarget } from '@/utils/quarterlyTargets';
 import {
+  computeSaleAdminCut,
+  computeSaleAdminProfit,
+  grossSpvPoolsFromGrossWeight,
+} from '@/utils/saleAdminSpv';
+import {
   addDoc,
   collection,
   doc,
@@ -49,30 +54,6 @@ const fetchCustomerByMobile = async (mobile: string): Promise<CustomerType | nul
     return null;
   }
 };
-
-export const calculateAdminCut = (
-  spvBase: number,
-  storeDetails: StoreType,
-  paymentMethod: 'wallet' | 'cash' | 'mixed'
-) => {
-  if (!storeDetails) return 0;
-  
-  // For Online (treated as cash/external), use cash commission or surabhi?
-  // SalesManagement uses 'cashOnlyCommission' for 'cash' or 'mixed'.
-  // Using that for consistency.
-  const surabhiCommissionForEarn =
-    paymentMethod === 'cash' || paymentMethod === 'mixed'
-      ? storeDetails.cashOnlyCommission
-      : storeDetails.surabhiCommission;
-
-  const surabhiPart = customRound(spvBase * (surabhiCommissionForEarn / 100));
-  const referralPart = customRound(spvBase * (storeDetails.referralCommission / 100));
-  const sevaPart = customRound(spvBase * (storeDetails.sevaCommission / 100));
-  const bonusPart = customRound(spvBase * ((storeDetails.bonusPercentage || 0) / 100));
-
-  return referralPart + sevaPart + surabhiPart + bonusPart;
-};
-
 
 // --- Sales Logic ---
 
@@ -132,6 +113,8 @@ export const processSaleTransaction = async (params: {
     paymentMethod: 'online' | 'cod', // Input type
     paymentDetails?: any,
     totalSpv?: number,
+    /** Σ(line SPV × qty) from order items — required for correct admin cut/profit (same as staff g×m / I×m). */
+    grossSpvWeight?: number,
     surabhiCoinsUsed?: number, 
     shippingCreditsEarned?: number, 
     shippingCreditsUsed?: number, 
@@ -143,7 +126,7 @@ export const processSaleTransaction = async (params: {
         referralBonusEarned?: number;
     }
 }) => {
-    const { orderId, invoiceId, amount, customer, storeDetails, user, paymentMethod, paymentDetails, totalSpv, surabhiCoinsUsed, shippingCreditsEarned, shippingCreditsUsed, cumTotalAmount, rewardOverrides } = params;
+    const { orderId, invoiceId, amount, customer, storeDetails, user, paymentMethod, paymentDetails, totalSpv, grossSpvWeight, surabhiCoinsUsed, shippingCreditsEarned, shippingCreditsUsed, cumTotalAmount, rewardOverrides } = params;
     
     // Process both online and COD. 
     // COD in shop is treated as "placed" with pending collection, 
@@ -152,27 +135,70 @@ export const processSaleTransaction = async (params: {
     // Treat 'online' and 'cod' as 'cash' for calculation logic (External Money)
     const methodForCalc = 'cash'; 
     
-    // 1. Calculate Sale details
-    let saleCalculation = calculateSale(amount, customer, storeDetails, methodForCalc, totalSpv, surabhiCoinsUsed, shippingCreditsEarned, shippingCreditsUsed);
-    
+    const I = Math.max(0, Number(cumTotalAmount !== undefined ? cumTotalAmount : amount) || 0);
+    const coins = Math.max(0, Number(surabhiCoinsUsed) || 0);
+    const g = I + coins;
+
+    const rawGross = grossSpvWeight !== undefined ? Number(grossSpvWeight) : NaN;
+    const catalogM =
+      Number.isFinite(rawGross) && rawGross > 0
+        ? rawGross
+        : I > 0 && totalSpv !== undefined
+          ? (Number(totalSpv) * g) / I
+          : 0;
+
+    const { totalSpvGross, adjustedSpvGross } = grossSpvPoolsFromGrossWeight(catalogM, I, coins);
+
+    /** Same basis as shop `adjustedSpv` and commission base: (I×m)/g — never use order ₹ as SPV. */
+    const rewardBaseSpv: number =
+      catalogM > 0 && g > 0
+        ? Number((adjustedSpvGross / g).toFixed(6))
+        : totalSpv !== undefined
+          ? Number(totalSpv)
+          : 0;
+
+    // 1. Calculate Sale details (commission % × this SPV base)
+    let saleCalculation = calculateSale(
+      amount,
+      customer,
+      storeDetails,
+      methodForCalc,
+      rewardBaseSpv,
+      surabhiCoinsUsed,
+      shippingCreditsEarned,
+      shippingCreditsUsed
+    );
+
     // Apply overrides if provided (for E-commerce consistency)
     if (rewardOverrides) {
         if (rewardOverrides.surabhiCoinsEarned !== undefined) saleCalculation.surabhiCoinsEarned = rewardOverrides.surabhiCoinsEarned;
         if (rewardOverrides.sevaCoinsEarned !== undefined) saleCalculation.goSevaContribution = rewardOverrides.sevaCoinsEarned;
         if (rewardOverrides.referralBonusEarned !== undefined) saleCalculation.referrerSurabhiCoinsEarned = rewardOverrides.referralBonusEarned;
     }
-    
-    const spvEntered = totalSpv !== undefined ? totalSpv : amount;
-    const adjustedSpv = totalSpv !== undefined ? totalSpv : amount; 
+
+    const spvEntered = Number(catalogM.toFixed(4));
+    const adjustedSpv = Number(rewardBaseSpv.toFixed(6));
     const surabhiEarnedAdj = saleCalculation.surabhiCoinsEarned;
     const sevaEarnedAdj = saleCalculation.goSevaContribution;
     const sevaContribution = saleCalculation.goSevaContribution;
 
-    // 2. Admin Cut
-    const adminCutTx = calculateAdminCut(adjustedSpv, storeDetails, methodForCalc);
-    const adminProfitTaken = adminCutTx; 
+    const adminCutTx = computeSaleAdminCut(totalSpvGross, storeDetails, methodForCalc);
+    const adminProfitTaken = computeSaleAdminProfit(
+      totalSpvGross,
+      adjustedSpvGross,
+      storeDetails,
+      methodForCalc,
+      surabhiCoinsUsed || 0
+    );
 
-    // 3. Create AccountTx (Store Ledger)
+    const itemAfterCoins = Math.max(0, Number(cumTotalAmount !== undefined ? cumTotalAmount : amount) || 0);
+    const orderTotal = Number(amount.toFixed(2));
+    const netShippingRemainder = Number(Math.max(0, orderTotal - itemAfterCoins).toFixed(2));
+    const accountTxDebitOnline = Number(
+      (itemAfterCoins - adminCutTx + netShippingRemainder).toFixed(2)
+    );
+
+    // 3. Create AccountTx (Store Ledger) — same fields as staff sales where applicable
     const accountTxData: Omit<AccountTxType, 'id'> = {
         createdAt: Timestamp.fromDate(new Date()),
         storeName: storeDetails.storeName,
@@ -185,13 +211,21 @@ export const processSaleTransaction = async (params: {
         credit: Number(saleCalculation.cashPayment.toFixed(2)),
         adminCut: Number(adminCutTx.toFixed(2)),
         adminProfit: Number(adminProfitTaken.toFixed(2)),
-        debit: Number((amount - adminCutTx).toFixed(2)),
+        debit: accountTxDebitOnline,
         sevaBalance: Number(((Number(storeDetails?.storeSevaBalance) || 0) + (Number(sevaContribution) || 0)).toFixed(2)),
         currentBalance: Number(((Number(storeDetails?.storeCurrentBalance) || 0) + amount - amount + adminCutTx).toFixed(2)), // Store gets adminCut/profit added?
         adminCurrentBalance: Number((-storeDetails.storeCurrentBalance + adminCutTx).toFixed(2)), 
         remarks: `Online sale for ${customer.customerName} via Order #${orderId} (Processed by ${getUserName(user) || 'System'})`,
         spvEntered: Number(spvEntered.toFixed(2)),
         adjustedSpv: Number(adjustedSpv.toFixed(2)),
+        totalSpv: totalSpvGross,
+        shippingCredit: shippingCreditsEarned || 0,
+        shippingDebit: shippingCreditsUsed || 0,
+        shippingBalance:
+          (customer.shippingBalance || 0) +
+          (shippingCreditsEarned || 0) -
+          (shippingCreditsUsed || 0),
+        shippingAmount: 0,
     };
     
     await addDoc(collection(db, 'AccountTx'), accountTxData);
@@ -224,7 +258,9 @@ export const processSaleTransaction = async (params: {
         sevaEarned: Number(sevaContribution.toFixed(2)),
         referralEarned: 0,
         referredBy: customer.referredBy || '',
-        adminProft: Number(adminCutTx.toFixed(2)),
+        adminProft: Number(adminProfitTaken.toFixed(2)),
+        adminCut: Number(adminCutTx.toFixed(2)),
+        totalSpv: totalSpvGross,
         spvEntered: Number(spvEntered.toFixed(2)),
         adjustedSpv: Number(adjustedSpv.toFixed(2)),
         surabhiEarnedAdj: Number(surabhiEarnedAdj.toFixed(2)),
