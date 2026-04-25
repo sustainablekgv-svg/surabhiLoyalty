@@ -42,19 +42,7 @@ const CheckoutPage = () => {
   const [isAddingNewAddress, setIsAddingNewAddress] = useState(false);
   const [saveNewAddress, setSaveNewAddress] = useState(false);
 
-  useEffect(() => {
-    // Load addresses if user is a customer
-    if (user && 'role' in user && user.role === 'customer' && user.id) {
-       getAddresses(user.id).then(addresses => {
-           if (addresses.length > 0) {
-               setSelectedAddressIndex(0);
-               setFormData(addresses[0]);
-           } else {
-               setIsAddingNewAddress(true);
-           }
-       }).catch(console.error);
-    }
-  }, [user]);
+  
 
   const [formData, setFormData] = useState<Address>({
     fullName: getUserName(user),
@@ -71,18 +59,9 @@ const CheckoutPage = () => {
   const [originsList, setOriginsList] = useState<any[]>([]);
   const [surabhiCoinsToUse, setSurabhiCoinsToUse] = useState<number>(0);
   const [isCointEligible, setIsCoinEligible] = useState(true);
+  const [customerData, setCustomerData] = useState<any>(null);
 
-  useEffect(() => {
-    if (user && 'role' in user && user.role === 'customer') {
-      const customer = user as import('@/types/types').CustomerType;
-      const eligible = hasMetQuarterlyTarget({
-        ...customer,
-        cumTotal: customer.cumTotal || 0,
-        quartersPast: customer.quartersPast || 1
-      });
-      setIsCoinEligible(eligible);
-    }
-  }, [user]);
+
 
   useEffect(() => {
     const fetchConfigAndOrigins = async () => {
@@ -103,6 +82,33 @@ const CheckoutPage = () => {
         // setMaxShippingCreditsAvailable removed
     }
   }, [user]);
+
+  useEffect(() => {
+  if (!customerData) return;
+
+  const eligible =
+    (customerData.cumTotal || 0) >=
+    (customerData.cummulativeTarget || 0);
+
+  setIsCoinEligible(eligible);
+}, [customerData]);
+
+  useEffect(() => {
+  if (!user?.id) return;
+
+  const fetchCustomer = async () => {
+    const { doc, getDoc } = await import('firebase/firestore');
+    const docRef = doc(db, 'Customers', user.id);
+    const snap = await getDoc(docRef);
+
+    if (snap.exists()) {
+        console.log("🔥 FIRESTORE DATA:", snap.data());
+      setCustomerData(snap.data());
+    }
+  };
+
+  fetchCustomer();
+}, [user]);
 
 
   // Calculate totals by brand + origin for breakdown
@@ -236,16 +242,17 @@ const CheckoutPage = () => {
 
   // Automatic Coins Redemption Effect
   useEffect(() => {
-    if (user && 'surabhiBalance' in user && isCointEligible) {
-        const balance = (user as any).surabhiBalance || 0;
-        // Cap maxRedeemable at Total Item Value (Subtotal + GST)
-        const itemsTotalInclTax = subtotal + totalGst;
-        const maxRedeemable = Math.min(balance, itemsTotalInclTax);
-        setSurabhiCoinsToUse(maxRedeemable);
-    } else {
-        setSurabhiCoinsToUse(0);
-    }
-  }, [user, subtotal, totalGst, isCointEligible]);
+  if (customerData && isCointEligible) {
+    const balance = customerData.surabhiBalance || 0;
+    const itemsTotalInclTax = subtotal + totalGst;
+
+    const maxRedeemable = Math.min(balance, itemsTotalInclTax);
+
+    setSurabhiCoinsToUse(maxRedeemable);
+  } else {
+    setSurabhiCoinsToUse(0);
+  }
+}, [customerData, subtotal, totalGst, isCointEligible]);
 
   // HYPER-TRANSPARENT DRILL DOWN LOGIC
   const { adjustedCart, redeemedCoinsTotal, totalAdjustedTax, totalOriginalBase, totalAdjustedBase } = useMemo(() => {
@@ -253,7 +260,11 @@ const CheckoutPage = () => {
     const itemsTotalInclTax = subtotal + totalGst;
     
     // Cap totalCoins to the itemsTotalInclTax
-    const totalCoins = Math.min(surabhiCoinsToUse, itemsTotalInclTax, (user as any)?.surabhiBalance || 0);
+    const totalCoins = Math.min(
+  surabhiCoinsToUse,
+  itemsTotalInclTax,
+  Number(customerData?.surabhiBalance || 0)
+);
     
     // First, map items with their shipping contribution
     let initialMapped = cart.map(item => {
@@ -1191,6 +1202,47 @@ const CheckoutPage = () => {
                         <span className="text-sm font-medium text-purple-900">Items Total (Excl Tax)</span>
                         <span className="font-bold text-purple-600">₹{totalOriginalBase.toFixed(2)}</span>
                     </div>
+
+                            {/* 🔥 Surabhi Coins Section */}
+<div
+  className={`p-4 rounded-lg border ${
+    isCointEligible
+      ? 'bg-green-50 border-green-200'
+      : 'bg-gray-50 border-gray-200'
+  }`}
+>
+  <div className="flex justify-between items-center mb-2">
+    <span className="text-sm font-bold text-slate-800">
+      Surabhi Coins
+    </span>
+    <span className="text-xs font-bold text-slate-500">
+      Balance: ₹{(customerData?.surabhiBalance || 0).toFixed(2)}
+    </span>
+  </div>
+
+  {isCointEligible ? (
+    <div className="flex justify-between items-center">
+      <span className="text-sm text-green-700 font-medium">
+        Coins Applied
+      </span>
+      <span className="font-bold text-green-600">
+        -₹{redeemedCoinsTotal.toFixed(2)}
+      </span>
+    </div>
+  ) : (
+    <div className="text-xs text-red-600 font-medium">
+      Not eligible to redeem coins.
+      <br />
+      Spend ₹
+      {Math.max(
+        0,
+        (customerData?.cummulativeTarget || 0) -
+(customerData?.cumTotal || 0)
+      ).toFixed(2)}{' '}
+      more to unlock.
+    </div>
+  )}
+</div>
 
                     <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
                         <span className="text-sm font-medium text-indigo-900 font-bold italic">Total SPV Points</span>

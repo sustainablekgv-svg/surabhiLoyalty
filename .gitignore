@@ -15,7 +15,8 @@ lerna-debug.log*
 
 functions/node_modules/
 .firebase
-
+.firebase/
+.firebase/hosting.*.cache
 node_modules
 dist
 dist-ssr

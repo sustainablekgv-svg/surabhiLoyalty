@@ -27,6 +27,11 @@ import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
+//updated customer milestone
+
+import { MilestoneTimeline } from './MilestoneTimeline';
+
 import { useAuth } from '@/hooks/auth-context';
 import { db } from '@/lib/firebase';
 import { ActivityType, CustomerType } from '@/types/types';
@@ -263,7 +268,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       borderColor: 'border-red-200',
     },
     {
-      title: 'Cumulative Amount Spent',
+      title: 'Lifetime Amount Spent',
       value: `₹${(customerData.cumTotal || 0).toFixed(2)}`,
       description: 'Total sales value since joining',
       icon: ShoppingCart,
@@ -272,7 +277,7 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
       borderColor: 'border-emerald-200',
     },
     {
-      title: 'Cumulative Target Spend',
+      title: 'Lifetime Target Spend',
       value: `₹${(customerData.cummulativeTarget || 0).toFixed(2)}`,
       description: 'Quarterly spending target',
       icon: Target,
@@ -325,6 +330,9 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
           </Card>
         ))}
       </div>
+
+      {/* Milestone Timeline */}
+<MilestoneTimeline amount={customerData.surbhiTotal || 0} />
 
       {/* Recent Activity & Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 xs:gap-4 sm:gap-6">
