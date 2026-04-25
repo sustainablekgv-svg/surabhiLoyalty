@@ -19,6 +19,10 @@ import {
     where,
     writeBatch
 } from 'firebase/firestore';
+import {
+    notifyCoinsCreditedSms,
+    notifyOrderStatusSms,
+} from '@/services/ojivaSmsNotification';
 import { notifyCustomerSaleSms } from '@/services/saleSmsNotification';
 import { processSaleTransaction } from './sales';
 import { getUserName } from '@/lib/userUtils';
@@ -755,6 +759,28 @@ export const updateOrderStatus = async (orderId: string, status: Order['status']
                             paymentMethod: currentOrder.paymentMethod || 'online',
                             storeName: store.storeName,
                         });
+
+                        // OJIVA: detail the coin breakdown earned on this order.
+                        const surabhiEarned = Number(currentOrder.surabhiCoinsEarned || 0);
+                        const sevaEarned = Number((currentOrder as any).sevaCoinsEarned || 0);
+                        const shippingEarned = Number(currentOrder.shippingPointsEarned || 0);
+
+                        if (surabhiEarned > 0 || sevaEarned > 0 || shippingEarned > 0) {
+                            const newSurabhiBalance =
+                                Number(customer.surabhiBalance || 0) +
+                                surabhiEarned -
+                                Number(currentOrder.surabhiCoinsUsed || 0);
+                            void notifyCoinsCreditedSms({
+                                phone: customer.customerMobile,
+                                customerName: customer.customerName,
+                                orderOrInvoiceId: currentOrder.id,
+                                amount: currentOrder.totalAmount,
+                                surabhiCoins: surabhiEarned,
+                                sevaCoins: sevaEarned,
+                                shippingCoins: shippingEarned,
+                                balance: newSurabhiBalance,
+                            });
+                        }
                     }
                     // Note: Activity log is added by processSaleTransaction
                 } else {
@@ -782,6 +808,23 @@ export const updateOrderStatus = async (orderId: string, status: Order['status']
         orderId: orderId,
         demoStore: (currentOrder as any).demoStore || false
     });
+
+    // OJIVA SMS for downstream status changes (in transit / delivered / cancelled).
+    // 'confirmed' already triggers the rewards SMS above, so skip it here.
+    const NOTIFY_STATUSES: Array<Order['status']> = ['in_transit', 'delivered', 'cancelled'];
+    if (
+        !(currentOrder as any).demoStore &&
+        NOTIFY_STATUSES.includes(status) &&
+        currentOrder.shippingAddress?.mobile
+    ) {
+        void notifyOrderStatusSms({
+            phone: currentOrder.shippingAddress.mobile,
+            customerName: currentOrder.shippingAddress.fullName,
+            orderId: orderId,
+            status,
+            storeName: (currentOrder as any).storeName,
+        });
+    }
 
     await updateDoc(docRef, updates);
 };
@@ -887,12 +930,9 @@ export const adjustOrderShippingBalance = async (
         }
 
         const adjustmentAmount = isAddition ? magnitude : -magnitude;
-        
-        // Ensure deduction doesn't exceed current balance
-        if (!isAddition && (customerData.shippingBalance || 0) < magnitude) {
-            throw new Error("Insufficient shipping balance to deduct");
-        }
 
+        // Admin adjustments are allowed to drive the shipping balance below zero.
+        // Resulting balance may be negative if a deduction exceeds the current balance.
         const newShippingBalance = Number(((customerData.shippingBalance || 0) + adjustmentAmount).toFixed(2));
         const newShippingTotal = isAddition 
             ? Number(((customerData.shippingTotal || 0) + magnitude).toFixed(2)) 

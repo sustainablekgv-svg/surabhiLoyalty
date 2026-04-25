@@ -44,6 +44,11 @@ import { useAuth } from '@/hooks/auth-context';
 import { decryptText, isEncrypted } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { getUserMobile, getUserName } from '@/lib/userUtils';
+import {
+  notifyCoinsCreditedSms,
+  notifyCoinsRedeemedSms,
+  notifyReferrerCreditedSms,
+} from '@/services/ojivaSmsNotification';
 import { notifyCustomerSaleSms } from '@/services/saleSmsNotification';
 import {
   AccountTxType,
@@ -325,6 +330,17 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
               createdAt: Timestamp.fromDate(new Date()),
               demoStore: demoStore,
             });
+
+            if (!demoStore && incrementAmount > 0) {
+              const newReferrerBalance =
+                Number(referrerData.surabhiBalance || 0) + incrementAmount;
+              void notifyReferrerCreditedSms({
+                referrerPhone: referrerData.customerMobile,
+                surabhiCoinsEarned: incrementAmount,
+                newSurabhiBalance: newReferrerBalance,
+                refereePhone: selectedCustomer.customerMobile,
+              });
+            }
           } else {
             // console.warn(`Referrer with mobile ${selectedCustomer.referredBy} not found`);
           }
@@ -904,6 +920,17 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             toast.success(
               `Referral bonus of ₹${referralAmount} credited to ${referrer.customerName}`
             );
+
+            if (!demoStore) {
+              const newReferrerSurabhiBalance =
+                Number(referrer.surabhiBalance || 0) + referralAmount;
+              void notifyReferrerCreditedSms({
+                referrerPhone: referrer.customerMobile,
+                surabhiCoinsEarned: referralAmount,
+                newSurabhiBalance: newReferrerSurabhiBalance,
+                refereePhone: selectedCustomer.customerMobile,
+              });
+            }
           } else {
             // console.warn(`Referrer with mobile ${selectedCustomer.referredBy} not found`);
             toast.warning(`Referrer not found - bonus not credited`);
@@ -958,6 +985,38 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           paymentMethod,
           storeName: storeDetails?.storeName || user?.storeLocation,
         });
+
+        // OJIVA: detail the coins earned and (separately) any coins redeemed.
+        const surabhiEarned = Number(surabhiEarnedAdj.toFixed(2));
+        const sevaEarned = Number(sevaContribution.toFixed(2));
+        const shippingEarned = Number(shippingCreditsEarnedFinal);
+
+        if (surabhiEarned > 0 || sevaEarned > 0 || shippingEarned > 0) {
+          void notifyCoinsCreditedSms({
+            phone: selectedCustomer.customerMobile,
+            customerName: selectedCustomer.customerName,
+            orderOrInvoiceId: txInvoiceId,
+            amount: saleCalculation.totalAmount,
+            surabhiCoins: surabhiEarned,
+            sevaCoins: sevaEarned,
+            shippingCoins: shippingEarned,
+            balance: newSurabhiCoins,
+          });
+        }
+
+        const surabhiRedeemed = Number(saleCalculation.surabhiCoinsUsed || 0);
+        const shippingRedeemed = Number(saleCalculation.shippingCreditsUsed || 0);
+        if (surabhiRedeemed > 0 || shippingRedeemed > 0) {
+          void notifyCoinsRedeemedSms({
+            phone: selectedCustomer.customerMobile,
+            customerName: selectedCustomer.customerName,
+            orderOrInvoiceId: txInvoiceId,
+            amount: saleCalculation.totalAmount,
+            surabhiCoinsUsed: surabhiRedeemed,
+            shippingCreditsUsed: shippingRedeemed,
+            balance: newSurabhiCoins,
+          });
+        }
       }
 
       // Send WhatsApp sale confirmation

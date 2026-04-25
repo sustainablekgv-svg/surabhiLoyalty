@@ -1,5 +1,11 @@
 service cloud.firestore {
   match /databases/{database}/documents {
+    // OTP material (hashes + verification tokens) — only Cloud Functions
+    // (Admin SDK) may touch this. Clients must never read or write it.
+    match /phone_otps/{doc=**} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if true;
     }

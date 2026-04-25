@@ -246,7 +246,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       if (!userData) {
-        throw new Error('Invalid credentials');
+        throw new Error('Authentication failed: No user data returned');
       }
 
       const isValidEmail = (value: string) => {

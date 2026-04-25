@@ -26,12 +26,21 @@ const ProductDetailsPage = () => {
     const [quantity, setQuantity] = useState(1);
     const [selectedImage, setSelectedImage] = useState<string>('');
     
-    // Custom back handler to preserve filters
+    // Custom back handler to preserve filters.
+    //
+    // We must not `navigate(location.state.from)` here — that PUSHES a new history
+    // entry, so the previous in-app back press would still leave `/shop/product/:id`
+    // in history and the next browser-back tap takes the user backwards into the
+    // product page again. Instead we go one step back in history when possible.
     const handleBack = () => {
-        if (location.state?.from) {
-            navigate(location.state.from);
+        const idx = (window.history.state as { idx?: number } | null)?.idx;
+        const canGoBack = (typeof idx === 'number' ? idx > 0 : window.history.length > 1);
+        if (canGoBack) {
+            navigate(-1);
+        } else if (location.state?.from) {
+            navigate(location.state.from, { replace: true });
         } else {
-            navigate('/shop');
+            navigate('/shop', { replace: true });
         }
     };
     
@@ -137,14 +146,29 @@ const ProductDetailsPage = () => {
                     </Dialog>
 
                     {product.images && product.images.length > 1 && (
-                        <div className="flex gap-2 md:gap-4 overflow-x-auto pb-2 scrollbar-hide max-w-full">
+                        <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-5 lg:grid-cols-6 gap-2 max-w-full">
                             {product.images.map((img, idx) => (
-                                <button 
+                                <button
                                     key={idx}
+                                    type="button"
+                                    aria-label={`Show image ${idx + 1}`}
                                     onClick={() => setSelectedImage(img)}
-                                    className={`relative shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden border-2 transition-all flex items-center justify-center bg-white ${selectedImage === img ? 'border-primary ring-2 ring-primary/20' : 'border-transparent hover:border-gray-200'}`}
+                                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all bg-gray-50 ${
+                                        selectedImage === img
+                                            ? 'border-primary ring-2 ring-primary/20'
+                                            : 'border-gray-200 hover:border-gray-300'
+                                    }`}
                                 >
-                                    <img src={img} alt={`${product.name} view ${idx + 1}`} className="max-h-full max-w-full object-contain" />
+                                    <img
+                                        src={img}
+                                        alt={`${product.name} view ${idx + 1}`}
+                                        className="absolute inset-0 w-full h-full object-cover"
+                                        loading="lazy"
+                                        onError={(e) => {
+                                            e.currentTarget.src = 'https://placehold.co/160x160?text=No+Image';
+                                            e.currentTarget.onerror = null;
+                                        }}
+                                    />
                                 </button>
                             ))}
                         </div>

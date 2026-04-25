@@ -1,8 +1,9 @@
-import { ArrowLeft, Coins, Eye, EyeOff, Phone, Shield, UserCircle, Users } from 'lucide-react';
+import { ArrowLeft, Coins, Eye, EyeOff, Loader2, Shield, UserCircle, Users } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { OtpVerifyDialog } from '@/components/auth/OtpVerifyDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/auth-context';
+import { resetCustomerPassword } from '@/services/otpService';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -29,6 +31,14 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+
+  // Forgot-password OTP flow
+  const [forgotMobile, setForgotMobile] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
+  const [forgotShowPassword, setForgotShowPassword] = useState(false);
+  const [resetOtpDialogOpen, setResetOtpDialogOpen] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -84,8 +94,19 @@ const LoginPage = () => {
       }
 
       navigate(redirectPath, { replace: true });
-    } catch (error) {
-      toast.error('Invalid credentials. Please try again.');
+    } catch (error: any) {
+      // Surface the underlying reason — generic "Invalid credentials" hides
+      // password-mismatch vs. user-not-found vs. network problems vs. disabled
+      // staff/store, which makes login bugs nearly impossible to diagnose.
+      const raw =
+        (typeof error?.message === 'string' && error.message.trim()) ||
+        (typeof error === 'string' && error) ||
+        'Invalid credentials. Please try again.';
+      const friendly = /invalid credentials/i.test(raw)
+        ? 'Invalid mobile number or password. Please try again.'
+        : raw;
+      console.warn('[LoginPage] login failed:', error);
+      toast.error(friendly);
     } finally {
       setIsLoading(false);
     }
@@ -93,10 +114,55 @@ const LoginPage = () => {
 
   const handleForgotPassword = () => {
     setShowForgotPassword(true);
+    setForgotMobile(formData.mobile || '');
   };
 
   const handleBackToLogin = () => {
     setShowForgotPassword(false);
+    setForgotNewPassword('');
+    setForgotConfirmPassword('');
+  };
+
+  const handleSendResetOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleaned = forgotMobile.replace(/\D/g, '');
+    if (cleaned.length !== 10) {
+      toast.error('Enter a valid 10-digit mobile number');
+      return;
+    }
+    if (forgotNewPassword.length < 6) {
+      toast.error('New password must be at least 6 characters');
+      return;
+    }
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    setResetOtpDialogOpen(true);
+  };
+
+  const handleResetVerified = async (verificationToken: string | undefined) => {
+    if (!verificationToken) {
+      toast.error('Verification token missing. Please request a new OTP.');
+      return;
+    }
+    setResettingPassword(true);
+    try {
+      await resetCustomerPassword({
+        phone: forgotMobile,
+        newPassword: forgotNewPassword,
+        verificationToken,
+      });
+      toast.success('Password reset successful. Please login with your new password.');
+      setShowForgotPassword(false);
+      setForgotNewPassword('');
+      setForgotConfirmPassword('');
+      setFormData(prev => ({ ...prev, mobile: forgotMobile, password: '' }));
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not reset password. Please try again.');
+    } finally {
+      setResettingPassword(false);
+    }
   };
 
   const handleBackToLanding = () => {
@@ -193,6 +259,9 @@ const LoginPage = () => {
                       value={formData.mobile}
                       onChange={handleInputChange}
                       className="pl-10 h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      autoComplete="username"
+                      inputMode="numeric"
+                      maxLength={10}
                       required
                     />
                   </div>
@@ -213,6 +282,7 @@ const LoginPage = () => {
                       value={formData.password}
                       onChange={handleInputChange}
                       className="pl-10 pr-10 h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      autoComplete="current-password"
                       required
                     />
                     <button
@@ -260,29 +330,104 @@ const LoginPage = () => {
                 </div>
               </form>
             ) : (
-              /* Forgot Password Section */
-              <div className="space-y-6">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-blue-900 mb-2">Contact Admin</h3>
-                  <p className="text-blue-800 text-sm mb-3">
-                    To reset your password, please contact the administrator:
-                  </p>
-                  <div className="flex items-center gap-2 text-blue-900">
-                    <Phone className="h-4 w-4" />
-                    <a href="tel:9606979530" className="font-medium hover:underline">
-                      9606979530
-                    </a>
+              /* Forgot Password Section: enter mobile + new password, then verify via OTP. */
+              <form onSubmit={handleSendResetOtp} className="space-y-5">
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-sm text-purple-800">
+                  We will send a 6-digit OTP to your registered mobile number.
+                  Enter it on the next screen to reset your password.
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="forgotMobile">Registered Mobile Number</Label>
+                  <Input
+                    id="forgotMobile"
+                    type="tel"
+                    placeholder="10-digit mobile number"
+                    value={forgotMobile}
+                    onChange={e => setForgotMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    className="h-12"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="forgotNewPassword">New Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="forgotNewPassword"
+                      type={forgotShowPassword ? 'text' : 'password'}
+                      placeholder="At least 6 characters"
+                      value={forgotNewPassword}
+                      onChange={e => setForgotNewPassword(e.target.value)}
+                      className="h-12 pr-10"
+                      required
+                      minLength={6}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setForgotShowPassword(!forgotShowPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {forgotShowPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
                   </div>
                 </div>
 
-                <Button onClick={handleBackToLogin} variant="outline" className="w-full">
+                <div className="space-y-2">
+                  <Label htmlFor="forgotConfirmPassword">Confirm New Password</Label>
+                  <Input
+                    id="forgotConfirmPassword"
+                    type={forgotShowPassword ? 'text' : 'password'}
+                    placeholder="Re-enter new password"
+                    value={forgotConfirmPassword}
+                    onChange={e => setForgotConfirmPassword(e.target.value)}
+                    className="h-12"
+                    required
+                    minLength={6}
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={resettingPassword}
+                  className="w-full bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white font-medium py-3 rounded-lg"
+                >
+                  {resettingPassword ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Resetting…
+                    </>
+                  ) : (
+                    'Send OTP & Reset Password'
+                  )}
+                </Button>
+
+                <Button
+                  type="button"
+                  onClick={handleBackToLogin}
+                  variant="outline"
+                  className="w-full"
+                  disabled={resettingPassword}
+                >
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back to Login
                 </Button>
-              </div>
+              </form>
             )}
           </CardContent>
         </Card>
+
+        <OtpVerifyDialog
+          open={resetOtpDialogOpen}
+          onOpenChange={setResetOtpDialogOpen}
+          phone={forgotMobile}
+          context="reset"
+          onVerified={handleResetVerified}
+        />
 
         {/* Footer */}
         <div className="text-center mt-6 text-sm text-gray-600">

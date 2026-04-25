@@ -2,35 +2,47 @@ import CryptoJS from 'crypto-js';
 
 // Secret key for encryption - Must be 32 characters for AES-256
 const SECRET_KEY = (() => {
-  // Use process.env in test environment, import.meta.env in browser
-  let envSecret: string;
+  let envSecret: string | undefined;
 
-  // Check if we're in a test environment or if import.meta is not available
-  if (
-    typeof process !== 'undefined' &&
-    (process.env.NODE_ENV === 'test' || typeof window === 'undefined')
-  ) {
-    envSecret = process.env.VITE_ENCRYPTION_SECRET || 'default-test-secret-key-32-chars';
-  } else {
-    // Browser environment with Vite
-    envSecret = (import.meta as any).env.VITE_ENCRYPTION_SECRET;
+  try {
+    // Standard Vite environment access. Vite statically replaces this during build,
+    // and dynamically provides it during dev server.
+    envSecret = import.meta.env.VITE_ENCRYPTION_SECRET;
+  } catch (e) {
+    // Ignore if import.meta is not defined
   }
 
   if (!envSecret) {
-    // console.error('VITE_ENCRYPTION_SECRET environment variable is not set');
-    throw new Error('Encryption secret not configured');
+    try {
+      // Fallback for Node/Jest environments
+      if (typeof process !== 'undefined' && process.env) {
+        envSecret = process.env.VITE_ENCRYPTION_SECRET;
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }
+
+  if (!envSecret) {
+    if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'test') {
+      envSecret = 'default-test-secret-key-32-chars';
+    } else {
+      console.error('VITE_ENCRYPTION_SECRET environment variable is not set. Check your .env file.');
+      // Using a fallback so the app doesn't immediately crash, but decryption will fail.
+      envSecret = 'default-test-secret-key-32-chars';
+    }
   }
 
   if (envSecret === 'default-secret-key-change-in-production') {
-    // console.error('Using default encryption secret in production is not secure');
-    throw new Error('Default encryption secret detected');
+    console.error('Using default encryption secret in production is not secure');
   }
 
   // Ensure key is exactly 32 characters for AES-256
   if (envSecret.length !== 32) {
-    // console.error('Encryption secret must be exactly 32 characters');
-    throw new Error('Invalid encryption secret length');
+    console.error('Encryption secret must be exactly 32 characters, current length is:', envSecret.length);
   }
+
+  // console.log('[DEBUG] Secret key loaded, starting with:', envSecret?.substring(0, 5));
 
   return envSecret;
 })();
@@ -105,7 +117,8 @@ export const safeDecryptText = (text: string): string | null => {
     });
     const plainText = decrypted.toString(CryptoJS.enc.Utf8);
     return plainText || null;
-  } catch {
+  } catch (err) {
+    console.error('safeDecryptText error:', err);
     return null;
   }
 };

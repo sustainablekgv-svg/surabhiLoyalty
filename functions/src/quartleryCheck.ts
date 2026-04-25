@@ -29,32 +29,28 @@ export const checkQuarterlyCriteria = functions.scheduler.onSchedule(
 
     const updates: Promise<any>[] = [];
 
-    customersSnapshot.forEach(doc  => {
+    customersSnapshot.forEach(doc => {
       const data = doc.data() as CustomerType;
 
       const joinedDate = data.joinedDate?.toDate();
       if (!joinedDate) return;
 
-      // Increment quartersPast for each customer every time this function runs
+      const cumTotal = data.cumTotal || 0;
+
+      // Only customers who have actually started spending (lifetime cumTotal > 0)
+      // accrue quarterly targets. Customers with no spend yet are left untouched
+      // so the 2k/quarter target does not pile up against them.
+      if (cumTotal <= 0) {
+        return;
+      }
+
+      // Increment quartersPast for active spenders only
       const currentQuartersPast = (data.quartersPast || 0) + 1;
 
-      // Calculate quarterly target: First quarter has no target, subsequent quarters: 2000 * (quarters-1)
-      const cumTotal = data.cumTotal || 0;
-      let cummulativeTarget = 0;
-      let coinsFrozen = false;
-      let targetMet = true;
-
-      // First quarter after joining has no target requirement
-      // if (currentQuartersPast === 1) {
-      //   cummulativeTarget = 0;
-      //   targetMet = true;
-      //   coinsFrozen = false;
-      // } else {
-      // For subsequent quarters: cumulative target = 2000 * quartersPast
-      cummulativeTarget = 2000 * currentQuartersPast;
-      targetMet = cumTotal >= cummulativeTarget;
-      coinsFrozen = !targetMet; // Freeze coins if cumulative target not met
-      // }
+      // Cumulative target = 2000 * quartersPast
+      const cummulativeTarget = 2000 * currentQuartersPast;
+      const targetMet = cumTotal >= cummulativeTarget;
+      const coinsFrozen = !targetMet;
 
       updates.push(
         doc.ref.update({

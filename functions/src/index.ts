@@ -36,6 +36,13 @@ import './ensureGcpRuntimeCredentials';
 import * as auth from './auth';
 import * as cloudflare from './cloudflare';
 import * as ecommerce from './ecommerce';
+import {
+  checkOjivaBalance as checkOjivaBalanceFn,
+  resetCustomerPassword as resetCustomerPasswordFn,
+  sendOjivaNotification as sendOjivaNotificationFn,
+  sendPhoneOtp as sendPhoneOtpFn,
+  verifyPhoneOtp as verifyPhoneOtpFn,
+} from './ojivaSms';
 import * as quarterly from './quartleryCheck';
 import { sendSaleNotificationSms as sendSaleNotificationSmsFn } from './saleSms';
 import { syncFirebaseAuthForUpload as syncFirebaseAuthForUploadFn } from './syncAuthForUpload';
@@ -53,3 +60,12 @@ export const onStaffUpdate = auth.onStaffUpdate;
 export const onCustomerUpdate = auth.onCustomerUpdate;
 /** A2Z SMS: notify customer after a sale (credentials in Cloud Function env). */
 export const sendSaleNotificationSms = sendSaleNotificationSmsFn;
+/** OJIVA.AI SMS: transactional notifications (coins credited, referrer, etc.). */
+export const sendOjivaNotification = sendOjivaNotificationFn;
+/** OJIVA.AI SMS: send 6-digit OTP for signup / reset / coin redemption / sales return. */
+export const sendPhoneOtp = sendPhoneOtpFn;
+/** OJIVA.AI SMS: verify the OTP issued by `sendPhoneOtp`. */
+export const verifyPhoneOtp = verifyPhoneOtpFn;
+/** Forgot-password reset; consumes a `verifyPhoneOtp` token. */
+export const resetCustomerPassword = resetCustomerPasswordFn;
+export const checkOjivaBalance = checkOjivaBalanceFn;
