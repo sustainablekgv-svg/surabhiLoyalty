@@ -42,6 +42,17 @@ const LoginPage = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+
+    if (name === 'mobile') {
+      // Strip country code prefixes (+91, 0091, 91+10 digits) and non-digits, cap at 10
+      const digits = value
+        .replace(/\D/g, '')
+        .replace(/^(?:0{0,2}91)?(\d{10})$/, '$1')
+        .slice(0, 10);
+      setFormData(prev => ({ ...prev, mobile: digits }));
+      return;
+    }
+
     setFormData(prev => ({
       ...prev,
       [name]: value,
@@ -253,21 +264,26 @@ const LoginPage = () => {
                     Mobile Number
                   </Label>
                   <div className="relative">
-                    {/* <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
                     <Input
                       id="mobile"
                       name="mobile"
                       type="tel"
-                      placeholder="Enter your mobile number"
+                      placeholder="10-digit mobile number"
                       value={formData.mobile}
                       onChange={handleInputChange}
-                      className="pl-10 h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      className="pl-3 h-12 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                       autoComplete="username"
                       inputMode="numeric"
                       maxLength={10}
                       required
                     />
                   </div>
+                  {formData.mobile.length > 0 && formData.mobile.length < 10 && (
+                    <p className="text-xs text-amber-600">{10 - formData.mobile.length} more digit{10 - formData.mobile.length !== 1 ? 's' : ''} needed</p>
+                  )}
+                  {formData.mobile.length === 10 && (
+                    <p className="text-xs text-green-600">✓ Valid mobile number</p>
+                  )}
                 </div>
 
                 {/* Password */}
@@ -345,12 +361,25 @@ const LoginPage = () => {
                   <Input
                     id="forgotMobile"
                     type="tel"
+                    inputMode="numeric"
                     placeholder="10-digit mobile number"
                     value={forgotMobile}
-                    onChange={e => setForgotMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    onChange={e => {
+                      const digits = e.target.value
+                        .replace(/\D/g, '')
+                        .replace(/^(?:0{0,2}91)?(\d{10})$/, '$1')
+                        .slice(0, 10);
+                      setForgotMobile(digits);
+                    }}
                     className="h-12"
                     required
                   />
+                  {forgotMobile.length > 0 && forgotMobile.length < 10 && (
+                    <p className="text-xs text-amber-600">{10 - forgotMobile.length} more digit{10 - forgotMobile.length !== 1 ? 's' : ''} needed</p>
+                  )}
+                  {forgotMobile.length === 10 && (
+                    <p className="text-xs text-green-600">✓ Valid mobile number</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">

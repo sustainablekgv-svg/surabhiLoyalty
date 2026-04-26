@@ -39,6 +39,30 @@ const SignupPage = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+
+    if (name === 'customerMobile') {
+      // Strip country code prefixes (+91, 0091, 91 followed by 10 digits) and non-digits, cap at 10
+      const stripped = value
+        .replace(/\D/g, '')
+        .replace(/^(?:0{0,2}91)?(\d{10})$/, '$1');
+      const digits = stripped.slice(0, 10);
+      setFormData(prev => ({ ...prev, customerMobile: digits }));
+      return;
+    }
+
+    if (name === 'referredBy') {
+      // If it looks like a phone number, strip country codes; allow REF- codes as-is
+      const isPhone = /^[\d+\s-]+$/.test(value);
+      if (isPhone) {
+        const stripped = value
+          .replace(/\D/g, '')
+          .replace(/^(?:0{0,2}91)?(\d{10})$/, '$1')
+          .slice(0, 10);
+        setFormData(prev => ({ ...prev, referredBy: stripped }));
+        return;
+      }
+    }
+
     setFormData(prev => ({
       ...prev,
       [name]: value,
@@ -54,54 +78,63 @@ const SignupPage = () => {
   
   const [stores, setStores] = useState<string[]>([]);
   const [referralName, setReferralName] = useState<string | null>(null);
+  const [referralNotFound, setReferralNotFound] = useState(false);
   const [isFetchingReferral, setIsFetchingReferral] = useState(false);
 
   // Fetch stores dynamically removed - hardcoded to Sustainable KGV Online
 
   // Fetch referral details
   useEffect(() => {
-      const fetchReferralName = async () => {
-        const refInput = formData.referredBy?.trim();
-        if (refInput && (refInput.length === 10 || refInput.startsWith('REF-'))) {
-          setIsFetchingReferral(true);
-          try {
-            const customersCollection = collection(db, 'Customers');
-            // Check by Code first, then Mobile
-            let q = query(customersCollection, where('referralCode', '==', refInput));
-            let snapshot = await getDocs(q);
+    const fetchReferralName = async () => {
+      const refInput = formData.referredBy?.trim();
+      if (!refInput) {
+        setReferralName(null);
+        setReferralNotFound(false);
+        return;
+      }
 
-            if (snapshot.empty && /^\d{10}$/.test(refInput)) {
-                 q = query(customersCollection, where('customerMobile', '==', refInput));
-                 snapshot = await getDocs(q);
-            }
+      const isFullPhone = /^\d{10}$/.test(refInput);
+      const isRefCode = refInput.startsWith('REF-');
+      if (!isFullPhone && !isRefCode) {
+        // Still typing — don't flash "not found" yet
+        setReferralName(null);
+        setReferralNotFound(false);
+        return;
+      }
 
-            if (!snapshot.empty) {
-              const data = snapshot.docs[0].data() as CustomerType;
-              setReferralName(data.customerName);
-            } else {
-              setReferralName(null);
-            }
-          } catch (error) {
-            console.error('Error fetching referral:', error);
-            setReferralName(null);
-          } finally {
-            setIsFetchingReferral(false);
-          }
+      setIsFetchingReferral(true);
+      setReferralNotFound(false);
+      try {
+        const customersCollection = collection(db, 'Customers');
+        // Check by referral code first, then by mobile
+        let q = query(customersCollection, where('referralCode', '==', refInput));
+        let snapshot = await getDocs(q);
+
+        if (snapshot.empty && isFullPhone) {
+          q = query(customersCollection, where('customerMobile', '==', refInput));
+          snapshot = await getDocs(q);
+        }
+
+        if (!snapshot.empty) {
+          const data = snapshot.docs[0].data() as CustomerType;
+          setReferralName(data.customerName);
+          setReferralNotFound(false);
         } else {
           setReferralName(null);
+          setReferralNotFound(true);
         }
-      };
+      } catch (error) {
+        console.error('Error fetching referral:', error);
+        setReferralName(null);
+        setReferralNotFound(false);
+      } finally {
+        setIsFetchingReferral(false);
+      }
+    };
 
-      const timer = setTimeout(() => {
-        if (formData.referredBy) {
-          fetchReferralName();
-        } else {
-          setReferralName(null);
-        }
-      }, 500);
-
-      return () => clearTimeout(timer);
-    }, [formData.referredBy]);
+    const timer = setTimeout(fetchReferralName, 600);
+    return () => clearTimeout(timer);
+  }, [formData.referredBy]);
 
   const calculateAge = (dob: string) => {
     const birthDate = new Date(dob);
@@ -227,9 +260,25 @@ const SignupPage = () => {
               <div className="space-y-2">
                 <Label htmlFor="customerMobile">Mobile Number *</Label>
                 <div className="relative">
-                    {/* <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
-                    <Input id="customerMobile" name="customerMobile" type="tel" placeholder="Enter mobile number" value={formData.customerMobile} onChange={handleInputChange} className="pl-10" required />
+                    <Input
+                      id="customerMobile"
+                      name="customerMobile"
+                      type="tel"
+                      inputMode="numeric"
+                      placeholder="10-digit mobile number"
+                      value={formData.customerMobile}
+                      onChange={handleInputChange}
+                      maxLength={10}
+                      className="h-12"
+                      required
+                    />
                 </div>
+                {formData.customerMobile.length > 0 && formData.customerMobile.length < 10 && (
+                  <p className="text-xs text-amber-600">{10 - formData.customerMobile.length} more digit{10 - formData.customerMobile.length !== 1 ? 's' : ''} needed</p>
+                )}
+                {formData.customerMobile.length === 10 && (
+                  <p className="text-xs text-green-600">✓ Valid mobile number</p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -281,14 +330,15 @@ const SignupPage = () => {
               <div className="space-y-2">
                 <Label htmlFor="referredBy">Referral Code / Number (Optional)</Label>
                 <div className="relative">
-                    {/* <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
-                    <Input 
-                        id="referredBy" 
-                        name="referredBy" 
-                        placeholder="Referral Code / Mobile Number" 
-                        value={formData.referredBy} 
-                        onChange={handleInputChange} 
-                        className="pl-10" 
+                    <Input
+                        id="referredBy"
+                        name="referredBy"
+                        type="text"
+                        inputMode="text"
+                        placeholder="Referral code or 10-digit mobile"
+                        value={formData.referredBy}
+                        onChange={handleInputChange}
+                        className="h-12 pr-10"
                     />
                     {isFetchingReferral && (
                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -296,15 +346,23 @@ const SignupPage = () => {
                         </div>
                     )}
                     {!isFetchingReferral && referralName && (
-                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
                             <CheckCircle className="h-4 w-4 text-green-500" />
                         </div>
                     )}
                 </div>
-                {referralName && (
+                {!isFetchingReferral && referralName && (
                     <p className="text-sm text-green-600 flex items-center gap-1 mt-1">
-                        Referrer: {referralName}
+                        <CheckCircle className="h-3.5 w-3.5" /> Referrer: <strong>{referralName}</strong>
                     </p>
+                )}
+                {!isFetchingReferral && referralNotFound && (
+                    <p className="text-sm text-red-500 flex items-center gap-1 mt-1">
+                        ⚠️ No referrer found — you have not got any referrer. You can still sign up.
+                    </p>
+                )}
+                {!isFetchingReferral && !referralName && !referralNotFound && !formData.referredBy && (
+                    <p className="text-xs text-gray-400 mt-1">You have not got any referrer (optional).</p>
                 )}
               </div>
 

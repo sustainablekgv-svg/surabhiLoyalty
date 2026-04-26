@@ -1,5 +1,41 @@
-﻿{
+{
   "indexes": [
+    {
+      "collectionGroup": "phone_otps",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "phone",      "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "phone_otps",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "phone",      "order": "ASCENDING" },
+        { "fieldPath": "used",       "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "phone_otps",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "phone",      "order": "ASCENDING" },
+        { "fieldPath": "context",    "order": "ASCENDING" },
+        { "fieldPath": "used",       "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "phone_otps",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "phone",                "order": "ASCENDING" },
+        { "fieldPath": "context",              "order": "ASCENDING" },
+        { "fieldPath": "verified_token_hash",  "order": "ASCENDING" }
+      ]
+    },
     {
       "collectionGroup": "AccountTx",
       "queryScope": "COLLECTION",

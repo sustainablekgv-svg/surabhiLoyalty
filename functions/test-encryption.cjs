@@ -9,7 +9,7 @@ const encrypted = CryptoJS.AES.encrypt(text, SECRET_KEY, {
   padding: CryptoJS.pad.Pkcs7,
 }).toString();
 
-console.log("Encrypted (Client Style):", encrypted);
+// console.log("Encrypted (Client Style):", encrypted);
 
 // Server-side decryption logic
 const decrypted = CryptoJS.AES.decrypt(encrypted, SECRET_KEY, {
@@ -18,10 +18,10 @@ const decrypted = CryptoJS.AES.decrypt(encrypted, SECRET_KEY, {
 });
 const plainText = decrypted.toString(CryptoJS.enc.Utf8);
 
-console.log("Decrypted (Server Style):", plainText);
+// console.log("Decrypted (Server Style):", plainText);
 
 if (plainText === text) {
-  console.log("SUCCESS: Encryption/Decryption matches!");
+  // console.log("SUCCESS: Encryption/Decryption matches!");
 } else {
-  console.log("FAILURE: Encryption/Decryption DOES NOT match!");
+  // console.log("FAILURE: Encryption/Decryption DOES NOT match!");
 }

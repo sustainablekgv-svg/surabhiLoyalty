@@ -2,8 +2,8 @@ import * as crypto from 'crypto';
 
 import * as CryptoJS from 'crypto-js';
 import * as admin from 'firebase-admin';
-import * as functions from 'firebase-functions/v2';
 import * as logger from 'firebase-functions/logger';
+import * as functions from 'firebase-functions/v2';
 
 if (admin.apps.length === 0) {
   admin.initializeApp();
@@ -47,11 +47,11 @@ export const OJIVA_TEMPLATES = {
 
   /** Phone-number verification during customer signup. Vars: {otp}. */
   otp_signup: {
-    templateId: '1707177545876425337',
+    templateId: '1707177545870080176',
     messageTemplate:
-      'Dear User, your OTP for phonenumber verification at NPL-Nenupakkalocal is {#var#}. Do not share this OTP. - Yogaaamrutha RCM',
+      'Dear User, your OTP for phonenumber verification at Sustainable KGV is {#var#}. Do not share this OTP. - Yogaaamrutha RCM',
     renderedTemplate:
-      'Dear User, your OTP for phonenumber verification at NPL-Nenupakkalocal is {otp}. Do not share this OTP. - Yogaaamrutha RCM',
+      'Dear User, your OTP for phonenumber verification at Sustainable KGV is {otp}. Do not share this OTP. - Yogaaamrutha RCM',
     priority: 0,
   },
 
