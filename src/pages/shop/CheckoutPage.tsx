@@ -1300,10 +1300,18 @@ const CheckoutPage = () => {
                     </div> */}
 
                     <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
-                        <span className="text-sm font-medium text-indigo-900">Total Delivery Charges</span>
+                        <span className="text-sm font-medium text-indigo-900">Total Estimated Delivery Charges</span>
                         <span className="font-bold text-indigo-600">₹{shippingCost.toFixed(2)}</span>
                     </div>
 
+                        <div className="mt-2 p-3 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg">
+  <p className="text-xs text-amber-800 leading-relaxed">
+    <span className="font-semibold">Note:</span> Delivery charges shown are estimated. 
+    Final charges will be calculated after packing based on actual weight. 
+    Any difference will be adjusted in your shipping wallet 
+    (debited or credited accordingly).
+  </p>
+</div>
                     {/* Shipping Credits Field */}
                     {/* {shippingCreditsUsed > 0 && (
                         <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl space-y-3">
