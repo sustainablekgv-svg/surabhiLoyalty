@@ -22,6 +22,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { getFeaturedProducts } from '@/services/shop';
 import { Product } from '@/types/shop';
 
+//pop-up 
+
+import { CoinsFrozenPopup } from '@/components/shop/CoinsFrozenPopup';
+import { useCoinsPopup } from '@/hooks/useCoinsPopup';
+
 const LandingPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,6 +34,11 @@ const LandingPage = () => {
   const { user, logout, isAuthenticated } = useAuth();
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+
+  //pop-up
+
+  const { showPopup, customerData, closePopup } = useCoinsPopup();
+
 
   const getDashboardPath = () => {
     if (!user) return '/login';
@@ -451,6 +461,15 @@ const LandingPage = () => {
           </div>
         </div>
       </section>
+
+     {customerData && (
+  <CoinsFrozenPopup
+    open={showPopup}
+    onClose={closePopup}
+    spent={customerData.cumTotal}
+    target={customerData.cummulativeTarget}
+  />
+)}
 
       {/* Footer */}
       <Footer />

@@ -15,6 +15,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
+
+
 const ShopPage = () => {
     const navigate = useNavigate();
     // console.log('ShopPage Render', { viewMode, selectedCategory, selectedBrand, locationSearch: location.search });
@@ -34,6 +36,8 @@ const ShopPage = () => {
     const [categoriesLastDoc, setCategoriesLastDoc] = useState<any>(null);
     const [categoriesHasMore, setCategoriesHasMore] = useState(true);
     const [categoriesLoading, setCategoriesLoading] = useState(false);
+
+
 
     // Initial Filter Data (for dropdowns - limited fetch)
     const [filterBrands, setFilterBrands] = useState<Brand[]>([]);
@@ -55,6 +59,8 @@ const ShopPage = () => {
 
     // Filter Trigger (to reset pagination)
     const [filterTrigger, setFilterTrigger] = useState(0);
+
+
 
     const location = useLocation();
 
@@ -776,6 +782,8 @@ const ShopPage = () => {
                 )}
             </div>
         </ShopLayout>
+
+        
     );
 };
 
