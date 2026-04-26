@@ -76,6 +76,9 @@ const LoginPage = () => {
 
       toast.success('Login successful!');
 
+      //Reset popup flag
+      sessionStorage.removeItem('coinsPopupShown');
+
       // Navigate based on role and previous location
       let redirectPath;
 
@@ -90,7 +93,7 @@ const LoginPage = () => {
               ? '/admin/dashboard'
               : formData.role === 'staff'
                 ? '/staff/dashboard'
-                : '/customer/dashboard';
+                : '/';
       }
 
       navigate(redirectPath, { replace: true });
