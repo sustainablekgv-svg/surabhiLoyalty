@@ -95,71 +95,34 @@ export const getProducts = async (
         constraints.push(where('brandId', '==', filters.brand));
     }
 
-    if (filters?.minPrice !== undefined) {
-        constraints.push(where('sellingPrice', '>=', filters.minPrice));
-    }
-
-    if (filters?.maxPrice !== undefined) {
-         constraints.push(where('sellingPrice', '<=', filters.maxPrice));
-    }
-
-    // REMOVED DB-level stock check to allow "trackInventory: false" items to be visible even if stock is 0
-    // if (filters?.inStock) {
-    //      constraints.push(where('stock', '>', 0));
-    // }
-
-    if (filters?.sort === 'price_asc') {
-        constraints.push(orderBy('sellingPrice', 'asc'));
-    } else if (filters?.sort === 'price_desc') {
-        constraints.push(orderBy('sellingPrice', 'desc'));
-    } else if (filters?.sort === 'spv_asc') {
-        constraints.push(orderBy('spv', 'asc'));
-    } else if (filters?.sort === 'spv_desc') {
-        constraints.push(orderBy('spv', 'desc'));
-    } else if (filters?.sort === 'order') {
-        constraints.push(orderBy('displayOrder', 'asc'));
-    } else {
-        if (filters?.sort === 'newest') {
-            constraints.push(orderBy('createdAt', 'desc'));
-        } else {
-            constraints.push(orderBy('displayOrder', 'asc')); 
-        }
-    }
-
-    if (lastDoc) {
-        constraints.push(startAfter(lastDoc));
-    }
-
-    // Fetch slightly more to account for in-memory filtering
-    constraints.push(limit(pageSize + 5)); 
-
     const q = query(collection(db, 'products'), ...constraints);
-
     const snapshot = await getDocs(q);
     let products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
     
-    // In-memory Filter for Stock/Inventory
-    if (filters?.inStock) {
-        products = products.filter(p => {
-             // If trackInventory is explicitly FALSE, it is always visible (ignored stock)
-             if (p.trackInventory === false) return true;
-             // Otherwise (true or undefined), check stock > 0
-             return (p.stock || 0) > 0;
-        });
+    // In-memory Filter for Price & Stock
+    if (filters?.minPrice !== undefined) products = products.filter(p => p.sellingPrice >= filters.minPrice!);
+    if (filters?.maxPrice !== undefined) products = products.filter(p => p.sellingPrice <= filters.maxPrice!);
+    if (filters?.inStock) products = products.filter(p => p.trackInventory === false || (p.stock || 0) > 0);
+
+    // In-memory Sort
+    if (filters?.sort === 'price_asc') products.sort((a, b) => a.sellingPrice - b.sellingPrice);
+    else if (filters?.sort === 'price_desc') products.sort((a, b) => b.sellingPrice - a.sellingPrice);
+    else if (filters?.sort === 'spv_asc') products.sort((a, b) => (a.spv || 0) - (b.spv || 0));
+    else if (filters?.sort === 'spv_desc') products.sort((a, b) => (b.spv || 0) - (a.spv || 0));
+    else if (filters?.sort === 'newest') products.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    else products.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+
+    // In-memory Pagination
+    let startIdx = 0;
+    if (lastDoc) {
+        const idx = products.findIndex(p => p.id === (typeof lastDoc === 'string' ? lastDoc : lastDoc.id));
+        if (idx !== -1) startIdx = idx + 1;
     }
-
-    // Since we fetched extra, enforce pageSize limit on result? 
-    // Actually, simple pagination relies on lastDoc. 
-    // If we filter out items, the page might be shorter. 
-    // If we slice the result, we must ensure lastDoc matches the LAST VISIBLE item? 
-    // No, for next cursor to work, it must match the last FETCHED item from DB layer, 
-    // regardless of whether it was discarded. 
-    // BUT if the last fetched item was discarded, `startAfter` that item still works for next page.
-    // So we return the snapshot's last doc as cursor, but return filtered products.
     
-    const newLastDoc = snapshot.docs[snapshot.docs.length - 1];
+    const paginatedProducts = products.slice(startIdx, startIdx + pageSize);
+    const newLastDoc = paginatedProducts.length > 0 ? paginatedProducts[paginatedProducts.length - 1].id : null;
 
-    return { products, lastDoc: newLastDoc };
+    return { products: paginatedProducts, lastDoc: newLastDoc };
 };
 
 export const getActiveProducts = async (): Promise<Product[]> => {

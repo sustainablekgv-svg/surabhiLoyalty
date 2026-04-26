@@ -107,6 +107,21 @@ const CheckoutPage = () => {
   };
 
   fetchCustomer();
+  
+  const fetchAddresses = async () => {
+    try {
+        const addrs = await getAddresses(user.id);
+        if (addrs && addrs.length > 0) {
+            setSavedAddresses(addrs);
+            setSelectedAddressIndex(0);
+            setFormData(addrs[0]);
+        }
+    } catch (e) {
+        console.error(e);
+    }
+  };
+  fetchAddresses();
+
 }, [user]);
 
 
