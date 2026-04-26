@@ -123,17 +123,18 @@ const ProductDetailsPage = () => {
                                 )}
                             </div>
                         </DialogTrigger>
-                        <DialogContent className="max-w-4xl w-full h-[90vh] p-0 bg-transparent border-0 shadow-none flex flex-col items-center justify-center">
-                             <div className="relative w-full h-full flex items-center justify-center" onClick={() => setIsImageModalOpen(false)}>
+                        <DialogContent hideClose className="max-w-7xl w-full h-[95vh] p-0 bg-transparent border-0 shadow-none flex flex-col items-center justify-center outline-none">
+                             <div className="relative w-full h-full flex items-center justify-center p-4 sm:p-8" onClick={() => setIsImageModalOpen(false)}>
                                 <img
                                     src={selectedImage}
                                     alt={product.name}
-                                    className="max-w-full max-h-full object-contain rounded-lg"
+                                    className="max-w-full max-h-full object-contain drop-shadow-2xl select-none cursor-default"
+                                    onClick={(e) => e.stopPropagation()}
                                 />
                                 <Button
                                     variant="secondary"
                                     size="icon"
-                                    className="absolute top-4 right-4 rounded-full h-10 w-10 bg-white/80 hover:bg-white"
+                                    className="fixed top-4 right-4 sm:top-6 sm:right-6 rounded-full h-12 w-12 bg-black/50 text-white hover:bg-black/80 hover:scale-105 transition-all border-0 shadow-xl z-50 backdrop-blur-sm"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         setIsImageModalOpen(false);

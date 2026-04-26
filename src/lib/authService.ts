@@ -42,14 +42,14 @@ export const getCustomerByMobile = async (
     if (isEncrypted(customerData.customerPassword)) {
       // Try to decrypt the stored password
       const decryptedStoredPassword = safeDecryptText(customerData.customerPassword);
-      console.log('[DEBUG] [Customer] Decrypted password successfully?', decryptedStoredPassword !== null);
+      // console.log('[DEBUG] [Customer] Decrypted password successfully?', decryptedStoredPassword !== null);
       if (decryptedStoredPassword !== null) {
-        console.log('[DEBUG] [Customer] Input length:', password.length, 'Decrypted length:', decryptedStoredPassword.length);
+        // console.log('[DEBUG] [Customer] Input length:', password.length, 'Decrypted length:', decryptedStoredPassword.length);
       }
       passwordMatch = decryptedStoredPassword === password;
     } else {
       // Direct comparison for unencrypted passwords (backward compatibility)
-      console.log('[DEBUG] [Customer] Password is not encrypted, doing plain text comparison');
+      // console.log('[DEBUG] [Customer] Password is not encrypted, doing plain text comparison');
       passwordMatch = customerData.customerPassword === password;
     }
 
@@ -101,14 +101,14 @@ export const getStaffByMobile = async (
     if (isEncrypted(staffData.staffPassword)) {
       // Try to decrypt the stored password
       const decryptedStoredPassword = safeDecryptText(staffData.staffPassword);
-      console.log('[DEBUG] Decrypted password successfully?', decryptedStoredPassword !== null);
+      // console.log('[DEBUG] Decrypted password successfully?', decryptedStoredPassword !== null);
       if (decryptedStoredPassword !== null) {
-        console.log('[DEBUG] Input length:', password.length, 'Decrypted length:', decryptedStoredPassword.length);
+        // console.log('[DEBUG] Input length:', password.length, 'Decrypted length:', decryptedStoredPassword.length);
       }
       passwordMatch = decryptedStoredPassword === password;
     } else {
       // Direct comparison for unencrypted passwords (backward compatibility)
-      console.log('[DEBUG] Password is not encrypted, doing plain text comparison');
+      // console.log('[DEBUG] Password is not encrypted, doing plain text comparison');
       passwordMatch = staffData.staffPassword === password;
     }
 

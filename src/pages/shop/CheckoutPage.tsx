@@ -14,7 +14,6 @@ import { getUserName } from '@/lib/userUtils';
 import { notifyCoinsRedeemedSms, notifyOrderPlacedSms } from '@/services/ojivaSmsNotification';
 import { calculateShippingCost, getWeightBracketLabel, INDIAN_STATES, parseWeightToKg } from '@/services/shipping';
 import { Address, CartItem } from '@/types/shop';
-import { hasMetQuarterlyTarget } from '@/utils/quarterlyTargets';
 import { addDoc, collection, getDocs, Timestamp } from 'firebase/firestore';
 import { Check, Copy, MessageSquare, Phone, ShoppingCart } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
