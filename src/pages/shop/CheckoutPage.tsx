@@ -240,11 +240,21 @@ const CheckoutPage = () => {
   }, [user, shippingCost]);
 
   
+  // Calculate total Base Value (Excl Tax) because prices are inclusive
+  const totalOriginalBase = useMemo(() => {
+    return cart.reduce((sum, item) => {
+        const gstRateOrig = (item.gst?.percentage || 0) / 100;
+        const baseUnitPrice = gstRateOrig > 0 ? item.price / (1 + gstRateOrig) : item.price;
+        return sum + (baseUnitPrice * item.quantity);
+    }, 0);
+  }, [cart]);
+
   // Calculate total GST
   const totalGst = useMemo(() => {
     return cart.reduce((sum, item) => {
-        if (!item.gst?.percentage) return sum;
-        const tax = (item.price * item.gst.percentage) / 100;
+        const gstRateOrig = (item.gst?.percentage || 0) / 100;
+        const baseUnitPrice = gstRateOrig > 0 ? item.price / (1 + gstRateOrig) : item.price;
+        const tax = item.price - baseUnitPrice;
         return sum + (tax * item.quantity);
     }, 0);
   }, [cart]);
@@ -252,33 +262,29 @@ const CheckoutPage = () => {
   // Calculate total SPV
   const totalSpv = cart.reduce((sum, item) => sum + ((item.spv || 0) * item.quantity), 0);
 
-
-
   // Automatic Coins Redemption Effect
   useEffect(() => {
   if (customerData && isCointEligible) {
     const balance = customerData.surabhiBalance || 0;
-    const itemsTotalInclTax = subtotal + totalGst;
-
-    const maxRedeemable = Math.min(balance, itemsTotalInclTax);
+    
+    // Redeem max up to the Base Taxable Value (Excluding Tax)
+    const maxRedeemable = Math.min(balance, totalOriginalBase);
 
     setSurabhiCoinsToUse(maxRedeemable);
   } else {
     setSurabhiCoinsToUse(0);
   }
-}, [customerData, subtotal, totalGst, isCointEligible]);
+}, [customerData, totalOriginalBase, isCointEligible]);
 
   // HYPER-TRANSPARENT DRILL DOWN LOGIC
-  const { adjustedCart, redeemedCoinsTotal, totalAdjustedTax, totalOriginalBase, totalAdjustedBase } = useMemo(() => {
-    // Total available for coins is now Items + GST
-    const itemsTotalInclTax = subtotal + totalGst;
+  const { adjustedCart, redeemedCoinsTotal, totalAdjustedTax, totalAdjustedBase } = useMemo(() => {
     
-    // Cap totalCoins to the itemsTotalInclTax
+    // Cap totalCoins to the totalOriginalBase
     const totalCoins = Math.min(
-  surabhiCoinsToUse,
-  itemsTotalInclTax,
-  Number(customerData?.surabhiBalance || 0)
-);
+      surabhiCoinsToUse,
+      totalOriginalBase,
+      Number(customerData?.surabhiBalance || 0)
+    );
     
     // First, map items with their shipping contribution
     let initialMapped = cart.map(item => {
@@ -295,27 +301,24 @@ const CheckoutPage = () => {
         }
 
         const originalLineTotal = item.price * item.quantity;
-        const originalTax = (originalLineTotal * (item.gst?.percentage || 0)) / 100;
         // Back-calculate base price: item.price treated as tax-inclusive MRP
-        // base_unit_price = item.price / (1 + gst%/100)
         const gstRateOrig = (item.gst?.percentage || 0) / 100;
         const baseUnitPrice = gstRateOrig > 0 ? item.price / (1 + gstRateOrig) : item.price;
         const baseLineTotal = baseUnitPrice * item.quantity;
         const taxFromInclusive = originalLineTotal - baseLineTotal;
-        const originalTotalInclTax = originalLineTotal; // price is already inclusive
 
         return {
             ...item,
             originalPrice: baseUnitPrice,
             originalLineTotal: baseLineTotal,
             originalTax: taxFromInclusive,
-            originalTotalInclTax,
+            originalTotalInclTax: originalLineTotal,
             shippingShare,
             gstPercentage: item.gst?.percentage || 0
         };
     });
 
-    if (totalCoins <= 0 || itemsTotalInclTax <= 0) {
+    if (totalCoins <= 0 || totalOriginalBase <= 0) {
         const adjustedCart = initialMapped.map(item => ({
             ...item,
             adjustedPrice: item.originalPrice,
@@ -324,59 +327,51 @@ const CheckoutPage = () => {
             itemSpv: (item.spv || 0) * item.quantity
         }));
         
-        const totalOriginalBase = initialMapped.reduce((sum, item) => sum + item.originalLineTotal, 0);
-        const totalAdjustedBase = totalOriginalBase; // No discount, so adjusted base equals original base
-
         return {
             adjustedCart,
             redeemedCoinsTotal: 0,
             totalAdjustedTax: totalGst,
-            totalOriginalBase,
-            totalAdjustedBase
+            totalAdjustedBase: totalOriginalBase
         };
     }
 
-    // Calculate generic discount percentage across the TOTAL (Subtotal + GST)
-    const discountPercentage = Math.min(totalCoins / itemsTotalInclTax, 1);
+    // Calculate discount percentage across the BASE total
+    const discountPercentage = Math.min(totalCoins / totalOriginalBase, 1);
 
     const adjusted = initialMapped.map(item => {
-        // Apply discount proportionally to the post-tax item total
-        const itemDiscount = item.originalTotalInclTax * discountPercentage;
-        const adjustedLineTotal = item.originalTotalInclTax - itemDiscount;
+        // Apply discount proportionally to the BASE item total
+        const itemDiscount = item.originalLineTotal * discountPercentage;
+        const adjustedBaseLineTotal = item.originalLineTotal - itemDiscount;
         
-        // Back-calculate tax and base from the adjusted total
-        // Formula: AdjustedLineTotal = AdjustedBase + (AdjustedBase * GSTRate)
-        // AdjustedBase = AdjustedLineTotal / (1 + GSTRate)
+        // Calculate tax and total from the adjusted BASE
         const gstRate = item.gstPercentage / 100;
-        const adjustedBaseLineTotal = adjustedLineTotal / (1 + gstRate);
-        const adjustedTax = adjustedLineTotal - adjustedBaseLineTotal;
+        const adjustedTax = adjustedBaseLineTotal * gstRate;
+        const adjustedLineTotal = adjustedBaseLineTotal + adjustedTax; // Inclusive of tax
         const adjustedUnitPrice = adjustedBaseLineTotal / item.quantity;
         
         return {
             ...item,
             adjustedPrice: adjustedUnitPrice,
-            adjustedLineTotal: adjustedLineTotal, // This is the total price for this line item (inclusive of tax)
+            adjustedLineTotal: adjustedLineTotal, // This is the total payable for this line item
             adjustedTax: adjustedTax,
             itemSpv: (item.spv || 0) * item.quantity
         };
     });
 
     const totalTax = adjusted.reduce((sum, item) => sum + item.adjustedTax, 0);
-    const totalOriginalBase = initialMapped.reduce((sum, item) => sum + item.originalLineTotal, 0);
-    const totalAdjustedBase = Math.max(0, totalOriginalBase - totalCoins);
+    const calculatedAdjustedBase = Math.max(0, totalOriginalBase - totalCoins);
 
     return {
         adjustedCart: adjusted,
         redeemedCoinsTotal: totalCoins,
         totalAdjustedTax: totalTax,
-        totalOriginalBase,
-        totalAdjustedBase
+        totalAdjustedBase: calculatedAdjustedBase
     };
-  }, [cart, surabhiCoinsToUse, subtotal, user, totalGst, productsByGroup]);
+  }, [cart, surabhiCoinsToUse, totalOriginalBase, user, totalGst, productsByGroup, customerData]);
   
   const itemsTotalInclTax = useMemo(() => {
-    return subtotal + totalGst;
-  }, [subtotal, totalGst]);
+    return subtotal; // subtotal is already inclusive of tax
+  }, [subtotal]);
 
   const itemsTotalAfterCoins = useMemo(() => {
     return adjustedCart.reduce((sum, item) => sum + item.adjustedLineTotal, 0);

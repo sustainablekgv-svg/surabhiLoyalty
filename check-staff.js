@@ -1,6 +1,6 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, getDocs } from 'firebase/firestore';
 import CryptoJS from 'crypto-js';
+import { initializeApp } from 'firebase/app';
+import { collection, getDocs, getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDgNnZa1vTimvFDjEfFOZgVTpVauxOD4Qk",
@@ -34,10 +34,10 @@ const safeDecryptText = (text) => {
 };
 
 async function main() {
-  console.log("Fetching staff from UAT...");
+  // console.log("Fetching staff from UAT...");
   try {
     const querySnapshot = await getDocs(collection(db, 'staff'));
-    console.log(`Found ${querySnapshot.size} staff members.`);
+    // console.log(`Found ${querySnapshot.size} staff members.`);
     querySnapshot.forEach((doc) => {
       const data = doc.data();
       const mobile = data.staffMobile;
@@ -53,11 +53,11 @@ async function main() {
         pwdStatus = decryptedPwd ? "Decrypted successfully" : "DECRYPTION FAILED";
       }
       
-      console.log(`- ${name} (${role}) Mobile: ${mobile} | Status: ${pwdStatus} | Pwd Length: ${pwd?.length}`);
+      // console.log(`- ${name} (${role}) Mobile: ${mobile} | Status: ${pwdStatus} | Pwd Length: ${pwd?.length}`);
       if (pwdStatus === "DECRYPTION FAILED") {
-        console.log(`  Raw encrypted value: ${pwd}`);
+        // console.log(`  Raw encrypted value: ${pwd}`);
       } else {
-        console.log(`  Decrypted value: ${decryptedPwd}`);
+        // console.log(`  Decrypted value: ${decryptedPwd}`);
       }
     });
   } catch (err) {

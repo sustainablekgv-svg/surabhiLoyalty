@@ -44,7 +44,7 @@ async function migrate() {
     const collections = await prodDb.listCollections();
     
     for (const col of collections) {
-        console.log(`Migrating top-level collection: ${col.id}`);
+        // console.log(`Migrating top-level collection: ${col.id}`);
         await copyCollection(col, uatDb.collection(col.id));
     }
     
