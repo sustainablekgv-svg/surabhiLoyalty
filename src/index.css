@@ -5,6 +5,7 @@
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. */
 
 @layer base {
+  @media(max-width:768px){}
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
@@ -126,4 +127,29 @@
 
 .animate-marquee-horizontal:hover {
   animation-play-state: paused;
+}
+/* Keep all your previous @tailwind and @layer code above this line */
+
+/* --- MOBILE RESPONSIVE ADDITIONS --- */
+@layer base {
+  @media (max-width: 768px) {
+    html, body {
+      /* Prevents the page from scrolling horizontally */
+      overflow-x: hidden;
+      width: 100%;
+      /* Smoother scrolling for touch devices */
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Adjusting Marquee for mobile */
+    .animate-marquee-horizontal {
+      /* Things move "faster" on small screens, so we slow the duration */
+      animation-duration: 20s; 
+    }
+    
+    /* Ensure cards don't have excessive padding on mobile */
+    .card {
+      padding: 1.5em;
+    }
+  }
 }

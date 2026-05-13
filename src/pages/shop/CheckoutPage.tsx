@@ -1386,10 +1386,7 @@ const CheckoutPage = () => {
                                  <span className="text-slate-600">Seva Pool ({currentStore?.sevaCommission || 0}%)</span>
                                  <span className="text-slate-900">₹{sevaPoolEarned.toFixed(2)}</span>
                              </div>
-                             <div className="flex justify-between text-sm font-black">
-                                 <span className="text-slate-600">Referral Bonus ({currentStore?.referralCommission || 0}%)</span>
-                                 <span className="text-slate-900">₹{referralBonusEarned.toFixed(2)}</span>
-                             </div>
+                           
                         </div>
                     </div>
 

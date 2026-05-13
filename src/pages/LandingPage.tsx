@@ -94,6 +94,15 @@ const LandingPage = () => {
       textColor: 'text-amber-600',
     },
     {
+      icon: Star,
+      title: 'Shipping Credits card ',
+      description:
+        'Earn Shipping Credits on every amount spent by you and redeem them against delivery charges on future orders — 1 Shipping Credit = ₹1.',
+      color: 'from-amber-500 to-amber-600',
+      bgColor: 'bg-orange-100',
+      textColor: 'text-green-600',
+    },
+    {
       icon: Heart,
       title: 'Seva Coins - Shop with Purpose',
       description:
@@ -106,7 +115,7 @@ const LandingPage = () => {
 
   const benefits = [
     'Shop and redeem at all registered partner stores',
-    'No expiry on your Surabhi Coins - use them anytime!',
+    'No expiry on your Surabhi Coins and Shipping Credits - use them anytime!',
     'Access top-quality products & services',
     'One-time registration, lifetime rewards',
     'Easy tracking of coins & referrals',
@@ -192,8 +201,7 @@ const LandingPage = () => {
           </h1>
 
           <p className="text-lg sm:text-xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
-            Join our Loyalty Program and start earning Surabhi Coins for every purchase - by you and
-            your referrals! Also earn Seva Coins when you shop and contribute to community welfare
+            Join our Loyalty Program and start earning Surabhi Coins for every amount spent by you and your referrals! Also earn Shipping Credits and Seva Coins when you shop and contribute to community welfare.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
