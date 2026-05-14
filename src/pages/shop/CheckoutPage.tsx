@@ -15,7 +15,7 @@ import { notifyCoinsRedeemedSms, notifyOrderPlacedSms } from '@/services/ojivaSm
 import { calculateShippingCost, getWeightBracketLabel, INDIAN_STATES, parseWeightToKg } from '@/services/shipping';
 import { Address, CartItem } from '@/types/shop';
 import { addDoc, collection, getDocs, Timestamp } from 'firebase/firestore';
-import { Check, Copy, MessageSquare, Phone, ShoppingCart } from 'lucide-react';
+import { Check, ChevronRight, Copy, MessageSquare, Phone, ShoppingCart } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -26,6 +26,7 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   
   const [loading, setLoading] = useState(false);
+  const [mobileStep, setMobileStep] = useState<1 | 2 | 3>(1);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const handleCopy = (text: string, field: string) => {
@@ -782,11 +783,47 @@ const CheckoutPage = () => {
   }
 
   return (
-    <ShopLayout title="Checkout" onBack={() => navigate('/shop/cart')}>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:grid lg:grid-cols-5 gap-8 items-start">
+    <ShopLayout title="Checkout" onBack={() => {
+      if (mobileStep > 1) {
+        setMobileStep(prev => (prev - 1) as 1 | 2 | 3);
+        window.scrollTo(0, 0);
+      } else {
+        navigate('/shop/cart');
+      }
+    }}>
+
+      <div className="max-w-6xl mx-auto px-2 sm:px-4 lg:px-8 py-4 md:py-8">
+
+        {/* ── MOBILE STEPPER BAR ── */}
+        <div className="flex items-center justify-center gap-1 mb-5 lg:hidden">
+          {(['Order Summary', 'Address', 'Payment'] as const).map((label, i) => {
+            const step = (i + 1) as 1 | 2 | 3;
+            const isActive = mobileStep === step;
+            const isDone = mobileStep > step;
+            return (
+              <React.Fragment key={label}>
+                <div className="flex flex-col items-center">
+                  <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-black transition-all ${
+                    isDone ? 'bg-slate-900 text-white' :
+                    isActive ? 'bg-slate-900 text-white ring-2 ring-slate-300' :
+                    'bg-slate-100 text-slate-400'
+                  }`}>
+                    {isDone ? <Check className="h-3.5 w-3.5" /> : step}
+                  </div>
+                  <span className={`mt-1 text-[9px] font-black uppercase tracking-wider ${isActive ? 'text-slate-900' : isDone ? 'text-slate-500' : 'text-slate-300'}`}>
+                    {label}
+                  </span>
+                </div>
+                {i < 2 && <ChevronRight className={`h-4 w-4 mb-4 ${mobileStep > step ? 'text-slate-600' : 'text-slate-200'}`} />}
+              </React.Fragment>
+            );
+          })}
+        </div>
+
+        {/* ── DESKTOP LAYOUT (lg+): unchanged 2-column ── */}
+        <div className="hidden lg:grid lg:grid-cols-5 gap-8 items-start">
           {/* Left Column: Address & Payment (40%) */}
-          <div className="w-full lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-8">
             <Card className="border shadow-sm bg-white rounded-xl overflow-hidden">
               <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6">
                 <CardTitle className="text-lg font-bold text-slate-900">
@@ -1407,7 +1444,155 @@ const CheckoutPage = () => {
             </Card>
 
           </div>
-        </div>
+        </div>{/* end desktop grid */}
+
+        {/* MOBILE STEP 1: Order Summary */}
+        {mobileStep === 1 && (
+          <div className="lg:hidden space-y-4">
+            <Card className="border shadow-sm bg-white rounded-xl overflow-hidden">
+              <CardHeader className="bg-white border-b border-slate-100 p-4">
+                <CardTitle className="text-lg font-black text-slate-900">Order Summary</CardTitle>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">{cart.length} Products</p>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="w-full overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-slate-50">
+                      <tr className="border-b border-slate-200">
+                        <th className="pl-3 pr-2 py-2 text-[10px] font-black uppercase text-slate-500">Product</th>
+                        <th className="px-1 py-2 text-[10px] font-black uppercase text-slate-500 text-center">Qty</th>
+                        <th className="pl-1 pr-3 py-2 text-[10px] font-black uppercase text-slate-500 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {adjustedCart.map(item => (
+                        <React.Fragment key={item.productId}>
+                          <tr className="bg-white">
+                            <td className="pl-3 pr-2 py-2">
+                              <p className="font-bold text-slate-900 text-xs leading-tight mb-0.5 line-clamp-2">{item.name}</p>
+                              <p className="text-[10px] text-amber-600 font-bold">SPV: {item.itemSpv.toFixed(2)}</p>
+                            </td>
+                            <td className="px-1 py-2 text-center"><span className="text-xs font-bold text-slate-600">{item.quantity}</span></td>
+                            <td className="pl-1 pr-3 py-2 text-right text-xs font-black text-slate-900 whitespace-nowrap">₹{item.originalTotalInclTax.toFixed(2)}</td>
+                          </tr>
+                          {redeemedCoinsTotal > 0 && (
+                            <tr className="bg-slate-50/50">
+                              <td className="pl-3 pr-2 py-1"><span className="inline-flex items-center px-1 py-0.5 rounded bg-slate-900 text-white text-[8px] font-black uppercase">ADJUSTED</span></td>
+                              <td className="px-1 py-1 text-center"><span className="text-xs text-slate-400">-</span></td>
+                              <td className="pl-1 pr-3 py-1 text-right text-xs font-black text-slate-900 whitespace-nowrap">₹{item.adjustedLineTotal.toFixed(2)}</td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="p-4 border-t border-slate-100 space-y-2">
+                  <div className="flex justify-between"><span className="text-xs text-slate-600">Items (Excl Tax)</span><span className="font-bold text-sm">₹{totalOriginalBase.toFixed(2)}</span></div>
+                  {isCointEligible && redeemedCoinsTotal > 0 && (<div className="flex justify-between text-green-700"><span className="text-xs font-medium">Coins Applied</span><span className="font-bold text-sm">-₹{redeemedCoinsTotal.toFixed(2)}</span></div>)}
+                  {!isCointEligible && (<div className="text-[10px] text-red-600 bg-red-50 p-2 rounded-lg">Spend ₹{Math.max(0,(customerData?.cummulativeTarget||0)-(customerData?.cumTotal||0)).toFixed(2)} more to unlock coins.</div>)}
+                  <div className="flex justify-between text-indigo-700"><span className="text-xs italic font-medium">Total SPV</span><span className="font-bold text-sm italic">{totalSpv.toFixed(2)}</span></div>
+                  <div className="flex justify-between pt-1 border-t"><span className="text-xs text-slate-600">Est. Delivery</span><span className="font-bold text-sm text-indigo-600">₹{shippingCost.toFixed(2)}</span></div>
+                  <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg"><p className="text-[10px] text-amber-800">Delivery estimates. Final based on actual weight.</p></div>
+                  <div className="flex justify-between items-end pt-2 border-t-2 border-slate-200">
+                    <div><p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Total Payable</p><h2 className="text-3xl font-black text-slate-900 leading-none mt-1">₹{totalPayableAmount.toFixed(2)}</h2><p className="text-[9px] text-slate-400 font-bold mt-1">Incl. GST &amp; Delivery</p></div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Button className="w-full h-12 bg-slate-900 hover:bg-black text-white rounded-lg font-bold text-base" onClick={() => { setMobileStep(2); window.scrollTo(0,0); }}>Continue to Address</Button>
+          </div>
+        )}
+
+        {/* MOBILE STEP 2: Address */}
+        {mobileStep === 2 && (
+          <div className="lg:hidden space-y-4">
+            <Card className="border shadow-sm bg-white rounded-xl overflow-hidden">
+              <CardHeader className="bg-slate-50 border-b border-slate-100 py-3 px-4"><CardTitle className="text-base font-bold text-slate-900">Shipping Details</CardTitle></CardHeader>
+              <CardContent className="p-4">
+                <div className="mb-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Select Address</Label>
+                    <Button variant="ghost" size="sm" onClick={() => { setIsAddingNewAddress(true); setSelectedAddressIndex(null); setFormData({ fullName: getUserName(user), mobile: user ? ('customerMobile' in user ? (user as any).customerMobile : (user as any).staffMobile) : '', street:'', city:'', state:'', zipCode:'', landmark:'' } as Address); }} className="text-slate-900 font-bold text-[10px] uppercase h-auto p-0 hover:bg-transparent underline">+ Add New</Button>
+                  </div>
+                  {savedAddresses.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-2">
+                      {savedAddresses.map((addr, idx) => (<div key={idx} onClick={() => { setIsAddingNewAddress(false); setSelectedAddressIndex(idx); setFormData(addr); }} className={`p-3 rounded-xl border cursor-pointer transition-all ${!isAddingNewAddress && selectedAddressIndex === idx ? 'border-slate-900 bg-slate-50' : 'border-slate-200 bg-white'}`}><div className="flex justify-between items-center mb-1"><p className="font-bold text-slate-900 text-xs">{addr.fullName}</p>{!isAddingNewAddress && selectedAddressIndex === idx && <div className="h-2 w-2 rounded-full bg-slate-900" />}</div><p className="text-[10px] text-slate-500 leading-tight">{addr.street}, {addr.city}, {addr.state} - {addr.zipCode}</p></div>))}
+                      <div onClick={() => { setIsAddingNewAddress(true); setSelectedAddressIndex(null); setFormData({ fullName: getUserName(user), mobile: user ? ('customerMobile' in user ? (user as any).customerMobile : (user as any).staffMobile) : '', street:'', city:'', state:'', zipCode:'', landmark:'' } as Address); }} className={`p-3 rounded-xl border border-dashed cursor-pointer flex items-center justify-center ${isAddingNewAddress ? 'border-slate-900 bg-slate-50' : 'border-slate-300 bg-white'}`}><span className="text-[10px] font-bold text-slate-500 uppercase">Add New Address</span></div>
+                    </div>
+                  ) : (<div className="text-[11px] text-slate-400 bg-slate-50 p-3 rounded-xl border border-dashed text-center">No saved addresses. Enter below.</div>)}
+                </div>
+                <form id="checkout-form-mobile" onSubmit={handlePlaceOrder} className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1"><Label className="text-[10px] font-bold text-slate-500 uppercase">Full Name</Label><Input required value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} className="h-9 rounded-lg border-slate-200 text-sm" /></div>
+                    <div className="space-y-1"><Label className="text-[10px] font-bold text-slate-500 uppercase">Mobile</Label><Input required type="tel" value={formData.mobile} onChange={e => setFormData({...formData, mobile: e.target.value})} className="h-9 rounded-lg border-slate-200 text-sm" /></div>
+                  </div>
+                  <div className="space-y-1"><Label className="text-[10px] font-bold text-slate-500 uppercase">Street Address</Label><Input required value={formData.street} onChange={e => setFormData({...formData, street: e.target.value})} placeholder="House No, Street, Colony" className="h-9 rounded-lg border-slate-200 text-sm" /></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1"><Label className="text-[10px] font-bold text-slate-500 uppercase">City</Label><Input required value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} className="h-9 rounded-lg border-slate-200 text-sm" /></div>
+                    <div className="space-y-1"><Label className="text-[10px] font-bold text-slate-500 uppercase">State</Label><Select value={formData.state} onValueChange={val => setFormData({...formData, state: val})}><SelectTrigger className="h-9 rounded-lg border-slate-200 text-sm"><SelectValue placeholder="State" /></SelectTrigger><SelectContent>{INDIAN_STATES.map(s => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent></Select></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1"><Label className="text-[10px] font-bold text-slate-500 uppercase">Pincode</Label><Input required value={formData.zipCode} onChange={e => setFormData({...formData, zipCode: e.target.value})} className="h-9 rounded-lg border-slate-200 text-sm" /></div>
+                    <div className="space-y-1"><Label className="text-[10px] font-bold text-slate-500 uppercase">Landmark</Label><Input value={formData.landmark} onChange={e => setFormData({...formData, landmark: e.target.value})} className="h-9 rounded-lg border-slate-200 text-sm" placeholder="Optional" /></div>
+                  </div>
+                  <div className="flex items-center space-x-2 pt-1"><Checkbox id="save-addr-mobile" checked={saveNewAddress} onCheckedChange={(c) => setSaveNewAddress(!!c)} className="h-4 w-4" /><Label htmlFor="save-addr-mobile" className="text-[11px] font-medium text-slate-600 cursor-pointer">Save for future orders</Label></div>
+                </form>
+              </CardContent>
+            </Card>
+            <Button className="w-full h-12 bg-slate-900 hover:bg-black text-white rounded-lg font-bold text-base" onClick={() => { if (!formData.fullName||!formData.mobile||!formData.street||!formData.city||!formData.state||!formData.zipCode) { toast.error('Please fill all required address fields'); return; } setMobileStep(3); window.scrollTo(0,0); }}>Continue to Payment</Button>
+          </div>
+        )}
+
+        {/* MOBILE STEP 3: Payment */}
+        {mobileStep === 3 && (
+          <div className="lg:hidden space-y-4">
+            <Card className="border shadow-sm bg-white rounded-xl overflow-hidden">
+              <CardHeader className="bg-slate-50 border-b border-slate-100 py-3 px-4"><CardTitle className="text-base font-bold text-slate-900">Payment Details</CardTitle></CardHeader>
+              <CardContent className="p-4">
+                <Tabs value={paymentMethod} onValueChange={(val: any) => setPaymentMethod(val)} className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-4"><TabsTrigger value="cod" className="text-xs font-bold">Manual / QR Pay</TabsTrigger><TabsTrigger value="online" className="text-xs font-bold">Online (Razorpay)</TabsTrigger></TabsList>
+                  <TabsContent value="cod" className="mt-0">
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-4">
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="bg-white p-3 rounded-xl shadow-md border border-slate-200"><img src="/qr.jpeg" alt="Payment QR Code" className="h-52 w-52 object-contain" onError={(e) => { e.currentTarget.src='https://placehold.co/400x400?text=Scan+to+Pay'; }} /></div>
+                        <div className="w-full space-y-3">
+                          <div className="bg-slate-900 rounded-xl p-4 flex flex-col items-center gap-3">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Official UPI ID</span>
+                            <span className="text-xl font-mono font-black text-white break-all text-center">sustainablekgv@cnrb</span>
+                            <Button variant="secondary" size="sm" onClick={() => handleCopy('sustainablekgv@okicici','UPI ID')} className={`h-10 px-6 w-full font-bold rounded-xl flex items-center justify-center gap-2 ${copiedField==='UPI ID'?'bg-emerald-500 text-white':'bg-white text-slate-900'}`}>{copiedField==='UPI ID'?<><Check className="h-4 w-4"/>Copied!</>:<><Copy className="h-4 w-4"/>Copy UPI ID</>}</Button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-white rounded-xl p-3 border border-slate-200 flex flex-col items-center gap-1"><span className="text-[9px] font-black text-slate-400 uppercase">WhatsApp</span><span className="text-xs font-mono font-black">9606979530</span><Button variant="ghost" size="sm" onClick={() => window.open('https://wa.me/919606979530','_blank')} className="h-6 px-2 text-green-600 text-xs"><MessageSquare className="h-3 w-3 mr-1"/>Chat</Button></div>
+                            <div className="bg-white rounded-xl p-3 border border-slate-200 flex flex-col items-center gap-1"><span className="text-[9px] font-black text-slate-400 uppercase">Call</span><span className="text-xs font-mono font-black">9606979530</span><Button variant="ghost" size="sm" onClick={() => window.location.href='tel:9606979530'} className="h-6 px-2 text-slate-900 text-xs"><Phone className="h-3 w-3 mr-1"/>Call</Button></div>
+                          </div>
+                          <div className="bg-white rounded-xl p-3 border border-slate-200 space-y-2 text-left">
+                            <p className="font-black text-[10px] text-slate-900 uppercase tracking-widest">Payment Steps</p>
+                            {["Scan QR or pay to UPI ID.","Take a screenshot of the payment.","Share it on WhatsApp with your order details."].map((s,i)=>(<div key={i} className="flex gap-2 items-start"><span className="flex-shrink-0 h-5 w-5 rounded-md bg-slate-900 text-white flex items-center justify-center text-[10px] font-black">{i+1}</span><span className="text-xs text-slate-600 font-medium leading-normal">{s}</span></div>))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="online" className="mt-0">
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-6 text-center space-y-4">
+                      <div className="bg-white p-6 rounded-2xl shadow-sm border inline-block"><img src="https://upload.wikimedia.org/wikipedia/commons/8/89/Razorpay_logo.svg" alt="Razorpay" className="h-10 w-auto mx-auto" /></div>
+                      <div><h3 className="text-lg font-black text-slate-900">Secure Online Payment</h3><p className="text-sm text-slate-500 mt-1">Pay via Cards, NetBanking, UPI or Wallets.</p></div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+            <div className="bg-white rounded-xl border p-4 space-y-2">
+              <div className="flex justify-between text-sm"><span className="text-slate-600">Items Total</span><span className="font-bold">₹{itemsTotalAfterCoins.toFixed(2)}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-slate-600">Delivery</span><span className="font-bold text-indigo-600">₹{shippingCost.toFixed(2)}</span></div>
+              <div className="flex justify-between items-end pt-2 border-t"><span className="text-xs font-black uppercase text-slate-400 tracking-wider">Total Payable</span><span className="text-2xl font-black text-slate-900">₹{totalPayableAmount.toFixed(2)}</span></div>
+            </div>
+            <Button form="checkout-form-mobile" disabled={loading || cart.length === 0} className="w-full h-12 bg-slate-900 hover:bg-black text-white rounded-lg font-bold text-base">{loading ? 'Processing...' : 'Place Order'}</Button>
+            <p className="text-[9px] text-slate-400 font-medium text-center uppercase tracking-wider">Secure End-to-End Encryption</p>
+          </div>
+        )}
+
       </div>
     </ShopLayout>
   );

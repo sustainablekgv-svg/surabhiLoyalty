@@ -66,14 +66,14 @@ const LandingPage = () => {
     }
 
     const fetchFeatured = async () => {
-        try {
-            const products = await getFeaturedProducts();
-            setFeaturedProducts(products);
-        } catch (error) {
-            console.error("Error fetching featured products", error);
-        } finally {
-            setLoading(false);
-        }
+      try {
+        const products = await getFeaturedProducts();
+        setFeaturedProducts(products);
+      } catch (error) {
+        console.error("Error fetching featured products", error);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchFeatured();
   }, [searchParams, navigate]);
@@ -95,7 +95,7 @@ const LandingPage = () => {
     },
     {
       icon: Star,
-      title: 'Shipping Credits card ',
+      title: 'Shipping Credits',
       description:
         'Earn Shipping Credits on every amount spent by you and redeem them against delivery charges on future orders — 1 Shipping Credit = ₹1.',
       color: 'from-amber-500 to-amber-600',
@@ -148,7 +148,7 @@ const LandingPage = () => {
                 <ShoppingBag className="h-4 w-4" />
                 Shop Now
               </Button>
-              
+
               {isAuthenticated ? (
                 <>
                   <Button
@@ -178,9 +178,9 @@ const LandingPage = () => {
                 </Button>
               )}
             </div>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-12 sm:py-20">
@@ -342,10 +342,10 @@ const LandingPage = () => {
 
                 <div className="space-y-6">
                   <h4 className="text-xl font-bold text-gray-800 flex items-center justify-center gap-2">
-                    <span className="text-2xl">🏔️</span> 
+                    <span className="text-2xl">🏔️</span>
                     SLL Milestones (Lifetime Surabhi Coins)
                   </h4>
-                  
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-left max-w-3xl mx-auto">
                     {[
                       { name: 'Seshadrian', coins: '5,001' },
@@ -376,46 +376,46 @@ const LandingPage = () => {
 
       {/* Featured Products Vertical Scroll Section */}
       {!loading && featuredProducts.length > 0 && (
-          <section className="container mx-auto px-4 py-16 border-t border-purple-100">
-              <div className="flex flex-col gap-8 mx-auto w-full max-w-7xl">
-                  <div className="text-center">
-                      <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Featured Products</h2>
-                      <p className="text-gray-600">Handpicked premium products just for you</p>
-                  </div>
-                  
-                  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-50/20 via-transparent to-amber-50/20 p-4 border border-purple-50 shadow-inner group">
-                      {/* Fade masks for smooth scroll effect */}
-                      <div className="absolute top-0 bottom-0 left-0 w-16 bg-gradient-to-r from-white/90 to-transparent z-10 pointer-events-none" />
-                      
-                      <div className="animate-marquee-horizontal flex flex-row gap-6 w-max">
-                          {/* Original Set */}
-                          {featuredProducts.map(product => (
-                              <div key={`orig-${product.id}`} className="flex-shrink-0 w-[280px]">
-                                  <ProductCard product={product} />
-                              </div>
-                          ))}
-                          {/* Duplicated Set for Seamless Infinite Loop */}
-                          {featuredProducts.map(product => (
-                              <div key={`dup-${product.id}`} className="flex-shrink-0 w-[280px] pointer-events-none">
-                                  <ProductCard product={product} />
-                              </div>
-                          ))}
-                      </div>
+        <section className="container mx-auto px-4 py-16 border-t border-purple-100">
+          <div className="flex flex-col gap-8 mx-auto w-full max-w-7xl">
+            <div className="text-center">
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Featured Products</h2>
+              <p className="text-gray-600">Handpicked premium products just for you</p>
+            </div>
 
-                      <div className="absolute top-0 bottom-0 right-0 w-16 bg-gradient-to-l from-white/90 to-transparent z-10 pointer-events-none" />
-                  </div>
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-50/20 via-transparent to-amber-50/20 p-4 border border-purple-50 shadow-inner group">
+              {/* Fade masks for smooth scroll effect */}
+              <div className="absolute top-0 bottom-0 left-0 w-16 bg-gradient-to-r from-white/90 to-transparent z-10 pointer-events-none" />
 
-                  <div className="text-center">
-                    <Button 
-                        size="lg"
-                        onClick={() => navigate('/shop')}
-                        className="bg-purple-100 text-purple-700 hover:bg-purple-200 hover:text-purple-800 font-bold px-8 shadow-sm transition-all"
-                    >
-                        View All Featured Products →
-                    </Button>
+              <div className="animate-marquee-horizontal flex flex-row gap-6 w-max">
+                {/* Original Set */}
+                {featuredProducts.map(product => (
+                  <div key={`orig-${product.id}`} className="flex-shrink-0 w-[280px]">
+                    <ProductCard product={product} />
                   </div>
+                ))}
+                {/* Duplicated Set for Seamless Infinite Loop */}
+                {featuredProducts.map(product => (
+                  <div key={`dup-${product.id}`} className="flex-shrink-0 w-[280px] pointer-events-none">
+                    <ProductCard product={product} />
+                  </div>
+                ))}
               </div>
-          </section>
+
+              <div className="absolute top-0 bottom-0 right-0 w-16 bg-gradient-to-l from-white/90 to-transparent z-10 pointer-events-none" />
+            </div>
+
+            <div className="text-center">
+              <Button
+                size="lg"
+                onClick={() => navigate('/shop')}
+                className="bg-purple-100 text-purple-700 hover:bg-purple-200 hover:text-purple-800 font-bold px-8 shadow-sm transition-all"
+              >
+                View All Featured Products →
+              </Button>
+            </div>
+          </div>
+        </section>
       )}
 
       {/* CTA Section */}
@@ -445,14 +445,14 @@ const LandingPage = () => {
                 </>
               )}
             </Button>
-            
+
             <Button
               onClick={() => navigate('/shop')}
               size="lg"
               className="bg-white text-slate-900 hover:bg-slate-50 font-black px-10 py-5 rounded-2xl transition-all duration-300 flex items-center gap-3 text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1"
             >
-                <ShoppingBag className="h-6 w-6 text-purple-600" />
-                Shop Now
+              <ShoppingBag className="h-6 w-6 text-purple-600" />
+              Shop Now
             </Button>
 
             {isAuthenticated && (
@@ -470,14 +470,14 @@ const LandingPage = () => {
         </div>
       </section>
 
-     {customerData && (
-  <CoinsFrozenPopup
-    open={showPopup}
-    onClose={closePopup}
-    spent={customerData.cumTotal}
-    target={customerData.cummulativeTarget}
-  />
-)}
+      {customerData && (
+        <CoinsFrozenPopup
+          open={showPopup}
+          onClose={closePopup}
+          spent={customerData.cumTotal}
+          target={customerData.cummulativeTarget}
+        />
+      )}
 
       {/* Footer */}
       <Footer />

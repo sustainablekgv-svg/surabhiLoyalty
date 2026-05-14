@@ -29,7 +29,7 @@ const CartPage = () => {
               {cart.map((item) => (
 
                 <div key={item.productId} className="flex gap-3 md:gap-4 p-3 md:p-4 bg-white rounded-lg shadow-sm border relative">
-                  <div className="h-20 w-20 md:h-24 md:w-24 bg-white rounded-md overflow-hidden flex-shrink-0 cursor-pointer flex items-center justify-center border" onClick={() => navigate(`/shop/product/${item.productId}`)}>
+                  <div className="h-20 w-20 md:h-24 md:w-24 bg-white rounded-md overflow-hidden flex-shrink-0 cursor-pointer flex items-center justify-center border" onClick={() => navigate(`/shop/product/${item.productId}`, { state: { from: '/shop/cart' } })}>
                     {isValidImageUrl(item.image) ? (
                       <img src={item.image} alt={item.name} className="max-h-full max-w-full object-contain" />
                     ) : (

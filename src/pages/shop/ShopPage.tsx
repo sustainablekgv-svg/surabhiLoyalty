@@ -588,6 +588,7 @@ const ShopPage = () => {
                                     <div 
                                         key={cat.id} 
                                         onClick={() => {
+                                            window.scrollTo(0, 0);
                                             navigate(`/shop/filters?category=${cat.id}`);
                                         }}
                                         className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-4 flex flex-col items-center text-center gap-3"
@@ -648,6 +649,7 @@ const ShopPage = () => {
                                     <div 
                                         key={brand.id} 
                                         onClick={() => {
+                                            window.scrollTo(0, 0);
                                             navigate(`/shop/filters?brand=${brand.id}`);
                                         }}
                                         className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-4 flex flex-col items-center text-center gap-3"

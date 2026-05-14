@@ -27,24 +27,31 @@ const ProductDetailsPage = () => {
     const [selectedImage, setSelectedImage] = useState<string>('');
     
     // Custom back handler to preserve filters.
-    //
-    // We must not `navigate(location.state.from)` here — that PUSHES a new history
-    // entry, so the previous in-app back press would still leave `/shop/product/:id`
-    // in history and the next browser-back tap takes the user backwards into the
-    // product page again. Instead we go one step back in history when possible.
+    // Priority:
+    // 1. location.state.from  — set by ProductCard/CartPage when navigating here.
+    //    This is the exact page (brand/filter/category) the user came from, so we use replace:true
+    //    to avoid adding an extra history entry (otherwise pressing back again would re-enter this product).
+    // 2. navigate(-1) — only used when there is no `from` state (e.g. direct URL, shared link).
+    // 3. /shop — final fallback.
     const handleBack = () => {
-        const idx = (window.history.state as { idx?: number } | null)?.idx;
-        const canGoBack = (typeof idx === 'number' ? idx > 0 : window.history.length > 1);
-        if (canGoBack) {
-            navigate(-1);
-        } else if (location.state?.from) {
+        if (location.state?.from) {
             navigate(location.state.from, { replace: true });
         } else {
-            navigate('/shop', { replace: true });
+            const idx = (window.history.state as { idx?: number } | null)?.idx;
+            const canGoBack = (typeof idx === 'number' ? idx > 0 : window.history.length > 1);
+            if (canGoBack) {
+                navigate(-1);
+            } else {
+                navigate('/shop', { replace: true });
+            }
         }
     };
     
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [id]);
 
     useEffect(() => {
         const fetchProduct = async () => {
