@@ -1594,7 +1594,7 @@ const CheckoutPage = () => {
               <div className="flex justify-between text-sm"><span className="text-slate-600">Delivery</span><span className="font-bold text-indigo-600">₹{shippingCost.toFixed(2)}</span></div>
               <div className="flex justify-between items-end pt-2 border-t"><span className="text-xs font-black uppercase text-slate-400 tracking-wider">Total Payable</span><span className="text-2xl font-black text-slate-900">₹{totalPayableAmount.toFixed(2)}</span></div>
             </div>
-            <Button form="checkout-form-mobile" disabled={loading || cart.length === 0} className="w-full h-12 bg-slate-900 hover:bg-black text-white rounded-lg font-bold text-base">{loading ? 'Processing...' : 'Place Order'}</Button>
+            <Button onClick={handlePlaceOrder} disabled={loading || cart.length === 0} className="w-full h-12 bg-slate-900 hover:bg-black text-white rounded-lg font-bold text-base">{loading ? 'Processing...' : 'Place Order'}</Button>
             <p className="text-[9px] text-slate-400 font-medium text-center uppercase tracking-wider">Secure End-to-End Encryption</p>
           </div>
         )}

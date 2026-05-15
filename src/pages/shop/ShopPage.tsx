@@ -513,20 +513,12 @@ const ShopPage = () => {
                 const idx = (window.history.state as { idx?: number } | null)?.idx;
                 const canGoBack = (typeof idx === 'number' ? idx > 0 : window.history.length > 1);
                 
-                if (location.pathname !== '/shop') {
-                    resetFilters();
-                    setViewMode('landing');
-                    if (canGoBack) {
-                        navigate(-1);
-                    } else {
-                        navigate('/shop', { replace: true });
-                    }
+                if (canGoBack) {
+                    navigate(-1);
+                } else if (location.pathname !== '/shop') {
+                    navigate('/shop', { replace: true });
                 } else {
-                    if (canGoBack) {
-                        navigate(-1);
-                    } else {
-                        navigate('/', { replace: true });
-                    }
+                    navigate('/', { replace: true });
                 }
             }}
         >
