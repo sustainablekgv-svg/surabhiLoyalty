@@ -53,7 +53,10 @@ const ProductDetailsPage = () => {
     useEffect(() => {
         const fetchProduct = async () => {
             if (!id) return;
+            setProduct(null);
             setLoading(true);
+            setQuantity(1);
+            setSelectedImage('');
             try {
                 const docRef = doc(db, 'products', id);
                 const docSnap = await getDoc(docRef);
@@ -75,7 +78,9 @@ const ProductDetailsPage = () => {
         fetchProduct();
     }, [id, navigate]);
 
-    if (loading) {
+    const isStale = product && product.id !== id;
+
+    if (loading || isStale || !product) {
         return (
             <ShopLayout title="Product Details" onBack={handleBack}>
                 <div className="min-h-[60vh] flex items-center justify-center">
@@ -85,7 +90,6 @@ const ProductDetailsPage = () => {
         );
     }
 
-    if (!product) return null;
 
     const isWishlisted = isInWishlist(product.id);
     const hasDiscount = !!product.sellingPrice && product.sellingPrice < product.price;

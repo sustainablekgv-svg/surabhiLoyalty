@@ -1499,6 +1499,16 @@ const CheckoutPage = () => {
                   {!isCointEligible && (<div className="text-[10px] text-red-600 bg-red-50 p-2 rounded-lg">Spend ₹{Math.max(0,(customerData?.cummulativeTarget||0)-(customerData?.cumTotal||0)).toFixed(2)} more to unlock coins.</div>)}
                   <div className="flex justify-between text-indigo-700"><span className="text-xs italic font-medium">Total SPV</span><span className="font-bold text-sm italic">{totalSpv.toFixed(2)}</span></div>
                   <div className="flex justify-between pt-1 border-t"><span className="text-xs text-slate-600">Est. Delivery</span><span className="font-bold text-sm text-indigo-600">₹{shippingCost.toFixed(2)}</span></div>
+                  {shippingCreditsUsed !== 0 && (
+                    <div className={`flex justify-between items-center p-2 rounded-lg ${shippingCreditsUsed > 0 ? 'bg-blue-50' : 'bg-red-50'}`}>
+                      <span className={`text-[10px] font-bold ${shippingCreditsUsed > 0 ? 'text-blue-700' : 'text-red-700'}`}>
+                        {shippingCreditsUsed > 0 ? 'Shipping Credits' : 'Previous Dues'}
+                      </span>
+                      <span className={`font-bold text-xs ${shippingCreditsUsed > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                        {shippingCreditsUsed > 0 ? '-' : '+'}₹{Math.abs(shippingCreditsUsed).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                   <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg"><p className="text-[10px] text-amber-800">Delivery estimates. Final based on actual weight.</p></div>
                   <div className="flex justify-between items-end pt-2 border-t-2 border-slate-200">
                     <div><p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Total Payable</p><h2 className="text-3xl font-black text-slate-900 leading-none mt-1">₹{totalPayableAmount.toFixed(2)}</h2><p className="text-[9px] text-slate-400 font-bold mt-1">Incl. GST &amp; Delivery</p></div>
@@ -1592,6 +1602,16 @@ const CheckoutPage = () => {
             <div className="bg-white rounded-xl border p-4 space-y-2">
               <div className="flex justify-between text-sm"><span className="text-slate-600">Items Total</span><span className="font-bold">₹{itemsTotalAfterCoins.toFixed(2)}</span></div>
               <div className="flex justify-between text-sm"><span className="text-slate-600">Delivery</span><span className="font-bold text-indigo-600">₹{shippingCost.toFixed(2)}</span></div>
+              {shippingCreditsUsed !== 0 && (
+                <div className="flex justify-between text-sm italic">
+                  <span className={shippingCreditsUsed > 0 ? 'text-blue-600' : 'text-red-600'}>
+                    {shippingCreditsUsed > 0 ? 'Shipping Credits' : 'Previous Dues'}
+                  </span>
+                  <span className={shippingCreditsUsed > 0 ? 'text-blue-600' : 'text-red-600'}>
+                    {shippingCreditsUsed > 0 ? '-' : '+'}₹{Math.abs(shippingCreditsUsed).toFixed(2)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between items-end pt-2 border-t"><span className="text-xs font-black uppercase text-slate-400 tracking-wider">Total Payable</span><span className="text-2xl font-black text-slate-900">₹{totalPayableAmount.toFixed(2)}</span></div>
             </div>
             <Button onClick={handlePlaceOrder} disabled={loading || cart.length === 0} className="w-full h-12 bg-slate-900 hover:bg-black text-white rounded-lg font-bold text-base">{loading ? 'Processing...' : 'Place Order'}</Button>
