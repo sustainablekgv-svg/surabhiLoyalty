@@ -523,7 +523,7 @@ const CheckoutPage = () => {
         }
 
         if (!(window as any).Razorpay) {
-            toast.error("Razorpay SDK not found. Please refresh the page.");
+            toast.error("Razorpay SDK not found. Please refresh the page.", { id: 'razorpay-loading' });
             setLoading(false);
             return;
         }
@@ -594,6 +594,12 @@ const CheckoutPage = () => {
       } else {
         toast.loading("Initiating secure payment...", { id: 'razorpay-loading' });
         
+        if (!user) {
+            toast.error("User session not found. Please log in again.", { id: 'razorpay-loading' });
+            setLoading(false);
+            return;
+        }
+
         // Ensure Firebase Auth is active for callable functions
         try {
             const { getFirebaseUserForFunctions } = await import('@/lib/authService');
