@@ -788,7 +788,13 @@ const CheckoutPage = () => {
         setMobileStep(prev => (prev - 1) as 1 | 2 | 3);
         window.scrollTo(0, 0);
       } else {
-        navigate('/shop/cart');
+        const idx = (window.history.state as { idx?: number } | null)?.idx;
+        const canGoBack = (typeof idx === 'number' ? idx > 0 : window.history.length > 1);
+        if (canGoBack) {
+            navigate(-1);
+        } else {
+            navigate('/shop/cart', { replace: true });
+        }
       }
     }}>
 

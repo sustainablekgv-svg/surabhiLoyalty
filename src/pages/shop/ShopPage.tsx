@@ -19,13 +19,19 @@ import { toast } from 'sonner';
 
 const ShopPage = () => {
     const navigate = useNavigate();
-    // console.log('ShopPage Render', { viewMode, selectedCategory, selectedBrand, locationSearch: location.search });
+    const location = useLocation();
+    
+    // Determine initial view mode based on URL
+    const getInitialViewMode = () => {
+        if (location.pathname === '/shop' && !location.search) return 'landing';
+        return 'products';
+    };
 
     // Data State (Paginated)
     const [products, setProducts] = useState<Product[]>([]);
     const [productsLastDoc, setProductsLastDoc] = useState<any>(null);
     const [productsHasMore, setProductsHasMore] = useState(true);
-    const [productsLoading, setProductsLoading] = useState(false);
+    const [productsLoading, setProductsLoading] = useState(getInitialViewMode() === 'products');
 
     const [brandsList, setBrandsList] = useState<Brand[]>([]);
     const [brandsLastDoc, setBrandsLastDoc] = useState<any>(null);
@@ -47,22 +53,25 @@ const ShopPage = () => {
     const PAGE_SIZE = 12;
 
     // Filters
-    const [viewMode, setViewMode] = useState<'landing' | 'products'>('landing');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [viewMode, setViewMode] = useState<'landing' | 'products'>(getInitialViewMode);
+    
+    // Initialize filter states from URL search params to avoid flashing empty state
+    const getInitialParam = (key: string) => {
+        const params = new URLSearchParams(window.location.search);
+        return params.get(key);
+    };
+
+    const [searchQuery, setSearchQuery] = useState(getInitialParam('q') || '');
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(getInitialParam('category') || null);
     const [landingPageSelectedCategory, setLandingPageSelectedCategory] = useState<string | null>(null);
-    const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
-    const [selectedOrigin, setSelectedOrigin] = useState<string | null>(null);
+    const [selectedBrand, setSelectedBrand] = useState<string | null>(getInitialParam('brand') || null);
+    const [selectedOrigin, setSelectedOrigin] = useState<string | null>(getInitialParam('origin') || null);
     const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
     const [spvRange, setSpvRange] = useState<[number, number]>([0, 5000]);
     const [sortBy, setSortBy] = useState<import('@/types/shop').FilterOptions['sort']>('order');
 
     // Filter Trigger (to reset pagination)
     const [filterTrigger, setFilterTrigger] = useState(0);
-
-
-
-    const location = useLocation();
 
     // Initialize from URL params and Path
     useEffect(() => {
@@ -122,7 +131,7 @@ const ShopPage = () => {
 
     // Sync filters to URL params to preserve state on refresh and handle "redirection" better
     useEffect(() => {
-        if (viewMode === 'landing') return;
+        if (viewMode === 'landing' || location.pathname === '/shop') return;
 
         const params = new URLSearchParams();
         if (searchQuery) params.set('q', searchQuery);
@@ -501,15 +510,23 @@ const ShopPage = () => {
         <ShopLayout 
             title="Shop" 
             onBack={() => {
-                // If we are on ANY sub-path of /shop (like /shop/filters or /shop/category/:name), 
-                // going back should take us to the main /shop landing page
+                const idx = (window.history.state as { idx?: number } | null)?.idx;
+                const canGoBack = (typeof idx === 'number' ? idx > 0 : window.history.length > 1);
+                
                 if (location.pathname !== '/shop') {
                     resetFilters();
                     setViewMode('landing');
-                    navigate('/shop');
+                    if (canGoBack) {
+                        navigate(-1);
+                    } else {
+                        navigate('/shop', { replace: true });
+                    }
                 } else {
-                    // If we are already on the main /shop page, going back takes us home
-                    navigate('/');
+                    if (canGoBack) {
+                        navigate(-1);
+                    } else {
+                        navigate('/', { replace: true });
+                    }
                 }
             }}
         >

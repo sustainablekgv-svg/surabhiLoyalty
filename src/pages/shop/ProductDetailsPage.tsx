@@ -34,16 +34,13 @@ const ProductDetailsPage = () => {
     // 2. navigate(-1) — only used when there is no `from` state (e.g. direct URL, shared link).
     // 3. /shop — final fallback.
     const handleBack = () => {
-        if (location.state?.from) {
-            navigate(location.state.from, { replace: true });
+        const idx = (window.history.state as { idx?: number } | null)?.idx;
+        const canGoBack = (typeof idx === 'number' ? idx > 0 : window.history.length > 1);
+        
+        if (canGoBack) {
+            navigate(-1);
         } else {
-            const idx = (window.history.state as { idx?: number } | null)?.idx;
-            const canGoBack = (typeof idx === 'number' ? idx > 0 : window.history.length > 1);
-            if (canGoBack) {
-                navigate(-1);
-            } else {
-                navigate('/shop', { replace: true });
-            }
+            navigate('/shop', { replace: true });
         }
     };
     
