@@ -15,7 +15,7 @@ import { notifyCoinsRedeemedSms, notifyOrderPlacedSms } from '@/services/ojivaSm
 import { calculateShippingCost, getWeightBracketLabel, INDIAN_STATES, parseWeightToKg } from '@/services/shipping';
 import { Address, CartItem } from '@/types/shop';
 import { addDoc, collection, getDocs, Timestamp } from 'firebase/firestore';
-import { Check, ChevronRight, Copy, MessageSquare, Phone, ShoppingCart } from 'lucide-react';
+import { Check, ChevronRight, Copy, MessageSquare, Phone, Shield, ShoppingCart } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -786,6 +786,23 @@ const CheckoutPage = () => {
               </div>
           </ShopLayout>
       );
+  }
+
+  if (!isAuthenticated && isInitialized) {
+    return (
+      <ShopLayout title="Checkout">
+        <div className="flex flex-col items-center justify-center py-20 px-4">
+          <Shield className="h-16 w-16 text-amber-500 mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Login Required</h2>
+          <p className="text-gray-600 text-center mb-8 max-w-md">
+            Please log in to your account to complete your purchase and earn Surabhi Coins.
+          </p>
+          <Button onClick={() => navigate('/login', { state: { from: location } })} size="lg">
+            Log In to Continue
+          </Button>
+        </div>
+      </ShopLayout>
+    );
   }
 
   return (
