@@ -1544,27 +1544,43 @@ const CheckoutPage = () => {
                   <table className="w-full text-left border-collapse">
                     <thead className="bg-slate-50">
                       <tr className="border-b border-slate-200">
-                        <th className="pl-3 pr-2 py-2 text-[10px] font-black uppercase text-slate-500">Product</th>
-                        <th className="px-1 py-2 text-[10px] font-black uppercase text-slate-500 text-center">Qty</th>
-                        <th className="pl-1 pr-3 py-2 text-[10px] font-black uppercase text-slate-500 text-right">Total</th>
+                        <th className="pl-3 pr-1 py-2 text-[9px] font-black uppercase text-slate-500 tracking-wider">Product</th>
+                        <th className="px-1 py-2 text-[9px] font-black uppercase text-slate-500 text-center tracking-wider">Qty</th>
+                        <th className="px-1 py-2 text-[9px] font-black uppercase text-slate-500 text-right tracking-wider">Base</th>
+                        <th className="px-1 py-2 text-[9px] font-black uppercase text-slate-500 text-right tracking-wider">Tax</th>
+                        <th className="pl-1 pr-3 py-2 text-[9px] font-black uppercase text-slate-500 text-right tracking-wider">Total</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {adjustedCart.map(item => (
                         <React.Fragment key={item.productId}>
                           <tr className="bg-white">
-                            <td className="pl-3 pr-2 py-2">
-                              <p className="font-bold text-slate-900 text-xs leading-tight mb-0.5 line-clamp-2">{item.name}</p>
-                              <p className="text-[10px] text-amber-600 font-bold">SPV: {item.itemSpv.toFixed(2)}</p>
+                            <td className="pl-3 pr-1 py-2">
+                              <p className="font-bold text-slate-900 text-[10px] leading-tight mb-0.5 line-clamp-2">{item.name}</p>
+                              <p className="text-[9px] text-amber-600 font-bold uppercase tracking-tighter">SPV: {item.itemSpv.toFixed(2)}</p>
                             </td>
-                            <td className="px-1 py-2 text-center"><span className="text-xs font-bold text-slate-600">{item.quantity}</span></td>
-                            <td className="pl-1 pr-3 py-2 text-right text-xs font-black text-slate-900 whitespace-nowrap">₹{item.originalTotalInclTax.toFixed(2)}</td>
+                            <td className="px-1 py-2 text-center">
+                              <span className="text-xs font-bold text-slate-600">{item.quantity}</span>
+                            </td>
+                            <td className="px-1 py-2 text-right text-[10px] font-medium text-slate-600 whitespace-nowrap">₹{item.originalLineTotal.toFixed(2)}</td>
+                            <td className="px-1 py-2 text-right text-[10px] font-medium text-slate-600 whitespace-nowrap">
+                                ₹{item.originalTax.toFixed(2)}
+                                <span className="block text-[8px] text-slate-400 font-black">({item.gstPercentage}%)</span>
+                            </td>
+                            <td className="pl-1 pr-3 py-2 text-right text-[10px] font-black text-slate-900 whitespace-nowrap">₹{item.originalTotalInclTax.toFixed(2)}</td>
                           </tr>
                           {redeemedCoinsTotal > 0 && (
                             <tr className="bg-slate-50/50">
-                              <td className="pl-3 pr-2 py-1"><span className="inline-flex items-center px-1 py-0.5 rounded bg-slate-900 text-white text-[8px] font-black uppercase">ADJUSTED</span></td>
+                              <td className="pl-3 pr-1 py-1">
+                                <span className="inline-flex items-center px-1 py-0.5 rounded bg-slate-900 text-white text-[8px] font-black uppercase tracking-widest leading-none">ADJUSTED</span>
+                              </td>
                               <td className="px-1 py-1 text-center"><span className="text-xs text-slate-400">-</span></td>
-                              <td className="pl-1 pr-3 py-1 text-right text-xs font-black text-slate-900 whitespace-nowrap">₹{item.adjustedLineTotal.toFixed(2)}</td>
+                              <td className="px-1 py-1 text-right text-[10px] font-black text-slate-900 whitespace-nowrap">₹{(item.adjustedPrice * item.quantity).toFixed(2)}</td>
+                              <td className="px-1 py-1 text-right text-[10px] font-black text-slate-900 whitespace-nowrap">
+                                ₹{item.adjustedTax.toFixed(2)}
+                                <span className="block text-[8px] text-slate-400 font-black">({item.gstPercentage}%)</span>
+                              </td>
+                              <td className="pl-1 pr-3 py-1 text-right text-[10px] font-black text-slate-900 whitespace-nowrap">₹{item.adjustedLineTotal.toFixed(2)}</td>
                             </tr>
                           )}
                         </React.Fragment>
@@ -1572,15 +1588,71 @@ const CheckoutPage = () => {
                     </tbody>
                   </table>
                 </div>
-                <div className="p-4 border-t border-slate-100 space-y-2">
-                  <div className="flex justify-between"><span className="text-xs text-slate-600">Items (Excl Tax)</span><span className="font-bold text-sm">₹{totalOriginalBase.toFixed(2)}</span></div>
-                  {isCointEligible && redeemedCoinsTotal > 0 && (<div className="flex justify-between text-green-700"><span className="text-xs font-medium">Coins Applied</span><span className="font-bold text-sm">-₹{redeemedCoinsTotal.toFixed(2)}</span></div>)}
-                  {!isCointEligible && (<div className="text-[10px] text-red-600 bg-red-50 p-2 rounded-lg">Spend ₹{Math.max(0,(customerData?.cummulativeTarget||0)-(customerData?.cumTotal||0)).toFixed(2)} more to unlock coins.</div>)}
-                  <div className="flex justify-between text-indigo-700"><span className="text-xs italic font-medium">Total SPV</span><span className="font-bold text-sm italic">{totalSpv.toFixed(2)}</span></div>
-                  <div className="flex justify-between pt-1 border-t"><span className="text-xs text-slate-600">Est. Delivery</span><span className="font-bold text-sm text-indigo-600">₹{shippingCost.toFixed(2)}</span></div>
+                <div className="p-4 border-t border-slate-100 space-y-3">
+                  <div className="flex justify-between items-center p-2 bg-purple-50 rounded-lg">
+                    <span className="text-[11px] font-medium text-purple-900">Items Total (Excl Tax)</span>
+                    <span className="font-bold text-xs text-purple-600">₹{totalOriginalBase.toFixed(2)}</span>
+                  </div>
+
+                  <div className={`p-3 rounded-lg border ${isCointEligible ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[11px] font-bold text-slate-800">Surabhi Coins</span>
+                      <span className="text-[9px] font-bold text-slate-500">Bal: ₹{(customerData?.surabhiBalance || 0).toFixed(2)}</span>
+                    </div>
+                    {isCointEligible ? (
+                      <div className="flex justify-between items-center">
+                        <span className="text-[11px] text-green-700 font-medium">Applied</span>
+                        <span className="font-bold text-xs text-green-600">-₹{redeemedCoinsTotal.toFixed(2)}</span>
+                      </div>
+                    ) : (
+                      <div className="text-[9px] text-red-600 font-medium">Spend ₹{Math.max(0,(customerData?.cummulativeTarget||0)-(customerData?.cumTotal||0)).toFixed(2)} more to unlock.</div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between items-center p-2 bg-indigo-50/50 rounded-lg border border-indigo-100">
+                    <span className="text-[11px] font-bold italic text-indigo-900">Total SPV Points</span>
+                    <span className="font-bold text-xs text-indigo-600 italic">{totalSpv.toFixed(2)}</span>
+                  </div>
+
+                  {redeemedCoinsTotal > 0 && (
+                    <div className="space-y-2">
+                        <div className="flex justify-between items-center p-2 bg-slate-50 border border-slate-100 rounded-lg">
+                            <span className="text-[11px] font-medium text-slate-700">Adjusted Items Value</span>
+                            <span className="font-bold text-xs text-slate-900">₹{totalAdjustedBase.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-2 bg-slate-50 border border-slate-100 rounded-lg">
+                            <span className="text-[11px] font-medium text-slate-700">Adjusted Tax value</span>
+                            <span className="font-bold text-xs text-slate-900">₹{totalAdjustedTax.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-2 bg-emerald-50 rounded-lg">
+                            <span className="text-[11px] font-medium text-emerald-900">Adjusted Items Total</span>
+                            <span className="font-bold text-xs text-emerald-600">₹{itemsTotalAfterCoins.toFixed(2)}</span>
+                        </div>
+                    </div>
+                  )}
+
+                  {/* Brand Wise Shipping Breakdown */}
+                  <div className="py-2.5 space-y-2 border border-indigo-100 bg-indigo-50/30 rounded-xl px-3 my-1">
+                      <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest flex justify-between items-center">
+                          <span>Delivery Breakdown</span>
+                          <span className="text-indigo-600">Brand Wise</span>
+                      </p>
+                      {Object.values(productsByGroup).map((group) => (
+                          <div key={group.brandName} className="flex justify-between items-center border-b border-indigo-100/30 pb-1.5 last:border-0 last:pb-0">
+                              <span className="text-[10px] font-bold text-slate-700">{group.brandName} ({group.displayWeight.toFixed(2)}kg)</span>
+                              <span className="text-[10px] font-black text-slate-900">₹{group.shipping.toFixed(2)}</span>
+                          </div>
+                      ))}
+                  </div>
+
+                  <div className="flex justify-between items-center p-2 bg-indigo-50 rounded-lg border border-indigo-100">
+                    <span className="text-[11px] font-medium text-indigo-900">Est. Delivery Charges</span>
+                    <span className="font-bold text-xs text-indigo-600">₹{shippingCost.toFixed(2)}</span>
+                  </div>
+
                   {shippingCreditsUsed !== 0 && (
-                    <div className={`flex justify-between items-center p-2 rounded-lg ${shippingCreditsUsed > 0 ? 'bg-blue-50' : 'bg-red-50'}`}>
-                      <span className={`text-[10px] font-bold ${shippingCreditsUsed > 0 ? 'text-blue-700' : 'text-red-700'}`}>
+                    <div className={`flex justify-between items-center p-2 rounded-lg ${shippingCreditsUsed > 0 ? 'bg-blue-50 border border-blue-100' : 'bg-red-50 border border-red-100'}`}>
+                      <span className={`text-[10px] font-black ${shippingCreditsUsed > 0 ? 'text-blue-900' : 'text-red-900'}`}>
                         {shippingCreditsUsed > 0 ? 'Shipping Credits' : 'Previous Dues'}
                       </span>
                       <span className={`font-bold text-xs ${shippingCreditsUsed > 0 ? 'text-blue-600' : 'text-red-600'}`}>
@@ -1588,9 +1660,34 @@ const CheckoutPage = () => {
                       </span>
                     </div>
                   )}
-                  <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg"><p className="text-[10px] text-amber-800">Delivery estimates. Final based on actual weight.</p></div>
-                  <div className="flex justify-between items-end pt-2 border-t-2 border-slate-200">
-                    <div><p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Total Payable</p><h2 className="text-3xl font-black text-slate-900 leading-none mt-1">₹{totalPayableAmount.toFixed(2)}</h2><p className="text-[9px] text-slate-400 font-bold mt-1">Incl. GST &amp; Delivery</p></div>
+
+                  <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-[9px] text-amber-800 leading-tight">Delivery estimates. Final based on actual weight after packing.</p>
+                  </div>
+
+                  <div className="pt-3 border-t-2 border-slate-200">
+                    <div className="flex justify-between items-end">
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Total Payable Amount</p>
+                        <h2 className="text-3xl font-black text-slate-900 leading-none mt-1">₹{totalPayableAmount.toFixed(2)}</h2>
+                        <p className="text-[9px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">Inclusive of GST & Delivery Fees</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Projections Section */}
+                  <div className="pt-4 border-t border-slate-100 space-y-2">
+                      <p className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Projected Rewards</p>
+                      <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-slate-50 p-2 rounded border border-slate-100 flex flex-col">
+                              <span className="text-[8px] font-black text-slate-400 uppercase">Coins</span>
+                              <span className="text-[10px] font-black text-slate-900">₹{surabhiCoinsEarned}</span>
+                          </div>
+                          <div className="bg-slate-50 p-2 rounded border border-slate-100 flex flex-col">
+                              <span className="text-[8px] font-black text-slate-400 uppercase">Shipping Credit</span>
+                              <span className="text-[10px] font-black text-slate-900">₹{totalShippingCreditsEarned.toFixed(2)}</span>
+                          </div>
+                      </div>
                   </div>
                 </div>
               </CardContent>
@@ -1762,21 +1859,54 @@ const CheckoutPage = () => {
                 </div>
               </CardContent>
             </Card>
-            <div className="bg-white rounded-xl border p-4 space-y-2">
-              <div className="flex justify-between text-sm"><span className="text-slate-600">Items Total</span><span className="font-bold">₹{itemsTotalAfterCoins.toFixed(2)}</span></div>
-              <div className="flex justify-between text-sm"><span className="text-slate-600">Delivery</span><span className="font-bold text-indigo-600">₹{shippingCost.toFixed(2)}</span></div>
-              {shippingCreditsUsed !== 0 && (
-                <div className="flex justify-between text-sm italic">
-                  <span className={shippingCreditsUsed > 0 ? 'text-blue-600' : 'text-red-600'}>
-                    {shippingCreditsUsed > 0 ? 'Shipping Credits' : 'Previous Dues'}
-                  </span>
-                  <span className={shippingCreditsUsed > 0 ? 'text-blue-600' : 'text-red-600'}>
-                    {shippingCreditsUsed > 0 ? '-' : '+'}₹{Math.abs(shippingCreditsUsed).toFixed(2)}
-                  </span>
-                </div>
-              )}
-              <div className="flex justify-between items-end pt-2 border-t"><span className="text-xs font-black uppercase text-slate-400 tracking-wider">Total Payable</span><span className="text-2xl font-black text-slate-900">₹{totalPayableAmount.toFixed(2)}</span></div>
-            </div>
+            <Card className="border shadow-sm bg-white rounded-xl overflow-hidden mb-4">
+               <CardHeader className="bg-slate-50 border-b border-slate-100 py-3 px-4">
+                 <CardTitle className="text-sm font-bold text-slate-900">Final Order Review</CardTitle>
+               </CardHeader>
+               <CardContent className="p-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] font-medium text-slate-600">Items Total (Excl Tax)</span>
+                    <span className="font-bold text-xs text-slate-900">₹{totalOriginalBase.toFixed(2)}</span>
+                  </div>
+
+                  {redeemedCoinsTotal > 0 && (
+                    <div className="flex justify-between items-center text-green-700">
+                      <span className="text-[11px] font-medium">Surabhi Coins Applied</span>
+                      <span className="font-bold text-xs">-₹{redeemedCoinsTotal.toFixed(2)}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] font-medium text-slate-600">Total GST</span>
+                    <span className="font-bold text-xs text-slate-900">₹{totalAdjustedTax.toFixed(2)}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] font-medium text-slate-600">Delivery Charges</span>
+                    <span className="font-bold text-xs text-indigo-600">₹{shippingCost.toFixed(2)}</span>
+                  </div>
+
+                  {shippingCreditsUsed !== 0 && (
+                    <div className={`flex justify-between items-center p-2 rounded-lg ${shippingCreditsUsed > 0 ? 'bg-blue-50' : 'bg-red-50'}`}>
+                      <span className={`text-[10px] font-bold ${shippingCreditsUsed > 0 ? 'text-blue-700' : 'text-red-700'}`}>
+                        {shippingCreditsUsed > 0 ? 'Shipping Credits' : 'Previous Dues'}
+                      </span>
+                      <span className={`font-bold text-xs ${shippingCreditsUsed > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                        {shippingCreditsUsed > 0 ? '-' : '+'}₹{Math.abs(shippingCreditsUsed).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="pt-3 border-t-2 border-slate-100">
+                    <div className="flex justify-between items-end">
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Total Payable</p>
+                        <h2 className="text-3xl font-black text-slate-900 leading-none mt-1">₹{totalPayableAmount.toFixed(2)}</h2>
+                      </div>
+                    </div>
+                  </div>
+               </CardContent>
+            </Card>
             <Button 
                 onClick={() => handlePlaceOrder()} 
                 disabled={loading || cart.length === 0 || !paymentMethod} 
