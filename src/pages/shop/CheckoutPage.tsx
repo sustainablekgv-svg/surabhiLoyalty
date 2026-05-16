@@ -1632,15 +1632,20 @@ const CheckoutPage = () => {
                   )}
 
                   {/* Brand Wise Shipping Breakdown */}
-                  <div className="py-2.5 space-y-2 border border-indigo-100 bg-indigo-50/30 rounded-xl px-3 my-1">
-                      <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest flex justify-between items-center">
+                  <div className="py-3 space-y-2.5 border border-indigo-100 bg-indigo-50/30 rounded-xl px-4 my-2">
+                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1 flex justify-between items-center">
                           <span>Delivery Breakdown</span>
                           <span className="text-indigo-600">Brand Wise</span>
                       </p>
                       {Object.values(productsByGroup).map((group) => (
-                          <div key={group.brandName} className="flex justify-between items-center border-b border-indigo-100/30 pb-1.5 last:border-0 last:pb-0">
-                              <span className="text-[10px] font-bold text-slate-700">{group.brandName} ({group.displayWeight.toFixed(2)}kg)</span>
-                              <span className="text-[10px] font-black text-slate-900">₹{group.shipping.toFixed(2)}</span>
+                          <div key={group.brandName} className="grid grid-cols-2 gap-4 items-center border-b border-indigo-100/30 pb-2 mb-2 last:border-0 last:pb-0 last:mb-0">
+                              <div className="flex flex-col">
+                                  <span className="text-xs font-bold text-slate-700">{group.brandName}</span>
+                                  <span className="text-[9px] text-indigo-500 font-medium leading-none mt-1">Total Weight: {group.displayWeight.toFixed(2)}kg</span>
+                              </div>
+                              <div className="text-right">
+                                  <span className="text-xs font-black text-slate-900">₹{group.shipping.toFixed(2)}</span>
+                              </div>
                           </div>
                       ))}
                   </div>
@@ -1676,16 +1681,29 @@ const CheckoutPage = () => {
                   </div>
 
                   {/* Projections Section */}
-                  <div className="pt-4 border-t border-slate-100 space-y-2">
-                      <p className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Projected Rewards</p>
-                      <div className="grid grid-cols-2 gap-2">
-                          <div className="bg-slate-50 p-2 rounded border border-slate-100 flex flex-col">
-                              <span className="text-[8px] font-black text-slate-400 uppercase">Coins</span>
-                              <span className="text-[10px] font-black text-slate-900">₹{surabhiCoinsEarned}</span>
+                  <div className="pt-4 border-t border-slate-100 space-y-3">
+                      <div className="flex flex-col gap-1">
+                          <p className="text-[9px] font-black text-slate-900 uppercase tracking-[0.2em]">Projected Rewards</p>
+                          <p className="text-[8px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full w-fit border border-emerald-100">
+                              Basis: Adjusted SPV ({aggregateAdjustedSpv.toFixed(2)})
+                          </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col gap-1">
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Surabhi Coins ({currentStore?.cashOnlyCommission || 0}%)</span>
+                              <span className="text-sm font-black text-slate-900">₹{surabhiCoinsEarned}</span>
                           </div>
-                          <div className="bg-slate-50 p-2 rounded border border-slate-100 flex flex-col">
-                              <span className="text-[8px] font-black text-slate-400 uppercase">Shipping Credit</span>
-                              <span className="text-[10px] font-black text-slate-900">₹{totalShippingCreditsEarned.toFixed(2)}</span>
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col gap-1">
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Shipping Credit ({currentStore?.shippingCommission || 0}%)</span>
+                              <span className="text-sm font-black text-slate-900">₹{totalShippingCreditsEarned.toFixed(2)}</span>
+                          </div>
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col gap-1">
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Seva Pool ({currentStore?.sevaCommission || 0}%)</span>
+                              <span className="text-sm font-black text-slate-900">₹{sevaPoolEarned.toFixed(2)}</span>
+                          </div>
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col gap-1">
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Referral Bonus ({currentStore?.referralCommission || 0}%)</span>
+                              <span className="text-sm font-black text-slate-900">₹{referralBonusEarned.toFixed(2)}</span>
                           </div>
                       </div>
                   </div>
@@ -1863,32 +1881,66 @@ const CheckoutPage = () => {
                <CardHeader className="bg-slate-50 border-b border-slate-100 py-3 px-4">
                  <CardTitle className="text-sm font-bold text-slate-900">Final Order Review</CardTitle>
                </CardHeader>
-               <CardContent className="p-4 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[11px] font-medium text-slate-600">Items Total (Excl Tax)</span>
-                    <span className="font-bold text-xs text-slate-900">₹{totalOriginalBase.toFixed(2)}</span>
+               <CardContent className="p-4 space-y-4">
+                  <div className="flex justify-between items-center p-2 bg-purple-50 rounded-lg">
+                    <span className="text-[11px] font-medium text-purple-900">Items Total (Excl Tax)</span>
+                    <span className="font-bold text-xs text-purple-600">₹{totalOriginalBase.toFixed(2)}</span>
                   </div>
 
                   {redeemedCoinsTotal > 0 && (
-                    <div className="flex justify-between items-center text-green-700">
-                      <span className="text-[11px] font-medium">Surabhi Coins Applied</span>
-                      <span className="font-bold text-xs">-₹{redeemedCoinsTotal.toFixed(2)}</span>
+                    <div className="flex justify-between items-center p-2 bg-amber-50 rounded-lg">
+                      <span className="text-[11px] font-medium text-amber-900">Surabhi Coins Applied</span>
+                      <span className="font-bold text-xs text-amber-600">-₹{redeemedCoinsTotal.toFixed(2)}</span>
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center">
-                    <span className="text-[11px] font-medium text-slate-600">Total GST</span>
-                    <span className="font-bold text-xs text-slate-900">₹{totalAdjustedTax.toFixed(2)}</span>
+                  <div className="flex justify-between items-center p-2 bg-indigo-50/50 rounded-lg border border-indigo-100">
+                    <span className="text-[11px] font-bold italic text-indigo-900">Total SPV Points</span>
+                    <span className="font-bold text-xs text-indigo-600 italic">{totalSpv.toFixed(2)}</span>
                   </div>
 
-                  <div className="flex justify-between items-center">
-                    <span className="text-[11px] font-medium text-slate-600">Delivery Charges</span>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center p-2 bg-slate-50 border border-slate-100 rounded-lg">
+                        <span className="text-[11px] font-medium text-slate-700">Adjusted Items Value</span>
+                        <span className="font-bold text-xs text-slate-900">₹{totalAdjustedBase.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-2 bg-slate-50 border border-slate-100 rounded-lg">
+                        <span className="text-[11px] font-medium text-slate-700">Adjusted Tax value</span>
+                        <span className="font-bold text-xs text-slate-900">₹{totalAdjustedTax.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-2 bg-emerald-50 rounded-lg">
+                        <span className="text-[11px] font-medium text-emerald-900">Adjusted Items Total</span>
+                        <span className="font-bold text-xs text-emerald-600">₹{itemsTotalAfterCoins.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  {/* Brand Wise Shipping Breakdown */}
+                  <div className="py-3 space-y-2.5 border border-indigo-100 bg-indigo-50/30 rounded-xl px-4 my-2">
+                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1 flex justify-between items-center">
+                          <span>Delivery Breakdown</span>
+                          <span className="text-indigo-600">Brand Wise</span>
+                      </p>
+                      {Object.values(productsByGroup).map((group) => (
+                          <div key={group.brandName} className="grid grid-cols-2 gap-4 items-center border-b border-indigo-100/30 pb-2 mb-2 last:border-0 last:pb-0 last:mb-0">
+                              <div className="flex flex-col">
+                                  <span className="text-xs font-bold text-slate-700">{group.brandName}</span>
+                                  <span className="text-[9px] text-indigo-500 font-medium leading-none mt-1">Total Weight: {group.displayWeight.toFixed(2)}kg</span>
+                              </div>
+                              <div className="text-right">
+                                  <span className="text-xs font-black text-slate-900">₹{group.shipping.toFixed(2)}</span>
+                              </div>
+                          </div>
+                      ))}
+                  </div>
+
+                  <div className="flex justify-between items-center p-2 bg-indigo-50 rounded-lg border border-indigo-100">
+                    <span className="text-[11px] font-medium text-indigo-900">Est. Delivery Charges</span>
                     <span className="font-bold text-xs text-indigo-600">₹{shippingCost.toFixed(2)}</span>
                   </div>
 
                   {shippingCreditsUsed !== 0 && (
-                    <div className={`flex justify-between items-center p-2 rounded-lg ${shippingCreditsUsed > 0 ? 'bg-blue-50' : 'bg-red-50'}`}>
-                      <span className={`text-[10px] font-bold ${shippingCreditsUsed > 0 ? 'text-blue-700' : 'text-red-700'}`}>
+                    <div className={`flex justify-between items-center p-2 rounded-lg ${shippingCreditsUsed > 0 ? 'bg-blue-50 border border-blue-100' : 'bg-red-50 border border-red-100'}`}>
+                      <span className={`text-[10px] font-black ${shippingCreditsUsed > 0 ? 'text-blue-900' : 'text-red-900'}`}>
                         {shippingCreditsUsed > 0 ? 'Shipping Credits' : 'Previous Dues'}
                       </span>
                       <span className={`font-bold text-xs ${shippingCreditsUsed > 0 ? 'text-blue-600' : 'text-red-600'}`}>
@@ -1897,13 +1949,42 @@ const CheckoutPage = () => {
                     </div>
                   )}
 
-                  <div className="pt-3 border-t-2 border-slate-100">
-                    <div className="flex justify-between items-end">
-                      <div>
-                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Total Payable</p>
-                        <h2 className="text-3xl font-black text-slate-900 leading-none mt-1">₹{totalPayableAmount.toFixed(2)}</h2>
+                  <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-[9px] text-amber-800 leading-tight italic">Delivery estimates. Final based on actual weight after packing. Any difference will be adjusted in your shipping wallet.</p>
+                  </div>
+
+                  <div className="pt-4 border-t-2 border-slate-200">
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Total Payable Amount</p>
+                    <h2 className="text-4xl font-black text-slate-900 leading-none mt-2">₹{totalPayableAmount.toFixed(2)}</h2>
+                    <p className="text-[9px] text-slate-400 font-bold mt-2 uppercase tracking-tighter">Inclusive of GST & Delivery Fees</p>
+                  </div>
+
+                  {/* Projections Section */}
+                  <div className="pt-4 border-t border-slate-100 space-y-3">
+                      <div className="flex flex-col gap-1">
+                          <p className="text-[9px] font-black text-slate-900 uppercase tracking-[0.2em]">Projected Rewards</p>
+                          <p className="text-[8px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full w-fit border border-emerald-100">
+                              Basis: Adjusted SPV ({aggregateAdjustedSpv.toFixed(2)})
+                          </p>
                       </div>
-                    </div>
+                      <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col gap-1">
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Coins ({currentStore?.cashOnlyCommission || 0}%)</span>
+                              <span className="text-xs font-black text-slate-900">₹{surabhiCoinsEarned}</span>
+                          </div>
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col gap-1">
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Shipping ({currentStore?.shippingCommission || 0}%)</span>
+                              <span className="text-xs font-black text-slate-900">₹{totalShippingCreditsEarned.toFixed(2)}</span>
+                          </div>
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col gap-1">
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Seva ({currentStore?.sevaCommission || 0}%)</span>
+                              <span className="text-xs font-black text-slate-900">₹{sevaPoolEarned.toFixed(2)}</span>
+                          </div>
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col gap-1">
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Referral ({currentStore?.referralCommission || 0}%)</span>
+                              <span className="text-xs font-black text-slate-900">₹{referralBonusEarned.toFixed(2)}</span>
+                          </div>
+                      </div>
                   </div>
                </CardContent>
             </Card>
