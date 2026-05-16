@@ -69,6 +69,11 @@ const ProductDetailsPage = () => {
                 if (productData) {
                     setProduct(productData);
                     setSelectedImage(productData.images?.[0] || '');
+                    
+                    // Redirect to slug URL if currently on ID URL
+                    if (productData.slug && productData.slug !== slug) {
+                        navigate(`/shop/product/${productData.slug}`, { replace: true });
+                    }
                 } else {
                     toast.error("Product not found");
                     navigate('/shop');

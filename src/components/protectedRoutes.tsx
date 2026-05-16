@@ -26,7 +26,8 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
   }
 
   // Check role-based access
-  if (requiredRole && user?.role !== requiredRole) {
+  // Admin and staff can access any protected route for testing/management
+  if (requiredRole && user?.role !== requiredRole && user?.role !== 'admin' && user?.role !== 'staff') {
     return <Navigate to="/" replace />;
   }
 

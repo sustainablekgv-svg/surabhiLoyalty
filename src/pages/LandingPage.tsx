@@ -4,6 +4,7 @@ import {
   CheckCircle,
   Heart,
   LayoutDashboard,
+  LayoutGrid,
   LogIn,
   LogOut,
   Phone,
@@ -396,70 +397,64 @@ const LandingPage = () => {
             {/* Categories */}
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Shop by Category</h2>
+                <h2 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+                  <ShoppingBag className="h-6 w-6 sm:h-8 sm:w-8 text-primary" /> Shop by Category
+                </h2>
                 <Button variant="ghost" onClick={() => navigate('/shop')} className="text-purple-600 font-bold">
                   View All →
                 </Button>
               </div>
-              <HorizontalScroll>
-                <div 
-                  className="grid grid-flow-col gap-4"
-                  style={{ 
-                    gridTemplateRows: `repeat(${Math.min(4, Math.ceil(categories.length / 2))}, minmax(0, 1fr))` 
-                  }}
-                >
-                  {categories.map(cat => (
-                    <div 
-                      key={cat.id} 
-                      onClick={() => navigate(`/shop/filters?category=${cat.id}`)}
-                      className="group cursor-pointer bg-white rounded-2xl border border-purple-100 hover:border-amber-400 hover:shadow-xl transition-all p-3 flex flex-col items-center text-center gap-2 min-w-[140px] sm:min-w-[180px] snap-start"
-                    >
-                      <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-purple-50 flex items-center justify-center overflow-hidden group-hover:scale-110 transition-transform shadow-inner">
-                        {cat.image ? (
-                          <img src={cat.image} alt={cat.name} className="h-full w-full object-cover center" />
-                        ) : (
-                          <ShoppingBag className="h-6 w-6 text-purple-300" />
-                        )}
-                      </div>
-                      <h3 className="font-bold text-gray-800 text-xs sm:text-sm line-clamp-1 px-1">{cat.name}</h3>
+              <HorizontalScroll 
+                itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[calc(25%-9px)] sm:auto-cols-[calc(25%-18px)] pb-4"
+              >
+                {categories.map(cat => (
+                  <div 
+                    key={cat.id} 
+                    onClick={() => navigate(`/shop/filters?category=${cat.slug || cat.id}`)}
+                    className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 flex flex-col items-center text-center gap-2 group-hover:scale-[1.02] snap-start"
+                  >
+                    <div className="h-14 w-14 sm:h-20 sm:w-20 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform shadow-inner border border-purple-50">
+                      {cat.image ? (
+                        <img src={cat.image} alt={cat.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <ShoppingBag className="h-6 w-6 text-gray-400" />
+                      )}
                     </div>
-                  ))}
-                </div>
+                    <h3 className="font-semibold text-gray-800 text-[10px] sm:text-sm line-clamp-1">{cat.name}</h3>
+                  </div>
+                ))}
               </HorizontalScroll>
             </div>
 
             {/* Brands */}
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Our Trusted Brands</h2>
+                <h2 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+                  <LayoutGrid className="h-6 w-6 sm:h-8 sm:w-8 text-primary" /> Shop by Brand
+                </h2>
                 <Button variant="ghost" onClick={() => navigate('/shop')} className="text-purple-600 font-bold">
                   Explore All →
                 </Button>
               </div>
-              <HorizontalScroll>
-                <div 
-                  className="grid grid-flow-col gap-4"
-                  style={{ 
-                    gridTemplateRows: `repeat(${Math.min(4, Math.ceil(brands.length / 3))}, minmax(0, 1fr))` 
-                  }}
-                >
-                  {brands.map(brand => (
-                    <div 
-                      key={brand.id} 
-                      onClick={() => navigate(`/shop/filters?brand=${brand.id}`)}
-                      className="group cursor-pointer bg-white rounded-2xl border border-purple-100 hover:border-amber-400 hover:shadow-xl transition-all p-4 flex flex-col items-center justify-center text-center gap-3 min-w-[180px] sm:min-w-[220px] snap-start"
-                    >
-                      <div className="h-10 sm:h-14 w-full flex items-center justify-center overflow-hidden">
-                        {brand.logo ? (
-                          <img src={brand.logo} alt={brand.name} className="max-h-full max-w-full object-contain group-hover:scale-110 transition-transform" />
-                        ) : (
-                          <span className="text-xl font-black text-purple-200">{brand.name[0]}</span>
-                        )}
-                      </div>
-                      <h3 className="font-bold text-gray-800 text-[10px] sm:text-xs line-clamp-1 px-2">{brand.name}</h3>
+              <HorizontalScroll 
+                itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[calc(25%-9px)] sm:auto-cols-[calc(25%-18px)] pb-4"
+              >
+                {brands.map(brand => (
+                  <div 
+                    key={brand.id} 
+                    onClick={() => navigate(`/shop/filters?brand=${brand.slug || brand.id}`)}
+                    className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 sm:p-4 flex flex-col items-center justify-center text-center gap-3 group-hover:scale-[1.02] snap-start"
+                  >
+                    <div className="h-8 sm:h-14 w-full flex items-center justify-center overflow-hidden">
+                      {brand.logo ? (
+                        <img src={brand.logo} alt={brand.name} className="max-h-full max-w-full object-contain group-hover:scale-110 transition-transform" />
+                      ) : (
+                        <span className="text-xl font-bold text-gray-400">{brand.name[0]}</span>
+                      )}
                     </div>
-                  ))}
-                </div>
+                    <h3 className="font-semibold text-gray-800 text-[9px] sm:text-xs line-clamp-1 px-2">{brand.name}</h3>
+                  </div>
+                ))}
               </HorizontalScroll>
             </div>
           </div>

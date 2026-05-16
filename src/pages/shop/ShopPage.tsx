@@ -3,6 +3,7 @@ import { PauseAnnouncement } from '@/components/shop/PauseAnnouncement';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { ShopLayout } from '@/components/shop/ShopLayout';
 import { Button } from '@/components/ui/button';
+import { HorizontalScroll } from '@/components/ui/horizontal-scroll';
 import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -128,13 +129,29 @@ const ShopPage = () => {
     // Effect: Handle URL Params for Categories/Brands routes
     useEffect(() => {
         if (urlCategory) {
+            // Redirect to slug version if currently using ID
+            if (filterCategories.length > 0) {
+                const cat = filterCategories.find(c => c.id === urlCategory || c.slug === urlCategory);
+                if (cat?.slug && cat.slug !== urlCategory) {
+                    navigate(`/shop/category/${cat.slug}`, { replace: true });
+                    return;
+                }
+            }
             setSelectedCategory(urlCategory);
             setViewMode('products');
         } else if (urlBrand) {
+            // Redirect to slug version if currently using ID
+            if (filterBrands.length > 0) {
+                const brand = filterBrands.find(b => b.id === urlBrand || b.slug === urlBrand);
+                if (brand?.slug && brand.slug !== urlBrand) {
+                    navigate(`/shop/brand/${brand.slug}`, { replace: true });
+                    return;
+                }
+            }
             setSelectedBrand(urlBrand);
             setViewMode('products');
         }
-    }, [urlCategory, urlBrand]);
+    }, [urlCategory, urlBrand, navigate, filterCategories, filterBrands]);
 
     // Sync filters to URL params to preserve state on refresh and handle "redirection" better
     useEffect(() => {
@@ -142,8 +159,23 @@ const ShopPage = () => {
 
         const params = new URLSearchParams();
         if (searchQuery) params.set('q', searchQuery);
-        if (selectedCategory) params.set('category', selectedCategory);
-        if (selectedBrand) params.set('brand', selectedBrand);
+        
+        // Resolve Slugs for Category
+        let categoryParam = selectedCategory;
+        if (selectedCategory && filterCategories.length > 0) {
+            const cat = filterCategories.find(c => c.id === selectedCategory || c.slug === selectedCategory);
+            if (cat?.slug) categoryParam = cat.slug;
+        }
+        if (categoryParam) params.set('category', categoryParam);
+
+        // Resolve Slugs for Brand
+        let brandParam = selectedBrand;
+        if (selectedBrand && filterBrands.length > 0) {
+            const brand = filterBrands.find(b => b.id === selectedBrand || b.slug === selectedBrand);
+            if (brand?.slug) brandParam = brand.slug;
+        }
+        if (brandParam) params.set('brand', brandParam);
+        
         if (selectedOrigin) params.set('origin', selectedOrigin);
         
         const newSearch = params.toString();
@@ -155,7 +187,7 @@ const ShopPage = () => {
                 search: newSearch ? `?${newSearch}` : ''
             }, { replace: true });
         }
-    }, [searchQuery, selectedCategory, selectedBrand, selectedOrigin, viewMode, navigate, location.pathname, urlCategory, urlBrand]);
+    }, [searchQuery, selectedCategory, selectedBrand, selectedOrigin, viewMode, navigate, location.pathname, urlCategory, urlBrand, filterCategories, filterBrands]);
 
     // Initial Load for Filter Dropdowns
     useEffect(() => {
@@ -467,9 +499,9 @@ const ShopPage = () => {
                     {filterCategories.map(cat => (
                         <Button 
                             key={cat.id}
-                            variant={selectedCategory === cat.id ? "default" : "outline"}
+                            variant={(selectedCategory === cat.id || (cat.slug && selectedCategory === cat.slug)) ? "default" : "outline"}
                             size="sm"
-                            onClick={() => setSelectedCategory(cat.id)}
+                            onClick={() => setSelectedCategory(cat.slug || cat.id)}
                             className="rounded-full"
                         >
                             {cat.name}
@@ -665,7 +697,9 @@ const ShopPage = () => {
                             <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
                                 <ShoppingBag className="h-6 w-6 text-primary" /> Shop by Category
                             </h2>
-                            <div className="grid grid-cols-4 gap-3 sm:gap-6">
+                            <HorizontalScroll 
+                                itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[calc(25%-9px)] sm:auto-cols-[calc(25%-18px)] pb-4"
+                            >
                                 {categoriesList.map(cat => (
                                     <div 
                                         key={cat.id} 
@@ -673,7 +707,7 @@ const ShopPage = () => {
                                             window.scrollTo(0, 0);
                                             navigate(`/shop/filters?category=${cat.slug || cat.id}`);
                                         }}
-                                        className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 flex flex-col items-center text-center gap-2 group-hover:scale-[1.02]"
+                                        className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 flex flex-col items-center text-center gap-2 group-hover:scale-[1.02] snap-start"
                                     >
                                         <div className="h-14 w-14 sm:h-20 sm:w-20 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform shadow-inner">
                                             {cat.image ? (
@@ -685,7 +719,7 @@ const ShopPage = () => {
                                         <h3 className="font-semibold text-gray-800 text-[10px] sm:text-sm line-clamp-1">{cat.name}</h3>
                                     </div>
                                 ))}
-                            </div>
+                            </HorizontalScroll>
                         </section>
 
                         {/* Brands Section */}
@@ -696,7 +730,9 @@ const ShopPage = () => {
                                 </h2>
                             </div>
 
-                            <div className="grid grid-cols-4 gap-3 sm:gap-6">
+                            <HorizontalScroll 
+                                itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[calc(25%-9px)] sm:auto-cols-[calc(25%-18px)] pb-4"
+                            >
                                 {displayedLandingBrands.map(brand => (
                                     <div 
                                         key={brand.id} 
@@ -704,7 +740,7 @@ const ShopPage = () => {
                                             window.scrollTo(0, 0);
                                             navigate(`/shop/filters?brand=${brand.slug || brand.id}`);
                                         }}
-                                        className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 sm:p-4 flex flex-col items-center justify-center text-center gap-3 group-hover:scale-[1.02]"
+                                        className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 sm:p-4 flex flex-col items-center justify-center text-center gap-3 group-hover:scale-[1.02] snap-start"
                                     >
                                         <div className="h-8 sm:h-14 w-full flex items-center justify-center overflow-hidden">
                                              {brand.logo ? (
@@ -716,7 +752,7 @@ const ShopPage = () => {
                                         <h3 className="font-semibold text-gray-800 text-[9px] sm:text-xs line-clamp-1 px-2">{brand.name}</h3>
                                     </div>
                                 ))}
-                            </div>
+                            </HorizontalScroll>
                         </section>
 
                         {/* Recent Products Section */}

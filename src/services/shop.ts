@@ -45,6 +45,31 @@ export const isSlugUnique = async (collectionName: string, slug: string, exclude
     return false;
 };
 
+export const backfillSlugs = async (collectionName: string) => {
+    const q = query(collection(db, collectionName));
+    const snapshot = await getDocs(q);
+    const docs = snapshot.docs.filter(d => !d.data().slug);
+    
+    if (docs.length === 0) return 0;
+
+    // Process in chunks of 500
+    const chunks = [];
+    for (let i = 0; i < docs.length; i += 500) {
+        chunks.push(docs.slice(i, i + 500));
+    }
+
+    for (const chunk of chunks) {
+        const batch = writeBatch(db);
+        chunk.forEach(d => {
+            const slug = generateSlug(d.data().name);
+            batch.update(d.ref, { slug, updatedAt: serverTimestamp() });
+        });
+        await batch.commit();
+    }
+
+    return docs.length;
+};
+
 // --- Display Order Helper ---
 const swapDisplayOrder = async (collectionName: string, id1: string, order1: number, id2: string, order2: number) => {
     const batch = writeBatch(db);
@@ -312,12 +337,20 @@ export const getCategories = async (
 };
 
 export const createCategory = async (category: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
-    const q = query(collection(db, 'categories'), orderBy('displayOrder', 'desc'), limit(1));
-    const snap = await getDocs(q);
-    const maxOrder = snap.empty ? 0 : (snap.docs[0].data().displayOrder || 0);
+    // Get max order
+    const qOrder = query(collection(db, 'categories'), orderBy('displayOrder', 'desc'), limit(1));
+    const snapOrder = await getDocs(qOrder);
+    const maxOrder = snapOrder.empty ? 0 : (snapOrder.docs[0].data().displayOrder || 0);
+
+    // Ensure slug
+    let slug = category.slug || generateSlug(category.name);
+    if (!(await isSlugUnique('categories', slug))) {
+        slug = `${slug}-${Date.now().toString().slice(-4)}`;
+    }
 
     const docRef = await addDoc(collection(db, 'categories'), {
         ...category,
+        slug,
         displayOrder: maxOrder + 1,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),

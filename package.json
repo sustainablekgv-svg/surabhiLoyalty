@@ -12,6 +12,7 @@
     "deploy:uat": "npm run build:uat && firebase deploy --only hosting,firestore,functions -P uat",
     "deploy:prod": "npm run build:prod && firebase deploy -P default",
     "migrate:uat": "powershell -ExecutionPolicy Bypass -File ./scripts/migrate-to-uat.ps1",
+    "migrate:slugs": "node scripts/generate-slugs-and-migrate.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,scss,md}\"",

@@ -63,8 +63,8 @@ export const HorizontalScroll: React.FC<HorizontalScrollProps> = ({
         ref={scrollRef}
         onScroll={checkScroll}
         className={cn(
-          "flex overflow-x-auto gap-4 pb-4 scrollbar-hide snap-x snap-mandatory scroll-smooth px-4",
-          itemClassName
+          "overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory scroll-smooth px-4",
+          itemClassName || "flex gap-4"
         )}
       >
         {children}

@@ -190,10 +190,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     let unsubscribeDoc: (() => void) | undefined;
 
     if (user && isInitialized) {
-      const collectionName = user.role === 'customer' ? 'customers' : 'staff';
-      const userDocId = user.role === 'customer' 
-        ? (user as CustomerType).customerMobile 
-        : (user as StaffType).staffMobile;
+      const collectionName = user.role === 'customer' ? 'Customers' : 'staff';
+      const userDocId = user.id;
 
       if (userDocId) {
         unsubscribeDoc = onSnapshot(doc(db, collectionName, userDocId), (snapshot) => {

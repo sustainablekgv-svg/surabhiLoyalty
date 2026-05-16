@@ -18,13 +18,14 @@ import { Address, CartItem } from '@/types/shop';
 import { addDoc, collection, getDocs, Timestamp } from 'firebase/firestore';
 import { Check, ChevronRight, Copy, MessageSquare, Phone, Shield, ShoppingCart } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const CheckoutPage = () => {
   const { cart, clearCart, createOrder, updateQuantity, removeFromCart } = useShop();
-  const { user } = useAuth();
+  const { user, isAuthenticated, isInitialized } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [loading, setLoading] = useState(false);
   const [mobileStep, setMobileStep] = useState<1 | 2 | 3>(1);

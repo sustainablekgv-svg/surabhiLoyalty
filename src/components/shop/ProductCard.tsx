@@ -72,7 +72,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
       <CardContent className="p-4 flex-1 flex flex-col">
         <div
           className="mb-2 text-sm text-gray-600 cursor-pointer hover:underline font-medium"
-          onClick={() => navigate(`/shop/category/${product.categoryName}`)}
+          onClick={() => navigate(`/shop/filters?category=${product.categorySlug || product.categoryId}`)}
         >
           {product.categoryName}
         </div>

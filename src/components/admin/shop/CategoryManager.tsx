@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { PreviewableImage } from '@/components/ui/previewable-image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { deleteImageFromR2, uploadImageToR2 } from '@/services/cloudflare';
-import { createCategory, deleteCategory, generateSlug, getCategories, initializeDisplayOrder, reorderCategory, updateCategory } from '@/services/shop';
+import { createCategory, deleteCategory, generateSlug, getCategories, initializeDisplayOrder, reorderCategory, updateCategory, backfillSlugs } from '@/services/shop';
 import { Category } from '@/types/shop';
 import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Trash2, Upload } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
@@ -104,11 +104,16 @@ export const CategoryManager = () => {
 
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const name = e.target.value;
-        setFormData(prev => ({ 
-            ...prev, 
-            name,
-            slug: editingCategory ? prev.slug : generateSlug(name) // Only auto-generate slug for new categories
-        }));
+        setFormData(prev => {
+            const newSlug = generateSlug(name);
+            // Auto-update slug if it was empty or matched the previous auto-generated slug
+            const shouldUpdateSlug = !prev.slug || prev.slug === generateSlug(prev.name);
+            return { 
+                ...prev, 
+                name,
+                slug: shouldUpdateSlug ? newSlug : prev.slug
+            };
+        });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -192,6 +197,20 @@ export const CategoryManager = () => {
         }
     };
 
+    const handleBackfillSlugs = async () => {
+        setLoading(true);
+        try {
+            const count = await backfillSlugs('categories');
+            toast.success(`Generated slugs for ${count} categories`);
+            fetchCategories(null);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to backfill slugs");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const resetForm = () => {
         setFormData({
             name: '',
@@ -234,26 +253,49 @@ export const CategoryManager = () => {
                     <DialogTrigger asChild>
                         <Button className="w-full sm:w-auto"><Plus className="h-4 w-4 mr-2" /> Add Category</Button>
                     </DialogTrigger>
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="outline" title="Fix missing orders">
-                                <ListOrdered className="h-4 w-4" />
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Initialize Category Order?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This will reset the order of all categories based on creation date.
-                                    This action cannot be undone.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleInitializeOrder}>Continue</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                    <div className="flex gap-2">
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="outline" title="Fix missing orders">
+                                    <ListOrdered className="h-4 w-4" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Initialize Category Order?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will reset the order of all categories based on creation date.
+                                        This action cannot be undone.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleInitializeOrder}>Continue</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="outline" title="Backfill Missing Slugs">
+                                    <span className="text-xs font-bold">Slug</span>
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Backfill Missing Slugs?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will automatically generate slugs for all categories that are missing one.
+                                        Existing slugs will not be changed.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleBackfillSlugs}>Generate Slugs</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
                     <DialogContent className="sm:max-w-[425px]">
                         <DialogHeader>
                             <DialogTitle>{editingCategory ? 'Edit Category' : 'Add New Category'}</DialogTitle>
@@ -265,7 +307,12 @@ export const CategoryManager = () => {
                             </div>
                             <div className="space-y-2">
                                 <Label>Slug (URL identifier)</Label>
-                                <Input required value={formData.slug} onChange={e => setFormData({ ...formData, slug: e.target.value })} />
+                                <Input 
+                                    required 
+                                    value={formData.slug} 
+                                    onChange={e => setFormData({ ...formData, slug: e.target.value })} 
+                                    placeholder="e.g. dairy-products"
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label>Image</Label>
