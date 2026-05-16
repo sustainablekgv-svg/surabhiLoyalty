@@ -139,6 +139,25 @@ const LandingPage = () => {
         title="Surabhi Loyalty League - Sustainable KGV Rewards"
         description="Join SLL - Surabhi Loyalty League. Earn Surabhi Coins, Shipping Credits, and Seva Coins while shopping for premium organic products. Support farmers and local businesses."
         keywords="loyalty league, surabhi coins, sustainable kgv, organic products rewards, gopalak support, seva coins"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "Surabhi Loyalty League",
+          "alternateName": "SLL",
+          "url": "https://www.sustainablekgv.com",
+          "logo": "https://www.sustainablekgv.com/kgv.png",
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "+91-9606979530",
+            "contactType": "customer service",
+            "areaServed": "IN",
+            "availableLanguage": "en"
+          },
+          "sameAs": [
+            "https://www.facebook.com/sustainablekgv",
+            "https://www.instagram.com/sustainablekgv"
+          ]
+        }}
       />
       {/* Header */}
       <header className="bg-white shadow-sm border-b sticky top-0 z-50">

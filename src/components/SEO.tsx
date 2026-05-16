@@ -11,16 +11,16 @@ interface SEOProps {
 }
 
 const SEO = ({ 
-  title = 'Surabhi Loyalty - Sustainable KGV Rewards Program',
-  description = 'Join our community and support farmers, gopalaks, and local business owners! Shop premium products and earn rewards.',
-  keywords = 'loyalty program, rewards, sustainable shopping, Surabhi Coins, Seva Coins, sustainable KGV',
-  image = 'https://www.sustainablekgv.com/kgv.png',
-  url = 'https://www.sustainablekgv.com/',
+  title = 'Sustainable KGV - Surabhi Loyalty League',
+  description = 'Empowering farmers and gopalaks through a sustainable rewards ecosystem. Shop premium organic products, earn Surabhi Coins, and contribute to community welfare with Seva Coins.',
+  keywords = 'Surabhi Loyalty League, SLL, Sustainable KGV, organic products, gopalak support, farmer rewards, Seva Coins, Surabhi Coins',
+  image = 'https://surabhiloyalty.web.app/kgv.png',
+  url = 'https://surabhiloyalty.web.app/',
   type = 'website',
   jsonLd
 }: SEOProps) => {
-  const siteName = 'Surabhi Loyalty';
-  const fullTitle = title.includes(siteName) ? title : `${title} | ${siteName}`;
+  const siteName = 'Surabhi Loyalty League';
+  const fullTitle = title === 'Sustainable KGV - Surabhi Loyalty League' ? title : `${title} | ${siteName}`;
 
   return (
     <Helmet>
