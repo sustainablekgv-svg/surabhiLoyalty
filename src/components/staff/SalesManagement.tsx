@@ -1305,7 +1305,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
       const maxSurabhi = Math.floor(Math.min(selectedCustomer.surabhiBalance, saleAmount));
       setSurabhiCoinsToUse(maxSurabhi);
       
-      const maxShipping = Math.floor(Math.min(selectedCustomer.shippingBalance || 0, (shippingFee || 0)));
+      const maxShipping = Math.floor(Math.min(Math.max(0, selectedCustomer.shippingBalance || 0), (shippingFee || 0)));
       setShippingCreditsToUse(maxShipping);
     } else {
       setSurabhiCoinsToUse(0);
@@ -1367,7 +1367,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
     let goSevaContribution = 0;
 
     const itemTotalAfterCoins = saleAmount - coinsToUse;
-    const shippingCreditsNeeded = Math.min(selectedCustomer.shippingBalance || 0, shippingCreditsToUse);
+    const shippingCreditsNeeded = Math.min(Math.max(0, selectedCustomer.shippingBalance || 0), shippingCreditsToUse);
     const netShippingPayable = Math.max(0, (shippingFee || 0) - shippingCreditsNeeded);
     const remainingAfterCoins = itemTotalAfterCoins + netShippingPayable;
 

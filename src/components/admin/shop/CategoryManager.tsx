@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { PreviewableImage } from '@/components/ui/previewable-image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { deleteImageFromR2, uploadImageToR2 } from '@/services/cloudflare';
-import { createCategory, deleteCategory, getCategories, initializeDisplayOrder, reorderCategory, updateCategory } from '@/services/shop';
+import { createCategory, deleteCategory, generateSlug, getCategories, initializeDisplayOrder, reorderCategory, updateCategory } from '@/services/shop';
 import { Category } from '@/types/shop';
 import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Trash2, Upload } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
@@ -100,15 +100,6 @@ export const CategoryManager = () => {
         } finally {
             setUploading(false);
         }
-    };
-
-    const generateSlug = (name: string) => {
-        return name
-            .toLowerCase()
-            .trim()
-            .replace(/[^\w\s-]/g, '')
-            .replace(/[\s_-]+/g, '-')
-            .replace(/^-+|-+$/g, '');
     };
 
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {

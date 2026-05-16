@@ -46,6 +46,7 @@ import {
 import * as quarterly from './quartleryCheck';
 import { sendSaleNotificationSms as sendSaleNotificationSmsFn } from './saleSms';
 import { syncFirebaseAuthForUpload as syncFirebaseAuthForUploadFn } from './syncAuthForUpload';
+// import { syncNplSales as syncNplSalesFn } from './syncNplSales';
 
 export const checkQuarterlyCriteria = quarterly.checkQuarterlyCriteria;
 export const createRazorpayOrder = ecommerce.createRazorpayOrder;
@@ -69,3 +70,4 @@ export const verifyPhoneOtp = verifyPhoneOtpFn;
 /** Forgot-password reset; consumes a `verifyPhoneOtp` token. */
 export const resetCustomerPassword = resetCustomerPasswordFn;
 export const checkOjivaBalance = checkOjivaBalanceFn;
+// export const syncNplSales = syncNplSalesFn;

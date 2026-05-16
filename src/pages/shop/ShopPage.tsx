@@ -1,17 +1,20 @@
+import SEO from '@/components/SEO';
+import { PauseAnnouncement } from '@/components/shop/PauseAnnouncement';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { ShopLayout } from '@/components/shop/ShopLayout';
 import { Button } from '@/components/ui/button';
+import { HorizontalScroll } from '@/components/ui/horizontal-scroll';
 import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Slider } from '@/components/ui/slider';
 import { db } from '@/lib/firebase';
-import { getBrands, getBrandsPaginated, getCategories, getCategoriesPaginated, getProducts } from '@/services/shop';
+import { getBrands, getBrandsPaginated, getCategories, getProducts } from '@/services/shop';
 import { Brand, Category, Product } from '@/types/shop';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import { Filter, Home, LayoutGrid, ShoppingBag, X } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -42,6 +45,11 @@ const ShopPage = () => {
     const [categoriesLastDoc, setCategoriesLastDoc] = useState<any>(null);
     const [categoriesHasMore, setCategoriesHasMore] = useState(true);
     const [categoriesLoading, setCategoriesLoading] = useState(false);
+
+    // Refs for Infinite Scroll
+    const observerTarget = useRef<HTMLDivElement>(null);
+    const categoryObserverTarget = useRef<HTMLDivElement>(null);
+    const brandObserverTarget = useRef<HTMLDivElement>(null);
 
 
 
@@ -155,13 +163,15 @@ const ShopPage = () => {
         const loadInitialData = async () => {
             try {
                 const [fetchedBrands, fetchedCategoriesData, fetchedOrigins] = await Promise.all([
-                    getBrands(), // Fetch all/many for dropdowns
-                    getCategories(100), // Fetch many for dropdowns
+                    getBrands(), 
+                    getCategories(100), 
                     getDocs(query(collection(db, 'origins'), orderBy('name')))
                 ]);
                 
                 setFilterBrands(fetchedBrands);
                 setFilterCategories(fetchedCategoriesData.categories);
+                setBrandsList(fetchedBrands); // Initialize brands list for landing view
+                setCategoriesList(fetchedCategoriesData.categories); // Initialize categories list for landing view
                 setOrigins(fetchedOrigins.docs.map(d => ({ id: d.id, name: d.data().name })));
             } catch (error) {
                 console.error("Failed to load initial data", error);
@@ -186,22 +196,28 @@ const ShopPage = () => {
                 sort: sortBy,
                 minPrice: priceRange[0],
                 maxPrice: priceRange[1],
+                searchQuery: debouncedSearch || undefined
             };
             
-            // Mapping name to ID if needed
-            const category = selectedCategory && selectedCategory !== 'All' 
-                ? filterCategories.find(c => c.name === selectedCategory || c.id === selectedCategory) 
+            // Mapping slug to ID if needed
+            const category = selectedCategory 
+                ? filterCategories.find(c => c.slug === selectedCategory || c.id === selectedCategory) 
                 : null;
-            const categoryId = category?.id || (selectedCategory === 'All' ? undefined : selectedCategory || undefined);
+            const categoryId = category?.id || selectedCategory || undefined;
 
-            const constraints = {
+            const brand = selectedBrand 
+                ? filterBrands.find(b => b.slug === selectedBrand || b.id === selectedBrand) 
+                : null;
+            const brandId = brand?.id || selectedBrand || undefined;
+
+            const constraints: import('@/types/shop').FilterOptions = {
                 category: categoryId,
-                brand: selectedBrand === 'all' ? undefined : selectedBrand || undefined,
+                brand: brandId,
                 minPrice: priceRange[0],
                 maxPrice: priceRange[1],
                 sort: sortBy,
                 includeInactive: false,
-                inStock: true
+                searchQuery: debouncedSearch || undefined
             };
 
             const result = await getProducts(constraints, lastDoc, PAGE_SIZE);
@@ -209,20 +225,11 @@ const ShopPage = () => {
             let newProducts = result.products;
 
             // CLIENT SIDE FILTERS (that backend misses)
-            // 1. Search (Name/Description) - This breaks pagination if filtered out heavily...
-            // 2. Origin
-            // 3. SPV
+            // 1. Origin
+            // 2. SPV
             // Ideally we move these to backend or accept generic "Client Search" limitation.
             
-            if (debouncedSearch) {
-                const lower = debouncedSearch.toLowerCase();
-                newProducts = newProducts.filter(p => 
-                    p.name.toLowerCase().includes(lower) || 
-                    p.description?.toLowerCase().includes(lower)
-                );
-            }
-
-             if (selectedOrigin && selectedOrigin !== 'all') {
+            if (selectedOrigin && selectedOrigin !== 'all') {
                 newProducts = newProducts.filter(p => p.placeOfOrigin?.includes(selectedOrigin));
             }
             
@@ -257,13 +264,35 @@ const ShopPage = () => {
         }
     };
 
+    // Effect for Infinite Scroll
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            entries => {
+                if (entries[0].isIntersecting && productsHasMore && !productsLoading && viewMode === 'products') {
+                    loadMoreProducts();
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        if (observerTarget.current) {
+            observer.observe(observerTarget.current);
+        }
+
+        return () => {
+            if (observerTarget.current) {
+                observer.unobserve(observerTarget.current);
+            }
+        };
+    }, [productsHasMore, productsLoading, viewMode]);
+
 
     // --- Brands Fetching (Landing) ---
     const fetchBrandsData = useCallback(async (isLoadMore = false) => {
         setBrandsLoading(true);
         try {
             const lastDoc = isLoadMore ? brandsLastDoc : null;
-            const result = await getBrandsPaginated(20, lastDoc); // 20 per page for grid
+            const result = await getBrandsPaginated(100, lastDoc); 
             
             if (isLoadMore) {
                 setBrandsList(prev => [...prev, ...result.brands]);
@@ -271,7 +300,7 @@ const ShopPage = () => {
                 setBrandsList(result.brands);
             }
             setBrandsLastDoc(result.lastDoc);
-            setBrandsHasMore(result.brands.length >= 20);
+            setBrandsHasMore(result.brands.length >= 100);
         } catch (e) {
             console.error(e);
         } finally {
@@ -284,7 +313,7 @@ const ShopPage = () => {
         setCategoriesLoading(true);
         try {
             const lastDoc = isLoadMore ? categoriesLastDoc : null;
-            const result = await getCategoriesPaginated(20, lastDoc);
+            const result = await getCategories(100, lastDoc);
             
             if (isLoadMore) {
                 setCategoriesList(prev => [...prev, ...result.categories]);
@@ -292,7 +321,7 @@ const ShopPage = () => {
                 setCategoriesList(result.categories);
             }
             setCategoriesLastDoc(result.lastDoc);
-            setCategoriesHasMore(result.categories.length >= 20);
+            setCategoriesHasMore(result.categories.length >= 100);
         } catch (e) {
             console.error(e);
         } finally {
@@ -326,6 +355,50 @@ const ShopPage = () => {
          if (!categoriesLoading && categoriesHasMore) fetchCategoriesData(true);
     };
 
+    // Effect for Category Infinite Scroll
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            entries => {
+                if (entries[0].isIntersecting && categoriesHasMore && !categoriesLoading && viewMode === 'landing') {
+                    loadMoreCategories();
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        if (categoryObserverTarget.current) {
+            observer.observe(categoryObserverTarget.current);
+        }
+
+        return () => {
+            if (categoryObserverTarget.current) {
+                observer.unobserve(categoryObserverTarget.current);
+            }
+        };
+    }, [categoriesHasMore, categoriesLoading, viewMode]);
+
+    // Effect for Brand Infinite Scroll
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            entries => {
+                if (entries[0].isIntersecting && brandsHasMore && !brandsLoading && viewMode === 'landing') {
+                    loadMoreBrands();
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        if (brandObserverTarget.current) {
+            observer.observe(brandObserverTarget.current);
+        }
+
+        return () => {
+            if (brandObserverTarget.current) {
+                observer.unobserve(brandObserverTarget.current);
+            }
+        };
+    }, [brandsHasMore, brandsLoading, viewMode]);
+
     const resetFilters = () => {
         setSearchQuery('');
         setSelectedCategory(null);
@@ -349,8 +422,8 @@ const ShopPage = () => {
     const displayedFilterBrands = useMemo(() => {
         if (!selectedCategory || selectedCategory === 'All') return filterBrands;
         
-        // Find category ID if selectedCategory is a name (from URL)
-        const category = filterCategories.find(c => c.name === selectedCategory || c.id === selectedCategory);
+        // Find category ID if selectedCategory is a slug/id
+        const category = filterCategories.find(c => c.slug === selectedCategory || c.id === selectedCategory);
         const categoryId = category?.id || selectedCategory;
 
         return filterBrands.filter(brand => 
@@ -422,7 +495,7 @@ const ShopPage = () => {
                     <SelectContent>
                         <SelectItem value="all">All Brands</SelectItem>
                         {displayedFilterBrands.map(brand => (
-                            <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>
+                            <SelectItem key={brand.id} value={brand.slug || brand.id}>{brand.name}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
@@ -510,27 +583,20 @@ const ShopPage = () => {
         <ShopLayout 
             title="Shop" 
             onBack={() => {
-                const idx = (window.history.state as { idx?: number } | null)?.idx;
-                const canGoBack = (typeof idx === 'number' ? idx > 0 : window.history.length > 1);
-                
                 if (location.pathname !== '/shop') {
-                    resetFilters();
-                    setViewMode('landing');
-                    if (canGoBack) {
-                        navigate(-1);
-                    } else {
-                        navigate('/shop', { replace: true });
-                    }
+                    navigate('/shop');
                 } else {
-                    if (canGoBack) {
-                        navigate(-1);
-                    } else {
-                        navigate('/', { replace: true });
-                    }
+                    navigate('/');
                 }
             }}
         >
+            <SEO 
+                title={debouncedSearch ? `Search results for "${debouncedSearch}"` : selectedCategory ? `Shop ${selectedCategory}` : selectedBrand ? `Shop ${filterBrands.find(b => b.id === selectedBrand)?.name || 'Brand'}` : 'Shop Premium Organic Products'}
+                description="Browse our collection of premium sustainable products. Earn Surabhi Coins, Shipping Credits and support our community of farmers and gopalaks."
+                keywords="organic products, a2 ghee, surabhi shop, sustainable shopping, farmer support, loyalty rewards"
+            />
             <div className="flex flex-col gap-6">
+                <PauseAnnouncement />
                 
                 {/* 1. Header & Controls */}
                 <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center bg-white p-4 rounded-lg shadow-sm sticky top-16 z-30">
@@ -596,99 +662,62 @@ const ShopPage = () => {
                     <div className="space-y-12 py-4">
                         
                         {/* Categories Section */}
-                        <section>
+                        <section className="pt-4">
                             <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
                                 <ShoppingBag className="h-6 w-6 text-primary" /> Shop by Category
                             </h2>
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                            <div className="grid grid-cols-4 gap-3 sm:gap-6">
                                 {categoriesList.map(cat => (
                                     <div 
                                         key={cat.id} 
                                         onClick={() => {
                                             window.scrollTo(0, 0);
-                                            navigate(`/shop/filters?category=${cat.id}`);
+                                            navigate(`/shop/filters?category=${cat.slug || cat.id}`);
                                         }}
-                                        className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-4 flex flex-col items-center text-center gap-3"
+                                        className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 flex flex-col items-center text-center gap-2 group-hover:scale-[1.02]"
                                     >
-                                        <div className="h-24 w-24 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform">
+                                        <div className="h-14 w-14 sm:h-20 sm:w-20 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform shadow-inner">
                                             {cat.image ? (
                                                 <img src={cat.image} alt={cat.name} className="h-full w-full object-cover" />
                                             ) : (
-                                                <ShoppingBag className="h-8 w-8 text-gray-400" />
+                                                <ShoppingBag className="h-6 w-6 text-gray-400" />
                                             )}
                                         </div>
-                                        <h3 className="font-semibold text-gray-800">{cat.name}</h3>
+                                        <h3 className="font-semibold text-gray-800 text-[10px] sm:text-sm line-clamp-1">{cat.name}</h3>
                                     </div>
                                 ))}
                             </div>
-                            {categoriesHasMore && (
-                                <div className="mt-4 text-center">
-                                    <Button onClick={loadMoreCategories} variant="ghost" disabled={categoriesLoading}>
-                                        {categoriesLoading ? <LoadingSpinner size={20} /> : 'Load More Categories'}
-                                    </Button>
-                                </div>
-                            )}
                         </section>
 
                         {/* Brands Section */}
-                        <section>
+                        <section className="pt-8 border-t border-gray-100">
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
                                 <h2 className="text-2xl font-bold flex items-center gap-2">
                                     <LayoutGrid className="h-6 w-6 text-primary" /> Shop by Brand
                                 </h2>
-                                
-                                {/* Landing Page Category Filter for Brands */}
-                                {/* <div className="flex flex-wrap gap-2 bg-gray-50 p-2 rounded-xl border border-gray-100 w-full md:w-auto">
-                                    <Button 
-                                        variant={landingPageSelectedCategory === null ? "default" : "ghost"} 
-                                        size="sm"
-                                        onClick={() => setLandingPageSelectedCategory(null)}
-                                        className="rounded-lg h-8 text-xs font-bold"
-                                    >
-                                        All Brands
-                                    </Button>
-                                    {filterCategories.slice(0, 10).map(cat => (
-                                        <Button 
-                                            key={cat.id}
-                                            variant={landingPageSelectedCategory === cat.id ? "secondary" : "ghost"}
-                                            size="sm"
-                                            onClick={() => setLandingPageSelectedCategory(cat.id)}
-                                            className={`rounded-lg h-8 text-xs font-bold transition-all ${landingPageSelectedCategory === cat.id ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'text-gray-600 hover:bg-gray-200'}`}
-                                        >
-                                            {cat.name}
-                                        </Button>
-                                    ))}
-                                </div> */}
                             </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                            <div className="grid grid-cols-4 gap-3 sm:gap-6">
                                 {displayedLandingBrands.map(brand => (
                                     <div 
                                         key={brand.id} 
                                         onClick={() => {
                                             window.scrollTo(0, 0);
-                                            navigate(`/shop/filters?brand=${brand.id}`);
+                                            navigate(`/shop/filters?brand=${brand.slug || brand.id}`);
                                         }}
-                                        className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-4 flex flex-col items-center text-center gap-3"
+                                        className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 sm:p-4 flex flex-col items-center justify-center text-center gap-3 group-hover:scale-[1.02]"
                                     >
-                                        <div className="h-20 w-full flex items-center justify-center overflow-hidden">
+                                        <div className="h-8 sm:h-14 w-full flex items-center justify-center overflow-hidden">
                                              {brand.logo ? (
-                                                <img src={brand.logo} alt={brand.name} className="max-h-16 max-w-full object-contain group-hover:scale-105 transition-transform" />
+                                                <img src={brand.logo} alt={brand.name} className="max-h-full max-w-full object-contain group-hover:scale-110 transition-transform" />
                                             ) : (
                                                 <span className="text-xl font-bold text-gray-400">{brand.name[0]}</span>
                                             )}
                                         </div>
-                                        <h3 className="font-semibold text-gray-800 text-sm px-1">{brand.name}</h3>
+                                        <h3 className="font-semibold text-gray-800 text-[9px] sm:text-xs line-clamp-1 px-2">{brand.name}</h3>
                                     </div>
                                 ))}
                             </div>
-                            {brandsHasMore && (
-                                <div className="mt-4 text-center">
-                                    <Button onClick={loadMoreBrands} variant="ghost" disabled={brandsLoading}>
-                                        {brandsLoading ? <LoadingSpinner size={20} /> : 'Load More Brands'}
-                                    </Button>
-                                </div>
-                            )}
                         </section>
 
                         {/* Recent Products Section */}
@@ -738,7 +767,7 @@ const ShopPage = () => {
                                         {filterBrands.find(b => b.id === selectedBrand)?.name}
                                     </h2>
                                     <div 
-                                        className="prose prose-sm text-gray-600 max-w-none"
+                                        className="prose prose-sm text-gray-600 max-w-none overflow-hidden break-words"
                                         dangerouslySetInnerHTML={{ __html: filterBrands.find(b => b.id === selectedBrand)?.description || '' }}
                                     />
                                 </div>
@@ -787,13 +816,14 @@ const ShopPage = () => {
                                             <ProductCard key={product.id} product={product} />
                                         ))}
                                     </div>
-                                    {productsHasMore && (
-                                        <div className="mt-8 text-center">
-                                                <Button onClick={loadMoreProducts} variant="secondary" size="lg" disabled={productsLoading}>
-                                                    {productsLoading ? <LoadingSpinner size={20} /> : 'Load More Products'}
-                                                </Button>
-                                        </div>
-                                    )}
+                                    
+                                    {/* Infinite Scroll Trigger */}
+                                    <div ref={observerTarget} className="h-20 flex items-center justify-center mt-4">
+                                        {productsLoading && <LoadingSpinner size={32} />}
+                                        {!productsHasMore && products.length > 0 && (
+                                            <p className="text-muted-foreground text-sm">No more products to show.</p>
+                                        )}
+                                    </div>
                                     </>
                             )}
                         </div>

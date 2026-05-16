@@ -9,6 +9,7 @@ import { Product } from '@/types/shop';
 import { Heart, ShoppingCart, Star, Trash2 } from 'lucide-react';
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 
 interface ProductCardProps {
   product: Product;
@@ -18,15 +19,17 @@ interface ProductCardProps {
 export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'default' }) => {
   const { addToCart, toggleWishlist, isInWishlist } = useShop();
   const { user } = useAuth();
+  const { settings } = useGlobalSettings();
   const navigate = useNavigate();
   const location = useLocation();
   const isWishlisted = isInWishlist(product.id);
+  const isPaused = settings.pauseOrders;
 
 
   return (
     <Card className="group overflow-hidden border-0 bg-transparent shadow-none hover:shadow-lg transition-shadow duration-300 rounded-xl bg-white flex flex-col h-full">
 
-      <div className="relative w-full aspect-square min-h-[200px] overflow-hidden bg-slate-50 cursor-pointer flex items-center justify-center" onClick={() => navigate(`/shop/product/${product.id}`, { state: { from: location.pathname + location.search } })}>
+      <div className="relative w-full aspect-square min-h-[200px] overflow-hidden bg-slate-50 cursor-pointer flex items-center justify-center" onClick={() => navigate(`/shop/product/${product.slug || product.id}`, { state: { from: location.pathname + location.search } })}>
         {isValidImageUrl(product.images?.[0]) ? (
           <img
             src={product.images[0]}
@@ -76,7 +79,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
 
         <h3
           className="font-semibold leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors text-gray-900 min-h-[2.5rem]"
-          onClick={() => navigate(`/shop/product/${product.id}`, { state: { from: location.pathname + location.search } })}
+          onClick={() => navigate(`/shop/product/${product.slug || product.id}`, { state: { from: location.pathname + location.search } })}
           title={product.name}
         >
           {product.name}
@@ -128,11 +131,18 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
       </CardContent>
       <CardFooter className="p-4 pt-0">
         <Button
-          className="w-full gap-2 rounded-full"
-          onClick={() => addToCart(product)}
+          className={cn("w-full gap-2 rounded-full", isPaused && "bg-gray-100 text-gray-400 hover:bg-gray-100 cursor-not-allowed")}
+          onClick={() => !isPaused && addToCart(product)}
+          disabled={isPaused}
         >
-          <ShoppingCart className="h-4 w-4" />
-          Add to Cart
+          {isPaused ? (
+            <>Orders Paused</>
+          ) : (
+            <>
+              <ShoppingCart className="h-4 w-4" />
+              Add to Cart
+            </>
+          )}
         </Button>
       </CardFooter>
     </Card>

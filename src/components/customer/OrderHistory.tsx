@@ -291,27 +291,42 @@ export const CustomerOrderHistory = () => {
                                                             
                                                             <div className="mt-4 space-y-2 px-1">
                                                                 <div className="flex justify-between text-sm text-gray-600">
-                                                                    <span>Subtotal</span>
-                                                                    <span>₹{order.items.reduce((acc, i) => acc + (i.price * i.quantity), 0)}</span>
+                                                                    <span>Items Total (Incl Tax)</span>
+                                                                    <span>₹{order.items.reduce((acc, i) => acc + (i.price * i.quantity), 0).toFixed(2)}</span>
                                                                 </div>
-                                                                {order.totalTax > 0 && (
-                                                                    <div className="flex justify-between text-sm text-gray-600">
-                                                                        <span>Tax (GST)</span>
-                                                                        <span>₹{order.totalTax}</span>
+                                                                
+                                                                {(order.surabhiCoinsUsed || 0) > 0 && (
+                                                                    <div className="flex justify-between text-sm text-amber-600">
+                                                                        <span>Surabhi Coins Applied</span>
+                                                                        <span>-₹{order.surabhiCoinsUsed.toFixed(2)}</span>
                                                                     </div>
                                                                 )}
-                                                                {order.adminShippingAdjustment !== 0 && (
+
+                                                                <div className="flex justify-between text-sm text-gray-600">
+                                                                    <span>Shipping Fees</span>
+                                                                    <span>₹{(order.netShippingCharges || 0).toFixed(2)}</span>
+                                                                </div>
+
+                                                                {order.totalTax > 0 && (
+                                                                    <div className="flex justify-between text-[11px] text-gray-400 italic">
+                                                                        <span>Incl. Adjusted GST</span>
+                                                                        <span>₹{order.totalTax.toFixed(2)}</span>
+                                                                    </div>
+                                                                )}
+
+                                                                {(order.adminShippingAdjustment || 0) !== 0 && (
                                                                     <div className="flex justify-between text-sm text-gray-600">
                                                                         <span>Shipping Adjustment</span>
-                                                                        <span className={order.adminShippingAdjustment && order.adminShippingAdjustment < 0 ? "text-red-500" : "text-green-600"}>
-                                                                            {order.adminShippingAdjustment && order.adminShippingAdjustment > 0 ? '+' : ''}
-                                                                            ₹{order.adminShippingAdjustment || 0}
+                                                                        <span className={(order.adminShippingAdjustment || 0) < 0 ? "text-red-500" : "text-green-600"}>
+                                                                            {(order.adminShippingAdjustment || 0) > 0 ? '+' : ''}
+                                                                            ₹{(order.adminShippingAdjustment || 0).toFixed(2)}
                                                                         </span>
                                                                     </div>
                                                                 )}
+
                                                                 <div className="flex justify-between text-base font-bold pt-2 border-t mt-2">
-                                                                    <span>Order Total</span>
-                                                                    <span>₹{order.totalAmount}</span>
+                                                                    <span>Total Payable</span>
+                                                                    <span>₹{order.totalAmount.toFixed(2)}</span>
                                                                 </div>
                                                             </div>
                                                         </div>

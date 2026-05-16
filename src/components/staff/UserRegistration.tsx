@@ -38,6 +38,7 @@ import { DatePicker } from '../ui/date-picker';
 import { encryptText } from '@/lib/encryption';
 import { auth, db } from '@/lib/firebase';
 import { CustomerType, UserRegistrationProps } from '@/types/types';
+import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 
 export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationProps) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -59,6 +60,8 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
     district: '',
     city: '',
   });
+
+  const { settings } = useGlobalSettings();
 
   // Initialize auth state
   useEffect(() => {
@@ -88,8 +91,12 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
           if (!querySnapshot.empty) {
             const doc = querySnapshot.docs[0];
             const referralData = { id: doc.id, ...doc.data() } as CustomerType;
-            // Check if wallet recharge is done OR wallet balance is greater than zero OR sale eligibility is true
-            if (referralData.walletRechargeDone === true || referralData.saleElgibility === true) {
+            // Check if wallet recharge is done OR wallet balance is greater than zero OR sale eligibility is true OR global settings allow
+            if (
+              referralData.walletRechargeDone === true || 
+              referralData.saleElgibility === true || 
+              settings?.allowReferralsWithoutPurchase
+            ) {
               setReferralName(referralData.customerName);
               setIsElgibleForReferral(true);
               toast.success(`Referral found: ${referralData.customerName}`);
@@ -144,7 +151,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [formData.referredBy]);
+  }, [formData.referredBy, settings?.allowReferralsWithoutPurchase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

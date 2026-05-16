@@ -1,4 +1,5 @@
 import { ProductReviews } from '@/components/shop/ProductReviews';
+import { SocialReviews } from '@/components/shop/SocialReviews';
 import { ShopLayout } from '@/components/shop/ShopLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,13 +14,18 @@ import { Heart, Minus, Plus, Share2, ShoppingCart, Star, X } from 'lucide-react'
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import SEO from '@/components/SEO';
+import { useGlobalSettings } from '@/hooks/useGlobalSettings';
+import { getProductBySlug } from '@/services/shop';
 
 const ProductDetailsPage = () => {
-    const { id } = useParams<{ id: string }>();
+    const { id: slug } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const location = useLocation();
     const { addToCart, toggleWishlist, isInWishlist } = useShop();
     const { user } = useAuth();
+    const { settings } = useGlobalSettings();
+    const isPaused = settings.pauseOrders;
     
     const [product, setProduct] = useState<Product | null>(null);
     const [loading, setLoading] = useState(true);
@@ -34,33 +40,35 @@ const ProductDetailsPage = () => {
     // 2. navigate(-1) — only used when there is no `from` state (e.g. direct URL, shared link).
     // 3. /shop — final fallback.
     const handleBack = () => {
-        const idx = (window.history.state as { idx?: number } | null)?.idx;
-        const canGoBack = (typeof idx === 'number' ? idx > 0 : window.history.length > 1);
-        
-        if (canGoBack) {
-            navigate(-1);
-        } else {
-            navigate('/shop', { replace: true });
-        }
+        navigate(-1);
     };
     
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
     useEffect(() => {
         window.scrollTo(0, 0);
-    }, [id]);
+    }, [slug]);
 
     useEffect(() => {
         const fetchProduct = async () => {
-            if (!id) return;
+            if (!slug) return;
             setLoading(true);
             try {
-                const docRef = doc(db, 'products', id);
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    const data = docSnap.data() as Product;
-                    setProduct({ id: docSnap.id, ...data });
-                    setSelectedImage(data.images?.[0] || '');
+                // 1. Try fetching by slug
+                let productData = await getProductBySlug(slug);
+                
+                // 2. Fallback to fetching by ID (for old links)
+                if (!productData) {
+                    const docRef = doc(db, 'products', slug);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        productData = { id: docSnap.id, ...docSnap.data() } as Product;
+                    }
+                }
+
+                if (productData) {
+                    setProduct(productData);
+                    setSelectedImage(productData.images?.[0] || '');
                 } else {
                     toast.error("Product not found");
                     navigate('/shop');
@@ -73,7 +81,7 @@ const ProductDetailsPage = () => {
             }
         };
         fetchProduct();
-    }, [id, navigate]);
+    }, [slug, navigate]);
 
     if (loading) {
         return (
@@ -101,6 +109,37 @@ const ProductDetailsPage = () => {
 
     return (
         <ShopLayout onBack={handleBack}>
+            <SEO 
+                title={product.name}
+                description={product.description.replace(/<[^>]*>?/gm, '').substring(0, 160)}
+                image={product.images?.[0]}
+                url={window.location.href}
+                type="product"
+                keywords={`${product.name}, ${product.brandName}, ${product.categoryName}, organic products, sustainable kgv, buy ${product.name} online`}
+                jsonLd={{
+                    "@context": "https://schema.org/",
+                    "@type": "Product",
+                    "name": product.name,
+                    "image": product.images,
+                    "description": product.description.replace(/<[^>]*>?/gm, ''),
+                    "brand": {
+                        "@type": "Brand",
+                        "name": product.brandName || "Surabhi"
+                    },
+                    "offers": {
+                        "@type": "Offer",
+                        "url": window.location.href,
+                        "priceCurrency": "INR",
+                        "price": product.sellingPrice || product.price,
+                        "availability": product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
+                    },
+                    "aggregateRating": product.totalReviews ? {
+                        "@type": "AggregateRating",
+                        "ratingValue": product.averageRating,
+                        "reviewCount": product.totalReviews
+                    } : undefined
+                }}
+            />
             <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
                 {/* Image Gallery */}
                 <div className="space-y-4">
@@ -204,8 +243,16 @@ const ProductDetailsPage = () => {
                                 ) : null}
                             </div>
                             <Button variant="ghost" size="icon" onClick={() => {
-                                navigator.clipboard.writeText(window.location.href);
-                                toast.success("Link copied to clipboard");
+                                if (navigator.share) {
+                                    navigator.share({
+                                        title: product.name,
+                                        text: `Check out ${product.name} on Surabhi Loyalty League!`,
+                                        url: window.location.href
+                                    }).catch(console.error);
+                                } else {
+                                    navigator.clipboard.writeText(window.location.href);
+                                    toast.success("Link copied to clipboard");
+                                }
                             }}>
                                 <Share2 className="h-5 w-5 text-gray-500" />
                             </Button>
@@ -275,7 +322,16 @@ const ProductDetailsPage = () => {
                             </div>
                         )}
                     </div>
-
+                    
+                    {isPaused && (
+                        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 animate-pulse">
+                            <div className="h-2 w-2 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                            <p className="text-sm font-bold text-amber-800 leading-relaxed">
+                                {settings.pauseMessage || 'Orders are temporarily paused. You can still browse our catalog and add items to your wishlist!'}
+                            </p>
+                        </div>
+                    )}
+                    
                     <div className="pt-6 border-t flex flex-col sm:flex-row gap-4">
                         <div className="flex items-center border rounded-full w-fit">
                             <Button 
@@ -283,7 +339,7 @@ const ProductDetailsPage = () => {
                                 size="icon" 
                                 className="rounded-l-full" 
                                 onClick={decreaseQty}
-                                disabled={quantity <= 1}
+                                disabled={quantity <= 1 || isPaused}
                             >
                                 <Minus className="h-4 w-4" />
                             </Button>
@@ -293,6 +349,7 @@ const ProductDetailsPage = () => {
                                 size="icon" 
                                 className="rounded-r-full" 
                                 onClick={increaseQty}
+                                disabled={isPaused}
                             >
                                 <Plus className="h-4 w-4" />
                             </Button>
@@ -300,12 +357,13 @@ const ProductDetailsPage = () => {
                         
                         <div className="flex-1 flex gap-3">
                              <Button 
-                                className="flex-1 gap-2 rounded-full h-10" 
+                                className={`flex-1 gap-2 rounded-full h-10 ${isPaused ? 'bg-gray-100 text-gray-400 cursor-not-allowed hover:bg-gray-100' : ''}`} 
                                 size="lg"
-                                onClick={() => addToCart(product, quantity)}
+                                onClick={() => !isPaused && addToCart(product, quantity)}
+                                disabled={isPaused}
                             >
                                 <ShoppingCart className="h-5 w-5" />
-                                Add to Cart
+                                {isPaused ? 'Orders Paused' : 'Add to Cart'}
                             </Button>
                              <Button 
                                 variant={isWishlisted ? "default" : "outline"}
@@ -319,6 +377,9 @@ const ProductDetailsPage = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Social Reviews Section */}
+            <SocialReviews />
 
             {/* Product Reviews Section */}
             <ProductReviews 

@@ -4,6 +4,7 @@ import {
   getDocs,
   limit,
   query,
+  setDoc,
   Timestamp,
   updateDoc,
   where,
@@ -31,9 +32,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 import { encryptText, safeDecryptText } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { StaffType } from '@/types/types';
+import { Switch } from '@/components/ui/switch';
 
 // Safe date formatting utility
 function safeFormatDate(date: any, dateFormat: string = 'dd MMM yyyy'): string {
@@ -60,6 +63,7 @@ import { AdminHeaderProps, StoreType } from '@/types/types';
 import { format } from 'date-fns';
 export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
   // console.log('AdminHeader Render. User:', user?.id, user?.staffName); // DEBUG LOG
+  const { settings, isLoading: isSettingsLoading } = useGlobalSettings();
   const [stores, setStores] = useState<StoreType[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<StaffType>>({
@@ -407,6 +411,34 @@ export const AdminHeader = ({ user, onLogout }: AdminHeaderProps) => {
                 />
               </div>
             </div>
+
+            {user.role === 'admin' && (
+              <>
+                <div className="h-px bg-gray-200 my-2 sm:my-3" />
+                <h3 className="text-[10px] xs:text-xs sm:text-sm font-semibold mb-1 xs:mb-2">Global Platform Settings</h3>
+                <div className="flex items-center justify-between p-2 xs:p-3 bg-gray-50 rounded-lg border">
+                  <div className="space-y-0.5 pr-4">
+                    <Label className="text-[10px] xs:text-xs sm:text-sm font-medium">Allow Referrals Without Purchase</Label>
+                    <p className="text-[8px] xs:text-[9px] sm:text-xs text-gray-500 leading-tight">
+                      Enable this to allow users to refer others even if they haven't met the minimum purchase requirement (₹999/₹500).
+                    </p>
+                  </div>
+                  <Switch 
+                    checked={settings?.allowReferralsWithoutPurchase} 
+                    onCheckedChange={async (checked) => {
+                      try {
+                        await setDoc(doc(db, 'settings', 'global'), { allowReferralsWithoutPurchase: checked }, { merge: true });
+                        toast({ title: 'Global Settings Updated', description: 'Referral eligibility requirement updated.' });
+                      } catch (err) {
+                        toast({ title: 'Update Failed', description: 'Could not update global settings.', variant: 'destructive' });
+                      }
+                    }} 
+                    disabled={isSettingsLoading}
+                  />
+                </div>
+                <div className="h-px bg-gray-200 my-2 sm:my-3" />
+              </>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>

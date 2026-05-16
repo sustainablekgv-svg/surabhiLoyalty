@@ -12,7 +12,7 @@ import { GoSevaPool } from '@/components/admin/GoSevaPool';
 import { SalesManagement } from '@/components/admin/SalesManagement';
 import { AdminShopDashboard } from '@/components/admin/shop/AdminShopDashboard';
 import { StaffManagement } from '@/components/admin/StaffManagement';
-import { SEO } from '@/components/SEO';
+import SEO from '@/components/SEO';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/auth-context';
 import { getUserEmail, getUserMobile, getUserName } from '@/lib/userUtils';

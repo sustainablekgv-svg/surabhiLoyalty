@@ -7,7 +7,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Footer } from './Footer';
 
-import { SEO } from '@/components/SEO';
+import SEO from '@/components/SEO';
 import { FloatingWhatsApp } from './FloatingWhatsApp';
 
 interface ShopLayoutProps {

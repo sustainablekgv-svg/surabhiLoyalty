@@ -1,41 +1,56 @@
-import { useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 
 interface SEOProps {
-  title: string;
+  title?: string;
   description?: string;
+  keywords?: string;
   image?: string;
+  url?: string;
+  type?: string;
+  jsonLd?: object;
 }
 
-export const SEO = ({ title, description, image }: SEOProps) => {
-  useEffect(() => {
-    // Update Title
-    document.title = `${title} | Surabhi Loyalty`;
+const SEO = ({ 
+  title = 'Surabhi Loyalty - Sustainable KGV Rewards Program',
+  description = 'Join our community and support farmers, gopalaks, and local business owners! Shop premium products and earn rewards.',
+  keywords = 'loyalty program, rewards, sustainable shopping, Surabhi Coins, Seva Coins, sustainable KGV',
+  image = 'https://www.sustainablekgv.com/kgv.png',
+  url = 'https://www.sustainablekgv.com/',
+  type = 'website',
+  jsonLd
+}: SEOProps) => {
+  const siteName = 'Surabhi Loyalty';
+  const fullTitle = title.includes(siteName) ? title : `${title} | ${siteName}`;
 
-    // Update Meta Description
-    if (description) {
-      let metaDescription = document.querySelector('meta[name="description"]');
-      if (!metaDescription) {
-        metaDescription = document.createElement('meta');
-        metaDescription.setAttribute('name', 'description');
-        document.head.appendChild(metaDescription);
-      }
-      metaDescription.setAttribute('content', description);
-    }
-    
-    // Update OG Title
-    const ogTitle = document.querySelector('meta[property="og:title"]');
-    if (ogTitle) ogTitle.setAttribute('content', `${title} | Surabhi Loyalty`);
+  return (
+    <Helmet>
+      {/* Standard metadata */}
+      <title>{fullTitle}</title>
+      <meta name="description" content={description} />
+      <meta name="keywords" content={keywords} />
 
-    // Update OG Description
-    if (description) {
-      const ogDesc = document.querySelector('meta[property="og:description"]');
-      if (ogDesc) ogDesc.setAttribute('content', description);
-    }
+      {/* Open Graph / Facebook */}
+      <meta property="og:type" content={type} />
+      <meta property="og:title" content={fullTitle} />
+      <meta property="og:description" content={description} />
+      <meta property="og:image" content={image} />
+      <meta property="og:url" content={url} />
+      <meta property="og:site_name" content={siteName} />
 
-    // Scroll to top on mount
-    window.scrollTo(0, 0);
+      {/* Twitter */}
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content={fullTitle} />
+      <meta name="twitter:description" content={description} />
+      <meta name="twitter:image" content={image} />
 
-  }, [title, description, image]);
-
-  return null;
+      {/* JSON-LD */}
+      {jsonLd && (
+        <script type="application/ld+json">
+          {JSON.stringify(jsonLd)}
+        </script>
+      )}
+    </Helmet>
+  );
 };
+
+export default SEO;

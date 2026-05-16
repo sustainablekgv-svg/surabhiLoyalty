@@ -1,3 +1,4 @@
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -9,10 +10,10 @@ import { useAuth } from '@/hooks/auth-context';
 import { db } from '@/lib/firebase';
 import { isValidImageUrl } from '@/lib/image-utils';
 import { calculateShippingCost, getShippingConfig, getWeightBracketLabel, parseWeightToKg } from '@/services/shipping';
-import { adjustOrderShippingBalance, getOrders, getProducts, getStoreByLocation, updateOrderItems, updateOrderStatus, updateOrderTotal } from '@/services/shop';
+import { adjustOrderShippingBalance, deleteOrder, getOrders, getProducts, getStoreByLocation, updateOrderItems, updateOrderStatus, updateOrderTotal } from '@/services/shop';
 import { CartItem, Order, Product } from '@/types/shop';
 import { collection, getDocs } from 'firebase/firestore';
-import { Check, Package, Pencil, Plus, Search, TrendingUp, Truck, X } from 'lucide-react';
+import { Check, Package, Pencil, Plus, Search, Trash2, TrendingUp, Truck, X } from 'lucide-react';
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { getUserName } from '@/lib/userUtils';
@@ -24,6 +25,8 @@ export const OrderManager = () => {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isEditingTotal, setIsEditingTotal] = useState(false);
     const [newTotal, setNewTotal] = useState('');
+    const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     
     // Shipping Adjustment State
     const [adjustmentAmount, setAdjustmentAmount] = useState('');
@@ -215,44 +218,43 @@ export const OrderManager = () => {
 
         // 3. Totals
         const itemsTotalInclTax = itemsToCalculate.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const totalTax = itemsToCalculate.reduce((sum, item) => {
-            if (!item.gst?.percentage) return sum;
-            const gstRate = item.gst.percentage / 100;
+        
+        // Calculate total Base Value (Excl Tax) because prices are inclusive
+        const totalOriginalBase = itemsToCalculate.reduce((sum, item) => {
+            const gstRate = (item.gst?.percentage || 0) / 100;
             const baseLineTotal = (item.price * item.quantity) / (1 + gstRate);
-            return sum + ((item.price * item.quantity) - baseLineTotal);
+            return sum + baseLineTotal;
         }, 0);
-        const subtotal = itemsTotalInclTax - totalTax;
+
+        const totalTax = itemsTotalInclTax - totalOriginalBase;
+        const subtotal = totalOriginalBase;
         const totalSpv = itemsToCalculate.reduce((sum, item) => sum + ((item.spv || 0) * item.quantity), 0);
 
         const shippingCost = Object.values(groups).reduce((sum: number, g: any) => sum + g.shipping, 0);
         const shippingCreditsUsed = selectedOrder.shippingPointsUsed || 0;
         const netShippingCharges = Math.max(0, shippingCost - shippingCreditsUsed);
         
-        // Match CheckoutPage.tsx logic: Inclusive discount application
-        const totalCoins = Math.min(selectedOrder.surabhiCoinsUsed || 0, itemsTotalInclTax);
-        const discountPercent = itemsTotalInclTax > 0 ? totalCoins / itemsTotalInclTax : 0;
+        // Match CheckoutPage.tsx logic: BASE discount application
+        const totalCoins = Math.min(selectedOrder.surabhiCoinsUsed || 0, totalOriginalBase);
+        const discountPercent = totalOriginalBase > 0 ? totalCoins / totalOriginalBase : 0;
 
         const totalAdjustedTax = itemsToCalculate.reduce((sum, item) => {
-            if (!item.gst?.percentage) return sum;
+            const gstRate = (item.gst?.percentage || 0) / 100;
             const originalItemTotalInclTax = item.price * item.quantity;
+            const originalBaseLineTotal = originalItemTotalInclTax / (1 + gstRate);
             
-            const itemDiscount = originalItemTotalInclTax * discountPercent;
-            const adjustedLineTotal = originalItemTotalInclTax - itemDiscount;
-            
-            const gstRate = item.gst.percentage / 100;
-            const adjustedBaseLineTotal = adjustedLineTotal / (1 + gstRate);
-            const adjustedTax = adjustedLineTotal - adjustedBaseLineTotal;
+            const itemDiscount = originalBaseLineTotal * discountPercent;
+            const adjustedBaseLineTotal = originalBaseLineTotal - itemDiscount;
+            const adjustedTax = adjustedBaseLineTotal * gstRate;
             
             return sum + adjustedTax;
         }, 0);
 
-        const adjustedTotalItemsValue = itemsTotalInclTax - totalCoins;
-        const itemsTotalAfterCoins = adjustedTotalItemsValue; 
+        const adjustedTotalBase = totalOriginalBase - totalCoins;
+        const itemsTotalAfterCoins = adjustedTotalBase + totalAdjustedTax; 
 
         // ASPV Calculation
-        const aggregateAdjustedSpv = itemsTotalInclTax > 0 
-            ? (itemsTotalAfterCoins * totalSpv) / itemsTotalInclTax 
-            : 0;
+        const aggregateAdjustedSpv = totalSpv * (1 - discountPercent);
 
         const netSpvForEarning = Math.max(0, aggregateAdjustedSpv);
 
@@ -271,13 +273,13 @@ export const OrderManager = () => {
         const adjustedItems = itemsToCalculate.map(item => {
             const gstRate = (item.gst?.percentage || 0) / 100;
             const originalTotalInclTax = item.price * item.quantity;
-            const originalTax = originalTotalInclTax - (originalTotalInclTax / (1 + gstRate));
-            const originalBase = originalTotalInclTax - originalTax;
+            const originalBase = originalTotalInclTax / (1 + gstRate);
+            const originalTax = originalTotalInclTax - originalBase;
             
-            const itemDiscount = originalTotalInclTax * discountPercent;
-            const adjustedLineTotal = originalTotalInclTax - itemDiscount;
-            const adjustedBaseLineTotal = adjustedLineTotal / (1 + gstRate);
-            const adjustedTax = adjustedLineTotal - adjustedBaseLineTotal;
+            const itemDiscount = originalBase * discountPercent;
+            const adjustedBaseLineTotal = originalBase - itemDiscount;
+            const adjustedTax = adjustedBaseLineTotal * gstRate;
+            const adjustedLineTotal = adjustedBaseLineTotal + adjustedTax;
             
             return {
                 ...item,
@@ -296,7 +298,7 @@ export const OrderManager = () => {
             shippingCost,
             totalTax,
             totalAdjustedTax,
-            adjustedTaxValue: itemsTotalAfterCoins - totalAdjustedTax,
+            adjustedTaxValue: adjustedTotalBase,
             totalSpv,
             itemsTotalInclTax,
             itemsTotalAfterCoins,
@@ -450,6 +452,22 @@ export const OrderManager = () => {
         }
     };
 
+    const handleDeleteOrder = async () => {
+        if (!orderToDelete) return;
+        setIsDeleting(true);
+        try {
+            await deleteOrder(orderToDelete);
+            toast.success("Order deleted permanently");
+            setOrders(prev => prev.filter(o => o.id !== orderToDelete));
+            setOrderToDelete(null);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to delete order");
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     const getStatusColor = (status: Order['status']) => {
         switch (status) {
             case 'pending': return 'bg-slate-100 text-slate-800 border border-slate-200';
@@ -533,9 +551,10 @@ export const OrderManager = () => {
                                             {order.status.toUpperCase().replace('_', ' ')}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell>
-                                        <Dialog>
-                                            <DialogTrigger asChild>
+                                     <TableCell>
+                                        <div className="flex items-center gap-1">
+                                            <Dialog>
+                                                <DialogTrigger asChild>
                                                 <Button size="icon" variant="ghost" onClick={() => setSelectedOrder(order)}>
                                                     <Pencil className="h-4 w-4" />
                                                 </Button>
@@ -581,6 +600,16 @@ export const OrderManager = () => {
                                                                             <SelectItem value="cancelled">Cancelled</SelectItem>
                                                                         </SelectContent>
                                                                     </Select>
+                                                                </div>
+                                                                <div className="pt-2">
+                                                                    <Button 
+                                                                        variant="destructive" 
+                                                                        size="sm" 
+                                                                        className="w-full"
+                                                                        onClick={() => setOrderToDelete(selectedOrder.id)}
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4 mr-2" /> Delete Order
+                                                                    </Button>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -1078,8 +1107,17 @@ export const OrderManager = () => {
                                                     </div>
                                                 )}
                                             </DialogContent>
-                                        </Dialog>
-                                    </TableCell>
+                                                </Dialog>
+                                                <Button 
+                                                    size="icon" 
+                                                    variant="ghost" 
+                                                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                    onClick={() => setOrderToDelete(order.id)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
                                 </TableRow>
                             ))
                         )}
@@ -1108,6 +1146,27 @@ export const OrderManager = () => {
                     Next
                 </Button>
             </div>
+
+            <AlertDialog open={!!orderToDelete} onOpenChange={(open) => !open && setOrderToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the order record and all associated data. Use this only for test orders or duplicates.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={handleDeleteOrder} 
+                            className="bg-red-600 hover:bg-red-700"
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? 'Deleting...' : 'Delete Order'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             {/* Confirmation Dialog */}
             <Dialog open={!!showConfirmAdjust} onOpenChange={(open) => !open && setShowConfirmAdjust(null)}>

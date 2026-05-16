@@ -1,7 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { HelmetProvider } from 'react-helmet-async';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
 import { AnalyticsProvider } from './components/AnalyticsProvider';
+import ScrollToTop from './components/ScrollToTop';
 // import CreateAdmin from './components/CreateAdmin';
 import { ProtectedRoute } from '@/components/protectedRoutes';
 import ReferralRedirect from './components/ReferralRedirect';
@@ -37,6 +39,7 @@ const App = () => {
   // console.log('App Rendering');
   return (
   <ErrorBoundary>
+    <HelmetProvider>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CartProvider>
@@ -46,6 +49,7 @@ const App = () => {
           <Toaster />
           <Sonner position="top-center" duration={2000} />
           <BrowserRouter>
+            <ScrollToTop />
             <AnalyticsProvider>
               <Routes>
                 <Route path="/" element={<LandingPage />} />
@@ -108,6 +112,7 @@ const App = () => {
         </CartProvider>
       </AuthProvider>
     </QueryClientProvider>
+    </HelmetProvider>
   </ErrorBoundary>
   );
 };

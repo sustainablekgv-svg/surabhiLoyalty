@@ -10,14 +10,8 @@ const CartPage = () => {
   const navigate = useNavigate();
 
   return (
-    <ShopLayout title="Surabhi" showBack={false}>
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/shop/filters')}>
-            <ArrowLeft className="h-6 w-6" />
-          </Button>
-          <h1 className="text-3xl font-bold">Shopping Cart</h1>
-        </div>
+    <ShopLayout title="Shopping Cart" onBack={() => navigate('/shop')}>
+      <div className="max-w-4xl mx-auto py-4">
         {cart.length === 0 ? (
           <div className="text-center py-20">
             <h2 className="text-2xl font-semibold mb-4">Your cart is empty</h2>
@@ -29,7 +23,7 @@ const CartPage = () => {
               {cart.map((item) => (
 
                 <div key={item.productId} className="flex gap-3 md:gap-4 p-3 md:p-4 bg-white rounded-lg shadow-sm border relative">
-                  <div className="h-20 w-20 md:h-24 md:w-24 bg-white rounded-md overflow-hidden flex-shrink-0 cursor-pointer flex items-center justify-center border" onClick={() => navigate(`/shop/product/${item.productId}`, { state: { from: '/shop/cart' } })}>
+                  <div className="h-20 w-20 md:h-24 md:w-24 bg-white rounded-md overflow-hidden flex-shrink-0 cursor-pointer flex items-center justify-center border" onClick={() => navigate(`/shop/product/${item.slug || item.productId}`, { state: { from: '/shop/cart' } })}>
                     {isValidImageUrl(item.image) ? (
                       <img src={item.image} alt={item.name} className="max-h-full max-w-full object-contain" />
                     ) : (
@@ -38,7 +32,7 @@ const CartPage = () => {
                   </div>
                   <div className="flex-1 flex flex-col justify-between">
                     <div className="pr-8">
-                      <h3 className="font-medium text-base md:text-lg cursor-pointer hover:underline line-clamp-2" onClick={() => navigate(`/shop/product/${item.productId}`)}>{item.name}</h3>
+                      <h3 className="font-medium text-base md:text-lg cursor-pointer hover:underline line-clamp-2" onClick={() => navigate(`/shop/product/${item.slug || item.productId}`)}>{item.name}</h3>
                       <div className="flex flex-wrap gap-2 mt-1">
                         {item.brandName && (
                           <span className="text-[10px] bg-secondary px-2 py-0.5 rounded-full">{item.brandName}</span>

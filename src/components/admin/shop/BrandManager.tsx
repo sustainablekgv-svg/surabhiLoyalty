@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { isValidImageUrl } from '@/lib/image-utils';
 import { deleteImageFromR2 } from '@/services/cloudflare';
-import { createBrand, deleteBrand, getBrands, getCategories, initializeDisplayOrder, reorderBrand, updateBrand } from '@/services/shop';
+import { createBrand, deleteBrand, generateSlug, getBrands, getCategories, initializeDisplayOrder, reorderBrand, updateBrand } from '@/services/shop';
 import { Brand, Category } from '@/types/shop';
 import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Search, Trash2 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
@@ -38,7 +38,8 @@ export const BrandManager = () => {
         images: [] as string[],
         categoryId: '',
         categoryIds: [] as string[],
-        shippingPercentage: 0
+        shippingPercentage: 0,
+        slug: ''
     });
 
     const fetchBrands = async () => {
@@ -118,10 +119,9 @@ export const BrandManager = () => {
                 logo: formData.images[0], // Primary image for backward compatibility
                 images: formData.images, // All images
                 isActive: true,
-                categoryId: formData.categoryIds[0], // Primary category for legacy support
-                categoryIds: formData.categoryIds,
                 categoryName: categories.find(c => c.id === formData.categoryIds[0])?.name || '',
-                shippingPercentage: Number(formData.shippingPercentage) || 0
+                shippingPercentage: Number(formData.shippingPercentage) || 0,
+                slug: formData.slug.trim() || generateSlug(formData.name)
             };
 
             if (editingBrand) {
@@ -218,7 +218,8 @@ export const BrandManager = () => {
             images: [],
             categoryId: '',
             categoryIds: [],
-            shippingPercentage: 0
+            shippingPercentage: 0,
+            slug: ''
         });
     };
 
@@ -230,7 +231,8 @@ export const BrandManager = () => {
             images: brand.images || (brand.logo ? [brand.logo] : []),
             categoryId: brand.categoryId || '',
             categoryIds: brand.categoryIds || (brand.categoryId ? [brand.categoryId] : []),
-            shippingPercentage: brand.shippingPercentage || 0
+            shippingPercentage: brand.shippingPercentage || 0,
+            slug: brand.slug || ''
         });
         setIsDialogOpen(true);
     };
@@ -297,7 +299,23 @@ export const BrandManager = () => {
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="space-y-2">
                                 <Label>Brand Name</Label>
-                                <Input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                                <Input required value={formData.name} onChange={e => {
+                                    const name = e.target.value;
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        name,
+                                        slug: editingBrand ? prev.slug : generateSlug(name)
+                                    }));
+                                }} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Slug (URL Identifier)</Label>
+                                <Input 
+                                    required 
+                                    value={formData.slug} 
+                                    onChange={e => setFormData({ ...formData, slug: e.target.value })} 
+                                    placeholder="e.g. organic-tattva"
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label>Shipping Earn Percentage (%)</Label>
