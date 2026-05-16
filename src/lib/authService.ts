@@ -244,7 +244,7 @@ export const getFirebaseUserForFunctions = async (): Promise<FirebaseAuthUser> =
   const storedUser = storageUtils.getUser() as User | null;
   if (!storedUser) {
     throw new Error(
-      'You must be logged in to upload images. Please refresh the page and try again.'
+      'Your session has expired or you are not logged in. Please refresh the page and log in again to proceed.'
     );
   }
 

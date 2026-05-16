@@ -65,7 +65,14 @@ const App = () => {
                 <Route path="/shop/product/:id" element={<ProductDetailsPage />} />
                 <Route path="/shop/cart" element={<CartPage />} />
                 <Route path="/shop/wishlist" element={<WishlistPage />} />
-                <Route path="/shop/checkout" element={<CheckoutPage />} />
+                <Route 
+                  path="/shop/checkout" 
+                  element={
+                    <ProtectedRoute requiredRole="customer">
+                      <CheckoutPage />
+                    </ProtectedRoute>
+                  } 
+                />
                 <Route path="/ref/:code" element={<ReferralRedirect />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/signup" element={<SignupPage />} />

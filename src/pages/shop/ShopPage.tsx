@@ -3,7 +3,6 @@ import { PauseAnnouncement } from '@/components/shop/PauseAnnouncement';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { ShopLayout } from '@/components/shop/ShopLayout';
 import { Button } from '@/components/ui/button';
-import { HorizontalScroll } from '@/components/ui/horizontal-scroll';
 import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';

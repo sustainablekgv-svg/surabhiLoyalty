@@ -1,22 +1,22 @@
+import SEO from '@/components/SEO';
 import { ProductReviews } from '@/components/shop/ProductReviews';
-import { SocialReviews } from '@/components/shop/SocialReviews';
 import { ShopLayout } from '@/components/shop/ShopLayout';
+import { SocialReviews } from '@/components/shop/SocialReviews';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useAuth } from '@/hooks/auth-context';
 import { useShop } from '@/hooks/shop-context';
+import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 import { db } from '@/lib/firebase';
+import { getProductBySlug } from '@/services/shop';
 import { Product } from '@/types/shop';
 import { doc, getDoc } from 'firebase/firestore';
 import { Heart, Minus, Plus, Share2, ShoppingCart, Star, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import SEO from '@/components/SEO';
-import { useGlobalSettings } from '@/hooks/useGlobalSettings';
-import { getProductBySlug } from '@/services/shop';
 
 const ProductDetailsPage = () => {
     const { id: slug } = useParams<{ id: string }>();
@@ -93,7 +93,6 @@ const ProductDetailsPage = () => {
         );
     }
 
-    if (!product) return null;
 
     const isWishlisted = isInWishlist(product.id);
     const hasDiscount = !!product.sellingPrice && product.sellingPrice < product.price;
