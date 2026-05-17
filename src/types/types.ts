@@ -56,6 +56,8 @@ export interface CustomerType {
   shippingDebit: number;
   shippingTotal: number;
   shippingBalanceCurrentMonth: number;
+  pendingShippingBalance?: number;
+
 }
 
 export interface StaffHeaderProps {

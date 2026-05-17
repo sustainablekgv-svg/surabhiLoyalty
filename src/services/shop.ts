@@ -27,6 +27,9 @@ import { notifyCustomerSaleSms } from '@/services/saleSmsNotification';
 import { processSaleTransaction } from './sales';
 import { getUserName } from '@/lib/userUtils';
 
+import { increment } from 'firebase/firestore';
+import { runTransaction } from 'firebase/firestore';
+
 // --- Display Order Helper ---
 const swapDisplayOrder = async (collectionName: string, id1: string, order1: number, id2: string, order2: number) => {
     const batch = writeBatch(db);
@@ -531,19 +534,126 @@ export const reorderBrand = async (id: string, currentOrder: number, direction: 
 
 // --- Orders ---
 
-export const createOrder = async (order: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'timeline'>) => {
-    const timestamp = new Date();
-    const docRef = await addDoc(collection(db, 'orders'), {
-        ...order,
-        status: 'received',
-        timeline: [
-            { status: 'received', timestamp, note: 'Order placed successfully' }
-        ],
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+export const createOrder = async (
+  order: Omit<Order,
+  'id' |
+  'createdAt' |
+  'updatedAt' |
+  'status' |
+  'timeline'>
+) => {
+
+  const timestamp = new Date();
+
+  return await runTransaction(db, async (transaction) => {
+
+    // =========================
+    // CUSTOMER VALIDATION
+    // =========================
+
+    if (!order.userId) {
+      throw new Error("User ID required");
+    }
+
+    const customerRef = doc(db, 'Customers', order.userId);
+
+    const customerSnap = await transaction.get(customerRef);
+
+    if (!customerSnap.exists()) {
+      throw new Error("Customer not found");
+    }
+
+    const customerData = customerSnap.data();
+
+// =========================
+// SURABHI VALIDATION
+// =========================
+
+const surabhiUsed =
+  Number(order.surabhiCoinsUsed || 0);
+
+if (surabhiUsed > 0) {
+
+  const actualSurabhi =
+    Number(customerData.surabhiBalance || 0);
+
+  const pendingSurabhi =
+    Number(customerData.pendingSurabhiCoins || 0);
+
+  const availableSurabhi =
+    Math.max(0, actualSurabhi - pendingSurabhi);
+
+  if (surabhiUsed > availableSurabhi) {
+    throw new Error(
+      "Invalid Surabhi usage: exceeds available balance"
+    );
+  }
+
+  // LOCK SURABHI
+  transaction.update(customerRef, {
+    pendingSurabhiCoins: increment(surabhiUsed)
+  });
+}
+
+
+
+    // =========================
+    // SHIPPING VALIDATION
+    // =========================
+
+    const shippingUsed =
+      Number(order.shippingPointsUsed || 0);
+
+    if (shippingUsed > 0) {
+
+      const actualShipping =
+        Number(customerData.shippingBalance || 0);
+
+      const pendingShipping =
+        Number(customerData.pendingShippingBalance || 0);
+
+      const availableShipping =
+        Math.max(0, actualShipping - pendingShipping);
+
+      if (shippingUsed > availableShipping) {
+        throw new Error(
+          "Invalid shipping usage: exceeds available balance"
+        );
+      }
+
+      // LOCK SHIPPING
+      transaction.update(customerRef, {
+        pendingShippingBalance: increment(shippingUsed)
+      });
+    }
+
+    // =========================
+    // CREATE ORDER
+    // =========================
+
+    const orderRef = doc(collection(db, 'orders'));
+
+    transaction.set(orderRef, {
+      ...order,
+
+      status: 'received',
+
+      timeline: [
+        {
+          status: 'received',
+          timestamp,
+          note: 'Order placed successfully'
+        }
+      ],
+
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
     });
-    return docRef.id;
+
+    return orderRef.id;
+  });
 };
+
 
 export const getOrders = async (
     pageSize: number = 10,
@@ -644,137 +754,350 @@ const getCustomerById = async (userId: string): Promise<CustomerType | null> => 
     }
 };
 
-export const updateOrderStatus = async (orderId: string, status: Order['status'], note?: string, currentUser?: any) => {
+export const updateOrderStatus = async (
+    orderId: string,
+    status: Order['status'],
+    note?: string,
+    currentUser?: any
+) => {
     const docRef = doc(db, 'orders', orderId);
     const docSnap = await getDoc(docRef);
-    
+
     if (!docSnap.exists()) throw new Error("Order not found");
-    
+
     const currentOrder = docSnap.data() as Order;
+
+    // ❌ Prevent invalid flow
+    if (currentOrder.status === 'delivered' && status === 'cancelled') {
+        throw new Error("Delivered order cannot be cancelled");
+    }
+
     const newTimeline = [
         ...(currentOrder.timeline || []),
-        { 
-            status, 
-            timestamp: new Date(), 
-            note: note || `Order status updated to ${status.toUpperCase().replace('_', ' ')} by Store Admin` 
-        }
+        {
+            status,
+            timestamp: new Date(),
+            note:
+                note ||
+                `Order status updated to ${status
+                    .toUpperCase()
+                    .replace('_', ' ')} by Store Admin`,
+        },
     ];
 
     const updates: any = {
         status,
         timeline: newTimeline,
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
     };
 
-    // Trigger Rewards processing on Confirmation
+
+    //updated new
+
+    // =========================
+// 🚫 INVALID STATUS TRANSITIONS
+// =========================
+
+// Prevent cancelled → delivered
+if (
+    currentOrder.status === 'cancelled' &&
+    status === 'delivered'
+) {
+    throw new Error(
+        'Cancelled orders cannot be marked as delivered'
+    );
+}
+
+// Prevent changing terminal states
+const terminalStates = ['cancelled', 'delivered'];
+
+if (
+    terminalStates.includes(currentOrder.status) &&
+    currentOrder.status !== status
+) {
+    throw new Error(
+        `Order already ${currentOrder.status}`
+    );
+}
+
+    // =========================
+    // 🎁 REWARDS LOGIC
+    // =========================
     if (status === 'confirmed' && !(currentOrder as any).rewardsProcessed) {
         try {
             const customer = await getCustomerById(currentOrder.userId);
+
             if (customer) {
-                // Determine Store
-                // Use customer store location, or fallback
-                const storeLocation = customer.storeLocation || 'Main Store'; 
+                const storeLocation = customer.storeLocation || 'Main Store';
                 const store = await getStoreByLocation(storeLocation);
-                
+
                 if (store) {
-                    const itemsTotalAfterCoins = currentOrder.totalAmount - (currentOrder.netShippingCharges || 0) - (currentOrder.adminShippingAdjustment || 0);
-                    const grossPriceOfItems = itemsTotalAfterCoins + (currentOrder.surabhiCoinsUsed || 0);
-                    const grossSpv = currentOrder.items.reduce((acc, item) => acc + (Number(item.spv || 0) * item.quantity), 0);
-                    
-                    // Ratio adjustment for SPV based on coin usage
-                    const adjustedSpv = grossPriceOfItems > 0 
-                        ? (itemsTotalAfterCoins * grossSpv) / grossPriceOfItems 
-                        : grossSpv;
-                    
-                    // The order might already have pre-calculated rewards from Admin Edit
-                    // Use them if they exist to maintain consistency with what admin saw
+                    const itemsTotalAfterCoins =
+                        currentOrder.totalAmount -
+                        (currentOrder.netShippingCharges || 0) -
+                        (currentOrder.adminShippingAdjustment || 0);
+
+                    const grossPriceOfItems =
+                        itemsTotalAfterCoins +
+                        (currentOrder.surabhiCoinsUsed || 0);
+
+                    const grossSpv = currentOrder.items.reduce(
+                        (acc, item) =>
+                            acc + (Number(item.spv || 0) * item.quantity),
+                        0
+                    );
+
+                    const adjustedSpv =
+                        grossPriceOfItems > 0
+                            ? (itemsTotalAfterCoins * grossSpv) /
+                              grossPriceOfItems
+                            : grossSpv;
+
                     const rewardOverrides = {
                         surabhiCoinsEarned: currentOrder.surabhiCoinsEarned,
                         sevaCoinsEarned: (currentOrder as any).sevaCoinsEarned,
-                        referralBonusEarned: (currentOrder as any).referralBonusEarned
+                        referralBonusEarned:
+                            (currentOrder as any).referralBonusEarned,
                     };
 
                     await processSaleTransaction({
                         orderId: currentOrder.id,
-                        invoiceId: `INV-${currentOrder.id.slice(0,6).toUpperCase()}`,
+                        invoiceId: `INV-${currentOrder.id
+                            .slice(0, 6)
+                            .toUpperCase()}`,
                         amount: currentOrder.totalAmount,
-                        customer: customer,
+                        customer,
                         storeDetails: store,
-                        user: currentUser || { staffName: 'Online Admin', role: 'admin' },
-                        paymentMethod: currentOrder.paymentMethod || 'online',
+                        user:
+                            currentUser || {
+                                staffName: 'Online Admin',
+                                role: 'admin',
+                            },
+                        paymentMethod:
+                            currentOrder.paymentMethod || 'online',
                         totalSpv: adjustedSpv,
                         grossSpvWeight: grossSpv,
-                        surabhiCoinsUsed: currentOrder.surabhiCoinsUsed || 0,
-                        shippingCreditsEarned: currentOrder.shippingPointsEarned || 0,
-                        shippingCreditsUsed: currentOrder.shippingPointsUsed || 0,
+                        surabhiCoinsUsed: 0,
+                        shippingCreditsEarned:
+                            currentOrder.shippingPointsEarned || 0,
+                        shippingCreditsUsed:
+                            currentOrder.shippingPointsUsed || 0,
                         cumTotalAmount: itemsTotalAfterCoins,
-                        rewardOverrides: (rewardOverrides.surabhiCoinsEarned !== undefined) ? rewardOverrides : undefined
+                        rewardOverrides:
+                            rewardOverrides.surabhiCoinsEarned !== undefined
+                                ? rewardOverrides
+                                : undefined,
                     });
+
                     updates.rewardsProcessed = true;
 
                     if (!(currentOrder as any).demoStore) {
-                        const invId = `INV-${currentOrder.id.slice(0, 6).toUpperCase()}`;
+                        const invId = `INV-${currentOrder.id
+                            .slice(0, 6)
+                            .toUpperCase()}`;
+
                         void notifyCustomerSaleSms({
                             phone: customer.customerMobile,
                             customerName: customer.customerName,
                             amount: currentOrder.totalAmount,
                             invoiceId: invId,
-                            paymentMethod: currentOrder.paymentMethod || 'online',
+                            paymentMethod:
+                                currentOrder.paymentMethod || 'online',
                             storeName: store.storeName,
                         });
-
-                        // OJIVA: detail the coin breakdown earned on this order.
-                        const surabhiEarned = Number(currentOrder.surabhiCoinsEarned || 0);
-                        const sevaEarned = Number((currentOrder as any).sevaCoinsEarned || 0);
-                        const shippingEarned = Number(currentOrder.shippingPointsEarned || 0);
-
-                        if (surabhiEarned > 0 || sevaEarned > 0 || shippingEarned > 0) {
-                            const newSurabhiBalance =
-                                Number(customer.surabhiBalance || 0) +
-                                surabhiEarned -
-                                Number(currentOrder.surabhiCoinsUsed || 0);
-                            void notifyCoinsCreditedSms({
-                                phone: customer.customerMobile,
-                                customerName: customer.customerName,
-                                orderOrInvoiceId: currentOrder.id,
-                                amount: currentOrder.totalAmount,
-                                surabhiCoins: surabhiEarned,
-                                sevaCoins: sevaEarned,
-                                shippingCoins: shippingEarned,
-                                balance: newSurabhiBalance,
-                            });
-                        }
                     }
-                    // Note: Activity log is added by processSaleTransaction
-                } else {
-                    console.error("Store not found for rewards processing");
-                    updates.rewardsError = "Store not found";
                 }
-            } else {
-                console.error("Customer not found for rewards processing");
-                updates.rewardsError = "Customer not found";
             }
         } catch (error) {
-            console.error("Error processing rewards", error);
+            console.error("Rewards error:", error);
             updates.rewardsError = "Processing Failed";
         }
     }
 
-    // Activity Log
+    // =========================
+    // 💰 COINS LOGIC (FIXED)
+    // =========================
+    const order = currentOrder;
+
+
+if (
+    status === 'confirmed' &&
+    Number(order?.surabhiCoinsUsed || 0) > 0 &&
+    !(order as any).coinsDeducted
+){
+    await runTransaction(db, async (transaction) => {
+        const customerRef = doc(db, 'Customers', order.userId);
+        const customerSnap = await transaction.get(customerRef);
+
+        if (!customerSnap.exists()) {
+            throw new Error("Customer not found");
+        }
+
+        // updated new
+
+        const usedCoins = Number(order.surabhiCoinsUsed || 0);
+
+transaction.update(customerRef, {
+    pendingSurabhiCoins: increment(-usedCoins),
+});
+
+        // Mark as deducted (VERY IMPORTANT)
+        transaction.update(docRef, {
+            coinsDeducted: true
+        });
+    });
+
+    updates.coinsDeducted = true;
+}
+
+//shipping update
+
+if (
+ status === 'confirmed' &&
+ Number(order?.shippingPointsUsed || 0) > 0 &&
+ !(order as any).shippingUnlocked
+){
+await runTransaction(db, async (transaction) => {
+
+
+    const customerRef = doc(db, 'Customers', order.userId);
+
+    const customerSnap = await transaction.get(customerRef);
+
+    if (!customerSnap.exists()) {
+        throw new Error("Customer not found");
+    }
+
+    const usedShipping =
+        Number(order.shippingPointsUsed || 0);
+
+    transaction.update(customerRef, {
+        pendingShippingBalance: increment(
+            -usedShipping
+        ),
+    });
+
+    transaction.update(docRef, {
+        shippingUnlocked: true
+
+    });
+});
+
+updates.shippingUnlocked = true;
+
+
+
+}
+
+
+   //updated new 
+
+   if (
+    status === 'cancelled' &&
+    Number(order?.surabhiCoinsUsed || 0) > 0 &&
+    !(order as any).coinsReleased
+) {
+    const customerRef = doc(db, 'Customers', order.userId);
+
+    await runTransaction(db, async (transaction) => {
+        const customerSnap = await transaction.get(customerRef);
+
+        if (!customerSnap.exists()) {
+            throw new Error('Customer not found');
+        }
+
+        const customerData = customerSnap.data();
+
+        const currentPending =
+            Number(customerData.pendingSurabhiCoins || 0);
+
+        const safePending = Math.max(
+            0,
+            currentPending - Number(order.surabhiCoinsUsed || 0)
+        );
+
+        transaction.update(customerRef, {
+            pendingSurabhiCoins: safePending,
+        });
+
+        transaction.update(docRef, {
+            coinsReleased: true,
+        });
+    });
+
+    updates.coinsReleased = true;
+}
+
+//shipping update
+
+if (
+status === 'cancelled' &&
+Number(order?.shippingPointsUsed || 0) > 0 &&
+!(order as any).shippingReleased
+) {
+
+
+const customerRef = doc(db, 'Customers', order.userId);
+
+await runTransaction(db, async (transaction) => {
+
+    const customerSnap = await transaction.get(customerRef);
+
+    if (!customerSnap.exists()) {
+        throw new Error('Customer not found');
+    }
+
+    const customerData = customerSnap.data();
+
+    const currentPending =
+        Number(customerData.pendingShippingBalance || 0);
+
+    const safePending = Math.max(
+        0,
+        currentPending -
+        Number(order.shippingPointsUsed || 0)
+    );
+
+    transaction.update(customerRef, {
+        pendingShippingBalance: safePending,
+    });
+
+    transaction.update(docRef, {
+        shippingReleased: true,
+    });
+});
+
+updates.shippingReleased = true;
+
+
+}
+
+
+    // =========================
+    // 📝 ACTIVITY LOG
+    // =========================
     await addDoc(collection(db, 'Activity'), {
         type: 'order_status_updated',
-        remarks: `Order status updated to ${status.toUpperCase()} ${note ? `(${note})` : ''}`,
+        remarks: `Order status updated to ${status.toUpperCase()} ${
+            note ? `(${note})` : ''
+        }`,
         status,
         customerName: currentOrder.shippingAddress.fullName,
         customerMobile: currentOrder.shippingAddress.mobile,
         createdAt: Timestamp.now(),
-        orderId: orderId,
-        demoStore: (currentOrder as any).demoStore || false
+        orderId,
+        demoStore: (currentOrder as any).demoStore || false,
     });
 
-    // OJIVA SMS for downstream status changes (in transit / delivered / cancelled).
-    // 'confirmed' already triggers the rewards SMS above, so skip it here.
-    const NOTIFY_STATUSES: Array<Order['status']> = ['in_transit', 'delivered', 'cancelled'];
+    // =========================
+    // 📩 SMS
+    // =========================
+    const NOTIFY_STATUSES: Array<Order['status']> = [
+        'in_transit',
+        'delivered',
+        'cancelled',
+    ];
+
     if (
         !(currentOrder as any).demoStore &&
         NOTIFY_STATUSES.includes(status) &&
@@ -783,12 +1106,15 @@ export const updateOrderStatus = async (orderId: string, status: Order['status']
         void notifyOrderStatusSms({
             phone: currentOrder.shippingAddress.mobile,
             customerName: currentOrder.shippingAddress.fullName,
-            orderId: orderId,
+            orderId,
             status,
             storeName: (currentOrder as any).storeName,
         });
     }
 
+    // =========================
+    // ✅ FINAL SAVE (VERY IMPORTANT)
+    // =========================
     await updateDoc(docRef, updates);
 };
 

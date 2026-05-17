@@ -127,6 +127,12 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
     return <div>No customer data available</div>;
   }
 
+  //shipping update
+
+
+
+ 
+
   // Format member since date
   function formatCreatedAt(createdAt: unknown): string {
     if (createdAt instanceof Timestamp) {
@@ -196,23 +202,24 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
 
   const stats = [
     {
-      title: 'Lifetime Surabhi Coins',
-      value: `₹${(customerData.surbhiTotal || 0).toFixed(2)}`,
-      description: 'Cumulative Surabhi Coins',
+  title: 'Lifetime Surabhi Value',
+  value: `₹${(customerData.surbhiTotal || 0).toFixed(2)}`,
+  description: 'Total coins earned (₹ value)',
       icon: Wallet,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
       borderColor: 'border-purple-200',
     },
     {
-      title: 'Surabhi  Balance',
-      value: `₹${(customerData.surabhiBalance || 0).toFixed(2)}`,
+       title: 'Surabhi Balance',
+  value: `₹${(customerData.surabhiBalance || 0).toFixed(2)}`,
       description: 'Your available balance',
       icon: TrendingUp,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
       borderColor: 'border-blue-200',
     },
+
     // {
     //   title: 'Referral Coins Earned',
     //   value: `₹${(customerData.surabhiReferral || 0).toFixed(2)}`,
@@ -241,14 +248,15 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
     //   borderColor: 'border-green-200',
     // },
     {
-      title: 'Shipping Credit Balance',
-      value: `₹${(customerData.shippingBalance || 0).toFixed(2)}`,
-      description: 'Available shipping credits',
-      icon: Truck,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      borderColor: 'border-purple-200',
-    },
+title: 'Shipping Credit Balance',
+value: `₹${(customerData.shippingBalance || 0).toFixed(2)}`,
+description: 'Available shipping credits',
+icon: Truck,
+color: 'text-purple-600',
+bgColor: 'bg-purple-50',
+borderColor: 'border-purple-200',
+},
+
     // {
     //   title: 'Lifetime Shipping Credits',
     //   value: `₹${(customerData.shippingTotal || 0).toFixed(2)}`,

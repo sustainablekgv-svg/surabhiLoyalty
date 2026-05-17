@@ -14,8 +14,14 @@ import { getUserName } from '@/lib/userUtils';
 import { notifyCoinsRedeemedSms, notifyOrderPlacedSms } from '@/services/ojivaSmsNotification';
 import { calculateShippingCost, getWeightBracketLabel, INDIAN_STATES, parseWeightToKg } from '@/services/shipping';
 import { Address, CartItem } from '@/types/shop';
-import { addDoc, collection, getDocs, Timestamp } from 'firebase/firestore';
-import { Check, Copy, MessageSquare, Phone, ShoppingCart } from 'lucide-react';
+import {
+  addDoc,
+  collection,
+  doc,
+  getDocs,
+  onSnapshot,
+  Timestamp
+} from 'firebase/firestore';import { Check, Copy, MessageSquare, Phone, ShoppingCart } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -56,10 +62,42 @@ const CheckoutPage = () => {
   const [brands, setBrands] = useState<any[]>([]);
   const [shippingConfig, setShippingConfig] = useState<any>(null);
   const [originsList, setOriginsList] = useState<any[]>([]);
-  const [surabhiCoinsToUse, setSurabhiCoinsToUse] = useState<number>(0);
   const [isCointEligible, setIsCoinEligible] = useState(true);
   const [customerData, setCustomerData] = useState<any>(null);
 
+
+
+
+const actualBalance = useMemo(() => {
+  return Number(customerData?.surabhiBalance || 0);
+}, [customerData]);
+
+const lockedCoins = useMemo(() => {
+  return Number(customerData?.pendingSurabhiCoins || 0);
+}, [customerData]);
+
+
+
+const availableBalance = useMemo(() => {
+  return Math.max(0, actualBalance - lockedCoins);
+}, [actualBalance, lockedCoins]);
+
+//shipping update
+
+const actualShippingBalance = useMemo(() => {
+return Number(customerData?.shippingBalance || 0);
+}, [customerData]);
+
+const lockedShippingBalance = useMemo(() => {
+return Number(customerData?.pendingShippingBalance || 0);
+}, [customerData]);
+
+const availableShippingBalance = useMemo(() => {
+    const actual = Number(actualShippingBalance || 0);
+    const pending = Number(lockedShippingBalance || 0);
+
+return Math.max(0, actual - pending);
+}, [actualShippingBalance, lockedShippingBalance]);
 
 
   useEffect(() => {
@@ -76,10 +114,6 @@ const CheckoutPage = () => {
     };
     fetchConfigAndOrigins();
     
-    // Set max available shipping credits
-    if (user && 'shippingBalance' in user) {
-        // setMaxShippingCreditsAvailable removed
-    }
   }, [user]);
 
   useEffect(() => {
@@ -95,32 +129,43 @@ const CheckoutPage = () => {
   useEffect(() => {
   if (!user?.id) return;
 
-  const fetchCustomer = async () => {
-    const { doc, getDoc } = await import('firebase/firestore');
-    const docRef = doc(db, 'Customers', user.id);
-    const snap = await getDoc(docRef);
+  let unsubscribe: any;
 
-    if (snap.exists()) {
-        console.log("🔥 FIRESTORE DATA:", snap.data());
-      setCustomerData(snap.data());
-    }
+  const setupRealtimeCustomer = async () => {
+    const { doc, onSnapshot } = await import('firebase/firestore');
+
+    const docRef = doc(db, 'Customers', user.id);
+
+    unsubscribe = onSnapshot(docRef, (snap) => {
+      if (snap.exists()) {
+        console.log("🔥 LIVE FIRESTORE DATA:", snap.data());
+
+        setCustomerData(snap.data());
+      }
+    });
   };
 
-  fetchCustomer();
-  
+  setupRealtimeCustomer();
+
   const fetchAddresses = async () => {
     try {
-        const addrs = await getAddresses(user.id);
-        if (addrs && addrs.length > 0) {
-            setSavedAddresses(addrs);
-            setSelectedAddressIndex(0);
-            setFormData(addrs[0]);
-        }
+      const addrs = await getAddresses(user.id);
+
+      if (addrs && addrs.length > 0) {
+        setSavedAddresses(addrs);
+        setSelectedAddressIndex(0);
+        setFormData(addrs[0]);
+      }
     } catch (e) {
-        console.error(e);
+      console.error(e);
     }
   };
+
   fetchAddresses();
+
+  return () => {
+    if (unsubscribe) unsubscribe();
+  };
 
 }, [user]);
 
@@ -222,22 +267,27 @@ const CheckoutPage = () => {
   // SHIPPING CREDIT/DUE LOGIC:
   // 1. Positive balance (Credit): used to offset delivery fee, but CANNOT exceed the delivery fee itself.
   // 2. Negative balance (Due): must be paid back in full, added to the total delivery charges.
-  const maxShippingCreditsAvailable = useMemo(() => {
-    const balance = (user as any)?.shippingBalance || 0;
-    return balance > 0 ? balance : 0;
-  }, [user]);
 
-  const shippingCreditsUsed = useMemo(() => {
-    const balance = (user as any)?.shippingBalance || 0;
+
+ const shippingCreditsUsed = useMemo(() => {
+    const balance = availableShippingBalance || 0;
+
+    // usable positive credits only
     if (balance > 0) {
-        // AUTOMATIC CREDIT: Use min(balance, shippingCost)
         return Math.min(balance, shippingCost);
-    } else if (balance < 0) {
-        // DUE CASE: Full debt is added to the delivery charges
-        return balance; 
     }
+
+    // negative balance is NOT usable credit
     return 0;
-  }, [user, shippingCost]);
+
+}, [availableShippingBalance, shippingCost]);
+
+
+const shippingDueAmount = useMemo(() => {
+    return availableShippingBalance < 0
+        ? Math.abs(availableShippingBalance)
+        : 0;
+}, [availableShippingBalance]);
 
   
   // Calculate total Base Value (Excl Tax) because prices are inclusive
@@ -262,29 +312,14 @@ const CheckoutPage = () => {
   // Calculate total SPV
   const totalSpv = cart.reduce((sum, item) => sum + ((item.spv || 0) * item.quantity), 0);
 
-  // Automatic Coins Redemption Effect
-  useEffect(() => {
-  if (customerData && isCointEligible) {
-    const balance = customerData.surabhiBalance || 0;
-    
-    // Redeem max up to the Base Taxable Value (Excluding Tax)
-    const maxRedeemable = Math.min(balance, totalOriginalBase);
-
-    setSurabhiCoinsToUse(maxRedeemable);
-  } else {
-    setSurabhiCoinsToUse(0);
-  }
-}, [customerData, totalOriginalBase, isCointEligible]);
 
   // HYPER-TRANSPARENT DRILL DOWN LOGIC
   const { adjustedCart, redeemedCoinsTotal, totalAdjustedTax, totalAdjustedBase } = useMemo(() => {
     
     // Cap totalCoins to the totalOriginalBase
-    const totalCoins = Math.min(
-      surabhiCoinsToUse,
-      totalOriginalBase,
-      Number(customerData?.surabhiBalance || 0)
-    );
+    const totalCoins = isCointEligible
+  ? Math.min(availableBalance, totalOriginalBase)
+  : 0;
     
     // First, map items with their shipping contribution
     let initialMapped = cart.map(item => {
@@ -367,7 +402,7 @@ const CheckoutPage = () => {
         totalAdjustedTax: totalTax,
         totalAdjustedBase: calculatedAdjustedBase
     };
-  }, [cart, surabhiCoinsToUse, totalOriginalBase, user, totalGst, productsByGroup, customerData]);
+  },  [cart, totalOriginalBase, user, totalGst, productsByGroup, customerData, availableBalance, isCointEligible]);
   
   const itemsTotalInclTax = useMemo(() => {
     return subtotal; // subtotal is already inclusive of tax
@@ -378,8 +413,16 @@ const CheckoutPage = () => {
   }, [adjustedCart]);
 
   const netShippingCharges = useMemo(() => {
-    return shippingCost - shippingCreditsUsed;
-  }, [shippingCost, shippingCreditsUsed]);
+    return (
+        shippingCost
+        - shippingCreditsUsed
+        + shippingDueAmount
+    );
+}, [
+    shippingCost,
+    shippingCreditsUsed,
+    shippingDueAmount
+]);
 
   const totalPayableAmount = useMemo(() => {
     return itemsTotalAfterCoins + netShippingCharges;
@@ -506,6 +549,15 @@ const CheckoutPage = () => {
     }
 
     setLoading(true);
+
+    const finalShippingCreditsUsed =
+    availableShippingBalance > 0
+        ? Math.min(
+              availableShippingBalance,
+              shippingCost
+          )
+        : 0;
+
     try {
       if (paymentMethod === 'online') {
         if (totalPayableAmount < 1) {
@@ -531,6 +583,7 @@ const CheckoutPage = () => {
       if (paymentMethod === 'cod') {
         // COD Flow
         const orderData = {
+          userId: user?.id,   //updated
           items: adjustedCart,
           totalAmount: totalPayableAmount,
           totalTax: totalAdjustedTax,
@@ -538,8 +591,7 @@ const CheckoutPage = () => {
           paymentMethod: 'cod',
           paymentStatus: 'pending',
           shippingPointsEarned: totalShippingCreditsEarned,
-          shippingPointsUsed: shippingCreditsUsed,
-          shippingCreditsDebited: shippingCreditsUsed > 0 ? shippingCreditsUsed : 0,
+          shippingPointsUsed: finalShippingCreditsUsed,
           netShippingCharges: netShippingCharges,
           surabhiCoinsUsed: redeemedCoinsTotal,
           surabhiCoinsEarned: surabhiCoinsEarned,
@@ -573,15 +625,15 @@ const CheckoutPage = () => {
             storeName: currentStore?.storeName || 'Online',
           });
 
-          if (redeemedCoinsTotal > 0 || shippingCreditsUsed > 0) {
-            const customerSurabhiBalance = Number((user as any)?.surabhiBalance || 0);
-            void notifyCoinsRedeemedSms({
+          if (redeemedCoinsTotal > 0 || finalShippingCreditsUsed > 0){
+const customerSurabhiBalance =
+    Number(customerData?.surabhiBalance || 0);            void notifyCoinsRedeemedSms({
               phone: formData.mobile,
               customerName: formData.fullName,
               orderOrInvoiceId: codOrderId,
               amount: orderData.totalAmount,
               surabhiCoinsUsed: redeemedCoinsTotal,
-              shippingCreditsUsed: shippingCreditsUsed,
+              shippingCreditsUsed: finalShippingCreditsUsed,
               balance: customerSurabhiBalance,
             });
           }
@@ -629,16 +681,15 @@ const CheckoutPage = () => {
         let firebaseOrderId: string | null = null;
         try {
             firebaseOrderId = await createOrder({
+                userId: user?.id,   //updated
                 items: adjustedCart,
                 totalAmount: totalPayableAmount,
                 totalTax: totalAdjustedTax,
                 shippingAddress: formData,
                 paymentMethod: 'online',
                 paymentStatus: 'pending',
-                status: 'pending',
                 shippingPointsEarned: totalShippingCreditsEarned,
-                shippingPointsUsed: shippingCreditsUsed,
-                shippingCreditsDebited: shippingCreditsUsed > 0 ? shippingCreditsUsed : 0,
+                shippingPointsUsed: finalShippingCreditsUsed,
                 netShippingCharges: netShippingCharges,
                 surabhiCoinsUsed: redeemedCoinsTotal,
                 surabhiCoinsEarned: surabhiCoinsEarned,
@@ -709,15 +760,15 @@ const CheckoutPage = () => {
                     storeName: currentStore?.storeName || 'Online',
                   });
 
-                  if (redeemedCoinsTotal > 0 || shippingCreditsUsed > 0) {
-                    const customerSurabhiBalance = Number((user as any)?.surabhiBalance || 0);
-                    void notifyCoinsRedeemedSms({
+                 if (redeemedCoinsTotal > 0 || finalShippingCreditsUsed > 0) {
+const customerSurabhiBalance =
+    Number(customerData?.surabhiBalance || 0);                    void notifyCoinsRedeemedSms({
                       phone: formData.mobile,
                       customerName: formData.fullName,
                       orderOrInvoiceId: firebaseOrderId,
                       amount: totalPayableAmount,
                       surabhiCoinsUsed: redeemedCoinsTotal,
-                      shippingCreditsUsed: shippingCreditsUsed,
+                      shippingCreditsUsed: finalShippingCreditsUsed,
                       balance: customerSurabhiBalance,
                     });
                   }
@@ -1024,7 +1075,7 @@ const CheckoutPage = () => {
                                                  <Button 
                                                     variant="secondary" 
                                                     size="lg" 
-                                                    onClick={() => handleCopy('sustainablekgv@okicici', 'UPI ID')}
+                                                    onClick={() => handleCopy('sustainablekgv@cnrb', 'UPI ID')}
                                                     className={`h-14 px-8 w-full sm:w-auto font-black text-lg rounded-xl shadow-lg flex items-center justify-center gap-3 transition-all ${copiedField === 'UPI ID' ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-white text-slate-900 hover:bg-slate-100'}`}
                                                  >
                                                     {copiedField === 'UPI ID' ? (
@@ -1224,9 +1275,21 @@ const CheckoutPage = () => {
     <span className="text-sm font-bold text-slate-800">
       Surabhi Coins
     </span>
-    <span className="text-xs font-bold text-slate-500">
-      Balance: ₹{(customerData?.surabhiBalance || 0).toFixed(2)}
-    </span>
+    <div className="text-right">
+  <div className="text-xs font-bold text-slate-500">
+    Total: ₹{actualBalance.toFixed(2)}
+  </div>
+
+  {lockedCoins > 0 && (
+    <div className="text-[10px] font-medium text-amber-600">
+      Locked: ₹{lockedCoins.toFixed(2)}
+    </div>
+  )}
+
+  <div className="text-[10px] font-medium text-green-600">
+    Available: ₹{availableBalance.toFixed(2)}
+  </div>
+</div>
   </div>
 
   {isCointEligible ? (
@@ -1301,17 +1364,57 @@ const CheckoutPage = () => {
                         ))}
                     </div>
 
-                    {/* <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-lg">
-                        <span className="text-sm font-medium text-slate-700">Shipping Balance Available</span>
-                        <span className={`font-bold ${(user as any)?.shippingBalance > 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                            ₹{((user as any)?.shippingBalance || 0).toFixed(2)}
-                        </span>
-                    </div> */}
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+  <div className="flex justify-between items-start">
+    
+    <div>
+      <h3 className="text-lg font-semibold text-slate-800">
+        Shipping Credits
+      </h3>
+
+      <p className="text-sm text-slate-600 mt-1">
+        Credits Applied
+      </p>
+    </div>
+
+    <div className="text-right text-sm">
+      <div className="font-semibold text-slate-700">
+        Total: ₹{actualShippingBalance.toFixed(2)}
+      </div>
+
+      <div className="text-amber-600 font-medium">
+        Locked: ₹{lockedShippingBalance.toFixed(2)}
+      </div>
+
+      <div className="text-green-600 font-semibold">
+        Available: ₹{availableShippingBalance.toFixed(2)}
+      </div>
+    </div>
+  </div>
+
+  <div className="mt-4 text-right">
+    <span className="text-2xl font-bold text-blue-700">
+      -₹{shippingCreditsUsed.toFixed(2)}
+    </span>
+  </div>
+</div>
 
                     <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
                         <span className="text-sm font-medium text-indigo-900">Total Estimated Delivery Charges</span>
                         <span className="font-bold text-indigo-600">₹{shippingCost.toFixed(2)}</span>
                     </div>
+
+                    {shippingDueAmount > 0 && (
+    <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+        <span className="text-sm font-medium text-red-900">
+            Previous Shipping Dues Added
+        </span>
+
+        <span className="font-bold text-red-600">
+            +₹{shippingDueAmount.toFixed(2)}
+        </span>
+    </div>
+)}
 
                         <div className="mt-2 p-3 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg">
   <p className="text-xs text-amber-800 leading-relaxed">
@@ -1338,16 +1441,17 @@ const CheckoutPage = () => {
                         </div>
                     )} */}
 
-                    {shippingCreditsUsed !== 0 && (
-                        <div className={`flex items-center justify-between p-3 rounded-lg ${shippingCreditsUsed > 0 ? 'bg-blue-50' : 'bg-red-50'}`}>
-                            <span className={`text-sm font-black ${shippingCreditsUsed > 0 ? 'text-blue-900' : 'text-red-900'}`}>
-                                {shippingCreditsUsed > 0 ? 'Shipping Credits Applied (Capped at Fee)' : 'Previous Shipping Dues (Added Total)'}
-                            </span>
-                            <span className={`font-bold ${shippingCreditsUsed > 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                                {shippingCreditsUsed > 0 ? '-' : '+'}₹{Math.abs(shippingCreditsUsed).toFixed(2)}
-                            </span>
-                        </div>
-                    )}
+                    {shippingCreditsUsed > 0 && (
+    <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50">
+        <span className="text-sm font-black text-blue-900">
+            Shipping Credits Applied (Capped at Fee)
+        </span>
+
+        <span className="font-bold text-blue-600">
+            -₹{shippingCreditsUsed.toFixed(2)}
+        </span>
+    </div>
+)}
 
 
                     <div className="pt-4 border-t border-slate-200">

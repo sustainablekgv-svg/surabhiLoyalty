@@ -1,6 +1,4 @@
 import { useAuth } from '@/hooks/auth-context';
-import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 
 export const useCoinsPopup = () => {
@@ -10,59 +8,28 @@ export const useCoinsPopup = () => {
   const [customerData, setCustomerData] = useState<any>(null);
 
   useEffect(() => {
-  // console.log('HOOK START');
+    if (!isInitialized || !user) return;
 
-  if (!isInitialized || !user) {
-    // console.log('Not initialized or no user');
-    return;
-  }
+    if (user.role !== 'customer') return;
 
-  // console.log('USER:', user);
+    const alreadyShown = sessionStorage.getItem('coinsPopupShown');
 
-  if (user.role !== 'customer') {
-    // console.log('Not a customer');
-    return;
-  }
+    if (alreadyShown) return;
 
-  const alreadyShown = sessionStorage.getItem('coinsPopupShown');
-  // console.log('alreadyShown:', alreadyShown);
+    const spent = Number(user.cumTotal || 0);
+    const target = Number(user.cummulativeTarget || 0);
 
-  if (alreadyShown) return;
+    if (spent < target) {
+      setCustomerData(user);
 
-  const fetchCustomer = async () => {
-    try {
-      // console.log('Fetching customer for:', user.customerMobile);
-
-      const ref = doc(db, 'Customers', user.id);
-      const snap = await getDoc(ref);
-
-      // console.log('Doc exists:', snap.exists());
-
-      if (!snap.exists()) return;
-
-      const data = snap.data();
-      // console.log('Customer Data:', data);
-
-      const spent = data?.cumTotal || 0;
-      const target = data?.cummulativeTarget || 0;
-
-      // console.log('FINAL CHECK:', { spent, target });
-
-      if (spent < target) {
-        // console.log('SHOWING POPUP ');
-        setCustomerData(data);
+      // Small delay ensures popup appears after auth hydration/navigation
+      setTimeout(() => {
         setShowPopup(true);
-        sessionStorage.setItem('coinsPopupShown', 'true');
-      } else {
-        // console.log('Condition failed ');
-      }
-    } catch (err) {
-      console.error('Popup error:', err);
-    }
-  };
+      }, 500);
 
-  fetchCustomer();
-}, [user, isInitialized]);
+      sessionStorage.setItem('coinsPopupShown', 'true');
+    }
+  }, [user, isInitialized]);
 
   return {
     showPopup,

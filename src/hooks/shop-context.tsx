@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/auth-context';
 import { useCart } from '@/hooks/useCart';
 import { useWishlist } from '@/hooks/useWishlist';
 import { db } from '@/lib/firebase';
+import { createOrder as createOrderService } from '@/services/shop';
 import { CartItem, Order, Product } from '@/types/shop';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import React, { createContext, useContext } from 'react';
@@ -81,7 +82,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
   };
 
-  const createOrder = async (orderData: Partial<Order>) => {
+   /* const createOrder = async (orderData: Partial<Order>) => {
     if (!user || (!user.id && !(user as any).uid)) { 
          toast.error("You must be logged in to place an order.");
          return;
@@ -101,13 +102,48 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
             updatedAt: serverTimestamp(),
             status: 'pending' // Or 'placed'
         });
+
+        //updated
+
+        // ✅ ADD THIS BLOCK AFTER ORDER CREATION
+if (docRef?.id && orderData.surabhiCoinsUsed && orderData.surabhiCoinsUsed > 0) {
+  const { doc, updateDoc, increment } = await import('firebase/firestore');
+  const customerRef = doc(db, 'Customers', userId);
+
+  await updateDoc(customerRef, {
+    pendingSurabhiCoins: increment(orderData.surabhiCoinsUsed)
+  });
+}
         
+
+// ✅ LOCK SHIPPING BALANCE
+if (
+  docRef?.id &&
+  orderData.shippingPointsUsed &&
+  orderData.shippingPointsUsed > 0
+) {
+  const { doc, updateDoc, increment } =
+    await import('firebase/firestore');
+
+  const customerRef = doc(db, 'Customers', userId);
+
+  await updateDoc(customerRef, {
+    pendingShippingBalance: increment(
+      orderData.shippingPointsUsed
+    ),
+  });
+}
+
         return docRef.id;
     } catch (e) {
         console.error("Order creation failed", e);
         throw e;
     }
-  };
+  };  */
+
+  const createOrder = async (orderData: Partial<Order>) => {
+  return await createOrderService(orderData as any);
+};
 
   const handleAddToCart = async (product: Product, quantity?: number) => {
     const success = await addToCart(product, quantity);

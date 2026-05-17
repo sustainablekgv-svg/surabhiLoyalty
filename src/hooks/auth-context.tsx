@@ -186,43 +186,67 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [initializeAuth, isInitialized]);
 
   // Real-time listener for user data
-  useEffect(() => {
-    let unsubscribeDoc: (() => void) | undefined;
+useEffect(() => {
 
-    if (user && isInitialized) {
-      const collectionName = user.role === 'customer' ? 'customers' : 'staff';
-      const userDocId = user.role === 'customer' 
-        ? (user as CustomerType).customerMobile 
-        : (user as StaffType).staffMobile;
+  let unsubscribeDoc: (() => void) | undefined;
 
-      if (userDocId) {
-        unsubscribeDoc = onSnapshot(doc(db, collectionName, userDocId), (snapshot) => {
+  if (user && isInitialized) {
+
+    const collectionName =
+      user.role === 'customer'
+        ? 'Customers'
+        : 'staff';
+
+    const userDocId = user.id;
+
+    if (userDocId) {
+
+      unsubscribeDoc = onSnapshot(
+        doc(db, collectionName, userDocId),
+
+        (snapshot) => {
+
           if (snapshot.exists()) {
-            const updatedData = { ...snapshot.data(), id: snapshot.id, role: user.role } as User;
-            
-            // Only update if data actually changed significantly (to avoid unnecessary re-renders)
-            // But for simple objects, we can just update.
-            // Also update localStorage so it persists on refresh
+
+            const updatedData = {
+              ...snapshot.data(),
+              id: snapshot.id,
+              role: user.role,
+            } as User;
+
             setUser(prevUser => {
-              if (JSON.stringify(prevUser) !== JSON.stringify(updatedData)) {
+
+              if (
+                JSON.stringify(prevUser) !==
+                JSON.stringify(updatedData)
+              ) {
+
                 storageUtils.setUser(updatedData);
+
                 return updatedData;
               }
+
               return prevUser;
             });
           }
-        }, (error) => {
-          console.error(`Error in user real-time listener:`, error);
-        });
-      }
+        },
+
+        (error) => {
+          console.error('Realtime listener error:', error);
+        }
+      );
+    }
+  }
+
+  return () => {
+
+    if (unsubscribeDoc) {
+      unsubscribeDoc();
     }
 
-    return () => {
-      if (unsubscribeDoc) {
-        unsubscribeDoc();
-      }
-    };
-  }, [user?.role, (user as CustomerType)?.customerMobile, (user as StaffType)?.staffMobile, isInitialized]);
+  };
+
+}, [user?.id, user?.role, isInitialized]);
 
   const updateActivity = useCallback(() => {
     if (user) {
