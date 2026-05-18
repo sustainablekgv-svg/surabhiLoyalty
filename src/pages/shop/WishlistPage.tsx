@@ -59,7 +59,8 @@ const WishlistPage = () => {
                             price: item.originalPrice || item.price, // MRP
                             sellingPrice: item.price, // Selling Price
                             createdAt: new Date(),
-                            updatedAt: new Date()
+                            updatedAt: new Date(),
+                            slug: ''
                         });
                      }
                 }
