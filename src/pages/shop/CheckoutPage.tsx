@@ -1545,10 +1545,7 @@ const customerSurabhiBalance =
                                  <span className="text-slate-600">Seva Pool ({currentStore?.sevaCommission || 0}%)</span>
                                  <span className="text-slate-900">₹{sevaPoolEarned.toFixed(2)}</span>
                              </div>
-                             <div className="flex justify-between text-sm font-black">
-                                 <span className="text-slate-600">Referral Bonus ({currentStore?.referralCommission || 0}%)</span>
-                                 <span className="text-slate-900">₹{referralBonusEarned.toFixed(2)}</span>
-                             </div>
+                             
                            
                         </div>
                     </div>
@@ -1804,10 +1801,7 @@ const customerSurabhiBalance =
                               <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Seva Pool ({currentStore?.sevaCommission || 0}%)</span>
                               <span className="text-sm font-black text-slate-900">₹{sevaPoolEarned.toFixed(2)}</span>
                           </div>
-                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col gap-1">
-                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Referral Bonus ({currentStore?.referralCommission || 0}%)</span>
-                              <span className="text-sm font-black text-slate-900">₹{referralBonusEarned.toFixed(2)}</span>
-                          </div>
+    
                       </div>
                   </div>
                 </div>
@@ -2083,10 +2077,7 @@ const customerSurabhiBalance =
                               <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Seva ({currentStore?.sevaCommission || 0}%)</span>
                               <span className="text-xs font-black text-slate-900">₹{sevaPoolEarned.toFixed(2)}</span>
                           </div>
-                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col gap-1">
-                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Referral ({currentStore?.referralCommission || 0}%)</span>
-                              <span className="text-xs font-black text-slate-900">₹{referralBonusEarned.toFixed(2)}</span>
-                          </div>
+          
                       </div>
                   </div>
                </CardContent>
