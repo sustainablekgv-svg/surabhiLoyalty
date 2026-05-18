@@ -698,8 +698,8 @@ const ShopPage = () => {
                                 <ShoppingBag className="h-6 w-6 text-primary" /> Shop by Category
                             </h2>
                             <HorizontalScroll 
-                                itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[calc(25%-9px)] sm:auto-cols-[calc(25%-18px)] pb-4"
-                            >
+   itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[32%] sm:auto-cols-[31%] pb-4"
+>
                                 {categoriesList.map(cat => (
                                     <div 
                                         key={cat.id} 
@@ -716,7 +716,7 @@ const ShopPage = () => {
                                                 <ShoppingBag className="h-6 w-6 text-gray-400" />
                                             )}
                                         </div>
-                                        <h3 className="font-semibold text-gray-800 text-[10px] sm:text-sm line-clamp-1">{cat.name}</h3>
+                                        <h3 className="font-semibold text-gray-800 text-[10px] sm:text-sm line-clamp-2">{cat.name}</h3>
                                     </div>
                                 ))}
                             </HorizontalScroll>
@@ -731,8 +731,8 @@ const ShopPage = () => {
                             </div>
 
                             <HorizontalScroll 
-                                itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[calc(25%-9px)] sm:auto-cols-[calc(25%-18px)] pb-4"
-                            >
+    itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[32%] sm:auto-cols-[31%] pb-4"
+>
                                 {displayedLandingBrands.map(brand => (
                                     <div 
                                         key={brand.id} 
@@ -749,7 +749,7 @@ const ShopPage = () => {
                                                 <span className="text-xl font-bold text-gray-400">{brand.name[0]}</span>
                                             )}
                                         </div>
-                                        <h3 className="font-semibold text-gray-800 text-[9px] sm:text-xs line-clamp-1 px-2">{brand.name}</h3>
+                                        <h3 className="font-semibold text-gray-800 text-[9px] sm:text-xs line-clamp-2 px-2">{brand.name}</h3>
                                     </div>
                                 ))}
                             </HorizontalScroll>
