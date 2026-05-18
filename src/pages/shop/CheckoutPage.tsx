@@ -1418,6 +1418,11 @@ const customerSurabhiBalance =
                         ))}
                     </div>
 
+                    <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
+                        <span className="text-sm font-medium text-indigo-900">Total Estimated Delivery Charges</span>
+                        <span className="font-bold text-indigo-600">₹{shippingCost.toFixed(2)}</span>
+                    </div>
+
                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
   <div className="flex justify-between items-start">
     
@@ -1453,10 +1458,17 @@ const customerSurabhiBalance =
   </div>
 </div>
 
-                    <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
-                        <span className="text-sm font-medium text-indigo-900">Total Estimated Delivery Charges</span>
-                        <span className="font-bold text-indigo-600">₹{shippingCost.toFixed(2)}</span>
-                    </div>
+                    
+
+                    <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+    <span className="text-sm font-medium text-green-900">
+        Total Estimated Payable Delivery Charges
+    </span>
+
+    <span className="font-bold text-green-600">
+        ₹{netShippingCharges.toFixed(2)}
+    </span>
+</div>
 
                     {shippingDueAmount > 0 && (
     <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
@@ -1496,17 +1508,7 @@ const customerSurabhiBalance =
                         </div>
                     )} */}
 
-                    {shippingCreditsUsed > 0 && (
-    <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50">
-        <span className="text-sm font-black text-blue-900">
-            Shipping Credits Applied (Capped at Fee)
-        </span>
-
-        <span className="font-bold text-blue-600">
-            -₹{shippingCreditsUsed.toFixed(2)}
-        </span>
-    </div>
-)}
+                    
 
 
                     <div className="pt-4 border-t border-slate-200">
@@ -1695,10 +1697,27 @@ const customerSurabhiBalance =
                   </div>
 
                   <div className={`p-3 rounded-lg border ${isCointEligible ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-[11px] font-bold text-slate-800">Surabhi Coins</span>
-                      <span className="text-[9px] font-bold text-slate-500">Bal: ₹{(customerData?.surabhiBalance || 0).toFixed(2)}</span>
-                    </div>
+  <div className="flex flex-col gap-2 mb-2">
+    
+    <span className="text-[11px] font-bold text-slate-800">
+      Surabhi Coins
+    </span>
+
+    <div className="text-[10px]">
+      <div className="font-semibold text-slate-700">
+        Total: ₹{actualBalance.toFixed(2)}
+      </div>
+
+      <div className="text-amber-600 font-medium">
+        Locked: ₹{lockedCoins.toFixed(2)}
+      </div>
+
+      <div className="text-green-600 font-semibold">
+        Available: ₹{availableBalance.toFixed(2)}
+      </div>
+    </div>
+
+  </div>
                     {isCointEligible ? (
                       <div className="flex justify-between items-center">
                         <span className="text-[11px] text-green-700 font-medium">Applied</span>
@@ -1750,22 +1769,67 @@ const customerSurabhiBalance =
                       ))}
                   </div>
 
-                  <div className="flex justify-between items-center p-2 bg-indigo-50 rounded-lg border border-indigo-100">
-                    <span className="text-[11px] font-medium text-indigo-900">Est. Delivery Charges</span>
-                    <span className="font-bold text-xs text-indigo-600">₹{shippingCost.toFixed(2)}</span>
-                  </div>
+                 <div className="flex justify-between items-center p-2 bg-indigo-50 rounded-lg border border-indigo-100">
+  <span className="text-[11px] font-medium text-indigo-900">
+    Est. Delivery Charges
+  </span>
 
-                  {shippingCreditsUsed !== 0 && (
-                    <div className={`flex justify-between items-center p-2 rounded-lg ${shippingCreditsUsed > 0 ? 'bg-blue-50 border border-blue-100' : 'bg-red-50 border border-red-100'}`}>
-                      <span className={`text-[10px] font-black ${shippingCreditsUsed > 0 ? 'text-blue-900' : 'text-red-900'}`}>
-                        {shippingCreditsUsed > 0 ? 'Shipping Credits' : 'Previous Dues'}
-                      </span>
-                      <span className={`font-bold text-xs ${shippingCreditsUsed > 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                        {shippingCreditsUsed > 0 ? '-' : '+'}₹{Math.abs(shippingCreditsUsed).toFixed(2)}
-                      </span>
-                    </div>
-                  )}
+  <span className="font-bold text-xs text-indigo-600">
+    ₹{shippingCost.toFixed(2)}
+  </span>
+</div>
 
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl">
+  
+  <div className="flex flex-col gap-2">
+    
+    <div>
+      <h3 className="text-sm font-semibold text-slate-800">
+        Shipping Credits
+      </h3>
+
+      <p className="text-[10px] text-slate-600 mt-1">
+        Credits Applied
+      </p>
+    </div>
+
+    
+
+    <div className="text-[10px]">
+      <div className="font-semibold text-slate-700">
+        Total: ₹{actualShippingBalance.toFixed(2)}
+      </div>
+
+      <div className="text-amber-600 font-medium">
+        Locked: ₹{lockedShippingBalance.toFixed(2)}
+      </div>
+
+      <div className="text-green-600 font-semibold">
+        Available: ₹{availableShippingBalance.toFixed(2)}
+      </div>
+    </div>
+
+  </div>
+
+  <div className="mt-3 text-right">
+    <span className="text-xs font-bold text-blue-700">
+      -₹{shippingCreditsUsed.toFixed(2)}
+    </span>
+
+  </div>
+</div>
+
+<div className="flex justify-between items-center p-2 bg-green-50 rounded-lg border border-green-200">
+
+  <span className="text-[11px] font-medium text-green-900">
+    Total Estimated Payable Delivery Charges
+  </span>
+
+  <span className="font-bold text-xs text-green-600">
+    ₹{netShippingCharges.toFixed(2)}
+  </span>
+
+</div>
                   <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg">
                     <p className="text-[9px] text-amber-800 leading-tight">Delivery estimates. Final based on actual weight after packing.</p>
                   </div>
@@ -2035,16 +2099,31 @@ const customerSurabhiBalance =
                     <span className="font-bold text-xs text-indigo-600">₹{shippingCost.toFixed(2)}</span>
                   </div>
 
-                  {shippingCreditsUsed !== 0 && (
-                    <div className={`flex justify-between items-center p-2 rounded-lg ${shippingCreditsUsed > 0 ? 'bg-blue-50 border border-blue-100' : 'bg-red-50 border border-red-100'}`}>
-                      <span className={`text-[10px] font-black ${shippingCreditsUsed > 0 ? 'text-blue-900' : 'text-red-900'}`}>
-                        {shippingCreditsUsed > 0 ? 'Shipping Credits' : 'Previous Dues'}
-                      </span>
-                      <span className={`font-bold text-xs ${shippingCreditsUsed > 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                        {shippingCreditsUsed > 0 ? '-' : '+'}₹{Math.abs(shippingCreditsUsed).toFixed(2)}
-                      </span>
-                    </div>
-                  )}
+                 
+
+                  <div className="flex justify-between items-center p-3 bg-blue-50 border border-blue-200 rounded-xl">
+
+  <span className="text-[11px] font-medium text-blue-900">
+    Shipping Credits Applied
+  </span>
+
+  <span className="text-xs font-bold text-blue-700">
+    -₹{shippingCreditsUsed.toFixed(2)}
+  </span>
+
+</div>
+
+<div className="flex justify-between items-center p-2 bg-green-50 rounded-lg border border-green-200">
+
+  <span className="text-[11px] font-medium text-green-900">
+    Total Estimated Payable Delivery Charges
+  </span>
+
+  <span className="font-bold text-xs text-green-600">
+    ₹{netShippingCharges.toFixed(2)}
+  </span>
+
+</div>
 
                   <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg">
                     <p className="text-[9px] text-amber-800 leading-tight italic">Delivery estimates. Final based on actual weight after packing. Any difference will be adjusted in your shipping wallet.</p>
