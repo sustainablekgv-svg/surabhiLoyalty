@@ -75,34 +75,7 @@ export const encryptText = (text: string): string => {
   }
 };
 
-/**
- * Decrypts an encrypted text string
- * @param encryptedText - The encrypted text to decrypt
- * @returns The decrypted plain text string
- */
-export const decryptText = (encryptedText: string): string => {
-  if (!encryptedText || typeof encryptedText !== 'string') {
-    throw new Error('Invalid input: encryptedText must be a non-empty string');
-  }
-
-  try {
-    const decrypted = CryptoJS.AES.decrypt(encryptedText, SECRET_KEY, {
-      mode: CryptoJS.mode.CBC,
-      padding: CryptoJS.pad.Pkcs7,
-    });
-
-    const plainText = decrypted.toString(CryptoJS.enc.Utf8);
-
-    if (!plainText) {
-      throw new Error('Failed to decrypt - invalid encrypted text or key');
-    }
-
-    return plainText;
-  } catch (error) {
-    // console.error('Decryption error:', error);
-    throw new Error('Failed to decrypt text');
-  }
-};
+const FALLBACK_KEY = 'default-test-secret-key-32-chars';
 
 /**
  * Safely attempts to decrypt text, returns null if decryption fails
@@ -116,11 +89,42 @@ export const safeDecryptText = (text: string): string | null => {
       padding: CryptoJS.pad.Pkcs7,
     });
     const plainText = decrypted.toString(CryptoJS.enc.Utf8);
-    return plainText || null;
+    if (plainText) return plainText;
   } catch (err) {
-    console.error('safeDecryptText error:', err);
-    return null;
+    // Try fallback below
   }
+
+  // Try fallback key
+  try {
+    const decryptedFallback = CryptoJS.AES.decrypt(text, FALLBACK_KEY, {
+      mode: CryptoJS.mode.CBC,
+      padding: CryptoJS.pad.Pkcs7,
+    });
+    const plainTextFallback = decryptedFallback.toString(CryptoJS.enc.Utf8);
+    if (plainTextFallback) return plainTextFallback;
+  } catch (errFallback) {
+    console.error('safeDecryptText error (both keys failed):', errFallback);
+  }
+
+  return null;
+};
+
+/**
+ * Decrypts an encrypted text string
+ * @param encryptedText - The encrypted text to decrypt
+ * @returns The decrypted plain text string
+ */
+export const decryptText = (encryptedText: string): string => {
+  if (!encryptedText || typeof encryptedText !== 'string') {
+    throw new Error('Invalid input: encryptedText must be a non-empty string');
+  }
+
+  const result = safeDecryptText(encryptedText);
+  if (result === null) {
+    throw new Error('Failed to decrypt - invalid encrypted text or key');
+  }
+  
+  return result;
 };
 
 /**

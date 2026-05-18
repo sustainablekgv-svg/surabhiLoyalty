@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { db } from '@/lib/firebase';
 import { isValidImageUrl } from '@/lib/image-utils';
 import { deleteImageFromR2 } from '@/services/cloudflare';
-import { createProduct, deleteGstSlab, deleteProduct, getBrands, getCategories, getProducts, initializeDisplayOrder, reorderProduct, updateGstSlab, updateProduct } from '@/services/shop';
+import { createProduct, deleteGstSlab, deleteProduct, generateSlug, getBrands, getCategories, getProducts, initializeDisplayOrder, reorderProduct, updateGstSlab, updateProduct, backfillSlugs } from '@/services/shop';
 import { Brand, Category, Product } from '@/types/shop';
 import { collection, doc, getDocs, orderBy, query, setDoc } from 'firebase/firestore';
 import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Star, Trash2 } from 'lucide-react';
@@ -77,7 +77,8 @@ export const ProductManager = () => {
         placeOfOrigin: [] as string[], // Multi-select support
         gstTitle: '',
         gstPercentage: '',
-        isFeatured: false
+        isFeatured: false,
+        slug: ''
     });
 
     const fetchData = async () => {
@@ -240,9 +241,11 @@ export const ProductManager = () => {
         try {
             const selectedBrand = brands.find(b => b.id === formData.brandId);
             const brandName = selectedBrand ? selectedBrand.name : 'Unknown Brand';
+            const brandSlug = selectedBrand?.slug || '';
             
             const selectedCategory = categories.find(c => c.id === formData.category);
             const categoryName = selectedCategory ? selectedCategory.name : (editingProduct?.categoryName || "Unknown Category");
+            const categorySlug = selectedCategory?.slug || '';
 
             // detailed validation
             if (!formData.name?.trim()) { toast.error("Product name is required"); return; }
@@ -286,8 +289,10 @@ export const ProductManager = () => {
                 stock,
                 categoryId: formData.category, 
                 categoryName: categoryName,
+                categorySlug: categorySlug,
                 brandId: formData.brandId,
                 brandName: brandName,
+                brandSlug: brandSlug,
                 images: formData.images,
                 freeShipping: formData.freeShipping,
                 variantType: formData.variantType,
@@ -297,6 +302,7 @@ export const ProductManager = () => {
                 trackInventory: formData.trackInventory,
                 placeOfOrigin: formData.placeOfOrigin, // Array of origins
                 isFeatured: formData.isFeatured,
+                slug: formData.slug.trim() || generateSlug(formData.name),
                 gst: formData.gstTitle && formData.gstPercentage ? {
                     title: formData.gstTitle,
                     percentage: Number(formData.gstPercentage)
@@ -380,6 +386,20 @@ export const ProductManager = () => {
         await handleInitializeOrder();
     };
 
+    const handleBackfillSlugs = async () => {
+        setLoading(true);
+        try {
+            const count = await backfillSlugs('products');
+            toast.success(`Generated slugs for ${count} products`);
+            fetchData();
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to backfill slugs");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const resetForm = () => {
         setFormData({
             name: '',
@@ -401,7 +421,8 @@ export const ProductManager = () => {
             placeOfOrigin: [],
             gstTitle: '',
             gstPercentage: '',
-            isFeatured: false
+            isFeatured: false,
+            slug: ''
         });
     };
 
@@ -430,7 +451,8 @@ export const ProductManager = () => {
             placeOfOrigin: product.placeOfOrigin || [],
             gstTitle: product.gst?.title || '',
             gstPercentage: product.gst?.percentage?.toString() || '',
-            isFeatured: product.isFeatured || false
+            isFeatured: product.isFeatured || false,
+            slug: product.slug || ''
         });
     };
 
@@ -470,26 +492,49 @@ export const ProductManager = () => {
                         <Button><Plus className="h-4 w-4 mr-2" /> Add Product</Button>
                     </DialogTrigger>
                     {filterBrandId !== 'all' && (
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="outline" title="Fix orders for this brand" className="ml-2">
-                                    <ListOrdered className="h-4 w-4" />
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Initialize Display Order?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This will reset the display order for all products in this brand based on creation date. 
-                                        This action cannot be undone.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleInitializeOrderConfirm}>Continue</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
+                        <div className="flex gap-2 ml-2">
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="outline" title="Fix orders for this brand">
+                                        <ListOrdered className="h-4 w-4" />
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Initialize Display Order?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This will reset the display order for all products in this brand based on creation date. 
+                                            This action cannot be undone.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleInitializeOrderConfirm}>Continue</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="outline" title="Backfill Missing Slugs">
+                                        <span className="text-xs font-bold">Slug</span>
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Backfill Missing Slugs?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This will automatically generate slugs for all products that are missing one.
+                                            Existing slugs will not be changed.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleBackfillSlugs}>Generate Slugs</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
                     )}
                     <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
@@ -499,7 +544,18 @@ export const ProductManager = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Product Name</Label>
-                                    <Input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                                    <Input required value={formData.name} onChange={e => {
+                                        const name = e.target.value;
+                                        const newSlug = generateSlug(name);
+                                        setFormData(prev => {
+                                            const shouldUpdateSlug = !prev.slug || prev.slug === generateSlug(prev.name);
+                                            return {
+                                                ...prev,
+                                                name,
+                                                slug: shouldUpdateSlug ? newSlug : prev.slug
+                                            };
+                                        });
+                                    }} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Brand</Label>
@@ -519,6 +575,15 @@ export const ProductManager = () => {
                                         </SelectContent>
                                     </Select>
                                 </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Slug (URL Identifier)</Label>
+                                <Input 
+                                    required 
+                                    value={formData.slug} 
+                                    onChange={e => setFormData({ ...formData, slug: e.target.value })} 
+                                    placeholder="e.g. organic-honey"
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label>Description</Label>

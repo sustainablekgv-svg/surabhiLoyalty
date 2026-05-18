@@ -190,14 +190,9 @@ useEffect(() => {
 
   let unsubscribeDoc: (() => void) | undefined;
 
-  if (user && isInitialized) {
-
-    const collectionName =
-      user.role === 'customer'
-        ? 'Customers'
-        : 'staff';
-
-    const userDocId = user.id;
+    if (user && isInitialized) {
+      const collectionName = user.role === 'customer' ? 'Customers' : 'staff';
+      const userDocId = user.id;
 
     if (userDocId) {
 

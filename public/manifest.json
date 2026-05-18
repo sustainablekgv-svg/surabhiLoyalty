@@ -1,0 +1,21 @@
+{
+  "short_name": "Surabhi",
+  "name": "Surabhi Loyalty - Sustainable KGV Rewards",
+  "icons": [
+    {
+      "src": "/kgv.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/kgv.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "theme_color": "#7c3aed",
+  "description": "Join Surabhi Loyalty by Sustainable KGV. Shop premium products and earn rewards."
+}

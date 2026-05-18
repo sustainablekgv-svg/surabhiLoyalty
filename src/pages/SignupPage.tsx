@@ -15,6 +15,8 @@ import { registerCustomer } from '@/lib/authService';
 import { db } from '@/lib/firebase';
 import { CustomerType } from '@/types/types';
 import { collection, getDocs, query, where } from 'firebase/firestore';
+import { useGlobalSettings } from '@/hooks/useGlobalSettings';
+import SEO from '@/components/SEO';
 
 
 const SignupPage = () => {
@@ -36,6 +38,8 @@ const SignupPage = () => {
     referredBy: referralCode || '',
 
   });
+
+  const { settings } = useGlobalSettings();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -94,8 +98,10 @@ const SignupPage = () => {
       }
 
       const isFullPhone = /^\d{10}$/.test(refInput);
-      const isRefCode = refInput.startsWith('REF-');
-      if (!isFullPhone && !isRefCode) {
+      const isRefCodeWithPrefix = refInput.toUpperCase().startsWith('REF-');
+      const isShortCode = /^[a-zA-Z0-9]{4,10}$/.test(refInput) && !isFullPhone;
+
+      if (!isFullPhone && !isRefCodeWithPrefix && !isShortCode) {
         // Still typing — don't flash "not found" yet
         setReferralName(null);
         setReferralNotFound(false);
@@ -106,19 +112,32 @@ const SignupPage = () => {
       setReferralNotFound(false);
       try {
         const customersCollection = collection(db, 'Customers');
-        // Check by referral code first, then by mobile
-        let q = query(customersCollection, where('referralCode', '==', refInput));
-        let snapshot = await getDocs(q);
-
-        if (snapshot.empty && isFullPhone) {
-          q = query(customersCollection, where('customerMobile', '==', refInput));
-          snapshot = await getDocs(q);
+        
+        let snapshot;
+        if (isFullPhone) {
+           let q = query(customersCollection, where('customerMobile', '==', refInput));
+           snapshot = await getDocs(q);
+        } else {
+           const upperInput = refInput.toUpperCase();
+           const searchCodes = isRefCodeWithPrefix ? [upperInput] : [upperInput, `REF-${upperInput}`];
+           let q = query(customersCollection, where('referralCode', 'in', searchCodes));
+           snapshot = await getDocs(q);
         }
 
         if (!snapshot.empty) {
           const data = snapshot.docs[0].data() as CustomerType;
-          setReferralName(data.customerName);
-          setReferralNotFound(false);
+          if (
+            data.walletRechargeDone === true ||
+            data.saleElgibility === true ||
+            settings?.allowReferralsWithoutPurchase
+          ) {
+            setReferralName(data.customerName);
+            setReferralNotFound(false);
+          } else {
+            setReferralName(null);
+            setReferralNotFound(true);
+            toast.error('This customer is not eligible for referral (no purchases made)');
+          }
         } else {
           setReferralName(null);
           setReferralNotFound(true);
@@ -134,7 +153,7 @@ const SignupPage = () => {
 
     const timer = setTimeout(fetchReferralName, 600);
     return () => clearTimeout(timer);
-  }, [formData.referredBy]);
+  }, [formData.referredBy, settings?.allowReferralsWithoutPurchase]);
 
   const calculateAge = (dob: string) => {
     const birthDate = new Date(dob);
@@ -194,6 +213,16 @@ const SignupPage = () => {
     try {
       const isStudent = formData.dateOfBirth ? calculateAge(formData.dateOfBirth) < 25 : false;
 
+      let finalReferredBy = formData.referredBy?.trim() || null;
+      if (finalReferredBy) {
+        const isShortCode = /^[a-zA-Z0-9]{5}$/.test(finalReferredBy);
+        if (isShortCode) {
+          finalReferredBy = `REF-${finalReferredBy.toUpperCase()}`;
+        } else if (finalReferredBy.toUpperCase().startsWith('REF-')) {
+          finalReferredBy = finalReferredBy.toUpperCase();
+        }
+      }
+
       await registerCustomer({
         customerName: formData.customerName,
         customerMobile: formData.customerMobile,
@@ -201,7 +230,7 @@ const SignupPage = () => {
         gender: formData.gender,
         dateOfBirth: formData.dateOfBirth,
         storeLocation: formData.storeLocation,
-        referredBy: formData.referredBy || null,
+        referredBy: finalReferredBy,
         isStudent: isStudent,
         demoStore: false,
       });
@@ -221,6 +250,11 @@ const SignupPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50 flex items-center justify-center p-4">
+      <SEO 
+        title="Join Surabhi Loyalty League"
+        description="Sign up for SLL - Surabhi Loyalty League. Support farmers, gopalaks, and earn rewards while shopping for premium organic products."
+        keywords="signup, loyalty program, surabhi, organic rewards"
+      />
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
             <Button

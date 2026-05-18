@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { isValidImageUrl } from '@/lib/image-utils';
 import { deleteImageFromR2 } from '@/services/cloudflare';
-import { createBrand, deleteBrand, getBrands, getCategories, initializeDisplayOrder, reorderBrand, updateBrand } from '@/services/shop';
+import { createBrand, deleteBrand, generateSlug, getBrands, getCategories, initializeDisplayOrder, reorderBrand, updateBrand, backfillSlugs } from '@/services/shop';
 import { Brand, Category } from '@/types/shop';
 import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Search, Trash2 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
@@ -38,7 +38,8 @@ export const BrandManager = () => {
         images: [] as string[],
         categoryId: '',
         categoryIds: [] as string[],
-        shippingPercentage: 0
+        shippingPercentage: 0,
+        slug: ''
     });
 
     const fetchBrands = async () => {
@@ -118,10 +119,9 @@ export const BrandManager = () => {
                 logo: formData.images[0], // Primary image for backward compatibility
                 images: formData.images, // All images
                 isActive: true,
-                categoryId: formData.categoryIds[0], // Primary category for legacy support
-                categoryIds: formData.categoryIds,
                 categoryName: categories.find(c => c.id === formData.categoryIds[0])?.name || '',
-                shippingPercentage: Number(formData.shippingPercentage) || 0
+                shippingPercentage: Number(formData.shippingPercentage) || 0,
+                slug: formData.slug.trim() || generateSlug(formData.name)
             };
 
             if (editingBrand) {
@@ -211,6 +211,20 @@ export const BrandManager = () => {
         }
     };
 
+    const handleBackfillSlugs = async () => {
+        setLoading(true);
+        try {
+            const count = await backfillSlugs('brands');
+            toast.success(`Generated slugs for ${count} brands`);
+            fetchBrands();
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to backfill slugs");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const resetForm = () => {
         setFormData({
             name: '',
@@ -218,7 +232,8 @@ export const BrandManager = () => {
             images: [],
             categoryId: '',
             categoryIds: [],
-            shippingPercentage: 0
+            shippingPercentage: 0,
+            slug: ''
         });
     };
 
@@ -230,7 +245,8 @@ export const BrandManager = () => {
             images: brand.images || (brand.logo ? [brand.logo] : []),
             categoryId: brand.categoryId || '',
             categoryIds: brand.categoryIds || (brand.categoryId ? [brand.categoryId] : []),
-            shippingPercentage: brand.shippingPercentage || 0
+            shippingPercentage: brand.shippingPercentage || 0,
+            slug: brand.slug || ''
         });
         setIsDialogOpen(true);
     };
@@ -270,26 +286,49 @@ export const BrandManager = () => {
                     <DialogTrigger asChild>
                         <Button><Plus className="h-4 w-4 mr-2" /> Add Brand</Button>
                     </DialogTrigger>
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="outline" className="ml-2">
-                                <ListOrdered className="h-4 w-4" />
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>     
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Initialize Brand Order?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This will reset the order of displayed brands.
-                                    {filterCategoryId === 'all' ? " This will affect ALL brands globally." : " This will affect brands in the selected category."}
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleInitializeOrder}>Continue</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                    <div className="flex gap-2">
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="outline" title="Fix missing orders">
+                                    <ListOrdered className="h-4 w-4" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>     
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Initialize Brand Order?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will reset the order of displayed brands.
+                                        {filterCategoryId === 'all' ? " This will affect ALL brands globally." : " This will affect brands in the selected category."}
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleInitializeOrder}>Continue</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="outline" title="Backfill Missing Slugs">
+                                    <span className="text-xs font-bold">Slug</span>
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Backfill Missing Slugs?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will automatically generate slugs for all brands that are missing one.
+                                        Existing slugs will not be changed.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleBackfillSlugs}>Generate Slugs</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>{editingBrand ? 'Edit Brand' : 'Add New Brand'}</DialogTitle>
@@ -297,7 +336,27 @@ export const BrandManager = () => {
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="space-y-2">
                                 <Label>Brand Name</Label>
-                                <Input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                                <Input required value={formData.name} onChange={e => {
+                                    const name = e.target.value;
+                                    const newSlug = generateSlug(name);
+                                    setFormData(prev => {
+                                        const shouldUpdateSlug = !prev.slug || prev.slug === generateSlug(prev.name);
+                                        return {
+                                            ...prev,
+                                            name,
+                                            slug: shouldUpdateSlug ? newSlug : prev.slug
+                                        };
+                                    });
+                                }} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Slug (URL Identifier)</Label>
+                                <Input 
+                                    required 
+                                    value={formData.slug} 
+                                    onChange={e => setFormData({ ...formData, slug: e.target.value })} 
+                                    placeholder="e.g. organic-tattva"
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label>Shipping Earn Percentage (%)</Label>

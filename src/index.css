@@ -5,6 +5,7 @@
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. */
 
 @layer base {
+  @media(max-width:768px){}
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
@@ -126,4 +127,92 @@
 
 .animate-marquee-horizontal:hover {
   animation-play-state: paused;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+/* Keep all your previous @tailwind and @layer code above this line */
+
+/* --- MOBILE RESPONSIVE ADDITIONS --- */
+@layer base {
+  @media (max-width: 768px) {
+    html, body {
+      /* Prevents the page from scrolling horizontally */
+      overflow-x: hidden;
+      width: 100%;
+      /* Smoother scrolling for touch devices */
+      -webkit-overflow-scrolling: touch;
+      /* Better text wrapping for mobile */
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      word-break: break-word;
+    }
+
+    /* Adjusting Marquee for mobile */
+    .animate-marquee-horizontal {
+      /* Things move "faster" on small screens, so we slow the duration */
+      animation-duration: 20s; 
+    }
+    
+    /* Ensure cards don't have excessive padding on mobile */
+    .card {
+      padding: 1rem;
+    }
+
+    /* Responsive Typography overrides if needed */
+    .text-3xl {
+      font-size: 1.5rem;
+      line-height: 2rem;
+    }
+    .text-4xl {
+      font-size: 1.875rem;
+      line-height: 2.25rem;
+    }
+
+    /* Global container padding adjustment for small screens */
+    .container {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+  }
+
+  /* Prose containers force overflow-hidden and break-words */
+  .prose {
+    overflow-wrap: break-word;
+    word-break: break-word;
+    overflow-x: hidden;
+  }
+}
+
+/* Ensure all images are responsive */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Force wrap for long continuous strings (like order IDs or emails) */
+.break-words {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }

@@ -27,8 +27,48 @@ import { notifyCustomerSaleSms } from '@/services/saleSmsNotification';
 import { processSaleTransaction } from './sales';
 import { getUserName } from '@/lib/userUtils';
 
-import { increment } from 'firebase/firestore';
-import { runTransaction } from 'firebase/firestore';
+// --- Slug Utilities ---
+export const generateSlug = (name: string): string => {
+    return name
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+};
+
+export const isSlugUnique = async (collectionName: string, slug: string, excludeId?: string): Promise<boolean> => {
+    const q = query(collection(db, collectionName), where('slug', '==', slug));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return true;
+    if (excludeId && snapshot.docs.length === 1 && snapshot.docs[0].id === excludeId) return true;
+    return false;
+};
+
+export const backfillSlugs = async (collectionName: string) => {
+    const q = query(collection(db, collectionName));
+    const snapshot = await getDocs(q);
+    const docs = snapshot.docs.filter(d => !d.data().slug);
+    
+    if (docs.length === 0) return 0;
+
+    // Process in chunks of 500
+    const chunks = [];
+    for (let i = 0; i < docs.length; i += 500) {
+        chunks.push(docs.slice(i, i + 500));
+    }
+
+    for (const chunk of chunks) {
+        const batch = writeBatch(db);
+        chunk.forEach(d => {
+            const slug = generateSlug(d.data().name);
+            batch.update(d.ref, { slug, updatedAt: serverTimestamp() });
+        });
+        await batch.commit();
+    }
+
+    return docs.length;
+};
 
 // --- Display Order Helper ---
 const swapDisplayOrder = async (collectionName: string, id1: string, order1: number, id2: string, order2: number) => {
@@ -90,18 +130,42 @@ export const getProducts = async (
         constraints.push(where('isActive', '==', true));
     }
 
-    if (filters?.category) {
-        constraints.push(where('categoryId', '==', filters.category));
-    }
+    // If search query is present, we ignore category/brand constraints to search across the whole base
+    if (filters?.searchQuery) {
+        // No additional constraints besides isActive (handled above)
+    } else {
+        if (filters?.category) {
+            constraints.push(where('categoryId', '==', filters.category));
+        }
 
-    if (filters?.brand) {
-        constraints.push(where('brandId', '==', filters.brand));
+        if (filters?.brand) {
+            constraints.push(where('brandId', '==', filters.brand));
+        }
     }
 
     const q = query(collection(db, 'products'), ...constraints);
     const snapshot = await getDocs(q);
     let products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
     
+    // In-memory Filter for Search using Fuse.js
+    if (filters?.searchQuery) {
+        const Fuse = (await import('fuse.js')).default;
+        const fuse = new Fuse(products, {
+            keys: [
+                { name: 'name', weight: 0.8 },
+                { name: 'description', weight: 0.2 },
+                { name: 'brandName', weight: 0.5 },
+                { name: 'categoryName', weight: 0.5 }
+            ],
+            threshold: 0.35, // More strict for better relevance
+            includeScore: true,
+            useExtendedSearch: true
+        });
+        
+        const results = fuse.search(filters.searchQuery);
+        products = results.map(r => r.item);
+    }
+
     // In-memory Filter for Price & Stock
     if (filters?.minPrice !== undefined) products = products.filter(p => p.sellingPrice >= filters.minPrice!);
     if (filters?.maxPrice !== undefined) products = products.filter(p => p.sellingPrice <= filters.maxPrice!);
@@ -164,14 +228,30 @@ export const getProduct = async (id: string): Promise<Product | null> => {
   return null;
 };
 
+export const getProductBySlug = async (slug: string): Promise<Product | null> => {
+    const q = query(collection(db, 'products'), where('slug', '==', slug), limit(1));
+    const snapshot = await getDocs(q);
+    if (!snapshot.empty) {
+        return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Product;
+    }
+    return null;
+};
+
 export const createProduct = async (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
   // Get max order
-  const q = query(collection(db, 'products'), orderBy('displayOrder', 'desc'), limit(1));
-  const snap = await getDocs(q);
-  const maxOrder = snap.empty ? 0 : (snap.docs[0].data().displayOrder || 0);
+  const qOrder = query(collection(db, 'products'), orderBy('displayOrder', 'desc'), limit(1));
+  const snapOrder = await getDocs(qOrder);
+  const maxOrder = snapOrder.empty ? 0 : (snapOrder.docs[0].data().displayOrder || 0);
+
+  // Ensure slug
+  let slug = product.slug || generateSlug(product.name);
+  if (!(await isSlugUnique('products', slug))) {
+    slug = `${slug}-${Date.now().toString().slice(-4)}`;
+  }
 
   const docRef = await addDoc(collection(db, 'products'), {
     ...product,
+    slug,
     displayOrder: maxOrder + 1,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -180,6 +260,11 @@ export const createProduct = async (product: Omit<Product, 'id' | 'createdAt' | 
 };
 
 export const updateProduct = async (id: string, updates: Partial<Product>): Promise<void> => {
+  // If slug is being updated, ensure it's unique
+  if (updates.slug && !(await isSlugUnique('products', updates.slug, id))) {
+    throw new Error("Slug already in use");
+  }
+
   const docRef = doc(db, 'products', id);
   await updateDoc(docRef, {
     ...updates,
@@ -252,12 +337,20 @@ export const getCategories = async (
 };
 
 export const createCategory = async (category: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
-    const q = query(collection(db, 'categories'), orderBy('displayOrder', 'desc'), limit(1));
-    const snap = await getDocs(q);
-    const maxOrder = snap.empty ? 0 : (snap.docs[0].data().displayOrder || 0);
+    // Get max order
+    const qOrder = query(collection(db, 'categories'), orderBy('displayOrder', 'desc'), limit(1));
+    const snapOrder = await getDocs(qOrder);
+    const maxOrder = snapOrder.empty ? 0 : (snapOrder.docs[0].data().displayOrder || 0);
+
+    // Ensure slug
+    let slug = category.slug || generateSlug(category.name);
+    if (!(await isSlugUnique('categories', slug))) {
+        slug = `${slug}-${Date.now().toString().slice(-4)}`;
+    }
 
     const docRef = await addDoc(collection(db, 'categories'), {
         ...category,
+        slug,
         displayOrder: maxOrder + 1,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -266,6 +359,11 @@ export const createCategory = async (category: Omit<Category, 'id' | 'createdAt'
 };
 
 export const updateCategory = async (id: string, updates: Partial<Category>): Promise<void> => {
+    // If slug is being updated, ensure it's unique
+    if (updates.slug && !(await isSlugUnique('categories', updates.slug, id))) {
+        throw new Error("Slug already in use");
+    }
+
     const docRef = doc(db, 'categories', id);
     await updateDoc(docRef, {
         ...updates,
@@ -455,8 +553,15 @@ export const createBrand = async (brand: Omit<Brand, 'id' | 'createdAt' | 'updat
     // Determine primary displayOrder (legacy fallback)
     const primaryOrder = Object.values(categoryOrders).length > 0 ? Math.max(...Object.values(categoryOrders)) : 0;
 
+    // Ensure slug
+    let slug = brand.slug || generateSlug(brand.name);
+    if (!(await isSlugUnique('brands', slug))) {
+        slug = `${slug}-${Date.now().toString().slice(-4)}`;
+    }
+
     const docRef = await addDoc(collection(db, 'brands'), {
         ...brand,
+        slug,
         categoryIds, // Ensure this array is present
         categoryOrders,
         displayOrder: primaryOrder, // Legacy fallback
@@ -467,6 +572,11 @@ export const createBrand = async (brand: Omit<Brand, 'id' | 'createdAt' | 'updat
 };
 
 export const updateBrand = async (id: string, updates: Partial<Brand>): Promise<void> => {
+    // If slug is being updated, ensure it's unique
+    if (updates.slug && !(await isSlugUnique('brands', updates.slug, id))) {
+        throw new Error("Slug already in use");
+    }
+
     const docRef = doc(db, 'brands', id);
     await updateDoc(docRef, {
         ...updates,
@@ -1381,6 +1491,26 @@ export const addInternalNote = async (orderId: string, note: string, adminName: 
             }
         ],
         updatedAt: serverTimestamp()
+    });
+};
+
+export const deleteOrder = async (orderId: string) => {
+    const docRef = doc(db, 'orders', orderId);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) throw new Error("Order not found");
+    const orderData = docSnap.data();
+    
+    await deleteDoc(docRef);
+    
+    // Activity Log
+    await addDoc(collection(db, 'Activity'), {
+        type: 'order_deleted',
+        remarks: `Order ${orderId} was permanently deleted by admin.`,
+        customerName: orderData.shippingAddress?.fullName || 'Unknown',
+        customerMobile: orderData.shippingAddress?.mobile || 'Unknown',
+        createdAt: Timestamp.now(),
+        orderId: orderId,
+        demoStore: orderData.demoStore || false
     });
 };
 

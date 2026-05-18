@@ -1,14 +1,14 @@
 import { collection, doc, getDoc, getDocs, query, Timestamp, where } from 'firebase/firestore';
 import {
-    Calendar,
-    Coins,
-    Copy,
-    CreditCard,
-    Phone,
-    RefreshCw,
-    Share2,
-    Store,
-    Users,
+  Calendar,
+  Coins,
+  Copy,
+  CreditCard,
+  Phone,
+  RefreshCw,
+  Share2,
+  Store,
+  Users,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -145,8 +145,11 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
 
   const getShareableLink = () => {
     const baseUrl = window.location.origin;
-    return `${baseUrl}/ref/${userData?.referralCode}`;
-  };
+    const code = userData?.referralCode?.startsWith('REF-') 
+      ? userData.referralCode.substring(4) 
+      : userData?.referralCode;
+    return `${baseUrl}/ref/${code}`;
+  }
 
   const copyReferralLink = async () => {
     try {
@@ -159,7 +162,7 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
 
   const shareReferral = async () => {
     const shareUrl = getShareableLink();
-    const shareText = `Join ${userName}'s network on our loyalty program! Sign up here: ${shareUrl}`;
+    const shareText = `Hey! I'm inviting you to join the Surabhi Loyalty League. Support our farmers and gopalaks while earning lifetime rewards on premium organic products. Join using my link:`;
 
     if (navigator.share) {
       try {
@@ -169,11 +172,26 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
           url: shareUrl,
         });
       } catch (err) {
-        // Fallback to copying if share cancelled or failed
-        // copyReferralLink(); 
+        // If share was cancelled by user, don't do anything
+        if (err instanceof Error && err.name === 'AbortError') return;
+        
+        // Fallback to copying if share failed for other reasons
+        const fullMessage = `${shareText}\n${shareUrl}`;
+        try {
+          await navigator.clipboard.writeText(fullMessage);
+          toast.success('Referral message copied!');
+        } catch (copyErr) {
+          toast.error('Failed to copy referral link');
+        }
       }
     } else {
-      copyReferralLink();
+      const fullMessage = `${shareText}\n${shareUrl}`;
+      try {
+        await navigator.clipboard.writeText(fullMessage);
+        toast.success('Referral message copied!');
+      } catch (err) {
+        toast.error('Failed to copy referral link');
+      }
     }
   };
 

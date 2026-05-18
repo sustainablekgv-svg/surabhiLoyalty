@@ -4,6 +4,7 @@ import {
   CheckCircle,
   Heart,
   LayoutDashboard,
+  LayoutGrid,
   LogIn,
   LogOut,
   Phone,
@@ -19,11 +20,13 @@ import { Footer } from '@/components/shop/Footer';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getFeaturedProducts } from '@/services/shop';
-import { Product } from '@/types/shop';
+import { HorizontalScroll } from '@/components/ui/horizontal-scroll';
+import { getBrands, getCategories, getFeaturedProducts } from '@/services/shop';
+import { Brand, Category, Product } from '@/types/shop';
 
 //pop-up 
 
+import SEO from '@/components/SEO';
 import { CoinsFrozenPopup } from '@/components/shop/CoinsFrozenPopup';
 import { useCoinsPopup } from '@/hooks/useCoinsPopup';
 
@@ -33,6 +36,8 @@ const LandingPage = () => {
   const [searchParams] = useSearchParams();
   const { user, logout, isAuthenticated } = useAuth();
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
 
   //pop-up
@@ -65,17 +70,23 @@ const LandingPage = () => {
       navigate(`/signup?ref=${ref}`);
     }
 
-    const fetchFeatured = async () => {
-        try {
-            const products = await getFeaturedProducts();
-            setFeaturedProducts(products);
-        } catch (error) {
-            console.error("Error fetching featured products", error);
-        } finally {
-            setLoading(false);
-        }
+    const fetchData = async () => {
+      try {
+        const [products, cats, brs] = await Promise.all([
+          getFeaturedProducts(),
+          getCategories(60), // Increased to fill 4 rows
+          getBrands()
+        ]);
+        setFeaturedProducts(products);
+        setCategories(cats.categories);
+        setBrands(brs);
+      } catch (error) {
+        console.error("Error fetching landing page data", error);
+      } finally {
+        setLoading(false);
+      }
     };
-    fetchFeatured();
+    fetchData();
   }, [searchParams, navigate]);
 
   const handleLoginClick = () => {
@@ -94,6 +105,15 @@ const LandingPage = () => {
       textColor: 'text-amber-600',
     },
     {
+      icon: Star,
+      title: 'Shipping Credits',
+      description:
+        'Earn Shipping Credits on every amount spent by you and redeem them against delivery charges on future orders — 1 Shipping Credit = ₹1.',
+      color: 'from-amber-500 to-amber-600',
+      bgColor: 'bg-orange-100',
+      textColor: 'text-green-600',
+    },
+    {
       icon: Heart,
       title: 'Seva Coins - Shop with Purpose',
       description:
@@ -106,7 +126,7 @@ const LandingPage = () => {
 
   const benefits = [
     'Shop and redeem at all registered partner stores',
-    'No expiry on your Surabhi Coins - use them anytime!',
+    'No expiry on your Surabhi Coins and Shipping Credits - use them anytime!',
     'Access top-quality products & services',
     'One-time registration, lifetime rewards',
     'Easy tracking of coins & referrals',
@@ -115,6 +135,30 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50">
+      <SEO 
+        title="Surabhi Loyalty League - Sustainable KGV Rewards"
+        description="Join SLL - Surabhi Loyalty League. Earn Surabhi Coins, Shipping Credits, and Seva Coins while shopping for premium organic products. Support farmers and local businesses."
+        keywords="loyalty league, surabhi coins, sustainable kgv, organic products rewards, gopalak support, seva coins"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "Surabhi Loyalty League",
+          "alternateName": "SLL",
+          "url": "https://www.sustainablekgv.com",
+          "logo": "https://www.sustainablekgv.com/kgv.png",
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "+91-9606979530",
+            "contactType": "customer service",
+            "areaServed": "IN",
+            "availableLanguage": "en"
+          },
+          "sameAs": [
+            "https://www.facebook.com/sustainablekgv",
+            "https://www.instagram.com/sustainablekgv"
+          ]
+        }}
+      />
       {/* Header */}
       <header className="bg-white shadow-sm border-b sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 sm:py-4">
@@ -139,7 +183,7 @@ const LandingPage = () => {
                 <ShoppingBag className="h-4 w-4" />
                 Shop Now
               </Button>
-              
+
               {isAuthenticated ? (
                 <>
                   <Button
@@ -169,9 +213,9 @@ const LandingPage = () => {
                 </Button>
               )}
             </div>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-12 sm:py-20">
@@ -192,8 +236,7 @@ const LandingPage = () => {
           </h1>
 
           <p className="text-lg sm:text-xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
-            Join our Loyalty Program and start earning Surabhi Coins for every purchase - by you and
-            your referrals! Also earn Seva Coins when you shop and contribute to community welfare
+            Join our Loyalty Program and start earning Surabhi Coins for every amount spent by you and your referrals! Also earn Shipping Credits and Seva Coins when you shop and contribute to community welfare.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -263,7 +306,7 @@ const LandingPage = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
           {features.map((feature, index) => (
             <Card
               key={index}
@@ -316,7 +359,7 @@ const LandingPage = () => {
             <div className="flex flex-col items-center mt-12 space-y-8">
               <div className="relative w-full max-w-sm mx-auto rounded-xl overflow-hidden shadow-xl hover:shadow-2xl transition-shadow duration-300">
                 <img
-                  src="/coins.jpeg"
+                  src="/coins.png"
                   alt="Surabhi Coins and Seva Coins"
                   className="w-full h-auto object-cover"
                 />
@@ -334,10 +377,10 @@ const LandingPage = () => {
 
                 <div className="space-y-6">
                   <h4 className="text-xl font-bold text-gray-800 flex items-center justify-center gap-2">
-                    <span className="text-2xl">🏔️</span> 
+                    <span className="text-2xl">🏔️</span>
                     SLL Milestones (Lifetime Surabhi Coins)
                   </h4>
-                  
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-left max-w-3xl mx-auto">
                     {[
                       { name: 'Seshadrian', coins: '5,001' },
@@ -366,48 +409,119 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* Categories & Brands Section */}
+      {!loading && (
+        <section className="container mx-auto px-4 py-12 bg-white/40 backdrop-blur-sm">
+          <div className="space-y-16">
+            {/* Categories */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+                  <ShoppingBag className="h-6 w-6 sm:h-8 sm:w-8 text-primary" /> Shop by Category
+                </h2>
+                <Button variant="ghost" onClick={() => navigate('/shop')} className="text-purple-600 font-bold">
+                  View All →
+                </Button>
+              </div>
+              <HorizontalScroll 
+                itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[calc(25%-9px)] sm:auto-cols-[calc(25%-18px)] pb-4"
+              >
+                {categories.map(cat => (
+                  <div 
+                    key={cat.id} 
+                    onClick={() => navigate(`/shop/filters?category=${cat.slug || cat.id}`)}
+                    className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 flex flex-col items-center text-center gap-2 group-hover:scale-[1.02] snap-start"
+                  >
+                    <div className="h-14 w-14 sm:h-20 sm:w-20 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform shadow-inner border border-purple-50">
+                      {cat.image ? (
+                        <img src={cat.image} alt={cat.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <ShoppingBag className="h-6 w-6 text-gray-400" />
+                      )}
+                    </div>
+                    <h3 className="font-semibold text-gray-800 text-[10px] sm:text-sm line-clamp-1">{cat.name}</h3>
+                  </div>
+                ))}
+              </HorizontalScroll>
+            </div>
+
+            {/* Brands */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+                  <LayoutGrid className="h-6 w-6 sm:h-8 sm:w-8 text-primary" /> Shop by Brand
+                </h2>
+                <Button variant="ghost" onClick={() => navigate('/shop')} className="text-purple-600 font-bold">
+                  Explore All →
+                </Button>
+              </div>
+              <HorizontalScroll 
+                itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[calc(25%-9px)] sm:auto-cols-[calc(25%-18px)] pb-4"
+              >
+                {brands.map(brand => (
+                  <div 
+                    key={brand.id} 
+                    onClick={() => navigate(`/shop/filters?brand=${brand.slug || brand.id}`)}
+                    className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 sm:p-4 flex flex-col items-center justify-center text-center gap-3 group-hover:scale-[1.02] snap-start"
+                  >
+                    <div className="h-8 sm:h-14 w-full flex items-center justify-center overflow-hidden">
+                      {brand.logo ? (
+                        <img src={brand.logo} alt={brand.name} className="max-h-full max-w-full object-contain group-hover:scale-110 transition-transform" />
+                      ) : (
+                        <span className="text-xl font-bold text-gray-400">{brand.name[0]}</span>
+                      )}
+                    </div>
+                    <h3 className="font-semibold text-gray-800 text-[9px] sm:text-xs line-clamp-1 px-2">{brand.name}</h3>
+                  </div>
+                ))}
+              </HorizontalScroll>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Featured Products Vertical Scroll Section */}
       {!loading && featuredProducts.length > 0 && (
-          <section className="container mx-auto px-4 py-16 border-t border-purple-100">
-              <div className="flex flex-col gap-8 mx-auto w-full max-w-7xl">
-                  <div className="text-center">
-                      <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Featured Products</h2>
-                      <p className="text-gray-600">Handpicked premium products just for you</p>
-                  </div>
-                  
-                  <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-50/20 via-transparent to-amber-50/20 p-4 border border-purple-50 shadow-inner group">
-                      {/* Fade masks for smooth scroll effect */}
-                      <div className="absolute top-0 bottom-0 left-0 w-16 bg-gradient-to-r from-white/90 to-transparent z-10 pointer-events-none" />
-                      
-                      <div className="animate-marquee-horizontal flex flex-row gap-6 w-max">
-                          {/* Original Set */}
-                          {featuredProducts.map(product => (
-                              <div key={`orig-${product.id}`} className="flex-shrink-0 w-[280px]">
-                                  <ProductCard product={product} />
-                              </div>
-                          ))}
-                          {/* Duplicated Set for Seamless Infinite Loop */}
-                          {featuredProducts.map(product => (
-                              <div key={`dup-${product.id}`} className="flex-shrink-0 w-[280px] pointer-events-none">
-                                  <ProductCard product={product} />
-                              </div>
-                          ))}
-                      </div>
+        <section className="container mx-auto px-4 py-16 border-t border-purple-100">
+          <div className="flex flex-col gap-8 mx-auto w-full max-w-7xl">
+            <div className="text-center">
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Featured Products</h2>
+              <p className="text-gray-600">Handpicked premium products just for you</p>
+            </div>
 
-                      <div className="absolute top-0 bottom-0 right-0 w-16 bg-gradient-to-l from-white/90 to-transparent z-10 pointer-events-none" />
-                  </div>
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-50/20 via-transparent to-amber-50/20 p-4 border border-purple-50 shadow-inner group">
+              {/* Fade masks for smooth scroll effect */}
+              <div className="absolute top-0 bottom-0 left-0 w-16 bg-gradient-to-r from-white/90 to-transparent z-10 pointer-events-none" />
 
-                  <div className="text-center">
-                    <Button 
-                        size="lg"
-                        onClick={() => navigate('/shop')}
-                        className="bg-purple-100 text-purple-700 hover:bg-purple-200 hover:text-purple-800 font-bold px-8 shadow-sm transition-all"
-                    >
-                        View All Featured Products →
-                    </Button>
+              <div className="animate-marquee-horizontal flex flex-row gap-6 w-max">
+                {/* Original Set */}
+                {featuredProducts.map(product => (
+                  <div key={`orig-${product.id}`} className="flex-shrink-0 w-[280px]">
+                    <ProductCard product={product} />
                   </div>
+                ))}
+                {/* Duplicated Set for Seamless Infinite Loop */}
+                {featuredProducts.map(product => (
+                  <div key={`dup-${product.id}`} className="flex-shrink-0 w-[280px] pointer-events-none">
+                    <ProductCard product={product} />
+                  </div>
+                ))}
               </div>
-          </section>
+
+              <div className="absolute top-0 bottom-0 right-0 w-16 bg-gradient-to-l from-white/90 to-transparent z-10 pointer-events-none" />
+            </div>
+
+            <div className="text-center">
+              <Button
+                size="lg"
+                onClick={() => navigate('/shop')}
+                className="bg-purple-100 text-purple-700 hover:bg-purple-200 hover:text-purple-800 font-bold px-8 shadow-sm transition-all"
+              >
+                View All Featured Products →
+              </Button>
+            </div>
+          </div>
+        </section>
       )}
 
       {/* CTA Section */}
@@ -437,14 +551,14 @@ const LandingPage = () => {
                 </>
               )}
             </Button>
-            
+
             <Button
               onClick={() => navigate('/shop')}
               size="lg"
               className="bg-white text-slate-900 hover:bg-slate-50 font-black px-10 py-5 rounded-2xl transition-all duration-300 flex items-center gap-3 text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1"
             >
-                <ShoppingBag className="h-6 w-6 text-purple-600" />
-                Shop Now
+              <ShoppingBag className="h-6 w-6 text-purple-600" />
+              Shop Now
             </Button>
 
             {isAuthenticated && (
@@ -462,14 +576,14 @@ const LandingPage = () => {
         </div>
       </section>
 
-     {customerData && (
-  <CoinsFrozenPopup
-    open={showPopup}
-    onClose={closePopup}
-    spent={customerData.cumTotal}
-    target={customerData.cummulativeTarget}
-  />
-)}
+      {customerData && (
+        <CoinsFrozenPopup
+          open={showPopup}
+          onClose={closePopup}
+          spent={customerData.cumTotal}
+          target={customerData.cummulativeTarget}
+        />
+      )}
 
       {/* Footer */}
       <Footer />

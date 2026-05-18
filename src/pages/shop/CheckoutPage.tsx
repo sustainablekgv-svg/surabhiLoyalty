@@ -11,27 +11,24 @@ import { useShop } from '@/hooks/shop-context';
 import { addAddress, getAddresses } from '@/lib/addressService';
 import { db } from '@/lib/firebase';
 import { getUserName } from '@/lib/userUtils';
+import { cn } from '@/lib/utils';
 import { notifyCoinsRedeemedSms, notifyOrderPlacedSms } from '@/services/ojivaSmsNotification';
 import { calculateShippingCost, getWeightBracketLabel, INDIAN_STATES, parseWeightToKg } from '@/services/shipping';
 import { Address, CartItem } from '@/types/shop';
-import {
-  addDoc,
-  collection,
-  doc,
-  getDocs,
-  onSnapshot,
-  Timestamp
-} from 'firebase/firestore';import { Check, Copy, MessageSquare, Phone, ShoppingCart } from 'lucide-react';
+import { addDoc, collection, getDocs, Timestamp } from 'firebase/firestore';
+import { Check, ChevronRight, Copy, MessageSquare, Phone, Shield, ShoppingCart } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const CheckoutPage = () => {
   const { cart, clearCart, createOrder, updateQuantity, removeFromCart } = useShop();
-  const { user } = useAuth();
+  const { user, isAuthenticated, isInitialized } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [loading, setLoading] = useState(false);
+  const [mobileStep, setMobileStep] = useState<1 | 2 | 3>(1);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const handleCopy = (text: string, field: string) => {
@@ -470,7 +467,7 @@ const shippingDueAmount = useMemo(() => {
     return Number(((netSpvForEarning * commission) / 100).toFixed(2));
   }, [netSpvForEarning, currentStore]);
 
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online' | null>(null);
 
   const loadRazorpay = () => {
     return new Promise((resolve) => {
@@ -536,8 +533,8 @@ const shippingDueAmount = useMemo(() => {
     }
   };
 
-  const handlePlaceOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePlaceOrder = async (e?: React.BaseSyntheticEvent) => {
+    if (e) e.preventDefault();
     if (cart.length === 0) {
       toast.error("Your cart is empty");
       return;
@@ -574,7 +571,7 @@ const shippingDueAmount = useMemo(() => {
         }
 
         if (!(window as any).Razorpay) {
-            toast.error("Razorpay SDK not found. Please refresh the page.");
+            toast.error("Razorpay SDK not found. Please refresh the page.", { id: 'razorpay-loading' });
             setLoading(false);
             return;
         }
@@ -645,6 +642,12 @@ const customerSurabhiBalance =
       } else {
         toast.loading("Initiating secure payment...", { id: 'razorpay-loading' });
         
+        if (!user) {
+            toast.error("User session not found. Please log in again.", { id: 'razorpay-loading' });
+            setLoading(false);
+            return;
+        }
+
         // Ensure Firebase Auth is active for callable functions
         try {
             const { getFirebaseUserForFunctions } = await import('@/lib/authService');
@@ -832,12 +835,65 @@ const customerSurabhiBalance =
       );
   }
 
+  if (!isAuthenticated && isInitialized) {
+    return (
+      <ShopLayout title="Checkout">
+        <div className="flex flex-col items-center justify-center py-20 px-4">
+          <Shield className="h-16 w-16 text-amber-500 mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Login Required</h2>
+          <p className="text-gray-600 text-center mb-8 max-w-md">
+            Please log in to your account to complete your purchase and earn Surabhi Coins.
+          </p>
+          <Button onClick={() => navigate('/login', { state: { from: location } })} size="lg">
+            Log In to Continue
+          </Button>
+        </div>
+      </ShopLayout>
+    );
+  }
+
   return (
-    <ShopLayout title="Checkout" onBack={() => navigate('/shop/cart')}>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:grid lg:grid-cols-5 gap-8 items-start">
+    <ShopLayout title="Checkout" onBack={() => {
+      if (mobileStep > 1) {
+        setMobileStep(prev => (prev - 1) as 1 | 2 | 3);
+        window.scrollTo(0, 0);
+      } else {
+        navigate(-1);
+      }
+    }}>
+
+      <div className="max-w-6xl mx-auto px-2 sm:px-4 lg:px-8 py-4 md:py-8">
+
+        {/* ── MOBILE STEPPER BAR ── */}
+        <div className="flex items-center justify-center gap-1 mb-5 lg:hidden">
+          {(['Order Summary', 'Address', 'Payment'] as const).map((label, i) => {
+            const step = (i + 1) as 1 | 2 | 3;
+            const isActive = mobileStep === step;
+            const isDone = mobileStep > step;
+            return (
+              <React.Fragment key={label}>
+                <div className="flex flex-col items-center">
+                  <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-black transition-all ${
+                    isDone ? 'bg-slate-900 text-white' :
+                    isActive ? 'bg-slate-900 text-white ring-2 ring-slate-300' :
+                    'bg-slate-100 text-slate-400'
+                  }`}>
+                    {isDone ? <Check className="h-3.5 w-3.5" /> : step}
+                  </div>
+                  <span className={`mt-1 text-[9px] font-black uppercase tracking-wider ${isActive ? 'text-slate-900' : isDone ? 'text-slate-500' : 'text-slate-300'}`}>
+                    {label}
+                  </span>
+                </div>
+                {i < 2 && <ChevronRight className={`h-4 w-4 mb-4 ${mobileStep > step ? 'text-slate-600' : 'text-slate-200'}`} />}
+              </React.Fragment>
+            );
+          })}
+        </div>
+
+        {/* ── DESKTOP LAYOUT (lg+): unchanged 2-column ── */}
+        <div className="hidden lg:grid lg:grid-cols-5 gap-8 items-start">
           {/* Left Column: Address & Payment (40%) */}
-          <div className="w-full lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-8">
             <Card className="border shadow-sm bg-white rounded-xl overflow-hidden">
               <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6">
                 <CardTitle className="text-lg font-bold text-slate-900">
@@ -1263,58 +1319,46 @@ const customerSurabhiBalance =
                         <span className="font-bold text-purple-600">₹{totalOriginalBase.toFixed(2)}</span>
                     </div>
 
-                            {/* 🔥 Surabhi Coins Section */}
-<div
-  className={`p-4 rounded-lg border ${
-    isCointEligible
-      ? 'bg-green-50 border-green-200'
-      : 'bg-gray-50 border-gray-200'
-  }`}
->
-  <div className="flex justify-between items-center mb-2">
-    <span className="text-sm font-bold text-slate-800">
-      Surabhi Coins
-    </span>
-    <div className="text-right">
-  <div className="text-xs font-bold text-slate-500">
-    Total: ₹{actualBalance.toFixed(2)}
-  </div>
+                    {/* 🔥 Surabhi Coins Section */}
+                    <div
+                      className={`p-4 rounded-lg border ${
+                        isCointEligible
+                          ? 'bg-green-50 border-green-200'
+                          : 'bg-gray-50 border-gray-200'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-bold text-slate-800">
+                          Surabhi Coins
+                        </span>
+                        <span className="text-xs font-bold text-slate-500">
+                          Balance: ₹{(customerData?.surabhiBalance || 0).toFixed(2)}
+                        </span>
+                      </div>
 
-  {lockedCoins > 0 && (
-    <div className="text-[10px] font-medium text-amber-600">
-      Locked: ₹{lockedCoins.toFixed(2)}
-    </div>
-  )}
-
-  <div className="text-[10px] font-medium text-green-600">
-    Available: ₹{availableBalance.toFixed(2)}
-  </div>
-</div>
-  </div>
-
-  {isCointEligible ? (
-    <div className="flex justify-between items-center">
-      <span className="text-sm text-green-700 font-medium">
-        Coins Applied
-      </span>
-      <span className="font-bold text-green-600">
-        -₹{redeemedCoinsTotal.toFixed(2)}
-      </span>
-    </div>
-  ) : (
-    <div className="text-xs text-red-600 font-medium">
-      Not eligible to redeem coins.
-      <br />
-      Spend ₹
-      {Math.max(
-        0,
-        (customerData?.cummulativeTarget || 0) -
-(customerData?.cumTotal || 0)
-      ).toFixed(2)}{' '}
-      more to unlock.
-    </div>
-  )}
-</div>
+                      {isCointEligible ? (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-green-700 font-medium">
+                            Coins Applied
+                          </span>
+                          <span className="font-bold text-green-600">
+                            -₹{redeemedCoinsTotal.toFixed(2)}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-red-600 font-medium">
+                          Not eligible to redeem coins.
+                          <br />
+                          Spend ₹
+                          {Math.max(
+                            0,
+                            (customerData?.cummulativeTarget || 0) -
+                            (customerData?.cumTotal || 0)
+                          ).toFixed(2)}{' '}
+                          more to unlock.
+                        </div>
+                      )}
+                    </div>
 
                     <div className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
                         <span className="text-sm font-medium text-indigo-900 font-bold italic">Total SPV Points</span>
@@ -1416,14 +1460,15 @@ const customerSurabhiBalance =
     </div>
 )}
 
-                        <div className="mt-2 p-3 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg">
-  <p className="text-xs text-amber-800 leading-relaxed">
-    <span className="font-semibold">Note:</span> Delivery charges shown are estimated. 
-    Final charges will be calculated after packing based on actual weight. 
-    Any difference will be adjusted in your shipping wallet 
-    (debited or credited accordingly).
-  </p>
-</div>
+                    <div className="mt-2 p-3 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg">
+                      <p className="text-xs text-amber-800 leading-relaxed">
+                        <span className="font-semibold">Note:</span> Delivery charges shown are estimated. 
+                        Final charges will be calculated after packing based on actual weight. 
+                        Any difference will be adjusted in your shipping wallet 
+                        (debited or credited accordingly).
+                      </p>
+                    </div>
+
                     {/* Shipping Credits Field */}
                     {/* {shippingCreditsUsed > 0 && (
                         <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl space-y-3">
@@ -1494,19 +1539,82 @@ const customerSurabhiBalance =
                                  <span className="text-slate-600">Referral Bonus ({currentStore?.referralCommission || 0}%)</span>
                                  <span className="text-slate-900">₹{referralBonusEarned.toFixed(2)}</span>
                              </div>
+                           
                         </div>
                     </div>
 
                     <div className="pt-6 space-y-3">
+                        <div className="space-y-4 mb-6">
+                            <p className="text-xs font-black uppercase text-slate-400 tracking-wider">Choose Payment Method</p>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div 
+                                    onClick={() => setPaymentMethod('cod')}
+                                    className={cn(
+                                        "cursor-pointer p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 text-center",
+                                        paymentMethod === 'cod' ? "border-slate-900 bg-slate-50" : "border-slate-100 hover:border-slate-200"
+                                    )}
+                                >
+                                    <div className={cn("h-4 w-4 rounded-full border-2 flex items-center justify-center", paymentMethod === 'cod' ? "border-slate-900" : "border-slate-300")}>
+                                        {paymentMethod === 'cod' && <div className="h-2 w-2 rounded-full bg-slate-900" />}
+                                    </div>
+                                    <span className="text-sm font-bold text-slate-900">Manual UPI / QR Pay</span>
+                                    <span className="text-[10px] text-slate-400 font-medium">Scan & Share Screenshot</span>
+                                </div>
+                                <div 
+                                    onClick={() => setPaymentMethod('online')}
+                                    className={cn(
+                                        "cursor-pointer p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 text-center",
+                                        paymentMethod === 'online' ? "border-slate-900 bg-slate-50" : "border-slate-100 hover:border-slate-200"
+                                    )}
+                                >
+                                    <div className={cn("h-4 w-4 rounded-full border-2 flex items-center justify-center", paymentMethod === 'online' ? "border-slate-900" : "border-slate-300")}>
+                                        {paymentMethod === 'online' && <div className="h-2 w-2 rounded-full bg-slate-900" />}
+                                    </div>
+                                    <span className="text-sm font-bold text-slate-900">Online Payment</span>
+                                    <span className="text-[10px] text-slate-400 font-medium">Cards, UPI, NetBanking</span>
+                                </div>
+                            </div>
+
+                            {paymentMethod === 'cod' && (
+                                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 mt-4">
+                                    <div className="flex flex-col items-center gap-4">
+                                        <div className="bg-white p-3 rounded-xl shadow-md border border-slate-200">
+                                            <img 
+                                                src="/qr.jpeg" 
+                                                alt="Payment QR Code" 
+                                                className="h-48 w-48 object-contain" 
+                                                onError={(e) => { e.currentTarget.src='https://placehold.co/400x400?text=Scan+to+Pay'; }} 
+                                            />
+                                        </div>
+                                        <div className="w-full text-center space-y-2">
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Official UPI ID</p>
+                                            <div className="flex items-center justify-center gap-2 bg-white px-4 py-2 rounded-lg border border-slate-200">
+                                                <span className="font-mono font-bold text-slate-900">sustainablekgv@cnrb</span>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleCopy('sustainablekgv@cnrb', 'UPI ID')}>
+                                                    <Copy className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                            <p className="text-[10px] text-slate-500 font-medium">After payment, share screenshot on WhatsApp with your Order ID.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         <Button 
-                            form="checkout-form"
-                            disabled={loading || cart.length === 0}
-                            className="w-full h-12 bg-slate-900 hover:bg-black text-white rounded-lg font-bold text-lg transition-all"
+                            onClick={() => handlePlaceOrder()}
+                            disabled={loading || cart.length === 0 || !paymentMethod}
+                            className="w-full h-14 bg-slate-900 hover:bg-black text-white rounded-xl font-bold text-lg transition-all shadow-lg active:scale-[0.98]"
                         >
-                            {loading ? 'Processing...' : 'Place Order'}
+                            {loading ? (
+                                <span className="flex items-center gap-2">
+                                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Processing Order...
+                                </span>
+                            ) : !paymentMethod ? 'Select Payment Method' : 'Place Order'}
                         </Button>
-                        <p className="text-[9px] text-slate-400 font-medium text-center uppercase tracking-wider">
-                             Secure End-to-End Encryption
+                        <p className="text-[9px] text-slate-400 font-black text-center uppercase tracking-[0.2em] pt-2">
+                             Verified Secure Transaction
                         </p>
                     </div>
                 </div>
@@ -1514,7 +1622,481 @@ const customerSurabhiBalance =
             </Card>
 
           </div>
-        </div>
+        </div>{/* end desktop grid */}
+
+        {/* MOBILE STEP 1: Order Summary */}
+        {mobileStep === 1 && (
+          <div className="lg:hidden space-y-4">
+            <Card className="border shadow-sm bg-white rounded-xl overflow-hidden">
+              <CardHeader className="bg-white border-b border-slate-100 p-4">
+                <CardTitle className="text-lg font-black text-slate-900">Order Summary</CardTitle>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">{cart.length} Products</p>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="w-full overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-slate-50">
+                      <tr className="border-b border-slate-200">
+                        <th className="pl-3 pr-1 py-2 text-[9px] font-black uppercase text-slate-500 tracking-wider">Product</th>
+                        <th className="px-1 py-2 text-[9px] font-black uppercase text-slate-500 text-center tracking-wider">Qty</th>
+                        <th className="px-1 py-2 text-[9px] font-black uppercase text-slate-500 text-right tracking-wider">Base</th>
+                        <th className="px-1 py-2 text-[9px] font-black uppercase text-slate-500 text-right tracking-wider">Tax</th>
+                        <th className="pl-1 pr-3 py-2 text-[9px] font-black uppercase text-slate-500 text-right tracking-wider">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {adjustedCart.map(item => (
+                        <React.Fragment key={item.productId}>
+                          <tr className="bg-white">
+                            <td className="pl-3 pr-1 py-2">
+                              <p className="font-bold text-slate-900 text-[10px] leading-tight mb-0.5 line-clamp-2">{item.name}</p>
+                              <p className="text-[9px] text-amber-600 font-bold uppercase tracking-tighter">SPV: {item.itemSpv.toFixed(2)}</p>
+                            </td>
+                            <td className="px-1 py-2 text-center">
+                              <span className="text-xs font-bold text-slate-600">{item.quantity}</span>
+                            </td>
+                            <td className="px-1 py-2 text-right text-[10px] font-medium text-slate-600 whitespace-nowrap">₹{item.originalLineTotal.toFixed(2)}</td>
+                            <td className="px-1 py-2 text-right text-[10px] font-medium text-slate-600 whitespace-nowrap">
+                                ₹{item.originalTax.toFixed(2)}
+                                <span className="block text-[8px] text-slate-400 font-black">({item.gstPercentage}%)</span>
+                            </td>
+                            <td className="pl-1 pr-3 py-2 text-right text-[10px] font-black text-slate-900 whitespace-nowrap">₹{item.originalTotalInclTax.toFixed(2)}</td>
+                          </tr>
+                          {redeemedCoinsTotal > 0 && (
+                            <tr className="bg-slate-50/50">
+                              <td className="pl-3 pr-1 py-1">
+                                <span className="inline-flex items-center px-1 py-0.5 rounded bg-slate-900 text-white text-[8px] font-black uppercase tracking-widest leading-none">ADJUSTED</span>
+                              </td>
+                              <td className="px-1 py-1 text-center"><span className="text-xs text-slate-400">-</span></td>
+                              <td className="px-1 py-1 text-right text-[10px] font-black text-slate-900 whitespace-nowrap">₹{(item.adjustedPrice * item.quantity).toFixed(2)}</td>
+                              <td className="px-1 py-1 text-right text-[10px] font-black text-slate-900 whitespace-nowrap">
+                                ₹{item.adjustedTax.toFixed(2)}
+                                <span className="block text-[8px] text-slate-400 font-black">({item.gstPercentage}%)</span>
+                              </td>
+                              <td className="pl-1 pr-3 py-1 text-right text-[10px] font-black text-slate-900 whitespace-nowrap">₹{item.adjustedLineTotal.toFixed(2)}</td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="p-4 border-t border-slate-100 space-y-3">
+                  <div className="flex justify-between items-center p-2 bg-purple-50 rounded-lg">
+                    <span className="text-[11px] font-medium text-purple-900">Items Total (Excl Tax)</span>
+                    <span className="font-bold text-xs text-purple-600">₹{totalOriginalBase.toFixed(2)}</span>
+                  </div>
+
+                  <div className={`p-3 rounded-lg border ${isCointEligible ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[11px] font-bold text-slate-800">Surabhi Coins</span>
+                      <span className="text-[9px] font-bold text-slate-500">Bal: ₹{(customerData?.surabhiBalance || 0).toFixed(2)}</span>
+                    </div>
+                    {isCointEligible ? (
+                      <div className="flex justify-between items-center">
+                        <span className="text-[11px] text-green-700 font-medium">Applied</span>
+                        <span className="font-bold text-xs text-green-600">-₹{redeemedCoinsTotal.toFixed(2)}</span>
+                      </div>
+                    ) : (
+                      <div className="text-[9px] text-red-600 font-medium">Spend ₹{Math.max(0,(customerData?.cummulativeTarget||0)-(customerData?.cumTotal||0)).toFixed(2)} more to unlock.</div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between items-center p-2 bg-indigo-50/50 rounded-lg border border-indigo-100">
+                    <span className="text-[11px] font-bold italic text-indigo-900">Total SPV Points</span>
+                    <span className="font-bold text-xs text-indigo-600 italic">{totalSpv.toFixed(2)}</span>
+                  </div>
+
+                  {redeemedCoinsTotal > 0 && (
+                    <div className="space-y-2">
+                        <div className="flex justify-between items-center p-2 bg-slate-50 border border-slate-100 rounded-lg">
+                            <span className="text-[11px] font-medium text-slate-700">Adjusted Items Value</span>
+                            <span className="font-bold text-xs text-slate-900">₹{totalAdjustedBase.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-2 bg-slate-50 border border-slate-100 rounded-lg">
+                            <span className="text-[11px] font-medium text-slate-700">Adjusted Tax value</span>
+                            <span className="font-bold text-xs text-slate-900">₹{totalAdjustedTax.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-2 bg-emerald-50 rounded-lg">
+                            <span className="text-[11px] font-medium text-emerald-900">Adjusted Items Total</span>
+                            <span className="font-bold text-xs text-emerald-600">₹{itemsTotalAfterCoins.toFixed(2)}</span>
+                        </div>
+                    </div>
+                  )}
+
+                  {/* Brand Wise Shipping Breakdown */}
+                  <div className="py-3 space-y-2.5 border border-indigo-100 bg-indigo-50/30 rounded-xl px-4 my-2">
+                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1 flex justify-between items-center">
+                          <span>Delivery Breakdown</span>
+                          <span className="text-indigo-600">Brand Wise</span>
+                      </p>
+                      {Object.values(productsByGroup).map((group) => (
+                          <div key={group.brandName} className="grid grid-cols-2 gap-4 items-center border-b border-indigo-100/30 pb-2 mb-2 last:border-0 last:pb-0 last:mb-0">
+                              <div className="flex flex-col">
+                                  <span className="text-xs font-bold text-slate-700">{group.brandName}</span>
+                                  <span className="text-[9px] text-indigo-500 font-medium leading-none mt-1">Total Weight: {group.displayWeight.toFixed(2)}kg</span>
+                              </div>
+                              <div className="text-right">
+                                  <span className="text-xs font-black text-slate-900">₹{group.shipping.toFixed(2)}</span>
+                              </div>
+                          </div>
+                      ))}
+                  </div>
+
+                  <div className="flex justify-between items-center p-2 bg-indigo-50 rounded-lg border border-indigo-100">
+                    <span className="text-[11px] font-medium text-indigo-900">Est. Delivery Charges</span>
+                    <span className="font-bold text-xs text-indigo-600">₹{shippingCost.toFixed(2)}</span>
+                  </div>
+
+                  {shippingCreditsUsed !== 0 && (
+                    <div className={`flex justify-between items-center p-2 rounded-lg ${shippingCreditsUsed > 0 ? 'bg-blue-50 border border-blue-100' : 'bg-red-50 border border-red-100'}`}>
+                      <span className={`text-[10px] font-black ${shippingCreditsUsed > 0 ? 'text-blue-900' : 'text-red-900'}`}>
+                        {shippingCreditsUsed > 0 ? 'Shipping Credits' : 'Previous Dues'}
+                      </span>
+                      <span className={`font-bold text-xs ${shippingCreditsUsed > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                        {shippingCreditsUsed > 0 ? '-' : '+'}₹{Math.abs(shippingCreditsUsed).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-[9px] text-amber-800 leading-tight">Delivery estimates. Final based on actual weight after packing.</p>
+                  </div>
+
+                  <div className="pt-3 border-t-2 border-slate-200">
+                    <div className="flex justify-between items-end">
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Total Payable Amount</p>
+                        <h2 className="text-3xl font-black text-slate-900 leading-none mt-1">₹{totalPayableAmount.toFixed(2)}</h2>
+                        <p className="text-[9px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">Inclusive of GST & Delivery Fees</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Projections Section */}
+                  <div className="pt-4 border-t border-slate-100 space-y-3">
+                      <div className="flex flex-col gap-1">
+                          <p className="text-[9px] font-black text-slate-900 uppercase tracking-[0.2em]">Projected Rewards</p>
+                          <p className="text-[8px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full w-fit border border-emerald-100">
+                              Basis: Adjusted SPV ({aggregateAdjustedSpv.toFixed(2)})
+                          </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col gap-1">
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Surabhi Coins ({currentStore?.cashOnlyCommission || 0}%)</span>
+                              <span className="text-sm font-black text-slate-900">₹{surabhiCoinsEarned}</span>
+                          </div>
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col gap-1">
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Shipping Credit ({currentStore?.shippingCommission || 0}%)</span>
+                              <span className="text-sm font-black text-slate-900">₹{totalShippingCreditsEarned.toFixed(2)}</span>
+                          </div>
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col gap-1">
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Seva Pool ({currentStore?.sevaCommission || 0}%)</span>
+                              <span className="text-sm font-black text-slate-900">₹{sevaPoolEarned.toFixed(2)}</span>
+                          </div>
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col gap-1">
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Referral Bonus ({currentStore?.referralCommission || 0}%)</span>
+                              <span className="text-sm font-black text-slate-900">₹{referralBonusEarned.toFixed(2)}</span>
+                          </div>
+                      </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Button className="w-full h-12 bg-slate-900 hover:bg-black text-white rounded-lg font-bold text-base" onClick={() => { setMobileStep(2); window.scrollTo(0,0); }}>Continue to Address</Button>
+          </div>
+        )}
+
+        {/* MOBILE STEP 2: Address */}
+        {mobileStep === 2 && (
+          <div className="lg:hidden space-y-4">
+            <Card className="border shadow-sm bg-white rounded-xl overflow-hidden">
+              <CardHeader className="bg-slate-50 border-b border-slate-100 py-3 px-4"><CardTitle className="text-base font-bold text-slate-900">Shipping Details</CardTitle></CardHeader>
+              <CardContent className="p-4">
+                <div className="mb-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Select Address</Label>
+                    <Button variant="ghost" size="sm" onClick={() => { setIsAddingNewAddress(true); setSelectedAddressIndex(null); setFormData({ fullName: getUserName(user), mobile: user ? ('customerMobile' in user ? (user as any).customerMobile : (user as any).staffMobile) : '', street:'', city:'', state:'', zipCode:'', landmark:'' } as Address); }} className="text-slate-900 font-bold text-[10px] uppercase h-auto p-0 hover:bg-transparent underline">+ Add New</Button>
+                  </div>
+                  {savedAddresses.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-2">
+                      {savedAddresses.map((addr, idx) => (<div key={idx} onClick={() => { setIsAddingNewAddress(false); setSelectedAddressIndex(idx); setFormData(addr); }} className={`p-3 rounded-xl border cursor-pointer transition-all ${!isAddingNewAddress && selectedAddressIndex === idx ? 'border-slate-900 bg-slate-50' : 'border-slate-200 bg-white'}`}><div className="flex justify-between items-center mb-1"><p className="font-bold text-slate-900 text-xs">{addr.fullName}</p>{!isAddingNewAddress && selectedAddressIndex === idx && <div className="h-2 w-2 rounded-full bg-slate-900" />}</div><p className="text-[10px] text-slate-500 leading-tight">{addr.street}, {addr.city}, {addr.state} - {addr.zipCode}</p></div>))}
+                      <div onClick={() => { setIsAddingNewAddress(true); setSelectedAddressIndex(null); setFormData({ fullName: getUserName(user), mobile: user ? ('customerMobile' in user ? (user as any).customerMobile : (user as any).staffMobile) : '', street:'', city:'', state:'', zipCode:'', landmark:'' } as Address); }} className={`p-3 rounded-xl border border-dashed cursor-pointer flex items-center justify-center ${isAddingNewAddress ? 'border-slate-900 bg-slate-50' : 'border-slate-300 bg-white'}`}><span className="text-[10px] font-bold text-slate-500 uppercase">Add New Address</span></div>
+                    </div>
+                  ) : (<div className="text-[11px] text-slate-400 bg-slate-50 p-3 rounded-xl border border-dashed text-center">No saved addresses. Enter below.</div>)}
+                </div>
+                <form id="checkout-form-mobile" onSubmit={handlePlaceOrder} className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1"><Label className="text-[10px] font-bold text-slate-500 uppercase">Full Name</Label><Input required value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} className="h-9 rounded-lg border-slate-200 text-sm" /></div>
+                    <div className="space-y-1"><Label className="text-[10px] font-bold text-slate-500 uppercase">Mobile</Label><Input required type="tel" value={formData.mobile} onChange={e => setFormData({...formData, mobile: e.target.value})} className="h-9 rounded-lg border-slate-200 text-sm" /></div>
+                  </div>
+                  <div className="space-y-1"><Label className="text-[10px] font-bold text-slate-500 uppercase">Street Address</Label><Input required value={formData.street} onChange={e => setFormData({...formData, street: e.target.value})} placeholder="House No, Street, Colony" className="h-9 rounded-lg border-slate-200 text-sm" /></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1"><Label className="text-[10px] font-bold text-slate-500 uppercase">City</Label><Input required value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} className="h-9 rounded-lg border-slate-200 text-sm" /></div>
+                    <div className="space-y-1"><Label className="text-[10px] font-bold text-slate-500 uppercase">State</Label><Select value={formData.state} onValueChange={val => setFormData({...formData, state: val})}><SelectTrigger className="h-9 rounded-lg border-slate-200 text-sm"><SelectValue placeholder="State" /></SelectTrigger><SelectContent>{INDIAN_STATES.map(s => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent></Select></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1"><Label className="text-[10px] font-bold text-slate-500 uppercase">Pincode</Label><Input required value={formData.zipCode} onChange={e => setFormData({...formData, zipCode: e.target.value})} className="h-9 rounded-lg border-slate-200 text-sm" /></div>
+                    <div className="space-y-1"><Label className="text-[10px] font-bold text-slate-500 uppercase">Landmark</Label><Input value={formData.landmark} onChange={e => setFormData({...formData, landmark: e.target.value})} className="h-9 rounded-lg border-slate-200 text-sm" placeholder="Optional" /></div>
+                  </div>
+                  <div className="flex items-center space-x-2 pt-1"><Checkbox id="save-addr-mobile" checked={saveNewAddress} onCheckedChange={(c) => setSaveNewAddress(!!c)} className="h-4 w-4" /><Label htmlFor="save-addr-mobile" className="text-[11px] font-medium text-slate-600 cursor-pointer">Save for future orders</Label></div>
+                </form>
+              </CardContent>
+            </Card>
+            <Button className="w-full h-12 bg-slate-900 hover:bg-black text-white rounded-lg font-bold text-base" onClick={() => { if (!formData.fullName||!formData.mobile||!formData.street||!formData.city||!formData.state||!formData.zipCode) { toast.error('Please fill all required address fields'); return; } setMobileStep(3); window.scrollTo(0,0); }}>Continue to Payment</Button>
+          </div>
+        )}
+
+        {/* MOBILE STEP 3: Payment */}
+        {mobileStep === 3 && (
+          <div className="lg:hidden space-y-4">
+            <Card className="border shadow-sm bg-white rounded-xl overflow-hidden">
+              <CardHeader className="bg-slate-50 border-b border-slate-100 py-3 px-4"><CardTitle className="text-base font-bold text-slate-900">Payment Details</CardTitle></CardHeader>
+              <CardContent className="p-4">
+                <div className="space-y-4">
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-1">Select Payment Method</p>
+                  
+                  <div className="grid grid-cols-1 gap-3">
+                    <div 
+                        onClick={() => setPaymentMethod('cod')}
+                        className={cn(
+                            "relative overflow-hidden cursor-pointer p-5 rounded-[24px] border-2 transition-all flex items-center justify-between gap-4",
+                            paymentMethod === 'cod' ? "border-slate-900 bg-slate-50" : "border-slate-100 bg-white"
+                        )}
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className={cn("h-10 w-10 rounded-full flex items-center justify-center bg-slate-100", paymentMethod === 'cod' && "bg-slate-900 text-white")}>
+                                <MessageSquare className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <p className="font-black text-slate-900 text-sm">Manual UPI / QR Pay</p>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Pay & Share Screenshot</p>
+                            </div>
+                        </div>
+                        <div className={cn("h-5 w-5 rounded-full border-2 flex items-center justify-center", paymentMethod === 'cod' ? "border-slate-900" : "border-slate-300")}>
+                            {paymentMethod === 'cod' && <div className="h-2.5 w-2.5 rounded-full bg-slate-900" />}
+                        </div>
+                    </div>
+
+                    <div 
+                        onClick={() => setPaymentMethod('online')}
+                        className={cn(
+                            "relative overflow-hidden cursor-pointer p-5 rounded-[24px] border-2 transition-all flex items-center justify-between gap-4",
+                            paymentMethod === 'online' ? "border-slate-900 bg-slate-50" : "border-slate-100 bg-white"
+                        )}
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className={cn("h-10 w-10 rounded-full flex items-center justify-center bg-slate-100", paymentMethod === 'online' && "bg-slate-900 text-white")}>
+                                <ShoppingCart className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <p className="font-black text-slate-900 text-sm">Online Payment</p>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Razorpay (Cards, UPI, Bank)</p>
+                            </div>
+                        </div>
+                        <div className={cn("h-5 w-5 rounded-full border-2 flex items-center justify-center", paymentMethod === 'online' ? "border-slate-900" : "border-slate-300")}>
+                            {paymentMethod === 'online' && <div className="h-2.5 w-2.5 rounded-full bg-slate-900" />}
+                        </div>
+                    </div>
+                  </div>
+
+                  {paymentMethod === 'cod' && (
+                    <div className="bg-slate-50 border border-slate-100 rounded-[32px] p-6 mt-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                      <div className="flex flex-col items-center gap-6">
+                        <div className="bg-white p-4 rounded-[24px] shadow-lg border border-slate-100 relative group">
+                            <img src="/qr.jpeg" alt="Payment QR Code" className="h-52 w-52 object-contain" onError={(e) => { e.currentTarget.src='https://placehold.co/400x400?text=Scan+to+Pay'; }} />
+                            <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-[24px]">
+                                <span className="bg-white/90 px-3 py-1 rounded-full text-[10px] font-black uppercase">Scan to Pay</span>
+                            </div>
+                        </div>
+                        
+                        <div className="w-full space-y-4">
+                          <div className="bg-slate-900 rounded-[24px] p-5 flex flex-col items-center gap-3">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Official UPI ID</span>
+                            <span className="text-xl font-mono font-black text-white break-all text-center">sustainablekgv@cnrb</span>
+                            <Button 
+                                variant="secondary" 
+                                size="sm" 
+                                onClick={() => handleCopy('sustainablekgv@cnrb','UPI ID')} 
+                                className={cn(
+                                    "h-11 px-6 w-full font-black rounded-xl flex items-center justify-center gap-2 transition-all",
+                                    copiedField==='UPI ID' ? 'bg-emerald-500 text-white' : 'bg-white text-slate-900'
+                                )}
+                            >
+                                {copiedField==='UPI ID' ? <><Check className="h-4 w-4"/>Copied!</> : <><Copy className="h-4 w-4"/>Copy ID</>}
+                            </Button>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-white rounded-2xl p-4 border border-slate-100 flex flex-col items-center gap-2">
+                                <span className="text-[9px] font-black text-slate-400 uppercase">WhatsApp</span>
+                                <Button variant="ghost" size="sm" onClick={() => window.open('https://wa.me/919606979530','_blank')} className="h-8 px-4 text-green-600 font-black text-[10px] bg-green-50 rounded-full w-full uppercase">Chat Now</Button>
+                            </div>
+                            <div className="bg-white rounded-2xl p-4 border border-slate-100 flex flex-col items-center gap-2">
+                                <span className="text-[9px] font-black text-slate-400 uppercase">Need Help?</span>
+                                <Button variant="ghost" size="sm" onClick={() => window.location.href='tel:9606979530'} className="h-8 px-4 text-slate-900 font-black text-[10px] bg-slate-100 rounded-full w-full uppercase">Call Us</Button>
+                            </div>
+                          </div>
+
+                          <div className="bg-white rounded-[24px] p-5 border border-slate-100 space-y-3">
+                            <p className="font-black text-[10px] text-slate-900 uppercase tracking-widest border-b border-slate-50 pb-2">3 Easy Steps</p>
+                            {[
+                                "Scan QR or use UPI ID to pay",
+                                "Screenshot the confirmation",
+                                "Share on WhatsApp with Order ID"
+                            ].map((s,i)=>(
+                                <div key={i} className="flex gap-3 items-center">
+                                    <span className="flex-shrink-0 h-6 w-6 rounded-lg bg-slate-100 text-slate-900 flex items-center justify-center text-[10px] font-black">{i+1}</span>
+                                    <span className="text-xs text-slate-600 font-bold leading-tight">{s}</span>
+                                </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {paymentMethod === 'online' && (
+                    <div className="bg-slate-50 border border-slate-100 rounded-[32px] p-10 text-center space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                      <div className="bg-white h-20 w-32 flex items-center justify-center rounded-2xl shadow-sm border mx-auto">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/8/89/Razorpay_logo.svg" alt="Razorpay" className="h-6 w-auto" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-black text-slate-900">Secure Gateway</h3>
+                        <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed px-4">Pay instantly using UPI, Cards, NetBanking or Wallets.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border shadow-sm bg-white rounded-xl overflow-hidden mb-4">
+               <CardHeader className="bg-slate-50 border-b border-slate-100 py-3 px-4">
+                 <CardTitle className="text-sm font-bold text-slate-900">Final Order Review</CardTitle>
+               </CardHeader>
+               <CardContent className="p-4 space-y-4">
+                  <div className="flex justify-between items-center p-2 bg-purple-50 rounded-lg">
+                    <span className="text-[11px] font-medium text-purple-900">Items Total (Excl Tax)</span>
+                    <span className="font-bold text-xs text-purple-600">₹{totalOriginalBase.toFixed(2)}</span>
+                  </div>
+
+                  {redeemedCoinsTotal > 0 && (
+                    <div className="flex justify-between items-center p-2 bg-amber-50 rounded-lg">
+                      <span className="text-[11px] font-medium text-amber-900">Surabhi Coins Applied</span>
+                      <span className="font-bold text-xs text-amber-600">-₹{redeemedCoinsTotal.toFixed(2)}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center p-2 bg-indigo-50/50 rounded-lg border border-indigo-100">
+                    <span className="text-[11px] font-bold italic text-indigo-900">Total SPV Points</span>
+                    <span className="font-bold text-xs text-indigo-600 italic">{totalSpv.toFixed(2)}</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center p-2 bg-slate-50 border border-slate-100 rounded-lg">
+                        <span className="text-[11px] font-medium text-slate-700">Adjusted Items Value</span>
+                        <span className="font-bold text-xs text-slate-900">₹{totalAdjustedBase.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-2 bg-slate-50 border border-slate-100 rounded-lg">
+                        <span className="text-[11px] font-medium text-slate-700">Adjusted Tax value</span>
+                        <span className="font-bold text-xs text-slate-900">₹{totalAdjustedTax.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-2 bg-emerald-50 rounded-lg">
+                        <span className="text-[11px] font-medium text-emerald-900">Adjusted Items Total</span>
+                        <span className="font-bold text-xs text-emerald-600">₹{itemsTotalAfterCoins.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  {/* Brand Wise Shipping Breakdown */}
+                  <div className="py-3 space-y-2.5 border border-indigo-100 bg-indigo-50/30 rounded-xl px-4 my-2">
+                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1 flex justify-between items-center">
+                          <span>Delivery Breakdown</span>
+                          <span className="text-indigo-600">Brand Wise</span>
+                      </p>
+                      {Object.values(productsByGroup).map((group) => (
+                          <div key={group.brandName} className="grid grid-cols-2 gap-4 items-center border-b border-indigo-100/30 pb-2 mb-2 last:border-0 last:pb-0 last:mb-0">
+                              <div className="flex flex-col">
+                                  <span className="text-xs font-bold text-slate-700">{group.brandName}</span>
+                                  <span className="text-[9px] text-indigo-500 font-medium leading-none mt-1">Total Weight: {group.displayWeight.toFixed(2)}kg</span>
+                              </div>
+                              <div className="text-right">
+                                  <span className="text-xs font-black text-slate-900">₹{group.shipping.toFixed(2)}</span>
+                              </div>
+                          </div>
+                      ))}
+                  </div>
+
+                  <div className="flex justify-between items-center p-2 bg-indigo-50 rounded-lg border border-indigo-100">
+                    <span className="text-[11px] font-medium text-indigo-900">Est. Delivery Charges</span>
+                    <span className="font-bold text-xs text-indigo-600">₹{shippingCost.toFixed(2)}</span>
+                  </div>
+
+                  {shippingCreditsUsed !== 0 && (
+                    <div className={`flex justify-between items-center p-2 rounded-lg ${shippingCreditsUsed > 0 ? 'bg-blue-50 border border-blue-100' : 'bg-red-50 border border-red-100'}`}>
+                      <span className={`text-[10px] font-black ${shippingCreditsUsed > 0 ? 'text-blue-900' : 'text-red-900'}`}>
+                        {shippingCreditsUsed > 0 ? 'Shipping Credits' : 'Previous Dues'}
+                      </span>
+                      <span className={`font-bold text-xs ${shippingCreditsUsed > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                        {shippingCreditsUsed > 0 ? '-' : '+'}₹{Math.abs(shippingCreditsUsed).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-[9px] text-amber-800 leading-tight italic">Delivery estimates. Final based on actual weight after packing. Any difference will be adjusted in your shipping wallet.</p>
+                  </div>
+
+                  <div className="pt-4 border-t-2 border-slate-200">
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Total Payable Amount</p>
+                    <h2 className="text-4xl font-black text-slate-900 leading-none mt-2">₹{totalPayableAmount.toFixed(2)}</h2>
+                    <p className="text-[9px] text-slate-400 font-bold mt-2 uppercase tracking-tighter">Inclusive of GST & Delivery Fees</p>
+                  </div>
+
+                  {/* Projections Section */}
+                  <div className="pt-4 border-t border-slate-100 space-y-3">
+                      <div className="flex flex-col gap-1">
+                          <p className="text-[9px] font-black text-slate-900 uppercase tracking-[0.2em]">Projected Rewards</p>
+                          <p className="text-[8px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full w-fit border border-emerald-100">
+                              Basis: Adjusted SPV ({aggregateAdjustedSpv.toFixed(2)})
+                          </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col gap-1">
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Coins ({currentStore?.cashOnlyCommission || 0}%)</span>
+                              <span className="text-xs font-black text-slate-900">₹{surabhiCoinsEarned}</span>
+                          </div>
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col gap-1">
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Shipping ({currentStore?.shippingCommission || 0}%)</span>
+                              <span className="text-xs font-black text-slate-900">₹{totalShippingCreditsEarned.toFixed(2)}</span>
+                          </div>
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col gap-1">
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Seva ({currentStore?.sevaCommission || 0}%)</span>
+                              <span className="text-xs font-black text-slate-900">₹{sevaPoolEarned.toFixed(2)}</span>
+                          </div>
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col gap-1">
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Referral ({currentStore?.referralCommission || 0}%)</span>
+                              <span className="text-xs font-black text-slate-900">₹{referralBonusEarned.toFixed(2)}</span>
+                          </div>
+                      </div>
+                  </div>
+               </CardContent>
+            </Card>
+            <Button 
+                onClick={() => handlePlaceOrder()} 
+                disabled={loading || cart.length === 0 || !paymentMethod} 
+                className="w-full h-14 bg-slate-900 hover:bg-black text-white rounded-2xl font-black text-lg shadow-lg active:scale-95 transition-all"
+            >
+                {loading ? (
+                    <span className="flex items-center gap-2">
+                        <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Processing...
+                    </span>
+                ) : !paymentMethod ? 'Select Payment Method' : 'Place Order'}
+            </Button>
+            <p className="text-[9px] text-slate-400 font-medium text-center uppercase tracking-wider">Secure End-to-End Encryption</p>
+          </div>
+        )}
+
       </div>
     </ShopLayout>
   );

@@ -11,8 +11,10 @@ export interface Product {
     images: string[];
     categoryId: string;
     categoryName: string; // Denormalized for easy display
+    categorySlug?: string; // New: for SEO-friendly URLs
     brandId: string;
     brandName: string; // Denormalized for easy display
+    brandSlug?: string; // New: for SEO-friendly URLs
     isActive: boolean;
     isFeatured?: boolean;
     freeShipping?: boolean;
@@ -28,6 +30,7 @@ export interface Product {
     averageRating?: number;
     totalReviews?: number;
     gst?: { title: string; percentage: number };
+    slug: string;
 }
 
 export interface ProductReview {
@@ -53,6 +56,7 @@ export interface Brand {
     isActive: boolean;
     displayOrder?: number; // @deprecated - use categoryOrders for specific contexts
     shippingPercentage?: number; // New: Percentage for shipping credits earning
+    slug: string;
     createdAt: any;
     updatedAt: any;
 }
@@ -90,6 +94,7 @@ export interface CartItem {
     gst?: { title: string; percentage: number };
     originalPrice?: number;
     isAdminUpdated?: boolean;
+    slug?: string;
 }
 
 export interface WishlistItem {
@@ -109,6 +114,7 @@ export interface FilterOptions {
     inStock?: boolean;
     sort?: 'price_asc' | 'price_desc' | 'newest' | 'order' | 'spv_asc' | 'spv_desc';
     includeInactive?: boolean;
+    searchQuery?: string;
 }
 
 export interface Address {

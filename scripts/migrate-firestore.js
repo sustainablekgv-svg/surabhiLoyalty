@@ -28,7 +28,7 @@ const uatDb = getFirestore(uatApp);
 async function copyCollection(srcCol, destCol) {
     const docs = await srcCol.get();
     for (const doc of docs.docs) {
-        // console.log(`Copying document: ${doc.ref.path}`);
+        console.log(`Copying document: ${doc.ref.path}`);
         await destCol.doc(doc.id).set(doc.data());
         
         // Copy subcollections recursively
@@ -40,15 +40,15 @@ async function copyCollection(srcCol, destCol) {
 }
 
 async function migrate() {
-    // console.log("Starting Firestore migration (Spark Plan Compatible)...");
+    console.log("Starting Firestore migration (Spark Plan Compatible)...");
     const collections = await prodDb.listCollections();
     
     for (const col of collections) {
-        // console.log(`Migrating top-level collection: ${col.id}`);
+        console.log(`Migrating top-level collection: ${col.id}`);
         await copyCollection(col, uatDb.collection(col.id));
     }
     
-    // console.log("Firestore Migration complete!");
+    console.log("Firestore Migration complete!");
 }
 
 migrate().catch(console.error);

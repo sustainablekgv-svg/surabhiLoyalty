@@ -9,6 +9,8 @@ import { OriginManager } from './OriginManager';
 import { ProductManager } from './ProductManager';
 import { ShippingManager } from './ShippingManager';
 import { ShopAnalytics } from './ShopAnalytics';
+import { ShopSettings } from './ShopSettings';
+import { Settings } from 'lucide-react';
 
 export const AdminShopDashboard = () => {
     return (
@@ -56,6 +58,10 @@ export const AdminShopDashboard = () => {
                         <Truck className="h-4 w-4" />
                         Shipping
                     </TabsTrigger>
+                    <TabsTrigger value="settings" className="flex items-center gap-2">
+                        <Settings className="h-4 w-4" />
+                        Settings
+                    </TabsTrigger>
 
                 </TabsList>
                 <TabsContent value="products" className="space-y-4">
@@ -84,6 +90,9 @@ export const AdminShopDashboard = () => {
                 </TabsContent>
                  <TabsContent value="origins" className="space-y-4">
                     <OriginManager />
+                </TabsContent>
+                <TabsContent value="settings" className="space-y-4">
+                    <ShopSettings />
                 </TabsContent>
             </Tabs>
         </div>

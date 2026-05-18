@@ -38,19 +38,39 @@ export const getCustomerByMobile = async (
     }
 
     let passwordMatch = false;
+    let debugInfo = '';
 
     if (isEncrypted(customerData.customerPassword)) {
       // Try to decrypt the stored password
       const decryptedStoredPassword = safeDecryptText(customerData.customerPassword);
-      // console.log('[DEBUG] [Customer] Decrypted password successfully?', decryptedStoredPassword !== null);
-      if (decryptedStoredPassword !== null) {
-        // console.log('[DEBUG] [Customer] Input length:', password.length, 'Decrypted length:', decryptedStoredPassword.length);
+      
+      const cleanDecrypted = decryptedStoredPassword?.replace(/^"|"$/g, '').trim() || '';
+      const cleanPassword = password?.replace(/^"|"$/g, '').trim() || '';
+      
+      passwordMatch = cleanDecrypted === cleanPassword;
+      
+      // Safety fallback: what if the password just LOOKS encrypted but is actually plain text?
+      if (!passwordMatch) {
+          const cleanStoredRaw = customerData.customerPassword?.replace(/^"|"$/g, '').trim() || '';
+          if (cleanStoredRaw === cleanPassword) {
+              passwordMatch = true;
+          }
       }
-      passwordMatch = decryptedStoredPassword === password;
+      
+      if (!passwordMatch) {
+          debugInfo = `Encrypted branch mismatch. Input: "${password}" (len: ${password?.length}). Decrypted: "${decryptedStoredPassword}" (len: ${decryptedStoredPassword?.length}). Plain fallback matched: ${customerData.customerPassword === password}`;
+          console.error('[Auth Debug]', debugInfo);
+      }
     } else {
       // Direct comparison for unencrypted passwords (backward compatibility)
-      // console.log('[DEBUG] [Customer] Password is not encrypted, doing plain text comparison');
-      passwordMatch = customerData.customerPassword === password;
+      const cleanStoredRaw = customerData.customerPassword?.replace(/^"|"$/g, '').trim() || '';
+      const cleanPassword = password?.replace(/^"|"$/g, '').trim() || '';
+      passwordMatch = cleanStoredRaw === cleanPassword;
+      
+      if (!passwordMatch) {
+          debugInfo = `Plain branch mismatch. Input: "${password}" (len: ${password?.length}). Stored: "${customerData.customerPassword}" (len: ${customerData.customerPassword?.length})`;
+          console.error('[Auth Debug]', debugInfo);
+      }
     }
 
     if (passwordMatch) {
@@ -97,19 +117,39 @@ export const getStaffByMobile = async (
     }
 
     let passwordMatch = false;
+    let debugInfo = '';
 
     if (isEncrypted(staffData.staffPassword)) {
       // Try to decrypt the stored password
       const decryptedStoredPassword = safeDecryptText(staffData.staffPassword);
-      // console.log('[DEBUG] Decrypted password successfully?', decryptedStoredPassword !== null);
-      if (decryptedStoredPassword !== null) {
-        // console.log('[DEBUG] Input length:', password.length, 'Decrypted length:', decryptedStoredPassword.length);
+      
+      const cleanDecrypted = decryptedStoredPassword?.replace(/^"|"$/g, '').trim() || '';
+      const cleanPassword = password?.replace(/^"|"$/g, '').trim() || '';
+      
+      passwordMatch = cleanDecrypted === cleanPassword;
+      
+      // Safety fallback: what if the password just LOOKS encrypted but is actually plain text?
+      if (!passwordMatch) {
+          const cleanStoredRaw = staffData.staffPassword?.replace(/^"|"$/g, '').trim() || '';
+          if (cleanStoredRaw === cleanPassword) {
+              passwordMatch = true;
+          }
       }
-      passwordMatch = decryptedStoredPassword === password;
+
+      if (!passwordMatch) {
+          debugInfo = `Encrypted branch mismatch. Input: "${password}" (len: ${password?.length}). Decrypted: "${decryptedStoredPassword}" (len: ${decryptedStoredPassword?.length}). Plain fallback matched: ${staffData.staffPassword === password}`;
+          console.error('[Auth Debug]', debugInfo);
+      }
     } else {
       // Direct comparison for unencrypted passwords (backward compatibility)
-      // console.log('[DEBUG] Password is not encrypted, doing plain text comparison');
-      passwordMatch = staffData.staffPassword === password;
+      const cleanStoredRaw = staffData.staffPassword?.replace(/^"|"$/g, '').trim() || '';
+      const cleanPassword = password?.replace(/^"|"$/g, '').trim() || '';
+      passwordMatch = cleanStoredRaw === cleanPassword;
+      
+      if (!passwordMatch) {
+          debugInfo = `Plain branch mismatch. Input: "${password}" (len: ${password?.length}). Stored: "${staffData.staffPassword}" (len: ${staffData.staffPassword?.length})`;
+          console.error('[Auth Debug]', debugInfo);
+      }
     }
 
     if (!passwordMatch) {
@@ -204,7 +244,7 @@ export const getFirebaseUserForFunctions = async (): Promise<FirebaseAuthUser> =
   const storedUser = storageUtils.getUser() as User | null;
   if (!storedUser) {
     throw new Error(
-      'You must be logged in to upload images. Please refresh the page and try again.'
+      'Your session has expired or you are not logged in. Please refresh the page and log in again to proceed.'
     );
   }
 
@@ -374,8 +414,13 @@ export const registerCustomer = async (data: RegisterCustomerData): Promise<Cust
     let referrerDocId: string | null = null;
 
     if (data.referredBy) {
+         const trimmedReferredBy = data.referredBy.trim();
+         const upperInput = trimmedReferredBy.toUpperCase();
+         const isRefCodeWithPrefix = upperInput.startsWith('REF-');
+         const searchCodes = isRefCodeWithPrefix ? [upperInput] : [upperInput, `REF-${upperInput}`];
+         
          // Check if it's a code
-         const qCode = query(customersRef, where('referralCode', '==', data.referredBy.trim()));
+         const qCode = query(customersRef, where('referralCode', 'in', searchCodes));
          const snapshotCode = await getDocs(qCode);
          
          if (!snapshotCode.empty) {

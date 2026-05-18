@@ -9,6 +9,7 @@ import { Product } from '@/types/shop';
 import { Heart, ShoppingCart, Star, Trash2 } from 'lucide-react';
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 
 interface ProductCardProps {
   product: Product;
@@ -18,20 +19,24 @@ interface ProductCardProps {
 export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'default' }) => {
   const { addToCart, toggleWishlist, isInWishlist } = useShop();
   const { user } = useAuth();
+  const { settings } = useGlobalSettings();
   const navigate = useNavigate();
   const location = useLocation();
   const isWishlisted = isInWishlist(product.id);
+  const isPaused = settings.pauseOrders;
 
 
   return (
-    <Card className="group overflow-hidden border-0 bg-transparent shadow-none hover:shadow-lg transition-all duration-300 rounded-xl bg-white flex flex-col h-full">
+    <Card className="group overflow-hidden border-0 bg-transparent shadow-none hover:shadow-lg transition-shadow duration-300 rounded-xl bg-white flex flex-col h-full">
 
-      <div className="relative aspect-square overflow-hidden bg-white cursor-pointer flex items-center justify-center" onClick={() => navigate(`/shop/product/${product.id}`, { state: { from: location.pathname + location.search } })}>
+      <div className="relative w-full aspect-square min-h-[200px] overflow-hidden bg-slate-50 cursor-pointer flex items-center justify-center" onClick={() => navigate(`/shop/product/${product.slug || product.id}`, { state: { from: location.pathname + location.search } })}>
         {isValidImageUrl(product.images?.[0]) ? (
           <img
             src={product.images[0]}
             alt={product.name}
-            className="max-h-full max-w-full object-contain transition-transform duration-500 group-hover:scale-110"
+            className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105  will-change-transform"
+            loading="lazy"
+            decoding="async"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-gray-400">
@@ -40,7 +45,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
         )}
         {product.sellingPrice && product.sellingPrice < product.price && (
           <Badge className="absolute left-2 top-2 bg-red-600 hover:bg-red-700 font-bold px-2 py-1">
-             {Math.round(((product.price - product.sellingPrice) / product.price) * 100)}% OFF
+            {Math.round(((product.price - product.sellingPrice) / product.price) * 100)}% OFF
           </Badge>
         )}
         <Button
@@ -57,40 +62,40 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
           }}
         >
           {variant === 'wishlist' ? (
-             <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-4 w-4" />
           ) : (
-             <Heart className={cn("h-4 w-4", isWishlisted && "fill-current")} />
+            <Heart className={cn("h-4 w-4", isWishlisted && "fill-current")} />
           )}
         </Button>
       </div>
-      
+
       <CardContent className="p-4 flex-1 flex flex-col">
-        <div 
+        <div
           className="mb-2 text-sm text-gray-600 cursor-pointer hover:underline font-medium"
-          onClick={() => navigate(`/shop/category/${product.categoryName}`)}
+          onClick={() => navigate(`/shop/filters?category=${product.categorySlug || product.categoryId}`)}
         >
           {product.categoryName}
         </div>
-        
-        <h3 
+
+        <h3
           className="font-semibold leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors text-gray-900 min-h-[2.5rem]"
-          onClick={() => navigate(`/shop/product/${product.id}`, { state: { from: location.pathname + location.search } })}
+          onClick={() => navigate(`/shop/product/${product.slug || product.id}`, { state: { from: location.pathname + location.search } })}
           title={product.name}
         >
           {product.name}
         </h3>
-        
+
         {product.totalReviews ? (
-            <div className="flex items-center gap-1 mt-1 mb-2 text-[10px] text-gray-500 font-bold">
-                <div className="flex gap-0.5">
-                    {Array(5).fill(0).map((_, i) => (
-                        <Star key={i} className={`h-3 w-3 ${i < Math.round(product.averageRating || 0) ? 'fill-yellow-400 text-yellow-400' : 'fill-gray-200 text-gray-200'}`} />
-                    ))}
-                </div>
-                <span>({product.totalReviews})</span>
+          <div className="flex items-center gap-1 mt-1 mb-2 text-[10px] text-gray-500 font-bold">
+            <div className="flex gap-0.5">
+              {Array(5).fill(0).map((_, i) => (
+                <Star key={i} className={`h-3 w-3 ${i < Math.round(product.averageRating || 0) ? 'fill-yellow-400 text-yellow-400' : 'fill-gray-200 text-gray-200'}`} />
+              ))}
             </div>
+            <span>({product.totalReviews})</span>
+          </div>
         ) : null}
-        
+
         <div className="mt-auto">
           <div className="flex items-center flex-wrap gap-2 mb-2">
             {product.sellingPrice && product.sellingPrice < product.price ? (
@@ -101,36 +106,43 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
             ) : (
               <span className="font-bold text-lg">₹{product.price}</span>
             )}
-            
+
             {(product.quantity || product.weight) && (
-               <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded ml-auto">
-                 {product.quantity || product.weight} {product.unitsOfMeasure === 'pcs' ? 'pc' : product.unitsOfMeasure}
-               </span>
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded ml-auto">
+                {product.quantity || product.weight} {product.unitsOfMeasure === 'pcs' ? 'pc' : product.unitsOfMeasure}
+              </span>
             )}
           </div>
-          
+
           {/* Rewards Section */}
           <div className="flex flex-wrap gap-2 mb-3">
-             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-               🪙 {Math.floor((product.spv || 0) * 0.1)} Coins
-             </span>
-             
-             {(product.spv || 0) > 0 && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                  💎 SPV: {product.spv}
-                </span>
-             )}
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+              🪙 {Math.floor((product.spv || 0) * 0.1)} Coins
+            </span>
+
+            {(product.spv || 0) > 0 && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                💎 SPV: {product.spv}
+              </span>
+            )}
           </div>
         </div>
 
       </CardContent>
       <CardFooter className="p-4 pt-0">
-        <Button 
-          className="w-full gap-2 rounded-full" 
-          onClick={() => addToCart(product)}
+        <Button
+          className={cn("w-full gap-2 rounded-full", isPaused && "bg-gray-100 text-gray-400 hover:bg-gray-100 cursor-not-allowed")}
+          onClick={() => !isPaused && addToCart(product)}
+          disabled={isPaused}
         >
-          <ShoppingCart className="h-4 w-4" />
-          Add to Cart
+          {isPaused ? (
+            <>Orders Paused</>
+          ) : (
+            <>
+              <ShoppingCart className="h-4 w-4" />
+              Add to Cart
+            </>
+          )}
         </Button>
       </CardFooter>
     </Card>
