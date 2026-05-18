@@ -9,9 +9,11 @@ import {
     doc,
     getDoc,
     getDocs,
+    increment,
     limit,
     orderBy,
     query,
+    runTransaction,
     serverTimestamp,
     startAfter,
     Timestamp,
@@ -1031,7 +1033,7 @@ if (
 
 
 if (
-    status === 'confirmed' &&
+    ['confirmed', 'cancelled'].includes(status) &&
     Number(order?.surabhiCoinsUsed || 0) > 0 &&
     !(order as any).coinsDeducted
 ){
@@ -1100,43 +1102,7 @@ updates.shippingUnlocked = true;
 }
 
 
-   //updated new 
-
-   if (
-    status === 'cancelled' &&
-    Number(order?.surabhiCoinsUsed || 0) > 0 &&
-    !(order as any).coinsReleased
-) {
-    const customerRef = doc(db, 'Customers', order.userId);
-
-    await runTransaction(db, async (transaction) => {
-        const customerSnap = await transaction.get(customerRef);
-
-        if (!customerSnap.exists()) {
-            throw new Error('Customer not found');
-        }
-
-        const customerData = customerSnap.data();
-
-        const currentPending =
-            Number(customerData.pendingSurabhiCoins || 0);
-
-        const safePending = Math.max(
-            0,
-            currentPending - Number(order.surabhiCoinsUsed || 0)
-        );
-
-        transaction.update(customerRef, {
-            pendingSurabhiCoins: safePending,
-        });
-
-        transaction.update(docRef, {
-            coinsReleased: true,
-        });
-    });
-
-    updates.coinsReleased = true;
-}
+  
 
 //shipping update
 

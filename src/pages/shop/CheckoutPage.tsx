@@ -1331,9 +1331,19 @@ const customerSurabhiBalance =
                         <span className="text-sm font-bold text-slate-800">
                           Surabhi Coins
                         </span>
-                        <span className="text-xs font-bold text-slate-500">
-                          Balance: ₹{(customerData?.surabhiBalance || 0).toFixed(2)}
-                        </span>
+                        <div className="text-right text-xs">
+  <div className="font-semibold text-slate-700">
+    Total: ₹{actualBalance.toFixed(2)}
+  </div>
+
+  <div className="text-amber-600 font-medium">
+    Locked: ₹{lockedCoins.toFixed(2)}
+  </div>
+
+  <div className="text-green-600 font-semibold">
+    Available: ₹{availableBalance.toFixed(2)}
+  </div>
+</div>
                       </div>
 
                       {isCointEligible ? (
