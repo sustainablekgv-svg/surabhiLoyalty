@@ -663,7 +663,7 @@ const ShopPage = () => {
                                         <SheetTitle>Filters</SheetTitle>
                                     </SheetHeader>
                                     <div className="mt-4">
-                                        <FilterContent />
+                                        {FilterContent()}
                                     </div>
                                 </SheetContent>
                             </Sheet>
@@ -789,7 +789,7 @@ const ShopPage = () => {
                         <div className="hidden md:block w-64 shrink-0 space-y-6 sticky top-36">
                             <div className="bg-white p-6 rounded-lg border shadow-sm">
                                     <h2 className="font-semibold text-lg mb-4">Filters</h2>
-                                    <FilterContent />
+                                    {FilterContent()}
                             </div>
                         </div>
 
