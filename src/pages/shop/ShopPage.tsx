@@ -374,7 +374,8 @@ const ShopPage = () => {
             }
             fetchProducts(false);
         }
-    }, [viewMode, filterTrigger, debouncedSearch, selectedCategory, selectedBrand, selectedOrigin, priceRange, spvRange, sortBy, filterCategories]); 
+    }, [
+    viewMode,filterTrigger,debouncedSearch,selectedCategory,selectedBrand,selectedOrigin,priceRange,spvRange,sortBy]);
 
     
 
@@ -471,16 +472,6 @@ const ShopPage = () => {
         );
     }, [brandsList, landingPageSelectedCategory]);
 
-    // Reset brand if it's no longer in the filtered list
-    useEffect(() => {
-        if (selectedBrand && selectedBrand !== 'all' && selectedCategory && filterBrands.length > 0) {
-            const isBrandValid = displayedFilterBrands.some(b => b.id === selectedBrand);
-            if (!isBrandValid) {
-                setSelectedBrand(null);
-            }
-        }
-    }, [selectedCategory, displayedFilterBrands, selectedBrand, filterBrands]);
-
     const categoryNames = useMemo(() => filterCategories.map(c => c.name), [filterCategories]);
 
     const FilterContent = () => (
@@ -491,8 +482,11 @@ const ShopPage = () => {
                     <Button 
                         variant={selectedCategory === null ? "default" : "outline"} 
                         size="sm"
-                        onClick={() => setSelectedCategory(null)}
-                        className="rounded-full"
+onClick={() => {
+    setSelectedBrand(null);
+    setSelectedCategory(null);
+}} 
+                       className="rounded-full"
                     >
                         All
                     </Button>
@@ -501,8 +495,11 @@ const ShopPage = () => {
                             key={cat.id}
                             variant={(selectedCategory === cat.id || (cat.slug && selectedCategory === cat.slug)) ? "default" : "outline"}
                             size="sm"
-                            onClick={() => setSelectedCategory(cat.slug || cat.id)}
-                            className="rounded-full"
+             onClick={() => {
+    setSelectedBrand(null);
+    setSelectedCategory(cat.slug || cat.id);
+}}
+               className="rounded-full"
                         >
                             {cat.name}
                         </Button>
