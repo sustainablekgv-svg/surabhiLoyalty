@@ -228,11 +228,6 @@ const ProductDetailsPage = () => {
                     <div>
                         <div className="flex justify-between items-start">
                             <div>
-                                {product.brandName && (
-                                    <Badge variant="secondary" className="mb-2 hover:bg-secondary">
-                                        {product.brandName || "Brand"}
-                                    </Badge>
-                                )}
                                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{product.name}</h1>
                                 
                                 {product.totalReviews ? (
@@ -326,6 +321,28 @@ const ProductDetailsPage = () => {
                             </div>
                         )}
                     </div>
+
+                    {product.brandName && (
+    <div className="pt-2 border-t">
+        <span className="block text-sm text-gray-500 mb-1">
+            Brand
+        </span>
+
+        <button
+            type="button"
+            className="text-blue-600 hover:underline font-medium"
+            onClick={() =>
+                navigate(
+                    `/shop/filters?brand=${
+                        product.brandSlug || product.brandId
+                    }`
+                )
+            }
+        >
+            {product.brandName}
+        </button>
+    </div>
+)}
                     
                     {isPaused && (
                         <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 animate-pulse">

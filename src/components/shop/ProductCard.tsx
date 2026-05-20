@@ -70,12 +70,42 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
       </div>
 
       <CardContent className="p-4 flex-1 flex flex-col">
-        <div
-          className="mb-2 text-sm text-gray-600 cursor-pointer hover:underline font-medium"
-          onClick={() => navigate(`/shop/filters?category=${product.categorySlug || product.categoryId}`)}
-        >
-          {product.categoryName}
-        </div>
+       <div className="mb-2 flex flex-col text-sm font-medium">
+
+  {/* Category */}
+  <button
+    type="button"
+    className="w-fit text-left text-gray-600 hover:underline"
+    onClick={(e) => {
+      e.stopPropagation();
+
+      navigate(
+        `/shop/filters?category=${
+          product.categorySlug || product.categoryId
+        }`
+      );
+    }}
+  >
+    {product.categoryName}
+  </button>
+
+  {/* Brand */}
+  <button
+    type="button"
+    className="w-fit text-left text-blue-600 hover:underline"
+    onClick={(e) => {
+      e.stopPropagation();
+
+      navigate(
+        `/shop/filters?brand=${
+          product.brandSlug || product.brandId
+        }`
+      );
+    }}
+  >
+    {product.brandName}
+  </button>
+</div>
 
         <h3
           className="font-semibold leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors text-gray-900 min-h-[2.5rem]"
