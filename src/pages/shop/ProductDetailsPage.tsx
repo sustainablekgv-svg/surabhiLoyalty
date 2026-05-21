@@ -228,25 +228,46 @@ const ProductDetailsPage = () => {
                     <div>
                         <div className="flex justify-between items-start">
                             <div>
-                                {product.brandName && (
-    <button
-        type="button"
-        onClick={() =>
-            navigate(
-                `/shop/filters?brand=${
-                    product.brandSlug || product.brandId
-                }`
-            )
-        }
-        className="md:hidden"
-    >
-        <Badge
-            variant="secondary"
-            className="mb-2 cursor-pointer bg-blue-100 text-blue-700 hover:bg-blue-200"
+                               {product.brandName && (
+    <div className="md:hidden mb-2 flex items-center gap-1 flex-wrap">
+        <button
+            type="button"
+            onClick={() =>
+                navigate(
+                    `/shop/filters?category=${
+                        product.categorySlug || product.categoryId
+                    }`
+                )
+            }
         >
-            {product.categoryName} • {product.brandName}
-        </Badge>
-    </button>
+            <Badge
+                variant="secondary"
+                className="cursor-pointer bg-blue-100 text-blue-700 hover:bg-blue-200"
+            >
+                {product.categoryName}
+            </Badge>
+        </button>
+
+        <span className="text-gray-400">•</span>
+
+        <button
+            type="button"
+            onClick={() =>
+                navigate(
+                    `/shop/filters?brand=${
+                        product.brandSlug || product.brandId
+                    }`
+                )
+            }
+        >
+            <Badge
+                variant="secondary"
+                className="cursor-pointer bg-blue-100 text-blue-700 hover:bg-blue-200"
+            >
+                {product.brandName}
+            </Badge>
+        </button>
+    </div>
 )}
                                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{product.name}</h1>
                                 
@@ -348,19 +369,37 @@ const ProductDetailsPage = () => {
             Category • Brand
         </span>
 
-        <button
-            type="button"
-            className="text-blue-600 font-medium hover:text-blue-700 transition-colors"
-            onClick={() =>
-                navigate(
-                    `/shop/filters?brand=${
-                        product.brandSlug || product.brandId
-                    }`
-                )
-            }
-        >
-           {product.categoryName} • {product.brandName}
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+            <button
+                type="button"
+                className="text-blue-600 font-medium hover:text-blue-700 transition-colors"
+                onClick={() =>
+                    navigate(
+                        `/shop/filters?category=${
+                            product.categorySlug || product.categoryId
+                        }`
+                    )
+                }
+            >
+                {product.categoryName}
+            </button>
+
+            <span className="text-gray-400">•</span>
+
+            <button
+                type="button"
+                className="text-blue-600 font-medium hover:text-blue-700 transition-colors"
+                onClick={() =>
+                    navigate(
+                        `/shop/filters?brand=${
+                            product.brandSlug || product.brandId
+                        }`
+                    )
+                }
+            >
+                {product.brandName}
+            </button>
+        </div>
     </div>
 )}
                     
