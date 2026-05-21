@@ -228,6 +228,26 @@ const ProductDetailsPage = () => {
                     <div>
                         <div className="flex justify-between items-start">
                             <div>
+                                {product.brandName && (
+    <button
+        type="button"
+        onClick={() =>
+            navigate(
+                `/shop/filters?brand=${
+                    product.brandSlug || product.brandId
+                }`
+            )
+        }
+        className="md:hidden"
+    >
+        <Badge
+            variant="secondary"
+            className="mb-2 cursor-pointer bg-blue-100 text-blue-700 hover:bg-blue-200"
+        >
+            {product.categoryName} • {product.brandName}
+        </Badge>
+    </button>
+)}
                                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{product.name}</h1>
                                 
                                 {product.totalReviews ? (
@@ -323,14 +343,14 @@ const ProductDetailsPage = () => {
                     </div>
 
                     {product.brandName && (
-    <div className="pt-2 border-t">
+    <div className="hidden md:block pt-2 border-t">
         <span className="block text-sm text-gray-500 mb-1">
-            Brand
+            Category • Brand
         </span>
 
         <button
             type="button"
-            className="text-blue-600 hover:underline font-medium"
+            className="text-blue-600 font-medium hover:text-blue-700 transition-colors"
             onClick={() =>
                 navigate(
                     `/shop/filters?brand=${
@@ -339,7 +359,7 @@ const ProductDetailsPage = () => {
                 )
             }
         >
-            {product.brandName}
+           {product.categoryName} • {product.brandName}
         </button>
     </div>
 )}

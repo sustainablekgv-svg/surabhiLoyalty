@@ -106,6 +106,21 @@ const ShopPage = () => {
         }
     }, [location.pathname, location.search, navigate]);
 
+    // Auto scroll to top on filter/navigation changes
+useEffect(() => {
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+    });
+}, [
+    selectedCategory,
+    selectedBrand,
+    selectedOrigin,
+    searchQuery,
+    location.pathname,
+    location.search,
+]);
+
     // Debounce search query
     const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
     useEffect(() => {
