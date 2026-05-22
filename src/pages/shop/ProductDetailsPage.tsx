@@ -32,7 +32,7 @@ const ProductDetailsPage = () => {
     const [quantity, setQuantity] = useState(1);
     const [selectedImage, setSelectedImage] = useState<string>('');
     
-    // Custom back handler to preserve filters.
+    // Custom back handler to preservse filters.
     // Priority:
     // 1. location.state.from  — set by ProductCard/CartPage when navigating here.
     //    This is the exact page (brand/filter/category) the user came from, so we use replace:true
@@ -40,8 +40,14 @@ const ProductDetailsPage = () => {
     // 2. navigate(-1) — only used when there is no `from` state (e.g. direct URL, shared link).
     // 3. /shop — final fallback.
     const handleBack = () => {
-        navigate(-1);
-    };
+    const from = location.state?.from;
+
+    if (from) {
+        navigate(from);
+    } else {
+        navigate('/shop');
+    }
+};
     
     const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 

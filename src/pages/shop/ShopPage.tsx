@@ -300,7 +300,17 @@ useEffect(() => {
             setProductsLoading(false);
         }
     // We remove productsLastDoc from dependencies to prevent infinite loops when it updates
-    }, [debouncedSearch, selectedCategory, selectedBrand, selectedOrigin, priceRange, spvRange, sortBy, filterCategories]); 
+    }, [
+    debouncedSearch,
+    selectedCategory,
+    selectedBrand,
+    selectedOrigin,
+    priceRange,
+    spvRange,
+    sortBy,
+    filterCategories,
+    filterBrands
+]);
 
 
     // --- Load More Wrapper ---
@@ -377,20 +387,35 @@ useEffect(() => {
 
 
     // Effect: Fetch Data on View Change or Filter Change
-    useEffect(() => {
-        if (viewMode === 'landing') {
-            fetchBrandsData(false);
-            fetchCategoriesData(false);
-            fetchProducts(false); // Fetch products for the landing page section
-        } else {
-            // Guard: if a category is selected but categories aren't loaded yet, wait to avoid ID mapping failure
-            if (selectedCategory && filterCategories.length === 0) {
-                 return;
-            }
-            fetchProducts(false);
-        }
-    }, [
-    viewMode,filterTrigger,debouncedSearch,selectedCategory,selectedBrand,selectedOrigin,priceRange,spvRange,sortBy]);
+useEffect(() => {
+    // Wait until filter data is loaded
+    if (
+        filterCategories.length === 0 ||
+        filterBrands.length === 0
+    ) {
+        return;
+    }
+
+    if (viewMode === 'landing') {
+        fetchBrandsData(false);
+        fetchCategoriesData(false);
+        fetchProducts(false);
+    } else {
+        fetchProducts(false);
+    }
+}, [
+    viewMode,
+    filterTrigger,
+    debouncedSearch,
+    selectedCategory,
+    selectedBrand,
+    selectedOrigin,
+    priceRange,
+    spvRange,
+    sortBy,
+    filterCategories,
+    filterBrands
+]);
 
     
 
