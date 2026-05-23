@@ -216,6 +216,7 @@ useEffect(() => {
                 
                 setFilterBrands(fetchedBrands);
                 setFilterCategories(fetchedCategoriesData.categories);
+                setProductsLoading(false);
                 setBrandsList(fetchedBrands); // Initialize brands list for landing view
                 setCategoriesList(fetchedCategoriesData.categories); // Initialize categories list for landing view
                 setOrigins(fetchedOrigins.docs.map(d => ({ id: d.id, name: d.data().name })));
@@ -294,7 +295,7 @@ useEffect(() => {
             }
             
             setProductsLastDoc(result.lastDoc);
-            setProductsHasMore(result.products.length >= PAGE_SIZE); // Approximation
+            setProductsHasMore(!!result.lastDoc); // Approximation
 
         } finally {
             setProductsLoading(false);
@@ -386,23 +387,44 @@ useEffect(() => {
     }, [categoriesLastDoc]);
 
 
-    // Effect: Fetch Data on View Change or Filter Change
-useEffect(() => {
-    // Wait until filter data is loaded
-    if (
-        filterCategories.length === 0 ||
-        filterBrands.length === 0
-    ) {
-        return;
-    }
+    useEffect(() => {
+    const loadData = async () => {
+        try {
 
-    if (viewMode === 'landing') {
-        fetchBrandsData(false);
-        fetchCategoriesData(false);
-        fetchProducts(false);
-    } else {
-        fetchProducts(false);
-    }
+            // VERY IMPORTANT:
+            // wait until categories/brands load
+            // before resolving slug filters
+
+            if (
+                (selectedCategory && filterCategories.length === 0) ||
+                (selectedBrand && filterBrands.length === 0)
+            ) {
+                return;
+            }
+
+            // Reset pagination
+            setProducts([]);
+            setProductsLastDoc(null);
+            setProductsHasMore(true);
+
+            // Landing data
+            if (viewMode === 'landing') {
+                await Promise.all([
+                    fetchBrandsData(false),
+                    fetchCategoriesData(false)
+                ]);
+            }
+
+            // Fetch products
+            await fetchProducts(false);
+
+        } catch (error) {
+            console.error('Failed loading shop data:', error);
+        }
+    };
+
+    loadData();
+
 }, [
     viewMode,
     filterTrigger,
