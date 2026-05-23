@@ -465,7 +465,7 @@ const ProductDetailsPage = () => {
             </div>
 
             {/* Social Reviews Section */}
-            <SocialReviews />
+            <SocialReviews productId={product.id} />
 
             {/* Product Reviews Section */}
             <ProductReviews 

@@ -5,7 +5,86 @@ import { collection, getDocs, limit, orderBy, query, where } from 'firebase/fire
 import { Quote, ShieldCheck, Star } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
-export const SocialReviews: React.FC = () => {
+const FEMALE_NAME_HINTS = new Set([
+  'anusha',
+  'bhargavi',
+  'bhavya',
+  'bindu',
+  'deepika',
+  'divya',
+  'durga',
+  'geetha',
+  'harika',
+  'haritha',
+  'hema',
+  'jyothi',
+  'kalyani',
+  'kavya',
+  'keerthi',
+  'lakshmi',
+  'lavanya',
+  'latha',
+  'madhavi',
+  'mahalakshmi',
+  'manjula',
+  'nirmala',
+  'nisha',
+  'padma',
+  'pooja',
+  'priya',
+  'ramya',
+  'rani',
+  'rashmi',
+  'revathi',
+  'sandhya',
+  'sangeetha',
+  'shilpa',
+  'sindhu',
+  'sindhura',
+  'sneha',
+  'sowjanya',
+  'sowmya',
+  'sravani',
+  'sreelatha',
+  'srilatha',
+  'sruthi',
+  'sujatha',
+  'swathi',
+  'tejaswini',
+  'usha',
+  'vaishnavi',
+]);
+
+const getReviewerAvatarUrl = (customerName: string) => {
+  const normalizedName = customerName.trim();
+  const nameParts = normalizedName.toLowerCase().match(/[a-z]+/g) || [];
+  const isLikelyFemale = nameParts.some((part) => FEMALE_NAME_HINTS.has(part));
+  if (isLikelyFemale) {
+    return `https://api.dicebear.com/9.x/lorelei/svg?seed=${encodeURIComponent(normalizedName)}`;
+  }
+
+  const maleAvatarParams = new URLSearchParams({
+    seed: normalizedName,
+    style: 'circle',
+    top: 'shortFlat,shortRound,theCaesar,theCaesarAndSidePart',
+    accessoriesProbability: '0',
+    facialHairProbability: '0',
+    clothing: 'shirtCrewNeck,shirtVNeck,graphicShirt',
+    clothesColor: 'ff488e,ff5c5c,929598',
+    eyebrows: 'defaultNatural,flatNatural',
+    eyes: 'default,happy,squint',
+    mouth: 'default,smile,twinkle',
+    hairColor: '2c1b18,4a312c,724133',
+  });
+
+  return `https://api.dicebear.com/9.x/avataaars/svg?${maleAvatarParams.toString()}`;
+};
+
+interface SocialReviewsProps {
+  productId: string;
+}
+
+export const SocialReviews: React.FC<SocialReviewsProps> = ({ productId }) => {
   const [reviews, setReviews] = useState<ProductReview[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -14,19 +93,29 @@ export const SocialReviews: React.FC = () => {
       try {
         const q = query(
           collection(db, 'product_reviews'),
-          where('rating', '>=', 4),
-          orderBy('rating', 'desc'),
+          where('productId', '==', productId),
           orderBy('createdAt', 'desc'),
-          limit(6)
+          limit(20)
         );
         const snapshot = await getDocs(q);
         const fetchedReviews = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         })) as ProductReview[];
-        
-        // Filter out reviews with very short text if any
-        setReviews(fetchedReviews.filter(r => r.reviewText && r.reviewText.length > 10));
+
+        const topProductReviews = fetchedReviews
+          .filter(r => (r.rating || 0) >= 4 && r.reviewText && r.reviewText.length > 10)
+          .sort((a, b) => {
+            const ratingDiff = (b.rating || 0) - (a.rating || 0);
+            if (ratingDiff !== 0) return ratingDiff;
+
+            const aTime = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+            const bTime = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+            return bTime - aTime;
+          })
+          .slice(0, 6);
+
+        setReviews(topProductReviews);
       } catch (error) {
         console.error("Error fetching social reviews", error);
       } finally {
@@ -35,7 +124,7 @@ export const SocialReviews: React.FC = () => {
     };
 
     fetchTopReviews();
-  }, []);
+  }, [productId]);
 
   if (loading) {
       return (
@@ -72,7 +161,7 @@ export const SocialReviews: React.FC = () => {
               <div className="flex items-center gap-4 mb-6">
                 <div className="h-14 w-14 rounded-full border-2 border-primary/20 overflow-hidden bg-slate-50 flex items-center justify-center">
                   <img 
-                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${t.customerName}`} 
+                    src={getReviewerAvatarUrl(t.customerName)}
                     alt={t.customerName} 
                     className="h-full w-full object-cover" 
                   />
