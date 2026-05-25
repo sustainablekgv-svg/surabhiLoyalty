@@ -1,9 +1,11 @@
 import { ArrowLeft, Coins, Eye, EyeOff, Loader2, Shield, UserCircle, Users } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { OtpVerifyDialog } from '@/components/auth/OtpVerifyDialog';
+import { db } from '@/lib/firebase';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -31,6 +33,45 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [isCheckingMobile, setIsCheckingMobile] = useState(false);
+  const [mobileStatus, setMobileStatus] = useState<'none' | 'exists' | 'not_found' | 'error'>('none');
+
+  useEffect(() => {
+    const checkMobileRegistration = async () => {
+      const cleaned = formData.mobile.replace(/\D/g, '');
+      if (cleaned.length !== 10) {
+        setMobileStatus('none');
+        return;
+      }
+
+      setIsCheckingMobile(true);
+      setMobileStatus('none');
+
+      try {
+        let q;
+        if (formData.role === 'customer') {
+          q = query(collection(db, 'Customers'), where('customerMobile', '==', cleaned));
+        } else {
+          q = query(collection(db, 'staff'), where('staffMobile', '==', cleaned));
+        }
+
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          setMobileStatus('exists');
+        } else {
+          setMobileStatus('not_found');
+        }
+      } catch (err) {
+        console.error('Error prechecking mobile number:', err);
+        setMobileStatus('error');
+      } finally {
+        setIsCheckingMobile(false);
+      }
+    };
+
+    const timer = setTimeout(checkMobileRegistration, 500);
+    return () => clearTimeout(timer);
+  }, [formData.mobile, formData.role]);
 
   // Forgot-password OTP flow
   const [forgotMobile, setForgotMobile] = useState('');
@@ -71,6 +112,11 @@ const LoginPage = () => {
 
     if (!formData.role) {
       toast.error('Please select your role');
+      return;
+    }
+
+    if (mobileStatus === 'not_found') {
+      toast.error('This mobile number is not registered. Please sign up.');
       return;
     }
 
@@ -282,7 +328,25 @@ const LoginPage = () => {
                     <p className="text-xs text-amber-600">{10 - formData.mobile.length} more digit{10 - formData.mobile.length !== 1 ? 's' : ''} needed</p>
                   )}
                   {formData.mobile.length === 10 && (
-                    <p className="text-xs text-green-600">✓ Valid mobile number</p>
+                    <>
+                      {isCheckingMobile && (
+                        <p className="text-xs text-purple-600 flex items-center gap-1 font-medium">
+                          <Loader2 className="h-3 w-3 animate-spin text-purple-500" />
+                          Checking mobile registration...
+                        </p>
+                      )}
+                      {!isCheckingMobile && mobileStatus === 'exists' && (
+                        <p className="text-xs text-green-600 font-medium">✓ Registered mobile number</p>
+                      )}
+                      {!isCheckingMobile && mobileStatus === 'not_found' && (
+                        <p className="text-xs text-red-500 font-medium flex items-center gap-1">
+                          ⚠️ This mobile number is not registered. Please sign up first.
+                        </p>
+                      )}
+                      {!isCheckingMobile && mobileStatus === 'error' && (
+                        <p className="text-xs text-amber-600">Could not verify registration state</p>
+                      )}
+                    </>
                   )}
                 </div>
 

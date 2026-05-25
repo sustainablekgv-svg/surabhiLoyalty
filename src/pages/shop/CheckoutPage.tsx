@@ -142,7 +142,7 @@ return Math.max(0, actual - pending);
 
     unsubscribe = onSnapshot(docRef, (snap) => {
       if (snap.exists()) {
-        console.log("🔥 LIVE FIRESTORE DATA:", snap.data());
+        // console.log("🔥 LIVE FIRESTORE DATA:", snap.data());
 
         setCustomerData(snap.data());
       }

@@ -194,24 +194,23 @@ export const sendCartReminderSms = functions.https.onCall(
       };
     }
 
-    // Existing SMS configuration details for A2Z (DLT requirements)
-    const senderId = 'SUSKGV';
-    const peid = '1701177271545246259';
-    // Utilizing the reset template ID or generic transactional template ID
-    const templateId = '1707177546212500792';
-
-    // Text conforms to the approved sender template/structure if DLT matches,
-    // or standard transactional reminder structure.
-    const message = `Dear ${customerName}, you have ${itemCount} pending items in your cart at Sustainable KGV. Complete your order at ${url} - Yogaaamrutha RCM`;
+    const cfg = A2Z_SALE_POST_PURCHASE;
+    const message = applyTemplate(cfg.messageTemplate, {
+      name: String(customerName).slice(0, 80),
+      amount: String(`${itemCount} Pending Items`).slice(0, 80),
+      invoice: 'Pending Cart',
+      store: 'Sustainable KGV',
+      payment: String(`complete order at ${url}`).slice(0, 80),
+    });
 
     const smsUrl =
-      `http://sms.a2zsms.in/api.php?username=${encodeURIComponent(username)}` +
+      `${cfg.apiUrl}?username=${encodeURIComponent(username)}` +
       `&password=${encodeURIComponent(password)}` +
       `&to=${cleaned}` +
-      `&from=${encodeURIComponent(senderId)}` +
+      `&from=${encodeURIComponent(cfg.senderId)}` +
       `&message=${encodeURIComponent(message)}` +
-      `&PEID=${encodeURIComponent(peid)}` +
-      `&templateid=${encodeURIComponent(templateId)}`;
+      `&PEID=${encodeURIComponent(cfg.peid)}` +
+      `&templateid=${encodeURIComponent(cfg.templateId)}`;
 
     try {
       const smsResponse = await fetch(smsUrl);

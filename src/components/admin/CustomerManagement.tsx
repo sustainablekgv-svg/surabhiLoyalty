@@ -10,12 +10,15 @@ import {
     MapPin,
     Phone,
     RefreshCw,
+    Search,
     ShoppingCart,
     Truck,
     Users,
     Wallet,
+    X,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import Fuse from 'fuse.js';
 
 import { PasswordDecryptor } from './PasswordDecryptor';
 
@@ -88,6 +91,9 @@ export const CustomerManagement = () => {
   const [loadingCarts, setLoadingCarts] = useState(false);
   const [sendingSmsForCustomer, setSendingSmsForCustomer] = useState<string | null>(null);
   const [timeTick, setTimeTick] = useState(0);
+  const [cartSearchQuery, setCartSearchQuery] = useState('');
+  const [cartVisibleCount, setCartVisibleCount] = useState(5);
+  const cartSentinelRef = useRef<HTMLDivElement | null>(null);
 
   // ==========================================
   // 3. Derived Variables & Computed Properties
@@ -499,6 +505,23 @@ export const CustomerManagement = () => {
     }, 15000);
     return () => clearInterval(interval);
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'carts' || !cartSentinelRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setCartVisibleCount((prev) => prev + 5);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentSentinel = cartSentinelRef.current;
+    observer.observe(currentSentinel);
+    return () => observer.unobserve(currentSentinel);
+  }, [activeTab, cartSentinelRef.current]);
 
 
   if (loading) {
@@ -1213,7 +1236,7 @@ export const CustomerManagement = () => {
         </div>
       ) : activeTab === 'carts' ? (
         <div className="space-y-6">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Cart Tracking & Reminders</h2>
               <p className="text-xs sm:text-sm text-gray-600">
@@ -1225,11 +1248,37 @@ export const CustomerManagement = () => {
               size="sm"
               onClick={fetchCustomerCarts}
               disabled={loadingCarts}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 w-full md:w-auto justify-center"
             >
               <RefreshCw className={`h-4 w-4 ${loadingCarts ? 'animate-spin' : ''}`} />
               Refresh Carts
             </Button>
+          </div>
+
+          {/* Search Carts Input */}
+          <div className="relative w-full max-w-md">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by customer name, phone, product name, brand..."
+              value={cartSearchQuery}
+              onChange={(e) => {
+                setCartSearchQuery(e.target.value);
+                setCartVisibleCount(5); // Reset visible count on new search
+              }}
+              className="w-full h-11 pl-10 pr-10 rounded-full border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent shadow-sm"
+            />
+            {cartSearchQuery && (
+              <button
+                onClick={() => {
+                  setCartSearchQuery('');
+                  setCartVisibleCount(5);
+                }}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
           {loadingCarts ? (
@@ -1246,23 +1295,41 @@ export const CustomerManagement = () => {
                 };
               }).filter(c => c.items.length > 0);
 
-              if (cartsWithCustomerInfo.length === 0) {
+              let filteredCarts = cartsWithCustomerInfo;
+
+              if (cartSearchQuery.trim()) {
+                const fuse = new Fuse(cartsWithCustomerInfo, {
+                  keys: [
+                    'customerName',
+                    'customerMobile',
+                    'items.name',
+                    'items.brandName'
+                  ],
+                  threshold: 0.3,
+                });
+                const searchResults = fuse.search(cartSearchQuery.trim());
+                filteredCarts = searchResults.map(res => res.item);
+              }
+
+              if (filteredCarts.length === 0) {
                 return (
                   <Card className="border border-dashed border-gray-200">
                     <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                       <ShoppingCart className="h-12 w-12 text-gray-300 mb-4" />
                       <h3 className="font-semibold text-gray-700 text-lg mb-1">No Active Carts Found</h3>
                       <p className="text-sm text-gray-500 max-w-sm">
-                        There are currently no customers with items pending in their shopping carts.
+                        {cartSearchQuery ? 'No carts match your search terms.' : 'There are currently no customers with items pending in their shopping carts.'}
                       </p>
                     </CardContent>
                   </Card>
                 );
               }
 
+              const paginatedCarts = filteredCarts.slice(0, cartVisibleCount);
+
               return (
                 <div className="space-y-6">
-                  {cartsWithCustomerInfo.map(cart => {
+                  {paginatedCarts.map(cart => {
                     const totalCartValue = cart.items.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
                     return (
                       <Card key={cart.customerId} className="border border-gray-150 shadow-sm overflow-hidden hover:border-purple-200 transition-all duration-200">
@@ -1343,6 +1410,17 @@ export const CustomerManagement = () => {
                       </Card>
                     );
                   })}
+
+                  {/* Infinite Scroll Sentinel element */}
+                  {cartVisibleCount < filteredCarts.length && (
+                    <div
+                      ref={cartSentinelRef}
+                      className="flex justify-center items-center py-6 text-gray-400 text-xs font-semibold gap-2 animate-pulse"
+                    >
+                      <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
+                      Loading more active carts...
+                    </div>
+                  )}
                 </div>
               );
             })()
