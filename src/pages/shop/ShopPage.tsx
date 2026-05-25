@@ -1195,6 +1195,7 @@ useEffect(() => {
 </div>
 
 {/* Origins */}
+{/*updated */}
 <div className="mt-6 border-t pt-4">
     <h3 className="px-2 mb-3 text-sm font-bold text-gray-500 uppercase tracking-wide">
         Place of Origin
