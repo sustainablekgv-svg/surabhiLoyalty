@@ -1,5 +1,5 @@
 // src/components/CustomerManagement.tsx
-import { addDoc, collection, getDocs, increment, query, Timestamp, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, collectionGroup, increment, query, Timestamp, updateDoc, where } from 'firebase/firestore';
 import {
     Coins,
     Edit,
@@ -15,7 +15,7 @@ import {
     Users,
     Wallet,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 import { PasswordDecryptor } from './PasswordDecryptor';
 
@@ -49,9 +49,12 @@ import { decryptText, encryptText, isEncrypted } from '@/lib/encryption';
 import { db } from '@/lib/firebase';
 import { CustomerType } from '@/types/types';
 import { TransactionHistory } from '../customer/TransactionHistory';
+import { notifyCustomerCartReminderSms } from '@/services/saleSmsNotification';
 
 export const CustomerManagement = () => {
-  // Use cached data with React Query
+  // ==========================================
+  // 1. Hook Declarations (React Query & Cache Hooks)
+  // ==========================================
   const {
     data: customers = [],
     isLoading: customersLoading,
@@ -60,7 +63,9 @@ export const CustomerManagement = () => {
   const { data: stores = [], isLoading: storesLoading } = useActiveStores();
   const { invalidateCustomers } = useInvalidateQueries();
 
-  // Use cached filter preferences
+  // ==========================================
+  // 2. State Declarations & Local Storage Hooks
+  // ==========================================
   const [filterPreferences, setFilterPreferences] = useFilterPreferences({
     startDate: '',
     endDate: '',
@@ -70,26 +75,25 @@ export const CustomerManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const { debouncedSearchTerm } = useDebouncedSearch(searchTerm);
   const [filterStore, setFilterStore] = useState(filterPreferences.storeFilter || 'all');
-
-  // Derived loading state
-  const loading = customersLoading || storesLoading;
   const [editCustomer, setEditCustomer] = useState<CustomerType | null>(null);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerType | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editedData, setEditedData] = useState<Partial<CustomerType>>({});
-  const [activeTab, setActiveTab] = useState<'customers' | 'decrypt'>('customers');
+  const [activeTab, setActiveTab] = useState<'customers' | 'decrypt' | 'carts'>('customers');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [shippingAdjustment, setShippingAdjustment] = useState<number>(0);
+  const [customerCarts, setCustomerCarts] = useState<any[]>([]);
+  const [loadingCarts, setLoadingCarts] = useState(false);
+  const [sendingSmsForCustomer, setSendingSmsForCustomer] = useState<string | null>(null);
+  const [timeTick, setTimeTick] = useState(0);
 
-  // Update filter preferences when store filter changes
-  const updateFilterStore = (value: string) => {
-    setFilterStore(value);
-    setFilterPreferences(prev => ({ ...prev, storeFilter: value }));
-  };
+  // ==========================================
+  // 3. Derived Variables & Computed Properties
+  // ==========================================
+  const loading = customersLoading || storesLoading;
 
-  // Get demo store locations to exclude from analytics
   const demoStoreLocations = stores
     .filter(store => store.demoStore === true)
     .map(store => store.storeName);
@@ -105,12 +109,6 @@ export const CustomerManagement = () => {
     return matchesSearch && matchesStore;
   });
 
-  // Filter out customers from demo stores for analytics calculations
-  // const nonDemoCustomers = customers.filter(
-  //   customer => !demoStoreLocations.includes(customer.storeLocation)
-  // );
-
-  // Calculate analytics using ALL non-demo customers for global context
   const totalStats = {
     totalCustomers: customers.filter(customer => customer.demoStore === false).length,
     registeredCustomers: customers.filter(
@@ -142,6 +140,170 @@ export const CustomerManagement = () => {
             : new Date(c.lastTransactionDate);
         return lastTxDate > monthAgo;
       }).length,
+  };
+
+  // ==========================================
+  // 4. Helper Functions & Event Handlers
+  // ==========================================
+  const getRelativeTime = (dateString: string): string => {
+    if (!dateString) return 'N/A';
+    const now = new Date();
+    const addedDate = new Date(dateString);
+    const diffMs = now.getTime() - addedDate.getTime();
+    
+    if (diffMs < 0) return 'just now';
+    
+    const totalMins = Math.floor(diffMs / 60000);
+    if (totalMins < 1) return 'just now';
+    
+    const days = Math.floor(totalMins / 1440);
+    const hours = Math.floor((totalMins % 1440) / 60);
+    const mins = totalMins % 60;
+    
+    const parts: string[] = [];
+    if (days > 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
+    if (hours > 0) parts.push(`${hours} hour${hours > 1 ? 's' : ''}`);
+    if (mins > 0) parts.push(`${mins} minute${mins > 1 ? 's' : ''}`);
+    
+    return parts.join(', ') + ' ago';
+  };
+
+  const fetchCustomerCarts = async () => {
+    try {
+      setLoadingCarts(true);
+      const cartQuery = query(collectionGroup(db, 'cart'));
+      const querySnapshot = await getDocs(cartQuery);
+      
+      const cartsData: any[] = [];
+      const productCache: Record<string, any> = {};
+
+      for (const docSnap of querySnapshot.docs) {
+        const rawItems = docSnap.data().items || [];
+        if (rawItems.length > 0) {
+          // Parse customerId from path to be robust
+          const pathParts = docSnap.ref.path.split('/');
+          const customerId = pathParts[1]; // Customers/{customerId}/cart/items
+          
+          if (customerId) {
+            // Enrich items with images from products collection if missing
+            const enrichedItems = [];
+            for (const item of rawItems) {
+              let imageUrl = item.image || '';
+              if (!imageUrl && item.productId) {
+                if (productCache[item.productId]) {
+                  imageUrl = productCache[item.productId].image || '';
+                } else {
+                  try {
+                    const prodDoc = await getDoc(doc(db, 'products', item.productId));
+                    if (prodDoc.exists()) {
+                      const prodData = prodDoc.data();
+                      productCache[item.productId] = prodData;
+                      imageUrl = prodData.image || '';
+                    }
+                  } catch (err) {
+                    console.error('Error fetching product for image enrichment:', err);
+                  }
+                }
+              }
+              enrichedItems.push({
+                ...item,
+                image: imageUrl,
+              });
+            }
+
+            // Find in cache first
+            let customerInfo = customers.find(c => c.id === customerId);
+            
+            // If not in cache, fetch directly from Firestore to support newly registered/missed records
+            if (!customerInfo) {
+              try {
+                const custDoc = await getDoc(doc(db, 'Customers', customerId));
+                if (custDoc.exists()) {
+                  customerInfo = {
+                    id: custDoc.id,
+                    ...custDoc.data()
+                  } as any;
+                }
+              } catch (err) {
+                console.error('Error fetching customer doc directly:', err);
+              }
+            }
+            
+            cartsData.push({
+              customerId,
+              items: enrichedItems,
+              customerName: customerInfo?.customerName || 'Guest Customer',
+              customerMobile: customerInfo?.customerMobile || '',
+            });
+          }
+        }
+      }
+      setCustomerCarts(cartsData);
+    } catch (error) {
+      console.error('Error fetching customer carts:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch customer carts',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingCarts(false);
+    }
+  };
+
+  const handleSendReminder = async (customerMobile: string, customerName: string, itemCount: number) => {
+    if (!customerMobile) {
+      toast({
+        title: 'Error',
+        description: 'Customer mobile is not available',
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      setSendingSmsForCustomer(customerMobile);
+      
+      const result = await notifyCustomerCartReminderSms({
+        phone: customerMobile,
+        customerName,
+        itemCount,
+        url: 'https://www.sustainablekgv.com/shop',
+      });
+      
+      if (!result.success) {
+        throw new Error(result.reason || 'Failed to send SMS');
+      }
+
+      // Log this activity to firestore
+      await addDoc(collection(db, 'Activity'), {
+        type: 'cart_reminder_sms',
+        remarks: `Sent cart reminder SMS to ${customerName} (${customerMobile}) for ${itemCount} items`,
+        customerName,
+        customerMobile,
+        createdAt: Timestamp.now(),
+        demoStore: false
+      });
+
+      toast({
+        title: 'Success',
+        description: `SMS reminder sent successfully to ${customerName}`,
+        variant: 'default',
+      });
+    } catch (error: any) {
+      console.error('Error sending cart reminder SMS:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to send SMS reminder. Please check your credentials.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSendingSmsForCustomer(null);
+    }
+  };
+
+  const updateFilterStore = (value: string) => {
+    setFilterStore(value);
+    setFilterPreferences(prev => ({ ...prev, storeFilter: value }));
   };
 
   const viewCustomerDetails = (customer: CustomerType) => {
@@ -183,8 +345,6 @@ export const CustomerManagement = () => {
       name === 'shippingBalance';
 
     if (isNumericField) {
-      // Admins are explicitly allowed to set wallet / surabhi / shipping balances negative.
-      // Preserve the raw string while typing (so '-' / '-0.5' work) and coerce to a number on save.
       const parsed = parseFloat(value);
       const numeric = Number.isFinite(parsed) ? Number(parsed.toFixed(2)) : 0;
       setEditedData(prev => ({
@@ -220,7 +380,6 @@ export const CustomerManagement = () => {
     try {
       setIsSaving(true);
 
-      // Query customers by mobile number
       const customersRef = collection(db, 'Customers');
       const q = query(customersRef, where('customerMobile', '==', editCustomer.customerMobile));
       const querySnapshot = await getDocs(q);
@@ -234,10 +393,8 @@ export const CustomerManagement = () => {
         return;
       }
 
-      // Get the first matching document (assuming mobile numbers are unique)
       const customerDoc = querySnapshot.docs[0];
 
-      // Prepare update data with encryption for sensitive fields
       const updateData: any = {
         customerName: editedData.customerName,
         customerEmail: editedData.customerEmail,
@@ -260,23 +417,18 @@ export const CustomerManagement = () => {
           }
       }
 
-      // Only encrypt and update TPIN if it's provided and not empty
       if (editedData.tpin && editedData.tpin.trim() !== '') {
         updateData.tpin = encryptText(editedData.tpin.trim());
       }
 
-      // Only encrypt and update password if it's provided and not empty
       if (editedData.customerPassword && editedData.customerPassword.trim() !== '') {
         updateData.customerPassword = encryptText(editedData.customerPassword.trim());
       }
 
-      // Update the document
       await updateDoc(customerDoc.ref, updateData);
 
-      // Invalidate customers cache to refetch updated data
       invalidateCustomers();
 
-      // Add activity log for shipping adjustment if needed
       if (shippingAdjustment !== 0) {
           await addDoc(collection(db, 'Activity'), {
               type: 'shipping_adjustment',
@@ -298,7 +450,6 @@ export const CustomerManagement = () => {
       setIsEditDialogOpen(false);
       setShippingAdjustment(0);
     } catch (error) {
-      // console.error('Error updating customer:', error);
       toast({
         title: 'Error',
         description: 'Failed to update customer details',
@@ -312,10 +463,8 @@ export const CustomerManagement = () => {
   const handleRefresh = async () => {
     try {
       setIsRefreshing(true);
-      // Invalidate customers cache to trigger refetch
       invalidateCustomers();
 
-      // Show success message after a brief delay
       setTimeout(() => {
         toast({
           title: 'Success',
@@ -333,6 +482,24 @@ export const CustomerManagement = () => {
       setIsRefreshing(false);
     }
   };
+
+  // ==========================================
+  // 5. Effects (React Lifecycle Events)
+  // ==========================================
+  useEffect(() => {
+    if (activeTab === 'carts') {
+      fetchCustomerCarts();
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'carts') return;
+    const interval = setInterval(() => {
+      setTimeTick((prev) => prev + 1);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [activeTab]);
+
 
   if (loading) {
     return (
@@ -788,6 +955,14 @@ export const CustomerManagement = () => {
             <Key className="h-3.5 w-3.5 xs:h-4 xs:w-4 mr-1.5 xs:mr-2" />
             Password Decryptor
           </Button>
+          <Button
+            variant={activeTab === 'carts' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('carts')}
+            className="h-10 text-xs xs:text-sm w-full xs:w-auto justify-start xs:justify-center"
+          >
+            <ShoppingCart className="h-3.5 w-3.5 xs:h-4 xs:w-4 mr-1.5 xs:mr-2" />
+            Cart Tracking (SMS)
+          </Button>
         </div>
       </div>
 
@@ -1035,6 +1210,143 @@ export const CustomerManagement = () => {
               </div>
             </CardContent>
           </Card>
+        </div>
+      ) : activeTab === 'carts' ? (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Cart Tracking & Reminders</h2>
+              <p className="text-xs sm:text-sm text-gray-600">
+                Monitor active shopping carts and send SMS recovery notifications
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchCustomerCarts}
+              disabled={loadingCarts}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${loadingCarts ? 'animate-spin' : ''}`} />
+              Refresh Carts
+            </Button>
+          </div>
+
+          {loadingCarts ? (
+            <div className="flex justify-center items-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+            </div>
+          ) : (
+            (() => {
+              const cartsWithCustomerInfo = customerCarts.map(cartData => {
+                return {
+                  ...cartData,
+                  customerName: cartData.customerName || 'Guest Customer',
+                  customerMobile: cartData.customerMobile || '',
+                };
+              }).filter(c => c.items.length > 0);
+
+              if (cartsWithCustomerInfo.length === 0) {
+                return (
+                  <Card className="border border-dashed border-gray-200">
+                    <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                      <ShoppingCart className="h-12 w-12 text-gray-300 mb-4" />
+                      <h3 className="font-semibold text-gray-700 text-lg mb-1">No Active Carts Found</h3>
+                      <p className="text-sm text-gray-500 max-w-sm">
+                        There are currently no customers with items pending in their shopping carts.
+                      </p>
+                    </CardContent>
+                  </Card>
+                );
+              }
+
+              return (
+                <div className="space-y-6">
+                  {cartsWithCustomerInfo.map(cart => {
+                    const totalCartValue = cart.items.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
+                    return (
+                      <Card key={cart.customerId} className="border border-gray-150 shadow-sm overflow-hidden hover:border-purple-200 transition-all duration-200">
+                        <CardHeader className="bg-gradient-to-r from-purple-50/50 to-amber-50/30 border-b border-gray-100 p-4">
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-gray-900 text-base sm:text-lg">
+                                  {cart.customerName}
+                                </span>
+                                <Badge variant="outline" className="bg-purple-50 text-purple-700 font-semibold border-purple-200">
+                                  {cart.items.reduce((sum: number, item: any) => sum + item.quantity, 0)} items
+                                </Badge>
+                              </div>
+                              <div className="flex items-center gap-3 text-xs sm:text-sm text-gray-600">
+                                <span className="flex items-center gap-1 font-medium">
+                                  <Phone className="h-3.5 w-3.5 text-gray-400" />
+                                  {cart.customerMobile || 'No Phone Number'}
+                                </span>
+                                <span className="text-gray-300">|</span>
+                                <span className="font-semibold text-purple-600">
+                                  Value: ₹{totalCartValue.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            <Button
+                              onClick={() => handleSendReminder(cart.customerMobile, cart.customerName, cart.items.length)}
+                              disabled={sendingSmsForCustomer === cart.customerMobile || !cart.customerMobile}
+                              className="w-full sm:w-auto h-9 sm:h-10 text-xs sm:text-sm font-semibold rounded-full bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center gap-2 shadow-sm transition-all duration-150"
+                            >
+                              {sendingSmsForCustomer === cart.customerMobile ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Sending...
+                                </>
+                              ) : (
+                                <>
+                                  <Phone className="h-4 w-4" />
+                                  Remind via SMS
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </CardHeader>
+                        
+                        <CardContent className="p-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {cart.items.map((item: any, index: number) => (
+                              <div key={`${item.productId}-${index}`} className="flex items-center gap-3 p-3 bg-gray-50/70 border border-gray-100 rounded-lg hover:bg-white hover:shadow-sm transition-all duration-150">
+                                <div className="h-14 w-14 rounded-md overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
+                                  {item.image ? (
+                                    <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                                  ) : (
+                                    <div className="h-full w-full flex items-center justify-center bg-gray-200 text-gray-400">
+                                      <ShoppingCart className="h-6 w-6" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold text-gray-800 text-sm truncate">{item.name}</h4>
+                                  <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                                    <span className="font-semibold text-gray-700">Qty: {item.quantity}</span>
+                                    <span>•</span>
+                                    <span className="font-medium text-purple-600">₹{item.price} each</span>
+                                  </div>
+                                  <div className="text-[10px] text-gray-400 mt-1 flex items-center gap-1 font-medium">
+                                    <span>Added:</span>
+                                    <span>
+                                      {item.addedAt ? getRelativeTime(item.addedAt) : 'Before update (N/A)'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              );
+            })()
+          )}
         </div>
       ) : (
         <PasswordDecryptor

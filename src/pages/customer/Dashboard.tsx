@@ -1,8 +1,10 @@
 import { Button } from '@/components/ui/button';
-import { FileText, History, Home, MapPin, Settings, Share2, ShoppingBag, TrendingUp } from 'lucide-react';
+import { FileText, History, Home, MapPin, Settings, Share2, ShoppingBag, TrendingUp, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
+import { db } from '@/lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 import { AccountSettings } from '@/components/customer/AccountSettings';
 import { AddressManager } from '@/components/customer/AddressManager';
@@ -19,8 +21,27 @@ import { getUserMobile, getUserName } from '@/lib/userUtils';
 const CustomerDashboard = () => {
   const { user, logout, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(() => location.state?.activeTab || 'overview');
   const [isLoading, setIsLoading] = useState(true);
+  const [profileData, setProfileData] = useState<any>(null);
+  const [isDismissed, setIsDismissed] = useState(() => sessionStorage.getItem('profile_banner_dismissed') === 'true');
+
+  useEffect(() => {
+    if (!user?.id || user.role !== 'customer') return;
+
+    let unsubscribe: any;
+    const docRef = doc(db, 'Customers', user.id);
+    unsubscribe = onSnapshot(docRef, (snap) => {
+      if (snap.exists()) {
+        setProfileData(snap.data());
+      }
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [user]);
 
   // Handle authentication and authorization
   useEffect(() => {
@@ -74,9 +95,56 @@ const CustomerDashboard = () => {
     return null;
   }
 
+  const isProfileIncomplete = profileData && (
+    !profileData.customerName ||
+    profileData.customerName === 'Valued Customer' ||
+    !profileData.gender ||
+    profileData.gender === 'other' ||
+    !profileData.dateOfBirth
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50">
       <CustomerHeader user={user} onLogout={handleLogout} />
+      {isProfileIncomplete && !isDismissed && (
+        <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border-b border-amber-500/20 px-4 py-3 sm:px-6 lg:px-8">
+          <div className="container mx-auto flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap">
+            <div className="flex items-center gap-3">
+              <div className="bg-amber-100 p-2 rounded-lg text-amber-800 flex-shrink-0 animate-pulse">
+                <Settings className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  Complete Your Profile to Unlock Ordering!
+                </p>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  To place orders on Sustainable KGV, please complete your profile details (Name, Gender, and Date of Birth).
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 flex-shrink-0 w-full sm:w-auto justify-end">
+              <Button
+                size="sm"
+                onClick={() => setActiveTab('settings')}
+                className="bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs rounded-lg shadow-sm"
+              >
+                Complete Profile
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setIsDismissed(true);
+                  sessionStorage.setItem('profile_banner_dismissed', 'true');
+                }}
+                className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600 hover:bg-amber-500/10 rounded-[6px]"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="container mx-auto px-2 xs:px-3 sm:px-4 lg:px-6 py-2 xs:py-3 sm:py-4">
         <div className="mb-2 xs:mb-3 sm:mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>

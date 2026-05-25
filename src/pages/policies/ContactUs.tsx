@@ -1,4 +1,5 @@
 
+import SEO from '@/components/SEO';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Mail, MapPin, Phone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +9,11 @@ const ContactUs = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+      <SEO 
+        title="Contact Us" 
+        description="Get in touch with the Surabhi Loyalty League team. Find our address, phone number, and email support details."
+        keywords="contact us, support phone, address, email support, customer service"
+      />
       <div className="max-w-3xl mx-auto bg-white p-6 sm:p-8 rounded-lg shadow">
         <Button variant="ghost" className="mb-4" onClick={() => navigate('/')}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Back to Home

@@ -268,8 +268,9 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
           </div>
         </CardHeader>
 
-        <CardContent className="px-3 xs:px-4 sm:px-6 pb-3 xs:pb-4 sm:pb-6">
-          <div className="rounded-md border overflow-x-auto">
+        <CardContent className="px-2 xs:px-3 sm:px-4 pb-3 xs:pb-4 sm:pb-6">
+          {/* Desktop View: Full detailed 19-column table */}
+          <div className="hidden lg:block rounded-md border overflow-x-auto">
             <Table className="min-w-[1100px]">
               <TableHeader className="bg-gray-50">
                 <TableRow className="hover:bg-gray-50">
@@ -285,15 +286,6 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
                   <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Sale amt
                   </TableHead>
-                  {/* <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
-                    Wallet Credit
-                  </TableHead>
-                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
-                    Wallet Debit
-                  </TableHead>
-                  <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
-                    Wallet Balance
-                  </TableHead> */}
                   <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Surabhi Credit
                   </TableHead>
@@ -333,7 +325,6 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
                   <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Ship Bal
                   </TableHead>
-                  {/* <TableHead className="text-right">Seva Current</TableHead> */}
                   <TableHead className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs font-medium text-right">
                     Seva Total
                   </TableHead>
@@ -358,15 +349,6 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
                       <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right font-medium">
                         {tx.type === 'sale' && tx.amount != null ? formatCurrency(tx.amount) : '—'}
                       </TableCell>
-                      {/* <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
-                        {tx.walletCredit ? formatCurrency(tx.walletCredit) : '-'}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
-                        {tx.walletDebit ? formatCurrency(tx.walletDebit) : '-'}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right font-medium">
-                        {formatCurrency(tx.walletBalance)}
-                      </TableCell> */}
                       <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right">
                         {tx.surabhiCredit ? Number(tx.surabhiCredit).toFixed(2) : '-'}
                       </TableCell>
@@ -406,7 +388,6 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
                       <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right font-bold text-blue-900">
                         {tx.shippingBalance ? Number(tx.shippingBalance).toFixed(2) : '0.00'}
                       </TableCell>
-                      {/* <TableCell className="text-right font-medium">{tx.sevaBalance}</TableCell> */}
                       <TableCell className="whitespace-nowrap py-1.5 xs:py-2 px-1.5 xs:px-2 text-[10px] xs:text-xs text-right font-medium">
                         {Number(tx.sevaTotal).toFixed(2)}
                       </TableCell>
@@ -427,6 +408,108 @@ export const TransactionHistory = ({ userId, demoStore }: TransactionHistoryProp
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Mobile/Tablet View: Responsive detailed card list */}
+          <div className="block lg:hidden space-y-3">
+            {filteredTransactions.length > 0 ? (
+              filteredTransactions.map(tx => (
+                <Card key={tx.id} className="border border-gray-150 shadow-sm rounded-lg p-3 xs:p-4 space-y-3">
+                  {/* Card Header: Type, Invoice, Date */}
+                  <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+                    <div className="flex items-center gap-1.5 xs:gap-2">
+                      <Badge variant="outline" className={`font-semibold text-[9px] xs:text-[10px] ${
+                        tx.type === 'sale' ? 'bg-green-50 text-green-700 border-green-200' :
+                        tx.type === 'recharge' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                        tx.type === 'referral' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                        'bg-gray-50 text-gray-700 border-gray-200'
+                      }`}>
+                        {(tx.type || 'TX').toUpperCase()}
+                      </Badge>
+                      <span className="font-bold text-gray-900 text-xs sm:text-sm">
+                        {tx.invoiceId || 'No Invoice'}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-gray-500 font-medium">
+                      {formatDate(tx.createdAt)}
+                    </span>
+                  </div>
+
+                  {/* Main Stats: Location & Sale Amount */}
+                  <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm">
+                    <div className="space-y-0.5">
+                      <span className="text-gray-500 font-semibold text-[9px] uppercase tracking-wider">Location</span>
+                      <p className="font-semibold text-gray-800">{tx.storeLocation || 'N/A'}</p>
+                    </div>
+                    {tx.type === 'sale' && tx.amount != null && (
+                      <div className="space-y-0.5 text-right">
+                        <span className="text-gray-500 font-semibold text-[9px] uppercase tracking-wider">Sale Amount</span>
+                        <p className="font-bold text-green-600">{formatCurrency(tx.amount)}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Details Grid: Coins & Shipping */}
+                  <div className="bg-gray-50 rounded-lg p-2.5 space-y-2 text-[11px] sm:text-xs">
+                    {/* Coins & SPV row */}
+                    <div className="grid grid-cols-3 gap-2 border-b border-gray-150/70 pb-2">
+                      <div>
+                        <span className="text-gray-500 block text-[8px] xs:text-[9px] uppercase tracking-wider font-semibold">Surabhi Coins</span>
+                        <p className={`font-semibold ${tx.surabhiCredit ? 'text-green-600' : tx.surabhiDebit ? 'text-red-600' : 'text-gray-700'}`}>
+                          {tx.surabhiCredit ? `+${Number(tx.surabhiCredit).toFixed(2)}` : tx.surabhiDebit ? `-${Number(tx.surabhiDebit).toFixed(2)}` : '0.00'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 block text-[8px] xs:text-[9px] uppercase tracking-wider font-semibold">Surabhi Bal</span>
+                        <p className="font-semibold text-gray-700">{Number(tx.surabhiBalance || 0).toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 block text-[8px] xs:text-[9px] uppercase tracking-wider font-semibold">Total SPV</span>
+                        <p className="font-semibold text-purple-600">{tx.totalSpv != null ? Number(tx.totalSpv).toFixed(2) : '—'}</p>
+                      </div>
+                    </div>
+
+                    {/* Shipping row */}
+                    <div className="grid grid-cols-3 gap-2 border-b border-gray-150/70 pb-2">
+                      <div>
+                        <span className="text-gray-500 block text-[8px] xs:text-[9px] uppercase tracking-wider font-semibold">Ship Fee / Adj</span>
+                        <p className={`font-semibold ${tx.shippingCredit ? 'text-blue-600' : tx.shippingDebit ? 'text-red-600' : 'text-gray-700'}`}>
+                          {tx.shippingCredit ? `+₹${Number(tx.shippingCredit).toFixed(2)}` : tx.shippingDebit ? `-₹${Number(tx.shippingDebit).toFixed(2)}` : `₹${Number(tx.shippingAmount || 0).toFixed(2)}`}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 block text-[8px] xs:text-[9px] uppercase tracking-wider font-semibold">Ship Balance</span>
+                        <p className="font-bold text-blue-900">₹{Number(tx.shippingBalance || 0).toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 block text-[8px] xs:text-[9px] uppercase tracking-wider font-semibold">Seva Total</span>
+                        <p className="font-semibold text-indigo-600">{Number(tx.sevaTotal || 0).toFixed(2)}</p>
+                      </div>
+                    </div>
+
+                    {/* Admin Share & Remarks */}
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div>
+                        <span className="text-gray-500 block text-[8px] xs:text-[9px] uppercase tracking-wider font-semibold">Admin Cut / Profit</span>
+                        <p className="font-medium text-gray-700">
+                          {tx.adminCut != null ? formatCurrency(tx.adminCut) : '—'} / {tx.adminProft != null ? formatCurrency(tx.adminProft) : '—'}
+                        </p>
+                      </div>
+                      {tx.remarks && (
+                        <div className="text-right">
+                          <span className="text-gray-500 block text-[8px] xs:text-[9px] uppercase tracking-wider font-semibold">Remarks</span>
+                          <p className="font-medium text-gray-600 truncate max-w-[130px] xs:max-w-[160px] ml-auto" title={tx.remarks}>{tx.remarks}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500 border rounded-lg bg-gray-50 text-xs">
+                No transactions found
+              </div>
+            )}
           </div>
 
           {/* Load More Button */}

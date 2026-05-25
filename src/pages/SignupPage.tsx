@@ -28,15 +28,14 @@ const SignupPage = () => {
   const from = location.state?.from;
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    customerName: '',
+    customerName: 'Valued Customer',
     customerMobile: '',
     customerPassword: '',
     confirmPassword: '',
-    gender: '',
+    gender: 'other',
     dateOfBirth: '',
     storeLocation: 'Sustainable KGV Online',
     referredBy: referralCode || '',
-
   });
 
   const { settings } = useGlobalSettings();
@@ -73,19 +72,9 @@ const SignupPage = () => {
     }));
   };
 
-  const handleGenderChange = (value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      gender: value,
-    }));
-  };
-  
-  const [stores, setStores] = useState<string[]>([]);
   const [referralName, setReferralName] = useState<string | null>(null);
   const [referralNotFound, setReferralNotFound] = useState(false);
   const [isFetchingReferral, setIsFetchingReferral] = useState(false);
-
-  // Fetch stores dynamically removed - hardcoded to Sustainable KGV Online
 
   // Fetch referral details
   useEffect(() => {
@@ -155,18 +144,6 @@ const SignupPage = () => {
     return () => clearTimeout(timer);
   }, [formData.referredBy, settings?.allowReferralsWithoutPurchase]);
 
-  const calculateAge = (dob: string) => {
-    const birthDate = new Date(dob);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    return age;
-  };
-
-  // const [isPasswordValid, setIsPasswordValid] = useState(false);
   const [isPasswordTouched, setIsPasswordTouched] = useState(false);
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
 
@@ -179,14 +156,10 @@ const SignupPage = () => {
     }
 
     if (
-      !formData.customerName ||
       !formData.customerMobile ||
-      !formData.dateOfBirth ||
-      !formData.gender ||
-      !formData.storeLocation ||
       !formData.customerPassword
     ) {
-      toast.error('All fields are mandatory');
+      toast.error('Mobile number and password are required');
       return false;
     }
 
@@ -211,8 +184,6 @@ const SignupPage = () => {
   const handleOtpVerified = async () => {
     setIsLoading(true);
     try {
-      const isStudent = formData.dateOfBirth ? calculateAge(formData.dateOfBirth) < 25 : false;
-
       let finalReferredBy = formData.referredBy?.trim() || null;
       if (finalReferredBy) {
         const isShortCode = /^[a-zA-Z0-9]{5}$/.test(finalReferredBy);
@@ -231,7 +202,7 @@ const SignupPage = () => {
         dateOfBirth: formData.dateOfBirth,
         storeLocation: formData.storeLocation,
         referredBy: finalReferredBy,
-        isStudent: isStudent,
+        isStudent: false,
         demoStore: false,
       });
 
@@ -251,11 +222,11 @@ const SignupPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-amber-50 flex items-center justify-center p-4">
       <SEO 
-        title="Join Surabhi Loyalty League"
-        description="Sign up for SLL - Surabhi Loyalty League. Support farmers, gopalaks, and earn rewards while shopping for premium organic products."
+        title="Join Sustainable KGV"
+        description="Sign up for Sustainable KGV. Support farmers, gopalaks, and earn rewards while shopping for premium organic products."
         keywords="signup, loyalty program, surabhi, organic rewards"
       />
-      <div className="w-full max-w-lg">
+      <div className="w-full max-w-md">
         <div className="text-center mb-8">
             <Button
                 variant="ghost"
@@ -270,7 +241,7 @@ const SignupPage = () => {
               <Coins className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Surabhi Loyalty</h1>
+              <h1 className="text-xl font-bold text-gray-900">Sustainable KGV</h1>
               <p className="text-sm text-gray-600">Join our community</p>
             </div>
           </div>
@@ -279,18 +250,10 @@ const SignupPage = () => {
         <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold text-gray-900">Create Account</CardTitle>
-            <CardDescription className="text-gray-600">Enter your details to register</CardDescription>
+            <CardDescription className="text-gray-600">Verify your mobile to join instantly</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="customerName">Full Name *</Label>
-                <div className="relative">
-                    {/* <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
-                    <Input id="customerName" name="customerName" placeholder="Enter your full name" value={formData.customerName} onChange={handleInputChange} className="pl-10" required />
-                </div>
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="customerMobile">Mobile Number *</Label>
                 <div className="relative">
@@ -303,7 +266,7 @@ const SignupPage = () => {
                       value={formData.customerMobile}
                       onChange={handleInputChange}
                       maxLength={10}
-                      className="h-12"
+                      className="h-12 text-base rounded-[6px]"
                       required
                     />
                 </div>
@@ -315,68 +278,22 @@ const SignupPage = () => {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="dateOfBirth">Date of Birth *</Label>
-                    <div className="relative">
-                        <Input
-                            type="date"
-                            id="dateOfBirth"
-                            name="dateOfBirth"
-                            value={formData.dateOfBirth}
-                            onChange={handleInputChange}
-                            className="w-full h-12 px-3 text-base text-gray-700 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
-                            required
-                        />
-                        {/* Custom styling placeholder handled by native input placeholder semantics if needed */}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="gender">Gender *</Label>
-                    <div className="relative">
-                        {/* <UserCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 z-10" /> */}
-                        <Select value={formData.gender} onValueChange={handleGenderChange}>
-                            <SelectTrigger className="h-12 w-full pl-10">
-                                <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="male">Male</SelectItem>
-                                <SelectItem value="female">Female</SelectItem>
-                                <SelectItem value="other">Other</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                  </div>
-              </div>
-
-              {/* <div className="space-y-2">
-                <Label htmlFor="storeLocation">Store Location *</Label>
-                <div className="relative">
-                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input 
-                        value={formData.storeLocation} 
-                        readOnly 
-                        className="pl-10 bg-gray-50 text-gray-500 cursor-not-allowed" 
-                    />
-                </div>
-              </div> */}
-
               <div className="space-y-2">
                 <Label htmlFor="referredBy">Referral Code / Number (Optional)</Label>
                 <div className="relative">
                     <Input
-    id="referredBy"
-    name="referredBy"
-    type="text"
-    inputMode="text"
-    placeholder="Referral code or 10-digit mobile"
-    value={formData.referredBy}
-    onChange={handleInputChange}
-    readOnly={!!referralCode}
-    className={`h-12 pr-10 ${
-      referralCode ? 'bg-gray-100 cursor-not-allowed' : ''
-    }`}
-/>
+                      id="referredBy"
+                      name="referredBy"
+                      type="text"
+                      inputMode="text"
+                      placeholder="Referral code or 10-digit mobile"
+                      value={formData.referredBy}
+                      onChange={handleInputChange}
+                      readOnly={!!referralCode}
+                      className={`h-12 pr-10 text-base rounded-[6px] ${
+                        referralCode ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`}
+                    />
                     {isFetchingReferral && (
                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
                             <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
@@ -395,47 +312,45 @@ const SignupPage = () => {
                 )}
                 {!isFetchingReferral && referralNotFound && (
                     <p className="text-sm text-red-500 flex items-center gap-1 mt-1">
-                        ⚠️ No referrer found — you have not got any referrer. You can still sign up.
+                        ⚠️ No referrer found — you can still sign up.
                     </p>
-                )}
-                {!isFetchingReferral && !referralName && !referralNotFound && !formData.referredBy && (
-                    <p className="text-xs text-gray-400 mt-1">You have not got any referrer (optional).</p>
                 )}
               </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="customerPassword">Password *</Label>
-                  <div className="relative">
-                      {/* <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
-                      <Input 
-                        id="customerPassword" 
-                        name="customerPassword" 
-                        type="password" 
-                        placeholder="Create password" 
-                        value={formData.customerPassword} 
-                        onChange={handleInputChange} 
-                        onBlur={() => setIsPasswordTouched(true)}
-                        className="pl-10 h-12" 
-                        required 
-                      />
-                  </div>
-                  {/* <PasswordStrengthIndicator 
-                    password={formData.customerPassword} 
-                    onValidationChange={setIsPasswordValid} 
-                    showError={isPasswordTouched}
-                  /> */}
+              <div className="space-y-2">
+                <Label htmlFor="customerPassword">Password *</Label>
+                <div className="relative">
+                    <Input 
+                      id="customerPassword" 
+                      name="customerPassword" 
+                      type="password" 
+                      placeholder="Create login password" 
+                      value={formData.customerPassword} 
+                      onChange={handleInputChange} 
+                      onBlur={() => setIsPasswordTouched(true)}
+                      className="h-12 text-base rounded-[6px]" 
+                      required 
+                    />
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                   <div className="relative">
-                      {/* <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
-                      <Input id="confirmPassword" name="confirmPassword" type="password" placeholder="Confirm password" value={formData.confirmPassword} onChange={handleInputChange} className="pl-10" required />
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                 <div className="relative">
+                    <Input 
+                      id="confirmPassword" 
+                      name="confirmPassword" 
+                      type="password" 
+                      placeholder="Confirm password" 
+                      value={formData.confirmPassword} 
+                      onChange={handleInputChange} 
+                      className="h-12 text-base rounded-[6px]" 
+                      required 
+                    />
                 </div>
+              </div>
 
-
-              <Button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white font-medium py-3 rounded-lg mt-4" disabled={isLoading}>
+              <Button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white font-semibold py-3 rounded-lg mt-4 h-12" disabled={isLoading}>
                 {isLoading ? 'Creating Account...' : 'Verify Mobile & Sign Up'}
               </Button>
             </form>

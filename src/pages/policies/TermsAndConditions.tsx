@@ -1,4 +1,5 @@
 
+import SEO from '@/components/SEO';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +9,11 @@ const TermsAndConditions = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+      <SEO 
+        title="Terms and Conditions" 
+        description="Review the terms and conditions for participating in the Surabhi Loyalty League and using our website."
+        keywords="terms and conditions, user agreement, surabhi terms"
+      />
       <div className="max-w-3xl mx-auto bg-white p-6 sm:p-8 rounded-lg shadow">
         <Button variant="ghost" className="mb-4" onClick={() => navigate('/')}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Back to Home

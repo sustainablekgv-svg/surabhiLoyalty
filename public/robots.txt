@@ -1,5 +1,8 @@
 User-agent: *
 Allow: /
+Disallow: /admin/
+Disallow: /staff/
+Disallow: /customer/
 
 # Sitemaps
 Sitemap: https://www.sustainablekgv.com/sitemap.xml

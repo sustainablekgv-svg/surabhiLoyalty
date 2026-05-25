@@ -4,6 +4,22 @@
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
       {
+        "source": "/shop/product/**",
+        "function": "serverSideDynamicSEO"
+      },
+      {
+        "source": "/shop/category/**",
+        "function": "serverSideDynamicSEO"
+      },
+      {
+        "source": "/shop/brand/**",
+        "function": "serverSideDynamicSEO"
+      },
+      {
+        "source": "/sitemap.xml",
+        "function": "generateDynamicSitemap"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
@@ -32,7 +48,10 @@
       "source": "functions",
       "codebase": "default",
       "ignore": ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", "*.local"],
-      "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"]
+      "predeploy": [
+        "node functions/scripts/copy-template.js",
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
     }
   ]
 }

@@ -57,6 +57,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     unitsOfMeasure: item.unitsOfMeasure ?? '',
     gst: item.gst ? { title: item.gst.title, percentage: item.gst.percentage } : undefined,
     originalPrice: item.originalPrice || item.price || 0,
+    addedAt: item.addedAt || new Date().toISOString(),
   });
 
   const addToCart = async (product: Product, quantity = 1): Promise<boolean> => {
@@ -71,6 +72,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (existingItemIndex > -1) {
       const newQuantity = updatedCart[existingItemIndex].quantity + quantity;
       updatedCart[existingItemIndex].quantity = newQuantity;
+      // Preserve or set addedAt timestamp if missing
+      if (!updatedCart[existingItemIndex].addedAt) {
+        updatedCart[existingItemIndex].addedAt = new Date().toISOString();
+      }
     } else {
       updatedCart.push({
         productId: product.id,
@@ -90,6 +95,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         unitsOfMeasure: product.unitsOfMeasure ?? '',
         gst: product.gst ? { title: product.gst.title, percentage: product.gst.percentage } : undefined,
         originalPrice: product.price,
+        addedAt: new Date().toISOString(),
       });
     }
 

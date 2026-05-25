@@ -28,6 +28,61 @@ export const AccountSettings = ({ userId }: AccountSettingsProps) => {
   const [newPassword, setNewPassword] = useState('');
   const [newTpin, setNewTpin] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editGender, setEditGender] = useState('other');
+  const [editDob, setEditDob] = useState('');
+
+  useEffect(() => {
+    if (customerData) {
+      setEditName(customerData.customerName || '');
+      setEditGender(customerData.gender || 'other');
+      setEditDob(customerData.dateOfBirth || '');
+    }
+  }, [customerData]);
+
+  const handleSaveProfile = async () => {
+    if (!editName.trim() || editName.trim() === 'Valued Customer') {
+      toast.error('Please enter a valid full name');
+      return;
+    }
+    if (!editGender || editGender === 'other') {
+      toast.error('Please select male or female gender');
+      return;
+    }
+    if (!editDob) {
+      toast.error('Please enter your date of birth');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const docRef = doc(db, 'Customers', userId);
+      const updateData = {
+        customerName: editName.trim(),
+        gender: editGender,
+        dateOfBirth: editDob,
+      };
+      await updateDoc(docRef, updateData);
+
+      setCustomerData(prev => (prev ? { ...prev, ...updateData } : null));
+      setIsEditingProfile(false);
+      toast.success('Profile details updated successfully');
+    } catch (error) {
+      toast.error('Failed to update profile details');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelProfileEdit = () => {
+    if (customerData) {
+      setEditName(customerData.customerName || '');
+      setEditGender(customerData.gender || 'other');
+      setEditDob(customerData.dateOfBirth || '');
+    }
+    setIsEditingProfile(false);
+  };
 
   useEffect(() => {
     const fetchCustomerData = async () => {
@@ -384,20 +439,138 @@ export const AccountSettings = ({ userId }: AccountSettingsProps) => {
         </CardContent>
       </Card>
 
-      {/* Date of Birth Section */}
+      {/* Personal Profile Details Section */}
       <Card className="shadow-lg border-0 bg-white">
-         <CardHeader>
-           <CardTitle className="flex items-center gap-2 text-base">
-             <Calendar className="h-5 w-5 text-orange-600" />
-             Other Details
+         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+           <CardTitle className="flex items-center gap-2 text-base font-bold text-gray-900">
+             <User className="h-5 w-5 text-purple-600" />
+             Personal Profile Details
            </CardTitle>
+           {!isEditingProfile && (
+             <Button
+               variant="outline"
+               size="sm"
+               onClick={() => setIsEditingProfile(true)}
+               className="h-8 text-xs px-3"
+             >
+               <Edit3 className="h-3.5 w-3.5 mr-1" />
+               Edit Details
+             </Button>
+           )}
          </CardHeader>
          <CardContent>
-            {customerData.dateOfBirth && (
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium text-gray-700">Date of Birth</Label>
-                  <p className="text-sm font-semibold">{new Date(customerData.dateOfBirth).toLocaleDateString()}</p>
+            {isEditingProfile ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editName" className="text-sm font-medium text-gray-700">Full Name *</Label>
+                  <Input
+                    id="editName"
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    placeholder="Full Name"
+                    className="h-10 text-sm"
+                    disabled={isSaving}
+                  />
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="editGender" className="text-sm font-medium text-gray-700">Gender *</Label>
+                  <select
+                    id="editGender"
+                    value={editGender}
+                    onChange={e => setEditGender(e.target.value)}
+                    disabled={isSaving}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="other">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="editDob" className="text-sm font-medium text-gray-700">Date of Birth *</Label>
+                  <Input
+                    id="editDob"
+                    type="date"
+                    value={editDob}
+                    onChange={e => setEditDob(e.target.value)}
+                    className="h-10 text-sm"
+                    disabled={isSaving}
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <Button
+                    onClick={handleSaveProfile}
+                    disabled={isSaving}
+                    className="h-9 px-4 bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white font-medium text-sm"
+                  >
+                    {isSaving ? 'Saving...' : 'Save Details'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleCancelProfileEdit}
+                    disabled={isSaving}
+                    className="h-9 px-4 text-sm"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-purple-50/50 p-4 rounded-xl border border-purple-100 flex items-start gap-3">
+                  <div className="bg-purple-100 p-2 rounded-lg text-purple-600 mt-0.5">
+                    <User className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">Full Name</p>
+                    <p className="text-sm font-semibold text-gray-900 mt-0.5">
+                      {customerData.customerName || 'Not Provided'}
+                    </p>
+                    {(!customerData.customerName || customerData.customerName === 'Valued Customer') && (
+                      <span className="text-[10px] text-red-500 font-medium mt-1 block">⚠️ Name must be updated to order</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100 flex items-start gap-3">
+                  <div className="bg-amber-100 p-2 rounded-lg text-amber-600 mt-0.5">
+                    <User className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">Gender</p>
+                    <p className="text-sm font-semibold text-gray-900 mt-0.5 capitalize">
+                      {customerData.gender || 'Not Provided'}
+                    </p>
+                    {(!customerData.gender || customerData.gender === 'other') && (
+                      <span className="text-[10px] text-red-500 font-medium mt-1 block">⚠️ Gender must be Male or Female to order</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100 flex items-start gap-3">
+                  <div className="bg-orange-100 p-2 rounded-lg text-orange-600 mt-0.5">
+                    <Calendar className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">Date of Birth</p>
+                    <p className="text-sm font-semibold text-gray-900 mt-0.5">
+                      {customerData.dateOfBirth
+                        ? new Date(customerData.dateOfBirth).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                          })
+                        : 'Not Provided'}
+                    </p>
+                    {!customerData.dateOfBirth && (
+                      <span className="text-[10px] text-red-500 font-medium mt-1 block">⚠️ Date of Birth must be updated to order</span>
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
          </CardContent>
       </Card>

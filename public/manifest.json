@@ -1,6 +1,6 @@
 {
-  "short_name": "Surabhi",
-  "name": "Surabhi Loyalty - Sustainable KGV Rewards",
+  "short_name": "Sustainable KGV",
+  "name": "Sustainable KGV - Rewards & Shopping",
   "icons": [
     {
       "src": "/kgv.png",
@@ -17,5 +17,5 @@
   "background_color": "#ffffff",
   "display": "standalone",
   "theme_color": "#7c3aed",
-  "description": "Join Surabhi Loyalty by Sustainable KGV. Shop premium products and earn rewards."
+  "description": "Join Sustainable KGV Rewards & Shopping. Shop premium products and earn rewards."
 }

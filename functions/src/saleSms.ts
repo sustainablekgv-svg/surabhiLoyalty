@@ -141,3 +141,96 @@ export const sendSaleNotificationSms = functions.https.onCall(
     }
   }
 );
+
+export type SendCartReminderRequest = {
+  phone: string;
+  customerName: string;
+  itemCount: number;
+  url: string;
+};
+
+/**
+ * Sends a cart reminder SMS via A2Z SMS using existing credentials.
+ * Tells the customer how many items are pending in their cart and provides the website URL.
+ */
+export const sendCartReminderSms = functions.https.onCall(
+  { region: 'us-central1' },
+  async (request) => {
+    if (!request.auth) {
+      throw new functions.https.HttpsError(
+        'unauthenticated',
+        'You must be signed in to send cart reminders.'
+      );
+    }
+
+    const data = request.data as SendCartReminderRequest;
+    const { customerName, itemCount, url } = data;
+    const phone = typeof data.phone === 'string' ? data.phone : '';
+
+    if (!customerName || typeof itemCount !== 'number' || !url) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'customerName, itemCount, and url are required.'
+      );
+    }
+
+    const cleaned = cleanIndianMobile(phone);
+    if (!cleaned) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Invalid Indian mobile number (need 10 digits).'
+      );
+    }
+
+    const username = process.env.A2ZSMS_USERNAME || '';
+    const password = process.env.A2ZSMS_PASSWORD || '';
+
+    if (!username || !password) {
+      logger.warn('sendCartReminderSms: A2ZSMS_USERNAME / A2ZSMS_PASSWORD not set; skipping send.');
+      return {
+        success: true,
+        skipped: true,
+        reason: 'a2z_credentials_not_configured',
+      };
+    }
+
+    // Existing SMS configuration details for A2Z (DLT requirements)
+    const senderId = 'SUSKGV';
+    const peid = '1701177271545246259';
+    // Utilizing the reset template ID or generic transactional template ID
+    const templateId = '1707177546212500792';
+
+    // Text conforms to the approved sender template/structure if DLT matches,
+    // or standard transactional reminder structure.
+    const message = `Dear ${customerName}, you have ${itemCount} pending items in your cart at Sustainable KGV. Complete your order at ${url} - Yogaaamrutha RCM`;
+
+    const smsUrl =
+      `http://sms.a2zsms.in/api.php?username=${encodeURIComponent(username)}` +
+      `&password=${encodeURIComponent(password)}` +
+      `&to=${cleaned}` +
+      `&from=${encodeURIComponent(senderId)}` +
+      `&message=${encodeURIComponent(message)}` +
+      `&PEID=${encodeURIComponent(peid)}` +
+      `&templateid=${encodeURIComponent(templateId)}`;
+
+    try {
+      const smsResponse = await fetch(smsUrl);
+      const smsResult = await smsResponse.text();
+      logger.info('A2Z cart reminder SMS response', {
+        status: smsResponse.status,
+        bodyPreview: smsResult.slice(0, 200),
+        to: cleaned,
+      });
+
+      if (!smsResponse.ok) {
+        throw new Error(`SMS gateway HTTP ${smsResponse.status}: ${smsResult.slice(0, 120)}`);
+      }
+
+      return { success: true, skipped: false };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error('sendCartReminderSms failed', err);
+      throw new functions.https.HttpsError('internal', `SMS send failed: ${msg}`);
+    }
+  }
+);

@@ -95,6 +95,7 @@ export interface CartItem {
     originalPrice?: number;
     isAdminUpdated?: boolean;
     slug?: string;
+    addedAt?: string;
 }
 
 export interface WishlistItem {

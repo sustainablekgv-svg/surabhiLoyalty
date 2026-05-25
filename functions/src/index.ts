@@ -36,6 +36,7 @@ import './ensureGcpRuntimeCredentials';
 import * as auth from './auth';
 import * as cloudflare from './cloudflare';
 import * as ecommerce from './ecommerce';
+import * as seo from './seo';
 import {
   checkOjivaBalance as checkOjivaBalanceFn,
   resetCustomerPassword as resetCustomerPasswordFn,
@@ -44,7 +45,7 @@ import {
   verifyPhoneOtp as verifyPhoneOtpFn,
 } from './ojivaSms';
 import * as quarterly from './quartleryCheck';
-import { sendSaleNotificationSms as sendSaleNotificationSmsFn } from './saleSms';
+import { sendSaleNotificationSms as sendSaleNotificationSmsFn, sendCartReminderSms as sendCartReminderSmsFn } from './saleSms';
 import { syncFirebaseAuthForUpload as syncFirebaseAuthForUploadFn } from './syncAuthForUpload';
 // import { syncNplSales as syncNplSalesFn } from './syncNplSales';
 
@@ -61,6 +62,8 @@ export const onStaffUpdate = auth.onStaffUpdate;
 export const onCustomerUpdate = auth.onCustomerUpdate;
 /** A2Z SMS: notify customer after a sale (credentials in Cloud Function env). */
 export const sendSaleNotificationSms = sendSaleNotificationSmsFn;
+/** A2Z SMS: send cart reminder notification to customer. */
+export const sendCartReminderSms = sendCartReminderSmsFn;
 /** OJIVA.AI SMS: transactional notifications (coins credited, referrer, etc.). */
 export const sendOjivaNotification = sendOjivaNotificationFn;
 /** OJIVA.AI SMS: send 6-digit OTP for signup / reset / coin redemption / sales return. */
@@ -71,3 +74,5 @@ export const verifyPhoneOtp = verifyPhoneOtpFn;
 export const resetCustomerPassword = resetCustomerPasswordFn;
 export const checkOjivaBalance = checkOjivaBalanceFn;
 // export const syncNplSales = syncNplSalesFn;
+export const serverSideDynamicSEO = seo.serverSideDynamicSEO;
+export const generateDynamicSitemap = seo.generateDynamicSitemap;
