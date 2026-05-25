@@ -365,15 +365,18 @@ const SignupPage = () => {
                 <Label htmlFor="referredBy">Referral Code / Number (Optional)</Label>
                 <div className="relative">
                     <Input
-                        id="referredBy"
-                        name="referredBy"
-                        type="text"
-                        inputMode="text"
-                        placeholder="Referral code or 10-digit mobile"
-                        value={formData.referredBy}
-                        onChange={handleInputChange}
-                        className="h-12 pr-10"
-                    />
+    id="referredBy"
+    name="referredBy"
+    type="text"
+    inputMode="text"
+    placeholder="Referral code or 10-digit mobile"
+    value={formData.referredBy}
+    onChange={handleInputChange}
+    readOnly={!!referralCode}
+    className={`h-12 pr-10 ${
+      referralCode ? 'bg-gray-100 cursor-not-allowed' : ''
+    }`}
+/>
                     {isFetchingReferral && (
                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
                             <Loader2 className="h-4 w-4 animate-spin text-gray-400" />

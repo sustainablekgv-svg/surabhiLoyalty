@@ -275,7 +275,12 @@ export const updateProduct = async (id: string, updates: Partial<Product>): Prom
 };
 
 export const deleteProduct = async (id: string): Promise<void> => {
-    await deleteDoc(doc(db, 'products', id));
+    const productRef = doc(db, 'products', id);
+
+await updateDoc(productRef, {
+  isActive: false,
+  deletedAt: Timestamp.now()
+});
 };
 
 export const reorderProduct = async (id: string, currentOrder: number, direction: 'up' | 'down', brandId?: string) => {
@@ -587,7 +592,12 @@ export const updateBrand = async (id: string, updates: Partial<Brand>): Promise<
 };
 
 export const deleteBrand = async (id: string): Promise<void> => {
-    await deleteDoc(doc(db, 'brands', id));
+   const productRef = doc(db, 'products', id);
+
+await updateDoc(productRef, {
+  isActive: false,
+  deletedAt: Timestamp.now()
+});
 };
 
 export const reorderBrand = async (id: string, currentOrder: number, direction: 'up' | 'down', categoryId?: string) => {

@@ -15,7 +15,14 @@ import { cn } from '@/lib/utils';
 import { notifyCoinsRedeemedSms, notifyOrderPlacedSms } from '@/services/ojivaSmsNotification';
 import { calculateShippingCost, getWeightBracketLabel, INDIAN_STATES, parseWeightToKg } from '@/services/shipping';
 import { Address, CartItem } from '@/types/shop';
-import { addDoc, collection, getDocs, Timestamp } from 'firebase/firestore';
+import {
+  addDoc,
+  collection,
+  getDocs,
+  Timestamp,
+  doc,
+  getDoc
+} from 'firebase/firestore';
 import { Check, ChevronRight, Copy, MessageSquare, Phone, Shield, ShoppingCart } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -546,6 +553,77 @@ const shippingDueAmount = useMemo(() => {
     }
 
     setLoading(true);
+
+// VALIDATE PRODUCTS BEFORE ORDER
+try {
+  const invalidProducts: string[] = [];
+
+  for (const item of cart) {
+
+    const productRef = doc(db, 'products', item.productId);
+
+    const productSnap = await getDoc(productRef);
+
+    // PRODUCT DELETED
+    if (!productSnap.exists()) {
+
+      invalidProducts.push(item.name);
+
+      removeFromCart(item.productId);
+
+      continue;
+    }
+
+    const productData = productSnap.data();
+
+    // PRODUCT INACTIVE
+    if (productData?.isActive === false) {
+
+      invalidProducts.push(item.name);
+
+      removeFromCart(item.productId);
+
+      continue;
+    }
+
+    // OUT OF STOCK
+    if (
+      productData?.trackInventory !== false &&
+      productData?.stock < item.quantity
+    ) {
+
+      invalidProducts.push(item.name);
+
+      removeFromCart(item.productId);
+
+      continue;
+    }
+  }
+
+  // BLOCK ORDER
+  if (invalidProducts.length > 0) {
+
+    toast.error(
+      `Some products are unavailable: ${invalidProducts.join(', ')}`
+    );
+
+    setLoading(false);
+
+    return;
+  }
+
+} catch (error) {
+
+  console.error('Cart validation failed:', error);
+
+  toast.error('Failed to validate cart');
+
+  setLoading(false);
+
+  return;
+}
+
+    
 
     const finalShippingCreditsUsed =
     availableShippingBalance > 0
