@@ -5,7 +5,11 @@ import { useWishlist } from '@/hooks/useWishlist';
 import { db } from '@/lib/firebase';
 import { createOrder as createOrderService } from '@/services/shop';
 import { CartItem, Order, Product } from '@/types/shop';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import {
+  doc,
+  setDoc,
+  Timestamp
+} from 'firebase/firestore';
 import React, { createContext, useContext } from 'react';
 import { toast } from 'sonner';
 
@@ -29,6 +33,48 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { cart, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, itemCount } = useCart();
   const { wishlist, addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const { user } = useAuth();
+  const syncCartToFirebase = async (
+  userId: string,
+  cartItems: CartItem[]
+) => {
+
+  try {
+
+    const totalItems = cartItems.reduce(
+      (sum, item) => sum + item.quantity,
+      0
+    );
+
+    const totalAmount = cartItems.reduce(
+      (sum, item) =>
+        sum + (item.price * item.quantity),
+      0
+    );
+
+    await setDoc(
+      doc(db, 'carts', userId),
+      {
+        userId,
+
+        items: cartItems,
+
+        totalItems,
+
+        totalAmount,
+
+        updatedAt: Timestamp.now(),
+
+        abandoned: true
+      },
+      { merge: true }
+    );
+
+  } catch (error) {
+
+    console.error('Cart sync failed', error);
+
+  }
+};
 
   // Helper to match the toggleWishlist signature expected by UI (id only) 
   // But useWishlist.addToWishlist needs PRODUCT. 
@@ -145,22 +191,95 @@ if (
   return await createOrderService(orderData as any);
 };
 
-  const handleAddToCart = async (product: Product, quantity?: number) => {
-    const success = await addToCart(product, quantity);
-    if (success && isInWishlist(product.id)) {
-        await removeFromWishlist(product.id);
-        toast.info("Moved to cart from wishlist");
-    }
-  };
+ const handleAddToCart = async (
+  product: Product,
+  quantity?: number
+) => {
 
+  await addToCart(product, quantity);
+
+  // ✅ REMOVE FROM WISHLIST
+  if (isInWishlist(product.id)) {
+
+    await removeFromWishlist(product.id);
+
+    toast.info("Moved to cart from wishlist");
+  }
+
+  // ✅ FIREBASE SYNC
+  if (user?.uid) {
+
+    console.log("USER UID:", user.uid);
+
+    const updatedCart = [
+      ...cart,
+      {
+        ...product,
+        productId: product.id,
+        quantity: quantity || 1
+      }
+    ];
+
+    console.log("UPDATED CART:", updatedCart);
+
+    await syncCartToFirebase(
+      user.uid,
+      updatedCart as CartItem[]
+    );
+  }
+};
+
+// ✅ UPDATED REMOVE FROM CART WITH FIREBASE SYNC
+const handleRemoveFromCart = async (
+  productId: string
+) => {
+
+  await removeFromCart(productId);
+
+  if (user?.uid) {
+
+    const updatedCart = cart.filter(
+      item => item.productId !== productId
+    );
+
+    await syncCartToFirebase(
+      user.uid,
+      updatedCart
+    );
+  }
+};
+
+
+// ✅ UPDATED QUANTITY UPDATE WITH FIREBASE SYNC
+const handleUpdateQuantity = async (
+  productId: string,
+  quantity: number
+) => {
+
+  await updateQuantity(productId, quantity);
+
+  if (user?.uid) {
+
+    const updatedCart = cart.map(item =>
+      item.productId === productId
+        ? { ...item, quantity }
+        : item
+    );
+
+    await syncCartToFirebase(
+      user.uid,
+      updatedCart
+    );
+  }
+};
   return (
     <ShopContext.Provider
       value={{
         cart,
         wishlist,
         addToCart: handleAddToCart,
-        removeFromCart,
-        updateQuantity,
+        removeFromCart: handleRemoveFromCart,
+  updateQuantity: handleUpdateQuantity,
         clearCart,
         toggleWishlist: handleToggleWishlist as any,
         isInWishlist,
