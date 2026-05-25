@@ -187,7 +187,9 @@ export const CustomerManagement = () => {
         const rawItems = docSnap.data().items || [];
         if (rawItems.length > 0) {
           // Parse customerId from path to be robust
-          const pathParts = docSnap.ref.path.split('/');
+          const path = docSnap.ref.path;
+          const pathParts = path.split('/');
+          if (pathParts[0] !== 'Customers') continue;
           const customerId = pathParts[1]; // Customers/{customerId}/cart/items
           
           if (customerId) {
@@ -1256,17 +1258,16 @@ export const CustomerManagement = () => {
           </div>
 
           {/* Search Carts Input */}
-          <div className="relative w-full max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by customer name, phone, product name, brand..."
+          <div className="relative w-full max-w-sm flex items-center">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search by customer name, phone, product..."
               value={cartSearchQuery}
               onChange={(e) => {
                 setCartSearchQuery(e.target.value);
                 setCartVisibleCount(5); // Reset visible count on new search
               }}
-              className="w-full h-11 pl-10 pr-10 rounded-full border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent shadow-sm"
+              className="pl-9 pr-8 w-full h-10 text-xs sm:text-sm"
             />
             {cartSearchQuery && (
               <button
@@ -1274,7 +1275,7 @@ export const CustomerManagement = () => {
                   setCartSearchQuery('');
                   setCartVisibleCount(5);
                 }}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -1298,17 +1299,16 @@ export const CustomerManagement = () => {
               let filteredCarts = cartsWithCustomerInfo;
 
               if (cartSearchQuery.trim()) {
-                const fuse = new Fuse(cartsWithCustomerInfo, {
-                  keys: [
-                    'customerName',
-                    'customerMobile',
-                    'items.name',
-                    'items.brandName'
-                  ],
-                  threshold: 0.3,
+                const queryLower = cartSearchQuery.trim().toLowerCase();
+                filteredCarts = cartsWithCustomerInfo.filter(cart => {
+                  const matchName = cart.customerName.toLowerCase().includes(queryLower);
+                  const matchPhone = cart.customerMobile.toLowerCase().includes(queryLower);
+                  const matchItems = cart.items.some((item: any) => 
+                    item.name.toLowerCase().includes(queryLower) || 
+                    (item.brandName && item.brandName.toLowerCase().includes(queryLower))
+                  );
+                  return matchName || matchPhone || matchItems;
                 });
-                const searchResults = fuse.search(cartSearchQuery.trim());
-                filteredCarts = searchResults.map(res => res.item);
               }
 
               if (filteredCarts.length === 0) {
@@ -1329,11 +1329,11 @@ export const CustomerManagement = () => {
 
               return (
                 <div className="space-y-6">
-                  {paginatedCarts.map(cart => {
+                  {paginatedCarts.map((cart, index) => {
                     const totalCartValue = cart.items.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0);
                     return (
-                      <Card key={cart.customerId} className="border border-gray-150 shadow-sm overflow-hidden hover:border-purple-200 transition-all duration-200">
-                        <CardHeader className="bg-gradient-to-r from-purple-50/50 to-amber-50/30 border-b border-gray-100 p-4">
+                      <Card key={`${cart.customerId || index}-${index}`} className="border border-gray-200 shadow-sm overflow-hidden bg-white rounded-lg hover:border-purple-200 transition-all duration-200">
+                        <CardHeader className="bg-gray-50 border-b border-gray-100 p-4">
                           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
