@@ -538,73 +538,258 @@ useEffect(() => {
 
     const FilterContent = () => (
         <div className="space-y-6">
-            <div>
-                <h3 className="mb-2 text-sm font-medium">Categories</h3>
-                <div className="flex flex-wrap gap-2">
-                    <Button 
-                        variant={selectedCategory === null ? "default" : "outline"} 
-                        size="sm"
-onClick={() => {
-    setSelectedBrand(null);
-    setSelectedCategory(null);
-}} 
-                       className="rounded-full"
-                    >
-                        All
-                    </Button>
-                    {filterCategories.map(cat => (
-                        <Button 
-                            key={cat.id}
-                            variant={(selectedCategory === cat.id || (cat.slug && selectedCategory === cat.slug)) ? "default" : "outline"}
-                            size="sm"
-             onClick={() => {
-    setSelectedBrand(null);
-    setSelectedCategory(cat.slug || cat.id);
-}}
-               className="rounded-full"
-                        >
+            <div className="space-y-3">
+    <h3 className="text-lg font-semibold">Categories</h3>
+
+    {/* All Products */}
+    <button
+        onClick={() => {
+            setSelectedBrand(null);
+            setSelectedCategory(null);
+        }}
+        className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all duration-200 ${
+            selectedCategory === null
+                ? 'bg-primary text-white'
+                : 'hover:bg-gray-100 text-gray-700'
+        }`}
+    >
+        <span className="font-medium">All Products</span>
+
+        <span
+            className={`text-lg ${
+                selectedCategory === null
+                    ? 'text-white'
+                    : 'text-gray-400'
+            }`}
+        >
+            ›
+        </span>
+    </button>
+
+    {/* Categories List */}
+    <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+        {filterCategories.map((cat) => {
+            const isActive =
+                selectedCategory === cat.id ||
+                selectedCategory === cat.slug;
+
+            return (
+                <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => {
+                        setSelectedBrand(null);
+                        setSelectedCategory(cat.slug || cat.id);
+                    }}
+                    className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all duration-200 ${
+                        isActive
+                            ? 'bg-primary text-white'
+                            : 'hover:bg-gray-100 text-gray-700'
+                    }`}
+                >
+                    {/* LEFT SIDE */}
+                    <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-10 w-10 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                            {cat.images?.[0] || cat.image ? (
+                                <img
+                                    src={cat.images?.[0] || cat.image}
+                                    alt={cat.name}
+                                    loading="lazy"
+                                    decoding="async"
+                                    className="h-full w-full object-cover"
+                                />
+                            ) : (
+                                <div className="h-full w-full flex items-center justify-center text-xs">
+                                    📦
+                                </div>
+                            )}
+                        </div>
+
+                        <span className="font-medium text-left break-words">
                             {cat.name}
-                        </Button>
-                    ))}
-                </div>
-            </div>
-
-            <div>
-                <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-medium">Brands</h3>
-                    {selectedCategory && selectedCategory !== 'All' && (
-                        <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-                            Filtered by Category
                         </span>
-                    )}
-                </div>
-                <Select value={selectedBrand || "all"} onValueChange={(val) => setSelectedBrand(val === "all" ? null : val)}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select Brand" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Brands</SelectItem>
-                        {displayedFilterBrands.map(brand => (
-                            <SelectItem key={brand.id} value={brand.slug || brand.id}>{brand.name}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
+                    </div>
 
-            <div>
-                <h3 className="mb-2 text-sm font-medium">Place of Origin</h3>
-                <Select value={selectedOrigin || "all"} onValueChange={(val) => setSelectedOrigin(val === "all" ? null : val)}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select Origin" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Origins</SelectItem>
-                        {origins.map(origin => (
-                            <SelectItem key={origin.id} value={origin.name}>{origin.name}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
+                    {/* RIGHT ARROW */}
+                    <span
+                        className={`text-lg ${
+                            isActive
+                                ? 'text-white'
+                                : 'text-gray-400'
+                        }`}
+                    >
+                        ›
+                    </span>
+                </button>
+            );
+        })}
+    </div>
+</div>
+
+            <div className="space-y-3">
+    <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">
+            Brands
+        </h3>
+
+        {selectedCategory && (
+            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
+                Category Filter
+            </span>
+        )}
+    </div>
+
+    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+        {/* All Brands */}
+        <button
+            type="button"
+            onClick={() => setSelectedBrand(null)}
+            className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all duration-200 ${
+                selectedBrand === null
+                    ? 'bg-primary text-white'
+                    : 'hover:bg-gray-100 text-gray-700'
+            }`}
+        >
+            <span className="font-medium">
+                All Brands
+            </span>
+
+            <span
+                className={`text-lg ${
+                    selectedBrand === null
+                        ? 'text-white'
+                        : 'text-gray-400'
+                }`}
+            >
+                ›
+            </span>
+        </button>
+
+        {displayedFilterBrands.map((brand) => {
+            const isActive =
+                selectedBrand === brand.id ||
+                selectedBrand === brand.slug;
+
+            return (
+                <button
+                    key={brand.id}
+                    type="button"
+                    onClick={() =>
+                        setSelectedBrand(
+                            brand.slug || brand.id
+                        )
+                    }
+                    className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all duration-200 ${
+                        isActive
+                            ? 'bg-primary text-white'
+                            : 'hover:bg-gray-100 text-gray-700'
+                    }`}
+                >
+                    <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-10 w-10 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                            {brand.images?.[0] || brand.logo ? (
+                                <img
+                                    src={
+                                        brand.images?.[0] ||
+                                        brand.logo
+                                    }
+                                    alt={brand.name}
+                                    className="h-full w-full object-cover"
+                                    loading="lazy"
+                                    decoding="async"
+                                />
+                            ) : (
+                                <div className="h-full w-full flex items-center justify-center">
+                                    🏷️
+                                </div>
+                            )}
+                        </div>
+
+                        <span className="font-medium text-left break-words">
+                            {brand.name}
+                        </span>
+                    </div>
+
+                    <span
+                        className={`text-lg ${
+                            isActive
+                                ? 'text-white'
+                                : 'text-gray-400'
+                        }`}
+                    >
+                        ›
+                    </span>
+                </button>
+            );
+        })}
+    </div>
+</div>
+
+           <div className="space-y-3">
+    <h3 className="text-lg font-semibold">
+        Place of Origin
+    </h3>
+
+    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+        <button
+            type="button"
+            onClick={() => setSelectedOrigin(null)}
+            className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all duration-200 ${
+                selectedOrigin === null
+                    ? 'bg-primary text-white'
+                    : 'hover:bg-gray-100 text-gray-700'
+            }`}
+        >
+            <span className="font-medium">
+                All Origins
+            </span>
+
+            <span
+                className={`text-lg ${
+                    selectedOrigin === null
+                        ? 'text-white'
+                        : 'text-gray-400'
+                }`}
+            >
+                ›
+            </span>
+        </button>
+
+        {origins.map((origin) => {
+            const isActive =
+                selectedOrigin === origin.name;
+
+            return (
+                <button
+                    key={origin.id}
+                    type="button"
+                    onClick={() =>
+                        setSelectedOrigin(origin.name)
+                    }
+                    className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all duration-200 ${
+                        isActive
+                            ? 'bg-primary text-white'
+                            : 'hover:bg-gray-100 text-gray-700'
+                    }`}
+                >
+                    <span className="font-medium text-left">
+                        {origin.name}
+                    </span>
+
+                    <span
+                        className={`text-lg ${
+                            isActive
+                                ? 'text-white'
+                                : 'text-gray-400'
+                        }`}
+                    >
+                        ›
+                    </span>
+                </button>
+            );
+        })}
+    </div>
+</div>
 
             <div>
                 <h3 className="mb-2 text-sm font-medium">Price Range</h3>
@@ -717,13 +902,16 @@ onClick={() => {
                                         <Filter className="mr-2 h-4 w-4" /> Filters
                                     </Button>
                                 </SheetTrigger>
-                                <SheetContent side="left">
+                               <SheetContent
+    side="left"
+    className="w-[90vw] sm:w-[420px] overflow-y-auto"
+> 
                                     <SheetHeader>
                                         <SheetTitle>Filters</SheetTitle>
                                     </SheetHeader>
-                                    <div className="mt-4">
-                                        {FilterContent()}
-                                    </div>
+                                    <div className="mt-4 pb-20">
+    {FilterContent()}
+</div>
                                 </SheetContent>
                             </Sheet>
                         )}
@@ -845,12 +1033,227 @@ onClick={() => {
                     // PRODUCT LISTING VIEW
                     <div className="flex gap-8 items-start">
                         {/* Desktop Sidebar Filters */}
-                        <div className="hidden md:block w-64 shrink-0 space-y-6 sticky top-36">
-                            <div className="bg-white p-6 rounded-lg border shadow-sm">
-                                    <h2 className="font-semibold text-lg mb-4">Filters</h2>
-                                    {FilterContent()}
-                            </div>
+                        <div className="hidden lg:block w-[280px] shrink-0 sticky top-32">
+    <div className="bg-white rounded-3xl border shadow-sm overflow-hidden">
+
+        {/* Header */}
+        <div className="px-5 py-4 border-b bg-orange-50">
+            <h2 className="text-lg font-bold text-gray-900">
+                All Categories
+            </h2>
+        </div>
+
+        {/* Categories */}
+        <div className="p-3 space-y-2 max-h-[75vh] overflow-y-auto">
+
+            {/* All */}
+            <button
+                onClick={() => {
+                    setSelectedCategory('');
+                    setViewMode('products');
+                }}
+                className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all
+                ${
+                    !selectedCategory
+                        ? 'bg-primary text-white'
+                        : 'hover:bg-gray-100 text-gray-700'
+                }`}
+            >
+                <span className="font-medium">All Products</span>
+            </button>
+
+            {/* Categories */}
+            {filterCategories.map((category) => (
+                <button
+                    key={category.id}
+                    onClick={() => {
+                       setSelectedCategory(category.slug || category.id); 
+                        setViewMode('products');
+                    }}
+                    className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all
+                    ${
+                       selectedCategory === category.id ||
+                       selectedCategory === category.slug
+                            ? 'bg-primary text-white'
+                            : 'hover:bg-gray-100 text-gray-700'
+                    }`}
+                >
+                    <div className="flex items-center gap-3">
+
+                        {/* Category Image */}
+                        <div className="h-10 w-10 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                            {category.image ? (
+                                <img
+                                    src={category.image}
+                                    alt={category.name}
+                                    loading="lazy"
+                                    decoding="async"
+                                    className="h-full w-full object-cover"
+                                />
+                            ) : (
+                                <div className="h-full w-full flex items-center justify-center text-xs">
+                                    📦
+                                </div>
+                            )}
                         </div>
+
+                        {/* Name */}
+                        <span className="font-medium text-left line-clamp-2">
+                            {category.name}
+                        </span>
+                    </div>
+
+                    <span
+  className={`text-lg ${
+    selectedCategory === category.id ||
+    selectedCategory === category.slug
+      ? 'text-white'
+      : 'text-gray-400'
+  }`}
+>
+                        ›
+                    </span>
+                </button>
+            ))}
+
+            {/* Brands */}
+<div className="mt-6 border-t pt-4">
+    <h3 className="px-2 mb-3 text-sm font-bold text-gray-500 uppercase tracking-wide">
+        Brands
+    </h3>
+
+    <div className="space-y-2">
+        <button
+            onClick={() => {
+                setSelectedBrand(null);
+                setViewMode('products');
+            }}
+            className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all ${
+                !selectedBrand
+                    ? 'bg-primary text-white'
+                    : 'hover:bg-gray-100 text-gray-700'
+            }`}
+        >
+            <span className="font-medium">
+                All Brands
+            </span>
+
+            <span className={!selectedBrand ? 'text-white' : 'text-gray-400'}>
+                ›
+            </span>
+        </button>
+
+        {filterBrands.map((brand) => (
+            <button
+                key={brand.id}
+                onClick={() => {
+                    setSelectedBrand(brand.slug || brand.id);
+                    setViewMode('products');
+                }}
+                className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all ${
+                    selectedBrand === brand.id ||
+                    selectedBrand === brand.slug
+                        ? 'bg-primary text-white'
+                        : 'hover:bg-gray-100 text-gray-700'
+                }`}
+            >
+                <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                        {brand.images?.[0] || brand.logo ? (
+                            <img
+                                src={brand.images?.[0] || brand.logo}
+                                alt={brand.name}
+                                loading="lazy"
+                                decoding="async"
+                                className="h-full w-full object-cover"
+                            />
+                        ) : (
+                            <div className="h-full w-full flex items-center justify-center text-xs">
+                                🏷️
+                            </div>
+                        )}
+                    </div>
+
+                    <span className="font-medium text-left line-clamp-2">
+                        {brand.name}
+                    </span>
+                </div>
+
+                <span
+                    className={`text-lg ${
+                        selectedBrand === brand.id ||
+                        selectedBrand === brand.slug
+                            ? 'text-white'
+                            : 'text-gray-400'
+                    }`}
+                >
+                    ›
+                </span>
+            </button>
+        ))}
+    </div>
+</div>
+
+{/* Origins */}
+<div className="mt-6 border-t pt-4">
+    <h3 className="px-2 mb-3 text-sm font-bold text-gray-500 uppercase tracking-wide">
+        Place of Origin
+    </h3>
+
+    <div className="space-y-2">
+        <button
+            onClick={() => {
+                setSelectedOrigin(null);
+                setViewMode('products');
+            }}
+            className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all ${
+                !selectedOrigin
+                    ? 'bg-primary text-white'
+                    : 'hover:bg-gray-100 text-gray-700'
+            }`}
+        >
+            <span className="font-medium">
+                All Origins
+            </span>
+
+            <span className={!selectedOrigin ? 'text-white' : 'text-gray-400'}>
+                ›
+            </span>
+        </button>
+
+        {origins.map((origin) => (
+            <button
+                key={origin.id}
+                onClick={() => {
+                    setSelectedOrigin(origin.name);
+                    setViewMode('products');
+                }}
+                className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all ${
+                    selectedOrigin === origin.name
+                        ? 'bg-primary text-white'
+                        : 'hover:bg-gray-100 text-gray-700'
+                }`}
+            >
+                <span className="font-medium text-left">
+                    {origin.name}
+                </span>
+
+                <span
+                    className={`text-lg ${
+                        selectedOrigin === origin.name
+                            ? 'text-white'
+                            : 'text-gray-400'
+                    }`}
+                >
+                    ›
+                </span>
+            </button>
+        ))}
+    </div>
+</div>
+        </div>
+    </div>
+</div>
 
                         {/* Product Grid */}
                         <div className="flex-1">
@@ -905,7 +1308,13 @@ onClick={() => {
                                             </span>
                                         )}
                                     </div>
-                                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
+                                   <div
+  className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 md:gap-6"
+  style={{
+    contentVisibility: 'auto',
+    containIntrinsicSize: '1px 1000px'
+  }}
+>
                                         {products.map((product) => (
                                             <ProductCard key={product.id} product={product} />
                                         ))}

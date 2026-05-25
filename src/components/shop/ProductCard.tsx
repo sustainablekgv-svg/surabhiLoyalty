@@ -16,7 +16,7 @@ interface ProductCardProps {
   variant?: 'default' | 'wishlist';
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'default' }) => {
+const ProductCardComponent: React.FC<ProductCardProps> = ({ product, variant = 'default' }) => {
   const { addToCart, toggleWishlist, isInWishlist } = useShop();
   const { user } = useAuth();
   const { settings } = useGlobalSettings();
@@ -34,7 +34,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
           <img
             src={product.images[0]}
             alt={product.name}
-            className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105  will-change-transform"
+            className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105 will-change-transform transform-gpu"
             loading="lazy"
             decoding="async"
           />
@@ -178,3 +178,5 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, variant = 'de
     </Card>
   );
 };
+
+export const ProductCard = React.memo(ProductCardComponent);
