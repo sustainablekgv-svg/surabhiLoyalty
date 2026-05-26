@@ -536,269 +536,235 @@ useEffect(() => {
 
     const categoryNames = useMemo(() => filterCategories.map(c => c.name), [filterCategories]);
 
+    const toggleCategory = (categorySlugOrId: string) => {
+        setSelectedCategory(prev => {
+            const isCurrent = prev === categorySlugOrId;
+            if (isCurrent) {
+                setSelectedBrand(null);
+                return null;
+            }
+            return categorySlugOrId;
+        });
+        setViewMode('products');
+    };
+
+    const toggleBrand = (brandSlugOrId: string) => {
+        setSelectedBrand(prev => {
+            const isCurrent = prev === brandSlugOrId;
+            return isCurrent ? null : brandSlugOrId;
+        });
+        setViewMode('products');
+    };
+
+    const toggleOrigin = (originName: string) => {
+        setSelectedOrigin(prev => {
+            const isCurrent = prev === originName;
+            return isCurrent ? null : originName;
+        });
+        setViewMode('products');
+    };
+
     const FilterContent = () => (
         <div className="space-y-6">
             <div className="space-y-3">
-    <h3 className="text-lg font-semibold">Categories</h3>
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide px-2">Categories</h3>
 
-    {/* All Products */}
-    <button
-        onClick={() => {
-            setSelectedBrand(null);
-            setSelectedCategory(null);
-        }}
-        className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all duration-200 ${
-            selectedCategory === null
-                ? 'bg-primary text-white'
-                : 'hover:bg-gray-100 text-gray-700'
-        }`}
-    >
-        <span className="font-medium">All Products</span>
-
-        <span
-            className={`text-lg ${
-                selectedCategory === null
-                    ? 'text-white'
-                    : 'text-gray-400'
-            }`}
-        >
-            ›
-        </span>
-    </button>
-
-    {/* Categories List */}
-    <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
-        {filterCategories.map((cat) => {
-            const isActive =
-                selectedCategory === cat.id ||
-                selectedCategory === cat.slug;
-
-            return (
+                {/* All Products */}
                 <button
-                    key={cat.id}
-                    type="button"
+                    onClick={() => {
+                        setSelectedCategory(null);
+                        setSelectedBrand(null);
+                        setViewMode('products');
+                    }}
+                    className={`w-full flex items-center justify-between rounded-2xl px-4 py-2.5 transition-all duration-200 ${
+                        selectedCategory === null
+                            ? 'bg-primary/10 text-primary font-bold border border-primary/20'
+                            : 'hover:bg-gray-50 text-gray-500'
+                    }`}
+                >
+                    <span className="text-sm font-semibold">All Categories</span>
+                    {selectedCategory === null && <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">Active</span>}
+                </button>
+
+                {/* Categories List */}
+                <div className="space-y-1 max-h-[240px] overflow-y-auto pr-1 scrollbar-thin">
+                    {filterCategories.map((cat) => {
+                        const isActive = selectedCategory === cat.id || selectedCategory === cat.slug;
+
+                        return (
+                            <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => toggleCategory(cat.slug || cat.id)}
+                                className={`w-full flex items-center justify-between rounded-xl px-3 py-2 transition-all duration-200 ${
+                                    isActive
+                                        ? 'bg-primary text-white font-semibold shadow-sm scale-[1.01]'
+                                        : 'hover:bg-gray-50 text-gray-700'
+                                }`}
+                            >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="h-8 w-8 rounded-lg overflow-hidden bg-gray-100 shrink-0 shadow-inner">
+                                        {cat.images?.[0] || cat.image ? (
+                                            <img
+                                                src={cat.images?.[0] || cat.image}
+                                                alt={cat.name}
+                                                loading="lazy"
+                                                decoding="async"
+                                                className="h-full w-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="h-full w-full flex items-center justify-center text-xs">
+                                                📦
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <span className="text-xs text-left truncate font-medium">
+                                        {cat.name}
+                                    </span>
+                                </div>
+
+                                {isActive ? (
+                                    <X className="h-3.5 w-3.5 text-white/80 hover:text-white" />
+                                ) : (
+                                    <span className="text-sm text-gray-400">›</span>
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <div className="space-y-3 pt-4 border-t border-gray-100">
+                <div className="flex items-center justify-between px-2">
+                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide">Brands</h3>
+                    {selectedCategory && (
+                        <span className="text-[9px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                            Filtered
+                        </span>
+                    )}
+                </div>
+
+                {/* All Brands button */}
+                <button
                     onClick={() => {
                         setSelectedBrand(null);
-                        setSelectedCategory(cat.slug || cat.id);
+                        setViewMode('products');
                     }}
-                    className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all duration-200 ${
-                        isActive
-                            ? 'bg-primary text-white'
-                            : 'hover:bg-gray-100 text-gray-700'
+                    className={`w-full flex items-center justify-between rounded-2xl px-4 py-2.5 transition-all duration-200 ${
+                        selectedBrand === null
+                            ? 'bg-primary/10 text-primary font-bold border border-primary/20'
+                            : 'hover:bg-gray-50 text-gray-500'
                     }`}
                 >
-                    {/* LEFT SIDE */}
-                    <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-10 w-10 rounded-xl overflow-hidden bg-gray-100 shrink-0">
-                            {cat.images?.[0] || cat.image ? (
-                                <img
-                                    src={cat.images?.[0] || cat.image}
-                                    alt={cat.name}
-                                    loading="lazy"
-                                    decoding="async"
-                                    className="h-full w-full object-cover"
-                                />
-                            ) : (
-                                <div className="h-full w-full flex items-center justify-center text-xs">
-                                    📦
+                    <span className="text-sm font-semibold">All Brands</span>
+                    {selectedBrand === null && <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">Active</span>}
+                </button>
+
+                <div className="space-y-1 max-h-[240px] overflow-y-auto pr-1 scrollbar-thin">
+                    {displayedFilterBrands.map((brand) => {
+                        const isActive = selectedBrand === brand.id || selectedBrand === brand.slug;
+
+                        return (
+                            <button
+                                key={brand.id}
+                                type="button"
+                                onClick={() => toggleBrand(brand.slug || brand.id)}
+                                className={`w-full flex items-center justify-between rounded-xl px-3 py-2 transition-all duration-200 ${
+                                    isActive
+                                        ? 'bg-primary text-white font-semibold shadow-sm scale-[1.01]'
+                                        : 'hover:bg-gray-50 text-gray-700'
+                                }`}
+                            >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="h-8 w-8 rounded-lg overflow-hidden bg-gray-100 shrink-0 shadow-inner">
+                                        {brand.images?.[0] || brand.logo ? (
+                                            <img
+                                                src={brand.images?.[0] || brand.logo}
+                                                loading="lazy"
+                                                decoding="async"
+                                                className="h-full w-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="h-full w-full flex items-center justify-center text-xs">
+                                                🏷️
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <span className="text-xs text-left truncate font-medium">
+                                        {brand.name}
+                                    </span>
                                 </div>
-                            )}
-                        </div>
 
-                        <span className="font-medium text-left break-words">
-                            {cat.name}
-                        </span>
-                    </div>
+                                {isActive ? (
+                                    <X className="h-3.5 w-3.5 text-white/80 hover:text-white" />
+                                ) : (
+                                    <span className="text-sm text-gray-400">›</span>
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
 
-                    {/* RIGHT ARROW */}
-                    <span
-                        className={`text-lg ${
-                            isActive
-                                ? 'text-white'
-                                : 'text-gray-400'
-                        }`}
-                    >
-                        ›
-                    </span>
-                </button>
-            );
-        })}
-    </div>
-</div>
+            <div className="space-y-3 pt-4 border-t border-gray-100">
+                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide px-2">Place of Origin</h3>
 
-            <div className="space-y-3">
-    <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">
-            Brands
-        </h3>
-
-        {selectedCategory && (
-            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
-                Category Filter
-            </span>
-        )}
-    </div>
-
-    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-        {/* All Brands */}
-        <button
-            type="button"
-            onClick={() => setSelectedBrand(null)}
-            className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all duration-200 ${
-                selectedBrand === null
-                    ? 'bg-primary text-white'
-                    : 'hover:bg-gray-100 text-gray-700'
-            }`}
-        >
-            <span className="font-medium">
-                All Brands
-            </span>
-
-            <span
-                className={`text-lg ${
-                    selectedBrand === null
-                        ? 'text-white'
-                        : 'text-gray-400'
-                }`}
-            >
-                ›
-            </span>
-        </button>
-
-        {displayedFilterBrands.map((brand) => {
-            const isActive =
-                selectedBrand === brand.id ||
-                selectedBrand === brand.slug;
-
-            return (
+                {/* All Origins button */}
                 <button
-                    key={brand.id}
-                    type="button"
-                    onClick={() =>
-                        setSelectedBrand(
-                            brand.slug || brand.id
-                        )
-                    }
-                    className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all duration-200 ${
-                        isActive
-                            ? 'bg-primary text-white'
-                            : 'hover:bg-gray-100 text-gray-700'
+                    onClick={() => {
+                        setSelectedOrigin(null);
+                        setViewMode('products');
+                    }}
+                    className={`w-full flex items-center justify-between rounded-2xl px-4 py-2.5 transition-all duration-200 ${
+                        selectedOrigin === null
+                            ? 'bg-primary/10 text-primary font-bold border border-primary/20'
+                            : 'hover:bg-gray-50 text-gray-500'
                     }`}
                 >
-                    <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-10 w-10 rounded-xl overflow-hidden bg-gray-100 shrink-0">
-                            {brand.images?.[0] || brand.logo ? (
-                                <img
-                                    src={
-                                        brand.images?.[0] ||
-                                        brand.logo
-                                    }
-                                    alt={brand.name}
-                                    className="h-full w-full object-cover"
-                                    loading="lazy"
-                                    decoding="async"
-                                />
-                            ) : (
-                                <div className="h-full w-full flex items-center justify-center">
-                                    🏷️
-                                </div>
-                            )}
-                        </div>
-
-                        <span className="font-medium text-left break-words">
-                            {brand.name}
-                        </span>
-                    </div>
-
-                    <span
-                        className={`text-lg ${
-                            isActive
-                                ? 'text-white'
-                                : 'text-gray-400'
-                        }`}
-                    >
-                        ›
-                    </span>
+                    <span className="text-sm font-semibold">All Origins</span>
+                    {selectedOrigin === null && <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">Active</span>}
                 </button>
-            );
-        })}
-    </div>
-</div>
 
-           <div className="space-y-3">
-    <h3 className="text-lg font-semibold">
-        Place of Origin
-    </h3>
+                <div className="space-y-1 max-h-[200px] overflow-y-auto pr-1 scrollbar-thin">
+                    {origins.map((origin) => {
+                        const isActive = selectedOrigin === origin.name;
 
-    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-        <button
-            type="button"
-            onClick={() => setSelectedOrigin(null)}
-            className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all duration-200 ${
-                selectedOrigin === null
-                    ? 'bg-primary text-white'
-                    : 'hover:bg-gray-100 text-gray-700'
-            }`}
-        >
-            <span className="font-medium">
-                All Origins
-            </span>
+                        return (
+                            <button
+                                key={origin.id}
+                                type="button"
+                                onClick={() => toggleOrigin(origin.name)}
+                                className={`w-full flex items-center justify-between rounded-xl px-3 py-2 transition-all duration-200 ${
+                                    isActive
+                                        ? 'bg-primary text-white font-semibold shadow-sm scale-[1.01]'
+                                        : 'hover:bg-gray-50 text-gray-700'
+                                }`}
+                            >
+                                <span className="text-xs text-left truncate font-medium px-1">
+                                    {origin.name}
+                                </span>
 
-            <span
-                className={`text-lg ${
-                    selectedOrigin === null
-                        ? 'text-white'
-                        : 'text-gray-400'
-                }`}
-            >
-                ›
-            </span>
-        </button>
+                                {isActive ? (
+                                    <X className="h-3.5 w-3.5 text-white/80 hover:text-white" />
+                                ) : (
+                                    <span className="text-sm text-gray-400">›</span>
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
 
-        {origins.map((origin) => {
-            const isActive =
-                selectedOrigin === origin.name;
-
-            return (
-                <button
-                    key={origin.id}
-                    type="button"
-                    onClick={() =>
-                        setSelectedOrigin(origin.name)
-                    }
-                    className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all duration-200 ${
-                        isActive
-                            ? 'bg-primary text-white'
-                            : 'hover:bg-gray-100 text-gray-700'
-                    }`}
-                >
-                    <span className="font-medium text-left">
-                        {origin.name}
-                    </span>
-
-                    <span
-                        className={`text-lg ${
-                            isActive
-                                ? 'text-white'
-                                : 'text-gray-400'
-                        }`}
-                    >
-                        ›
-                    </span>
-                </button>
-            );
-        })}
-    </div>
-</div>
-
-            <div>
-                <h3 className="mb-2 text-sm font-medium">Price Range</h3>
+            <div className="space-y-3 pt-4 border-t border-gray-100 px-1">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Price Range</h3>
                 <div className="flex items-center gap-2 mb-2">
                     <Input 
                         type="number" 
                         value={priceRange[0]} 
                         onChange={(e) => setPriceRange([Number(e.target.value), priceRange[1]])}
-                        className="h-8 text-xs"
+                        className="h-8 text-xs rounded-lg"
                         min={0}
                     />
                     <span className="text-muted-foreground">-</span>
@@ -806,7 +772,7 @@ useEffect(() => {
                         type="number" 
                         value={priceRange[1]} 
                         onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
-                        className="h-8 text-xs"
+                        className="h-8 text-xs rounded-lg"
                         min={0}
                     />
                 </div>
@@ -819,14 +785,14 @@ useEffect(() => {
                 />
             </div>
 
-            <div>
-                <h3 className="mb-2 text-sm font-medium">SPV Range (Coins)</h3>
+            <div className="space-y-3 pt-4 border-t border-gray-100 px-1">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">SPV Range (Coins)</h3>
                 <div className="flex items-center gap-2 mb-2">
                     <Input 
                         type="number" 
                         value={spvRange[0]} 
                         onChange={(e) => setSpvRange([Number(e.target.value), spvRange[1]])}
-                        className="h-8 text-xs"
+                        className="h-8 text-xs rounded-lg"
                         min={0}
                     />
                     <span className="text-muted-foreground">-</span>
@@ -834,7 +800,7 @@ useEffect(() => {
                         type="number" 
                         value={spvRange[1]} 
                         onChange={(e) => setSpvRange([spvRange[0], Number(e.target.value)])}
-                        className="h-8 text-xs"
+                        className="h-8 text-xs rounded-lg"
                         min={0}
                     />
                 </div>
@@ -846,11 +812,68 @@ useEffect(() => {
                     onValueChange={(val) => setSpvRange(val as [number, number])}
                 />
             </div>
-             <Button variant="outline" className="w-full" onClick={resetFilters}>
-                <X className="mr-2 h-4 w-4" /> Reset Filters
+            
+            <Button variant="outline" className="w-full rounded-xl mt-4 border-red-100 hover:bg-red-50 hover:text-red-600 text-xs font-semibold text-gray-500" onClick={resetFilters}>
+                <X className="mr-1.5 h-3.5 w-3.5" /> Clear All Filters
             </Button>
         </div>
     );
+
+    const activeChips = useMemo(() => {
+        const chips: { id: string; label: string; onClear: () => void }[] = [];
+        
+        if (debouncedSearch) {
+            chips.push({
+                id: 'search',
+                label: `Search: "${debouncedSearch}"`,
+                onClear: () => setSearchQuery('')
+            });
+        }
+        
+        if (selectedCategory) {
+            const cat = filterCategories.find(c => c.id === selectedCategory || c.slug === selectedCategory);
+            chips.push({
+                id: 'category',
+                label: `Category: ${cat?.name || 'Category'}`,
+                onClear: () => setSelectedCategory(null)
+            });
+        }
+        
+        if (selectedBrand) {
+            const brand = filterBrands.find(b => b.id === selectedBrand || b.slug === selectedBrand);
+            chips.push({
+                id: 'brand',
+                label: `Brand: ${brand?.name || 'Brand'}`,
+                onClear: () => setSelectedBrand(null)
+            });
+        }
+        
+        if (selectedOrigin) {
+            chips.push({
+                id: 'origin',
+                label: `Origin: ${selectedOrigin}`,
+                onClear: () => setSelectedOrigin(null)
+            });
+        }
+        
+        if (priceRange[0] > 0 || priceRange[1] < 10000) {
+            chips.push({
+                id: 'price',
+                label: `Price: ₹${priceRange[0]} - ₹${priceRange[1]}`,
+                onClear: () => setPriceRange([0, 10000])
+            });
+        }
+        
+        if (spvRange[0] > 0 || spvRange[1] < 5000) {
+            chips.push({
+                id: 'spv',
+                label: `SPV: ${spvRange[0]} - ${spvRange[1]} Coins`,
+                onClear: () => setSpvRange([0, 5000])
+            });
+        }
+        
+        return chips;
+    }, [debouncedSearch, selectedCategory, selectedBrand, selectedOrigin, priceRange, spvRange, filterCategories, filterBrands]);
 
     const isLandingPage = viewMode === 'landing';
 
@@ -872,46 +895,58 @@ useEffect(() => {
             />
             <div className="flex flex-col gap-6">
                 <PauseAnnouncement />
-                
                 {/* 1. Header & Controls */}
-                <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center bg-white p-4 rounded-lg shadow-sm sticky top-16 z-30">
-                     <Button variant="ghost" size="icon" onClick={() => navigate('/')} title="Go Home" className="-ml-2">
-                            <Home className="h-6 w-6" />
-                     </Button>
-                     <form onSubmit={onSearchSubmit} className="relative w-full md:w-96 flex gap-2">
-                        <div className="relative flex-1">
-                            {/* <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" /> */}
-                            <Input 
-                                placeholder="Search products..." 
-                                className="pl-10 pr-4 h-10"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                        </div>
-                        <Button type="submit" size="sm" className="h-10 px-4 shrink-0">
-                            Search
-                        </Button>
-                    </form>
+                <div className="flex flex-col sm:flex-row gap-3 justify-between items-stretch sm:items-center bg-white p-3 sm:p-4 rounded-2xl border shadow-sm sticky top-14 md:top-16 z-30 backdrop-blur-md bg-white/95">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                         <Button variant="ghost" size="icon" onClick={() => navigate('/')} title="Go Home" className="h-10 w-10 hover:bg-gray-100 rounded-xl">
+                                <Home className="h-5 w-5 text-gray-600" />
+                         </Button>
+                         <form onSubmit={onSearchSubmit} className="relative flex-1 max-w-md flex gap-2">
+                            <div className="relative flex-1">
+                                <Input 
+                                    placeholder="Search products..." 
+                                    className="pl-3 pr-8 h-10 text-sm rounded-xl"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                                {searchQuery && (
+                                    <button 
+                                        type="button"
+                                        onClick={() => setSearchQuery('')}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                )}
+                            </div>
+                        </form>
+                    </div>
                     
-                    <div className="flex gap-2 w-full md:w-auto">
+                    <div className="flex items-center gap-2 justify-end shrink-0">
                         {/* Mobile Filters Trigger - Visible only in Product View */}
                         {!isLandingPage && (
                             <Sheet>
                                 <SheetTrigger asChild>
-                                    <Button variant="outline" className="md:hidden w-full">
-                                        <Filter className="mr-2 h-4 w-4" /> Filters
+                                    <Button variant="outline" className="lg:hidden h-10 px-3 rounded-xl flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 border-gray-200">
+                                        <Filter className="h-4 w-4" /> 
+                                        <span>Filters</span>
+                                        {activeChips.length > 0 && (
+                                            <span className="h-2 w-2 rounded-full bg-primary animate-pulse ml-0.5" />
+                                        )}
                                     </Button>
                                 </SheetTrigger>
-                               <SheetContent
-    side="left"
-    className="w-[90vw] sm:w-[420px] overflow-y-auto"
-> 
-                                    <SheetHeader>
-                                        <SheetTitle>Filters</SheetTitle>
+                                <SheetContent
+                                    side="left"
+                                    className="w-[90vw] sm:w-[380px] overflow-y-auto p-6"
+                                > 
+                                    <SheetHeader className="mb-4">
+                                        <SheetTitle className="text-xl font-bold flex items-center gap-2">
+                                            <Filter className="h-5 w-5 text-primary" /> Filters
+                                        </SheetTitle>
                                     </SheetHeader>
-                                    <div className="mt-4 pb-20">
-    {FilterContent()}
-</div>
+                                    <div className="pb-10">
+                                        {FilterContent()}
+                                    </div>
                                 </SheetContent>
                             </Sheet>
                         )}
@@ -919,15 +954,15 @@ useEffect(() => {
                         {/* Sort Dropdown */}
                         {!isLandingPage && (
                             <Select value={sortBy} onValueChange={(val) => setSortBy(val as any)}>
-                                <SelectTrigger className="w-[180px]">
+                                <SelectTrigger className="w-[140px] sm:w-[160px] h-10 rounded-xl text-sm font-semibold text-gray-700 border-gray-200">
                                     <SelectValue placeholder="Sort By" />
                                 </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="order">Default</SelectItem>
-                                    <SelectItem value="price_asc">Price: Low to High</SelectItem>
-                                    <SelectItem value="price_desc">Price: High to Low</SelectItem>
-                                    <SelectItem value="spv_asc">SPV: Low to High</SelectItem>
-                                    <SelectItem value="spv_desc">SPV: High to Low</SelectItem>
+                                <SelectContent className="rounded-xl">
+                                    <SelectItem value="order">Default Sort</SelectItem>
+                                    <SelectItem value="price_asc">Price: Low-High</SelectItem>
+                                    <SelectItem value="price_desc">Price: High-Low</SelectItem>
+                                    <SelectItem value="spv_asc">SPV: Low-High</SelectItem>
+                                    <SelectItem value="spv_desc">SPV: High-Low</SelectItem>
                                 </SelectContent>
                             </Select>
                         )}
@@ -945,8 +980,8 @@ useEffect(() => {
                                 <ShoppingBag className="h-6 w-6 text-primary" /> Shop by Category
                             </h2>
                             <HorizontalScroll 
-   itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[32%] sm:auto-cols-[31%] pb-4"
->
+                               itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[32%] sm:auto-cols-[31%] pb-4"
+                            >
                                 {categoriesList.map(cat => (
                                     <div 
                                         key={cat.id} 
@@ -978,8 +1013,8 @@ useEffect(() => {
                             </div>
 
                             <HorizontalScroll 
-    itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[32%] sm:auto-cols-[31%] pb-4"
->
+                                itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[32%] sm:auto-cols-[31%] pb-4"
+                            >
                                 {displayedLandingBrands.map(brand => (
                                     <div 
                                         key={brand.id} 
@@ -992,7 +1027,7 @@ useEffect(() => {
                                         <div className="h-8 sm:h-14 w-full flex items-center justify-center overflow-hidden">
                                              {brand.logo ? (
                                                 <img src={brand.logo} alt={brand.name} className="max-h-full max-w-full object-contain group-hover:scale-110 transition-transform" />
-                                            ) : (
+                                             ) : (
                                                 <span className="text-xl font-bold text-gray-400">{brand.name[0]}</span>
                                             )}
                                         </div>
@@ -1031,233 +1066,24 @@ useEffect(() => {
                     </div>
                 ) : (
                     // PRODUCT LISTING VIEW
-                    <div className="flex gap-8 items-start">
+                    <div className="flex flex-col lg:flex-row gap-8 items-start">
                         {/* Desktop Sidebar Filters */}
-                        <div className="hidden lg:block w-[280px] shrink-0 sticky top-32">
-    <div className="bg-white rounded-3xl border shadow-sm overflow-hidden">
-
-        {/* Header */}
-        <div className="px-5 py-4 border-b bg-orange-50">
-            <h2 className="text-lg font-bold text-gray-900">
-                All Categories
-            </h2>
-        </div>
-
-        {/* Categories */}
-        <div className="p-3 space-y-2 max-h-[75vh] overflow-y-auto">
-
-            {/* All */}
-            <button
-                onClick={() => {
-                    setSelectedCategory('');
-                    setViewMode('products');
-                }}
-                className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all
-                ${
-                    !selectedCategory
-                        ? 'bg-primary text-white'
-                        : 'hover:bg-gray-100 text-gray-700'
-                }`}
-            >
-                <span className="font-medium">All Products</span>
-            </button>
-
-            {/* Categories */}
-            {filterCategories.map((category) => (
-                <button
-                    key={category.id}
-                    onClick={() => {
-                       setSelectedCategory(category.slug || category.id); 
-                        setViewMode('products');
-                    }}
-                    className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all
-                    ${
-                       selectedCategory === category.id ||
-                       selectedCategory === category.slug
-                            ? 'bg-primary text-white'
-                            : 'hover:bg-gray-100 text-gray-700'
-                    }`}
-                >
-                    <div className="flex items-center gap-3">
-
-                        {/* Category Image */}
-                        <div className="h-10 w-10 rounded-xl overflow-hidden bg-gray-100 shrink-0">
-                            {category.image ? (
-                                <img
-                                    src={category.image}
-                                    alt={category.name}
-                                    loading="lazy"
-                                    decoding="async"
-                                    className="h-full w-full object-cover"
-                                />
-                            ) : (
-                                <div className="h-full w-full flex items-center justify-center text-xs">
-                                    📦
-                                </div>
-                            )}
+                        <div className="hidden lg:block w-[300px] shrink-0 sticky top-24 self-start bg-white rounded-3xl border shadow-sm p-6 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-thin">
+                            <div className="flex items-center justify-between mb-6 pb-2 border-b">
+                                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                    <Filter className="h-5 w-5 text-primary" /> Filters
+                                </h2>
+                                {activeChips.length > 0 && (
+                                    <button onClick={resetFilters} className="text-xs text-red-500 hover:text-red-700 font-bold transition-colors">
+                                        Clear All
+                                    </button>
+                                )}
+                            </div>
+                            {FilterContent()}
                         </div>
 
-                        {/* Name */}
-                        <span className="font-medium text-left line-clamp-2">
-                            {category.name}
-                        </span>
-                    </div>
-
-                    <span
-  className={`text-lg ${
-    selectedCategory === category.id ||
-    selectedCategory === category.slug
-      ? 'text-white'
-      : 'text-gray-400'
-  }`}
->
-                        ›
-                    </span>
-                </button>
-            ))}
-
-            {/* Brands */}
-<div className="mt-6 border-t pt-4">
-    <h3 className="px-2 mb-3 text-sm font-bold text-gray-500 uppercase tracking-wide">
-        Brands
-    </h3>
-
-    <div className="space-y-2">
-        <button
-            onClick={() => {
-                setSelectedBrand(null);
-                setViewMode('products');
-            }}
-            className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all ${
-                !selectedBrand
-                    ? 'bg-primary text-white'
-                    : 'hover:bg-gray-100 text-gray-700'
-            }`}
-        >
-            <span className="font-medium">
-                All Brands
-            </span>
-
-            <span className={!selectedBrand ? 'text-white' : 'text-gray-400'}>
-                ›
-            </span>
-        </button>
-
-        {filterBrands.map((brand) => (
-            <button
-                key={brand.id}
-                onClick={() => {
-                    setSelectedBrand(brand.slug || brand.id);
-                    setViewMode('products');
-                }}
-                className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all ${
-                    selectedBrand === brand.id ||
-                    selectedBrand === brand.slug
-                        ? 'bg-primary text-white'
-                        : 'hover:bg-gray-100 text-gray-700'
-                }`}
-            >
-                <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl overflow-hidden bg-gray-100 shrink-0">
-                        {brand.images?.[0] || brand.logo ? (
-                            <img
-                                src={brand.images?.[0] || brand.logo}
-                                alt={brand.name}
-                                loading="lazy"
-                                decoding="async"
-                                className="h-full w-full object-cover"
-                            />
-                        ) : (
-                            <div className="h-full w-full flex items-center justify-center text-xs">
-                                🏷️
-                            </div>
-                        )}
-                    </div>
-
-                    <span className="font-medium text-left line-clamp-2">
-                        {brand.name}
-                    </span>
-                </div>
-
-                <span
-                    className={`text-lg ${
-                        selectedBrand === brand.id ||
-                        selectedBrand === brand.slug
-                            ? 'text-white'
-                            : 'text-gray-400'
-                    }`}
-                >
-                    ›
-                </span>
-            </button>
-        ))}
-    </div>
-</div>
-
-{/* Origins */}
-{/*updated */}
-<div className="mt-6 border-t pt-4">
-    <h3 className="px-2 mb-3 text-sm font-bold text-gray-500 uppercase tracking-wide">
-        Place of Origin
-    </h3>
-
-    <div className="space-y-2">
-        <button
-            onClick={() => {
-                setSelectedOrigin(null);
-                setViewMode('products');
-            }}
-            className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all ${
-                !selectedOrigin
-                    ? 'bg-primary text-white'
-                    : 'hover:bg-gray-100 text-gray-700'
-            }`}
-        >
-            <span className="font-medium">
-                All Origins
-            </span>
-
-            <span className={!selectedOrigin ? 'text-white' : 'text-gray-400'}>
-                ›
-            </span>
-        </button>
-
-        {origins.map((origin) => (
-            <button
-                key={origin.id}
-                onClick={() => {
-                    setSelectedOrigin(origin.name);
-                    setViewMode('products');
-                }}
-                className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition-all ${
-                    selectedOrigin === origin.name
-                        ? 'bg-primary text-white'
-                        : 'hover:bg-gray-100 text-gray-700'
-                }`}
-            >
-                <span className="font-medium text-left">
-                    {origin.name}
-                </span>
-
-                <span
-                    className={`text-lg ${
-                        selectedOrigin === origin.name
-                            ? 'text-white'
-                            : 'text-gray-400'
-                    }`}
-                >
-                    ›
-                </span>
-            </button>
-        ))}
-    </div>
-</div>
-        </div>
-    </div>
-</div>
-
-                        {/* Product Grid */}
-                        <div className="flex-1">
+                        {/* Product Grid Area */}
+                        <div className="flex-1 w-full">
                             {/* Brand Description Header */}
                             {selectedBrand && filterBrands.find(b => b.id === selectedBrand)?.description && (
                                 <div className="mb-6 bg-white p-6 rounded-lg border shadow-sm">
@@ -1283,29 +1109,64 @@ useEffect(() => {
                                 </div>
                             ) : (
                                     <>
-                                    <div className="mb-4 flex items-center gap-2">
-                                        <Button variant="ghost" size="sm" onClick={resetFilters} className="text-muted-foreground hover:text-foreground">
-                                            <X className="h-4 w-4 mr-2" /> Clear Filters
-                                        </Button>
-                                        <Button 
-                                            variant="ghost" 
-                                            size="sm" 
-                                            onClick={() => {
-                                                resetFilters();
-                                                setViewMode('landing');
-                                            }} 
-                                            className="text-primary hover:text-primary/80"
-                                        >
-                                            <LayoutGrid className="h-4 w-4 mr-2" /> Back to Categories
-                                        </Button>
-                                          {(selectedCategory || selectedBrand || searchQuery) && (
-                                            <span className="text-sm font-medium text-gray-600">
-                                                Showing results for 
-                                                {selectedCategory && <span className="text-primary ml-1">{filterCategories.find(c => c.id === selectedCategory)?.name || 'Category'}</span>}
-                                                {selectedCategory && selectedBrand && <span className="mx-1">&</span>}
-                                                {selectedBrand && <span className="text-primary ml-1">{filterBrands.find(b => b.id === selectedBrand)?.name || 'Brand'}</span>}
-                                                {selectedOrigin && <span className="mx-1">&</span>}
-                                                {selectedOrigin && <span className="text-primary ml-1">{selectedOrigin}</span>}
+                                    {/* Active Filter Chips */}
+                                    {activeChips.length > 0 && (
+                                        <div className="flex flex-wrap items-center gap-2 mb-5 bg-white p-3 rounded-2xl border shadow-sm">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1 px-1">Active:</span>
+                                            {activeChips.map(chip => (
+                                                <div 
+                                                    key={chip.id} 
+                                                    className="flex items-center gap-1.5 bg-primary/10 text-primary border border-primary/20 rounded-full pl-3 pr-1.5 py-1 text-xs font-semibold shadow-sm transition-all hover:bg-primary/15"
+                                                >
+                                                    <span>{chip.label}</span>
+                                                    <button 
+                                                        onClick={chip.onClear} 
+                                                        className="h-4 w-4 rounded-full flex items-center justify-center hover:bg-primary/20 hover:text-primary transition-colors shrink-0"
+                                                        title="Remove filter"
+                                                    >
+                                                        <X className="h-2.5 w-2.5" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                onClick={resetFilters} 
+                                                className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full h-8 px-3 ml-auto font-bold"
+                                            >
+                                                Clear All
+                                            </Button>
+                                        </div>
+                                    )}
+
+                                    <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+                                        <div className="flex items-center gap-2">
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                onClick={() => {
+                                                    resetFilters();
+                                                    setViewMode('landing');
+                                                }} 
+                                                className="text-xs font-semibold text-gray-600 hover:text-primary hover:bg-primary/5 rounded-xl h-9 border-gray-200"
+                                            >
+                                                <LayoutGrid className="h-4 w-4 mr-1.5" /> Back to Categories
+                                            </Button>
+                                            {activeChips.length > 0 && (
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    onClick={resetFilters} 
+                                                    className="text-xs font-semibold text-red-500 hover:bg-red-50 rounded-xl h-9"
+                                                >
+                                                    <X className="h-4 w-4 mr-1.5" /> Clear Filters
+                                                </Button>
+                                            )}
+                                        </div>
+                                        
+                                        {products.length > 0 && (
+                                            <span className="text-xs font-semibold text-gray-500">
+                                                Showing {products.length} product{products.length !== 1 ? 's' : ''}
                                             </span>
                                         )}
                                     </div>
