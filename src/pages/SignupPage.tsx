@@ -26,6 +26,20 @@ const SignupPage = () => {
   const referralCode = searchParams.get('ref');
   
   const from = location.state?.from;
+
+  const { settings } = useGlobalSettings();
+
+  const [formData, setFormData] = useState({
+    customerName: 'Valued Customer',
+    customerMobile: '',
+    customerPassword: '',
+    confirmPassword: '',
+    gender: 'other',
+    dateOfBirth: '',
+    storeLocation: 'Sustainable KGV Online',
+    referredBy: referralCode || '',
+  });
+
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingMobile, setIsCheckingMobile] = useState(false);
   const [mobileStatus, setMobileStatus] = useState<'none' | 'available' | 'exists' | 'error'>('none');
@@ -74,9 +88,12 @@ const SignupPage = () => {
     return () => clearTimeout(timer);
   }, [formData.customerMobile]);
 
+<<<<<<< HEAD
 
   const { settings } = useGlobalSettings();
 
+=======
+>>>>>>> eb26b5143d8461c096b2689862207abe1bd56788
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
