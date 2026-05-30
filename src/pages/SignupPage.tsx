@@ -29,7 +29,18 @@ const SignupPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingMobile, setIsCheckingMobile] = useState(false);
   const [mobileStatus, setMobileStatus] = useState<'none' | 'available' | 'exists' | 'error'>('none');
+  const [formData, setFormData] = useState({
+  customerName: 'Valued Customer',
+  customerMobile: '',
+  customerPassword: '',
+  confirmPassword: '',
+  gender: 'other',
+  dateOfBirth: '',
+  storeLocation: 'Sustainable KGV Online',
+  referredBy: referralCode || '',
+});
 
+ 
   useEffect(() => {
     const checkMobileAvailability = async () => {
       const cleaned = formData.customerMobile.replace(/\D/g, '');
@@ -63,16 +74,6 @@ const SignupPage = () => {
     return () => clearTimeout(timer);
   }, [formData.customerMobile]);
 
-  const [formData, setFormData] = useState({
-    customerName: 'Valued Customer',
-    customerMobile: '',
-    customerPassword: '',
-    confirmPassword: '',
-    gender: 'other',
-    dateOfBirth: '',
-    storeLocation: 'Sustainable KGV Online',
-    referredBy: referralCode || '',
-  });
 
   const { settings } = useGlobalSettings();
 

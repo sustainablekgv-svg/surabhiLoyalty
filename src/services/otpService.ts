@@ -1,14 +1,5 @@
 import { httpsCallable } from 'firebase/functions';
-
 import { functions } from '@/lib/firebase';
-
-/**
- * Phone-OTP client. Backed by Firebase callables `sendPhoneOtp` and
- * `verifyPhoneOtp` (see `functions/src/ojivaSms.ts`).
- *
- * No Firebase Auth is required — these run before the user is signed in
- * (signup / forgot-password). The OJIVA API key stays on the function runtime.
- */
 
 export type OtpContext =
   | 'signup'
@@ -40,32 +31,69 @@ type VerifyOtpResponse = {
   verificationToken?: string;
 };
 
-/** Throws an Error with the server-provided message on failure. */
-export async function sendPhoneOtp(req: SendOtpRequest): Promise<SendOtpResponse> {
+export async function sendPhoneOtp(
+  req: SendOtpRequest
+): Promise<SendOtpResponse> {
   try {
-    const fn = httpsCallable<SendOtpRequest, SendOtpResponse>(functions, 'sendPhoneOtp');
+    console.log("Sending OTP to:", phone);
+    console.log('========== SEND OTP ==========');
+    console.log('Request:', req);
+
+    const fn = httpsCallable<SendOtpRequest, SendOtpResponse>(
+      functions,
+      'sendPhoneOtp'
+    );
+
     const { data } = await fn(req);
+
+    console.log('OTP Response:', data);
+
     return data;
   } catch (e: any) {
+    console.error('========== OTP ERROR ==========');
+    console.error('Code:', e?.code);
+    console.error('Message:', e?.message);
+    console.error('Details:', e?.details);
+    console.error('Full Error:', e);
+
     const message =
-      e?.message ||
       e?.details?.message ||
-      'Failed to send OTP. Please check your network and try again.';
+      e?.message ||
+      'Failed to send OTP. Please try again.';
+
     throw new Error(message);
   }
 }
 
-/** Throws an Error with the server-provided message on failure. */
-export async function verifyPhoneOtp(req: VerifyOtpRequest): Promise<VerifyOtpResponse> {
+export async function verifyPhoneOtp(
+  req: VerifyOtpRequest
+): Promise<VerifyOtpResponse> {
   try {
-    const fn = httpsCallable<VerifyOtpRequest, VerifyOtpResponse>(functions, 'verifyPhoneOtp');
+    console.log('========== VERIFY OTP ==========');
+    console.log('Request:', req);
+
+    const fn = httpsCallable<VerifyOtpRequest, VerifyOtpResponse>(
+      functions,
+      'verifyPhoneOtp'
+    );
+
     const { data } = await fn(req);
+
+    console.log('Verify Response:', data);
+
     return data;
   } catch (e: any) {
+    console.error('========== VERIFY ERROR ==========');
+    console.error('Code:', e?.code);
+    console.error('Message:', e?.message);
+    console.error('Details:', e?.details);
+    console.error('Full Error:', e);
+
     const message =
-      e?.message ||
       e?.details?.message ||
-      'OTP verification failed. Please try again.';
+      e?.message ||
+      'OTP verification failed.';
+
     throw new Error(message);
   }
 }
@@ -76,26 +104,35 @@ type ResetPasswordRequest = {
   verificationToken: string;
 };
 
-/**
- * Sets a new password for an existing customer. The `verificationToken` must
- * have been issued by a successful `verifyPhoneOtp({ context: 'reset' })`
- * call within the last 5 minutes. The token is one-time.
- */
 export async function resetCustomerPassword(
   req: ResetPasswordRequest
 ): Promise<{ success: boolean }> {
   try {
-    const fn = httpsCallable<ResetPasswordRequest, { success: boolean }>(
-      functions,
-      'resetCustomerPassword'
-    );
+    console.log('========== RESET PASSWORD ==========');
+    console.log('Request:', req);
+
+    const fn = httpsCallable<
+      ResetPasswordRequest,
+      { success: boolean }
+    >(functions, 'resetCustomerPassword');
+
     const { data } = await fn(req);
+
+    console.log('Reset Response:', data);
+
     return data;
   } catch (e: any) {
+    console.error('========== RESET ERROR ==========');
+    console.error('Code:', e?.code);
+    console.error('Message:', e?.message);
+    console.error('Details:', e?.details);
+    console.error('Full Error:', e);
+
     const message =
-      e?.message ||
       e?.details?.message ||
-      'Password reset failed. Please try again.';
+      e?.message ||
+      'Password reset failed.';
+
     throw new Error(message);
   }
 }
