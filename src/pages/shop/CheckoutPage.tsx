@@ -13,7 +13,7 @@ import { db } from '@/lib/firebase';
 import { getUserName } from '@/lib/userUtils';
 import { cn } from '@/lib/utils';
 import { notifyCoinsRedeemedSms, notifyOrderPlacedSms } from '@/services/ojivaSmsNotification';
-import { calculateShippingCost, getWeightBracketLabel, INDIAN_STATES, parseWeightToKg } from '@/services/shipping';
+import {INDIAN_STATES,parseWeightToKg} from '@/services/shipping';
 import { Address, CartItem } from '@/types/shop';
 import {
   addDoc,
@@ -232,6 +232,7 @@ return Math.max(0, actual - pending);
         
         const weight = item.weightInKg || parseWeightToKg(item.weight || '0.5kg');
         acc[groupKey].displayWeight += (weight * item.quantity);
+        acc[groupKey].shipping = Math.ceil(acc[groupKey].displayWeight) * 25;
         acc[groupKey].groupSpv += (item.spv || 0) * item.quantity;
         
         if (!item.freeShipping) {
@@ -241,32 +242,45 @@ return Math.max(0, actual - pending);
         return acc;
     }, {});
     
-    if (formData.state) {
-        Object.values(groups).forEach(group => {
-             const effectiveWeight = group.weight > 0 ? group.weight : group.displayWeight;
-
-             if (effectiveWeight > 0) {
-                const cost = calculateShippingCost(
-                    effectiveWeight, 
-                    group.originZone, 
-                    formData.state, 
-                    shippingConfig || undefined
-                );
-                
-                group.shipping = cost;
-                group.bracketLabel = getWeightBracketLabel(effectiveWeight);
-                
-                if (group.weight === 0) group.weight = effectiveWeight; 
-             }
-        });
-    }
+    
 
     return groups;
   }, [cart, originsList, brands, currentStore, formData.state, shippingConfig]);
 
-  const totalWeight = Object.values(productsByGroup).reduce((sum, b) => sum + b.displayWeight, 0);
+
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const shippingCost = Object.values(productsByGroup).reduce((sum, group) => sum + group.shipping, 0);
+  const groupedBrands = cart.reduce((acc, item) => {
+  const brand = item.brandName || "Other Brand";
+
+  if (!acc[brand]) {
+    acc[brand] = [];
+  }
+
+  acc[brand].push(item);
+
+  return acc;
+}, {} as Record<string, typeof cart>);
+
+const shippingCost = Object.values(groupedBrands).reduce(
+  (total, products) => {
+    const totalWeight = products.reduce(
+      (sum, item) =>
+        sum +
+        ((Number(item.weightInKg || item.weight || 0) || 0) *
+          item.quantity),
+      0
+    );
+
+    const deliveryCharge =
+      totalWeight > 0
+        ? Math.ceil(totalWeight) * 25
+        : 0;
+
+    return total + deliveryCharge;
+  },
+  0
+);
+ 
 
   // SHIPPING CREDIT/DUE LOGIC:
   // 1. Positive balance (Credit): used to offset delivery fee, but CANNOT exceed the delivery fee itself.
@@ -1855,7 +1869,9 @@ const customerSurabhiBalance =
                                   <span className="text-[9px] text-indigo-500 font-medium leading-none mt-1">Total Weight: {group.displayWeight.toFixed(2)}kg</span>
                               </div>
                               <div className="text-right">
-                                  <span className="text-xs font-black text-slate-900">₹{group.shipping.toFixed(2)}</span>
+                                  <span className="text-xs font-black text-slate-900">
+  ₹{Math.ceil(group.displayWeight) * 25}
+</span>
                               </div>
                           </div>
                       ))}
