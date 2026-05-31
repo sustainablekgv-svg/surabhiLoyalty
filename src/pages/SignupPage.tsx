@@ -24,6 +24,10 @@ const SignupPage = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const referralCode = searchParams.get('ref');
+
+  //updated
+
+  const isReferralFlow = !!referralCode;
   
   const from = location.state?.from;
 
@@ -35,15 +39,15 @@ const SignupPage = () => {
   const [isCheckingMobile, setIsCheckingMobile] = useState(false);
   const [mobileStatus, setMobileStatus] = useState<'none' | 'available' | 'exists' | 'error'>('none');
   const [formData, setFormData] = useState({
-  customerName: 'Valued Customer',
-  customerMobile: '',
-  customerPassword: '',
-  confirmPassword: '',
-  gender: 'other',
-  dateOfBirth: '',
-  storeLocation: 'Sustainable KGV Online',
-  referredBy: referralCode || '',
-});
+    customerName: '',
+    customerMobile: '',
+    customerPassword: '',
+    confirmPassword: '',
+    gender: '',
+    dateOfBirth: '',
+    storeLocation: 'Sustainable KGV Online',
+    referredBy: referralCode || '',
+  });
 
  
   useEffect(() => {
@@ -115,6 +119,14 @@ const SignupPage = () => {
       [name]: value,
     }));
   };
+
+  const handleGenderChange = (value: string) => {
+  setFormData(prev => ({
+    ...prev,
+    gender: value,
+  }));
+};
+
 
   const [referralName, setReferralName] = useState<string | null>(null);
   const [referralNotFound, setReferralNotFound] = useState(false);
@@ -188,8 +200,31 @@ const SignupPage = () => {
     return () => clearTimeout(timer);
   }, [formData.referredBy, settings?.allowReferralsWithoutPurchase]);
 
+
+  const calculateAge = (dob: string) => {
+  const birthDate = new Date(dob);
+  const today = new Date();
+
+  let age = today.getFullYear() - birthDate.getFullYear();
+
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+
+  if (
+    monthDiff < 0 ||
+    (monthDiff === 0 && today.getDate() < birthDate.getDate())
+  ) {
+    age--;
+  }
+
+  return age;
+};
+
   const [isPasswordTouched, setIsPasswordTouched] = useState(false);
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+
+  //updated
+
+  const [otpVerified, setOtpVerified] = useState(false);
 
   const validateForm = (): boolean => {
     setIsPasswordTouched(true);
@@ -205,12 +240,15 @@ const SignupPage = () => {
     }
 
     if (
-      !formData.customerMobile ||
-      !formData.customerPassword
-    ) {
-      toast.error('Mobile number and password are required');
-      return false;
-    }
+  !formData.customerName ||
+  !formData.customerMobile ||
+  !formData.dateOfBirth ||
+  !formData.gender ||
+  !formData.customerPassword
+) {
+  toast.error('All fields are mandatory');
+  return false;
+}
 
     const cleanedMobile = formData.customerMobile.replace(/\D/g, '');
     if (cleanedMobile.length !== 10) {
@@ -223,46 +261,100 @@ const SignupPage = () => {
 
   // Step 1: validate locally → open OTP dialog. The dialog auto-issues an OTP
   // to the entered mobile (server enforces "phone not already registered").
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-    setOtpDialogOpen(true);
-  };
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  // REFERRAL FLOW - STEP 1
+  if (isReferralFlow && !otpVerified) {
+
+  const cleanedMobile = formData.customerMobile.replace(/\D/g, '');
+
+  if (cleanedMobile.length !== 10) {
+    toast.error('Please enter a valid 10-digit mobile number');
+    return;
+  }
+
+  if (mobileStatus === 'exists') {
+    toast.error('This mobile number is already registered. Please login.');
+    return;
+  }
+
+  setOtpDialogOpen(true);
+  return;
+}
+
+  // VALIDATE FULL FORM
+  if (!validateForm()) return;
+
+  // REFERRAL FLOW - AFTER OTP VERIFIED
+  if (isReferralFlow && otpVerified) {
+    await handleOtpVerified();
+    return;
+  }
+
+  // NORMAL SIGNUP FLOW
+  setOtpDialogOpen(true);
+};
 
   // Step 2: only after the OTP is verified do we actually create the account.
   const handleOtpVerified = async () => {
-    setIsLoading(true);
-    try {
-      let finalReferredBy = formData.referredBy?.trim() || null;
-      if (finalReferredBy) {
-        const isShortCode = /^[a-zA-Z0-9]{5}$/.test(finalReferredBy);
-        if (isShortCode) {
-          finalReferredBy = `REF-${finalReferredBy.toUpperCase()}`;
-        } else if (finalReferredBy.toUpperCase().startsWith('REF-')) {
-          finalReferredBy = finalReferredBy.toUpperCase();
-        }
+
+  // REFERRAL FLOW
+  if (isReferralFlow && !otpVerified) {
+    setOtpVerified(true);
+    setOtpDialogOpen(false);
+
+    toast.success('Mobile verified successfully');
+    return;
+  }
+
+  setIsLoading(true);
+
+  try {
+    const isStudent = formData.dateOfBirth
+      ? calculateAge(formData.dateOfBirth) < 25
+      : false;
+
+    let finalReferredBy = formData.referredBy?.trim() || null;
+
+    if (finalReferredBy) {
+      const isShortCode = /^[a-zA-Z0-9]{5}$/.test(finalReferredBy);
+
+      if (isShortCode) {
+        finalReferredBy = `REF-${finalReferredBy.toUpperCase()}`;
+      } else if (finalReferredBy.toUpperCase().startsWith('REF-')) {
+        finalReferredBy = finalReferredBy.toUpperCase();
       }
-
-      await registerCustomer({
-        customerName: formData.customerName,
-        customerMobile: formData.customerMobile,
-        customerPassword: formData.customerPassword,
-        gender: formData.gender,
-        dateOfBirth: formData.dateOfBirth,
-        storeLocation: formData.storeLocation,
-        referredBy: finalReferredBy,
-        isStudent: false,
-        demoStore: false,
-      });
-
-      toast.success('Mobile verified — registration successful! Please login.');
-      navigate('/login', { state: { from } });
-    } catch (error: any) {
-      toast.error(error.message || 'Registration failed. Please try again.');
-    } finally {
-      setIsLoading(false);
     }
-  };
+
+    await registerCustomer({
+      customerName: formData.customerName,
+      customerMobile: formData.customerMobile,
+      customerPassword: formData.customerPassword,
+      gender: formData.gender,
+      dateOfBirth: formData.dateOfBirth,
+      storeLocation: formData.storeLocation,
+      referredBy: finalReferredBy,
+      isStudent,
+      demoStore: false,
+    });
+
+    toast.success('Registration Successful');
+
+setTimeout(() => {
+  navigate('/login', { state: { from } });
+}, 1500);
+
+  } catch (error: any) {
+
+    toast.error(error.message || 'Registration failed');
+
+  } finally {
+
+    setIsLoading(false);
+
+  }
+};
 
   const handleBackToLogin = () => {
     navigate('/login', { state: { from } });
@@ -277,15 +369,19 @@ const SignupPage = () => {
       />
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-            <Button
-                variant="ghost"
-                onClick={handleBackToLogin}
-                className="mb-4 text-gray-600 hover:text-gray-900"
-            >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Login
-            </Button>
-          <div className="flex items-center justify-center gap-3 mb-4">
+
+    {!isReferralFlow && (
+      <Button
+          variant="ghost"
+          onClick={handleBackToLogin}
+          className="mb-4 text-gray-600 hover:text-gray-900"
+      >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Login
+      </Button>
+    )}
+
+    <div className="flex items-center justify-center gap-3 mb-4">
             <div className="bg-gradient-to-br from-purple-600 to-amber-500 p-2 rounded-lg">
               <Coins className="h-6 w-6 text-white" />
             </div>
@@ -303,6 +399,54 @@ const SignupPage = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+
+            
+              {/* REFERRAL FLOW - STEP 1 */}
+{isReferralFlow && !otpVerified && (
+  <div className="space-y-4">
+
+    <div className="space-y-2">
+      <Label htmlFor="customerMobile">
+        Mobile Number *
+      </Label>
+
+      <Input
+        id="customerMobile"
+        name="customerMobile"
+        type="tel"
+        inputMode="numeric"
+        placeholder="10-digit mobile number"
+        value={formData.customerMobile}
+        onChange={handleInputChange}
+        maxLength={10}
+        className="h-12"
+        required
+      />
+    </div>
+
+    <Button
+      type="submit"
+      className="w-full bg-gradient-to-r from-purple-600 to-amber-500"
+    >
+      Verify Mobile Number
+    </Button>
+
+  </div>
+)}
+
+        {(!isReferralFlow || otpVerified) && (
+  <>
+
+              <div className="space-y-2">
+                <Label htmlFor="customerName">Full Name *</Label>
+                <div className="relative">
+                    {/* <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /> */}
+                    <Input id="customerName" name="customerName" placeholder="Enter your full name" value={formData.customerName} onChange={handleInputChange} className="pl-10" required />
+                </div>
+              </div>
+
+          {!isReferralFlow && (
+
               <div className="space-y-2">
                 <Label htmlFor="customerMobile">Mobile Number *</Label>
                 <div className="relative">
@@ -345,6 +489,57 @@ const SignupPage = () => {
                 )}
               </div>
 
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="dateOfBirth">Date of Birth *</Label>
+                    <div className="relative">
+                        <Input
+                            type="date"
+                            id="dateOfBirth"
+                            name="dateOfBirth"
+                            value={formData.dateOfBirth}
+                            onChange={handleInputChange}
+                            className="w-full h-12 px-3 text-base text-gray-700 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
+                            required
+                        />
+                        {/* Custom styling placeholder handled by native input placeholder semantics if needed */}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="gender">Gender *</Label>
+                    <div className="relative">
+                        {/* <UserCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 z-10" /> */}
+                        <Select value={formData.gender} onValueChange={handleGenderChange}>
+                            <SelectTrigger className="h-12 w-full pl-10">
+                                <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="male">Male</SelectItem>
+                                <SelectItem value="female">Female</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                  </div>
+              </div>
+
+              {/* <div className="space-y-2">
+                <Label htmlFor="storeLocation">Store Location *</Label>
+                <div className="relative">
+                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input 
+                        value={formData.storeLocation} 
+                        readOnly 
+                        className="pl-10 bg-gray-50 text-gray-500 cursor-not-allowed" 
+                    />
+                </div>
+              </div> */}
+
+
+                {!isReferralFlow && (
+
               <div className="space-y-2">
                 <Label htmlFor="referredBy">Referral Code / Number (Optional)</Label>
                 <div className="relative">
@@ -384,6 +579,8 @@ const SignupPage = () => {
                 )}
               </div>
 
+                )}
+
               <div className="space-y-2">
                 <Label htmlFor="customerPassword">Password *</Label>
                 <div className="relative">
@@ -417,9 +614,20 @@ const SignupPage = () => {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white font-semibold py-3 rounded-lg mt-4 h-12" disabled={isLoading}>
-                {isLoading ? 'Creating Account...' : 'Verify Mobile & Sign Up'}
-              </Button>
+              <Button
+  type="submit"
+  className="w-full bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-700 hover:to-amber-600 text-white font-semibold py-3 rounded-lg mt-4 h-12"
+  disabled={isLoading}
+>
+  {isLoading
+  ? 'Creating Account...'
+  : isReferralFlow
+    ? 'Create Account'
+    : 'Verify Mobile & Sign Up'}
+</Button>
+              
+              </>
+               )}
             </form>
           </CardContent>
         </Card>
