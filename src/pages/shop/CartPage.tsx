@@ -11,6 +11,37 @@ const CartPage = () => {
   const { cart, removeFromCart, updateQuantity, cartTotal } = useShop();
   const navigate = useNavigate();
   const [brandsMap, setBrandsMap] = useState<Record<string, any>>({});
+  const [shippingRates, setShippingRates] = useState<any>(null);
+  useEffect(() => {
+  setShippingRates({
+    "0.5kg": 60,
+    "1kg": 110,
+    "2kg": 150,
+    "3kg": 180,
+    "5kg": 220,
+    extraPerKg: 36,
+  });
+}, []);
+ const calculateShippingCharge = (
+  weight: number,
+  rates: any
+) => {
+  if (!rates || weight <= 0) return 0;
+
+  if (weight <= 0.5) return Number(rates["0.5kg"]);
+  if (weight <= 1) return Number(rates["1kg"]);
+  if (weight <= 2) return Number(rates["2kg"]);
+  if (weight <= 3) return Number(rates["3kg"]);
+  if (weight <= 5) return Number(rates["5kg"]);
+
+  const extraWeight = weight - 5;
+  const extraKg = Math.ceil(extraWeight);
+
+  return (
+    Number(rates["5kg"]) +
+    extraKg * Number(rates["extraPerKg"])
+  );
+};
   useEffect(() => {
     const loadBrands = async () => {
       try {
@@ -42,6 +73,7 @@ const CartPage = () => {
 
   return acc;
 }, {} as Record<string, typeof cart>);
+console.log("shippingRates", shippingRates);
 const totalShipping = Object.values(groupedBrands).reduce(
   (total, products) => {
     const totalWeight = products.reduce(
@@ -52,12 +84,12 @@ const totalShipping = Object.values(groupedBrands).reduce(
       0
     );
 
-    const deliveryCharge =
-      totalWeight > 0
-        ? Math.ceil(totalWeight) * 25
-        : 0;
+    const deliveryCharge = calculateShippingCharge(
+  totalWeight,
+  shippingRates
+);
 
-    return total + deliveryCharge;
+return total + deliveryCharge;
   },
   0
 );
@@ -72,13 +104,13 @@ const grandTotal = cartTotal + totalShipping;
     <div className="inline-flex flex-col items-center rounded-2xl bg-gradient-to-r from-purple-400 via-violet-400 to-orange-400 px-8 py-6 text-white shadow-lg text-center">
 
       <h2 className="text-xl md:text-3xl font-bold mb-4">
-        🚚 Your Purchase Supports {Object.keys(groupedBrands).length} Sustainable Brands
+        🚚 Your Purchase Supports {Object.keys(groupedBrands).length} brands to become Sustainable
       </h2>
 
-      <p className="text-sm md:text-base opacity-90">
-  Supporting {Object.keys(groupedBrands).length} shipments with one purchase.
+      
+<p className="text-[14px] text-white/80 mt-2 max-w-2xl leading-relaxed">
+  Delivery charges shown are estimated. Final shipping charges will be calculated after packing based on actual weight, and any difference will be automatically adjusted in your shipping wallet as a credit or debit.
 </p>
-
     </div>
   </div>
 </div>
@@ -110,11 +142,16 @@ const grandTotal = cartTotal + totalShipping;
           item.quantity),
       0
     );
+    
+    const totalProductAmount = products.reduce(
+  (total, item) => total + (item.price * item.quantity),
+  0
+);
 
-    const deliveryCharge =
-      totalWeight > 0
-        ? Math.ceil(totalWeight) * 25
-        : 0;
+    const deliveryCharge = calculateShippingCharge(
+  totalWeight,
+  shippingRates
+);
   
 
     return (
@@ -162,6 +199,9 @@ const grandTotal = cartTotal + totalShipping;
           <span className="inline-flex items-center rounded-full bg-purple-50 text-purple-700 px-3 py-1 text-sm font-medium">
             📦 {products.length} {products.length === 1 ? 'Product' : 'Products'}
           </span>
+           <span className="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 px-3 py-1 text-sm font-medium">
+  💰 ₹{totalProductAmount.toLocaleString()}
+</span>
 
           <span className="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-3 py-1 text-sm font-medium">
             ⚖️ {totalWeight.toFixed(2)} Kg
@@ -219,46 +259,58 @@ const grandTotal = cartTotal + totalShipping;
                   navigate(`/shop/product/${item.slug || item.productId}`)
                 }
               >
-                {item.name}
+                {item.name}- {item.productQuantity}
+      {item.unitsOfMeasure}
+      
+      
               </h3>
 
               <div className="flex flex-wrap gap-2 mt-1">
-                {item.brandName && (
-                  <span className="text-[10px] bg-secondary px-2 py-0.5 rounded-full">
-                    {item.brandName}
-                  </span>
-                )}
-
-                {item.placeOfOrigin &&
-                  item.placeOfOrigin.length > 0 && (
-                    <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">
-                      Origin: {item.placeOfOrigin.join(', ')}
-                    </span>
-                  )}
+               
+                  {(item.weightInKg || item.weight) && (
+  <span className="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+    ⚖️ {Number(item.weightInKg || item.weight).toFixed(2)} Kg × {item.quantity}
+    = {(Number(item.weightInKg || item.weight) * item.quantity).toFixed(2)} Kg
+  </span>
+)}
               </div>
             </div>
 
             <div className="flex items-center justify-between mt-2">
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-sm md:text-base text-gray-900">
-                    ₹{item.price}
-                  </span>
+              <div className="flex flex-col gap-1">
 
-                  {item.originalPrice &&
-                    item.originalPrice > item.price && (
-                      <span className="text-xs text-gray-400 line-through">
-                        ₹{item.originalPrice}
-                      </span>
-                    )}
-                </div>
+  
 
-                {item.spv > 0 && (
-                  <div className="text-[10px] text-purple-600 font-semibold bg-purple-50 px-1.5 py-0.5 rounded-full w-fit">
-                    SPV: {item.spv * item.quantity}
-                  </div>
-                )}
-              </div>
+
+
+  {/* Total Price */}
+  <div className="flex items-center gap-2">
+    <span className="font-bold text-2xl">
+      ₹{(item.price * item.quantity).toFixed(2)}
+    </span>
+
+    {item.originalPrice &&
+      item.originalPrice > item.price && (
+        <span className="text-xs text-gray-400 line-through">
+          ₹{item.originalPrice}
+        </span>
+      )}
+  </div>
+
+  {/* Price Calculation */}
+  <div className="text-[11px] text-slate-500">
+    ₹{item.price} × {item.quantity}
+    = ₹{(item.price * item.quantity).toFixed(2)}
+  </div>
+
+  {/* SPV */}
+  {item.spv > 0 && (
+    <div className="text-[10px] text-purple-600 font-semibold bg-purple-50 px-1.5 py-0.5 rounded-full w-fit">
+      SPV: {(item.spv * item.quantity).toFixed(0)}
+    </div>
+  )}
+
+</div>
 
               <div className="flex items-center gap-2">
                 <Button

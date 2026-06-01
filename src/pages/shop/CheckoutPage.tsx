@@ -108,11 +108,14 @@ return Math.max(0, actual - pending);
     const fetchConfigAndOrigins = async () => {
       const { getShippingConfig } = await import('@/services/shipping');
       const [config, originsSnap, brandsSnap] = await Promise.all([
-        getShippingConfig(),
-        getDocs(collection(db, 'origins')),
-        getDocs(collection(db, 'brands'))
-      ]);
-      setShippingConfig(config);
+  getShippingConfig(),
+  getDocs(collection(db, 'origins')),
+  getDocs(collection(db, 'brands'))
+]);
+
+console.log("Shipping Config:", JSON.stringify(config, null, 2));
+
+setShippingConfig(config);
       setOriginsList(originsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setBrands(brandsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     };
@@ -231,8 +234,8 @@ return Math.max(0, actual - pending);
         acc[groupKey].items.push(item);
         
         const weight = item.weightInKg || parseWeightToKg(item.weight || '0.5kg');
-        acc[groupKey].displayWeight += (weight * item.quantity);
-        acc[groupKey].shipping = Math.ceil(acc[groupKey].displayWeight) * 25;
+        acc[groupKey].displayWeight += weight * item.quantity;
+
         acc[groupKey].groupSpv += (item.spv || 0) * item.quantity;
         
         if (!item.freeShipping) {
@@ -241,6 +244,53 @@ return Math.max(0, actual - pending);
         
         return acc;
     }, {});
+    Object.values(groups).forEach((group) => {
+  const customerState = formData.state;
+
+  const zone =
+    Object.entries(shippingConfig?.zones || {}).find(
+      ([_, states]) =>
+        (states as string[]).includes(customerState)
+    )?.[0] || "D";
+
+  const rates =
+    shippingConfig?.rateTable?.[zone] || [];
+
+  const extraPerKg =
+    shippingConfig?.extraPerKg?.[zone] || 0;
+
+  const totalWeight = group.weight;
+
+  let deliveryCharge = 0;
+
+  if (totalWeight <= 0.5) {
+    deliveryCharge = rates[0] || 0;
+  } else if (totalWeight <= 1) {
+    deliveryCharge = rates[1] || 0;
+  } else if (totalWeight <= 2) {
+    deliveryCharge = rates[2] || 0;
+  } else if (totalWeight <= 3) {
+    deliveryCharge = rates[3] || 0;
+  } else if (totalWeight <= 5) {
+    deliveryCharge = rates[4] || 0;
+  } else {
+    const extraWeight = Math.ceil(totalWeight - 5);
+
+    deliveryCharge =
+      (rates[4] || 0) +
+      extraWeight * extraPerKg;
+  }
+  console.log(
+  "Checkout Shipping",
+  group.brandName,
+  "Weight:",
+  totalWeight,
+  "Charge:",
+  deliveryCharge
+);
+
+  group.shipping = deliveryCharge;
+});
     
     
 
@@ -260,27 +310,10 @@ return Math.max(0, actual - pending);
 
   return acc;
 }, {} as Record<string, typeof cart>);
-
-const shippingCost = Object.values(groupedBrands).reduce(
-  (total, products) => {
-    const totalWeight = products.reduce(
-      (sum, item) =>
-        sum +
-        ((Number(item.weightInKg || item.weight || 0) || 0) *
-          item.quantity),
-      0
-    );
-
-    const deliveryCharge =
-      totalWeight > 0
-        ? Math.ceil(totalWeight) * 25
-        : 0;
-
-    return total + deliveryCharge;
-  },
+const shippingCost = Object.values(productsByGroup).reduce(
+  (sum, group) => sum + group.shipping,
   0
 );
- 
 
   // SHIPPING CREDIT/DUE LOGIC:
   // 1. Positive balance (Credit): used to offset delivery fee, but CANNOT exceed the delivery fee itself.
@@ -348,6 +381,7 @@ const shippingDueAmount = useMemo(() => {
         let shippingShare = 0;
         if (group && group.shipping > 0) {
             const weight = item.weightInKg || parseWeightToKg(item.weight || '0.5kg');
+            
             const itemTotalWeight = weight * item.quantity;
             // Distribute shipping based on weight share in the group
             shippingShare = (itemTotalWeight / group.weight) * group.shipping;
