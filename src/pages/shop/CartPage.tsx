@@ -106,7 +106,9 @@ const grandTotal = cartTotal + totalShipping;
       <h2 className="text-xl md:text-3xl font-bold mb-4">
         🚚 Your Purchase Supports {Object.keys(groupedBrands).length} brands to become Sustainable
       </h2>
-
+      <p className="inline-flex items-center rounded-full bg-yellow-400 text-slate-900 px-5 py-2 text-[16px] md:text-[18px] font-bold shadow-lg mb-4">
+  🚚 Total of {Object.keys(groupedBrands).length} shipments will be delivered to your location.
+</p>
       
 <p className="text-[14px] text-white/80 mt-2 max-w-2xl leading-relaxed">
   Delivery charges shown are estimated. Final shipping charges will be calculated after packing based on actual weight, and any difference will be automatically adjusted in your shipping wallet as a credit or debit.
