@@ -7,10 +7,13 @@ import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc 
 import { Edit2, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { statesList } from '@/constants/states';
 
 interface Origin {
     id: string;
     name: string;
+    state?: string;
+    stateSlug?: string;
     zone: string;
 }
 
@@ -19,6 +22,7 @@ export const OriginManager = () => {
     const [loading, setLoading] = useState(true);
     const [newOrigin, setNewOrigin] = useState('');
     const [newZone, setNewZone] = useState('A');
+    const [newState, setNewState] = useState('');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     
     // Edit State
@@ -49,17 +53,29 @@ export const OriginManager = () => {
         try {
             if (editingId) {
                 // Update existing
-                await updateDoc(doc(db, 'origins', editingId), {
-                    name: newOrigin.trim(),
-                    zone: newZone
-                });
+                const selectedState = statesList.find(
+    s => s.name === newState
+);
+
+await updateDoc(doc(db, 'origins', editingId), {
+    name: newOrigin.trim(),
+    state: newState,
+    stateSlug: selectedState?.slug || '',
+    zone: newZone
+});
                 toast.success("Origin updated");
             } else {
                 // Create new
-                await addDoc(collection(db, 'origins'), { 
-                    name: newOrigin.trim(),
-                    zone: newZone 
-                });
+                const selectedState = statesList.find(
+    s => s.name === newState
+);
+
+await addDoc(collection(db, 'origins'), {
+    name: newOrigin.trim(),
+    state: newState,
+    stateSlug: selectedState?.slug || '',
+    zone: newZone
+});
                 toast.success("Origin added");
             }
             
@@ -73,6 +89,7 @@ export const OriginManager = () => {
 
     const handleEdit = (origin: Origin) => {
         setNewOrigin(origin.name);
+        setNewState(origin.state || '');
         setNewZone(origin.zone || 'A');
         setEditingId(origin.id);
         setIsDialogOpen(true);
@@ -92,6 +109,7 @@ export const OriginManager = () => {
 
     const resetForm = () => {
         setNewOrigin('');
+        setNewState('');
         setNewZone('A');
         setEditingId(null);
         setIsDialogOpen(false);
@@ -124,6 +142,30 @@ export const OriginManager = () => {
                                 />
                             </div>
                             <div className="space-y-2">
+    <label className="text-sm font-medium">
+        State
+    </label>
+
+    <select
+        className="w-full border rounded-md p-2 h-10"
+        value={newState}
+        onChange={(e) => setNewState(e.target.value)}
+    >
+        <option value="">
+            Select State
+        </option>
+
+        {statesList.map((state) => (
+            <option
+                key={state.slug}
+                value={state.name}
+            >
+                {state.name}
+            </option>
+        ))}
+    </select>
+</div>
+                            <div className="space-y-2">
                                 <label className="text-sm font-medium">Shipping Zone</label>
                                 <select 
                                     className="w-full border rounded-md p-2 h-10"
@@ -150,6 +192,7 @@ export const OriginManager = () => {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Name</TableHead>
+                           <TableHead>State</TableHead>
                             <TableHead>Zone</TableHead>
                             <TableHead className="w-[100px] text-right">Actions</TableHead>
                         </TableRow>
@@ -163,6 +206,7 @@ export const OriginManager = () => {
                             origins.map(origin => (
                                 <TableRow key={origin.id}>
                                     <TableCell className="font-medium">{origin.name}</TableCell>
+                                    <TableCell> {origin.state || '-'}</TableCell>
                                     <TableCell>Zone {origin.zone || 'A'}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2">

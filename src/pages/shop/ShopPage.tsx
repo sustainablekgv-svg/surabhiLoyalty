@@ -13,10 +13,11 @@ import { db } from '@/lib/firebase';
 import { getBrands, getBrandsPaginated, getCategories, getProducts } from '@/services/shop';
 import { Brand, Category, Product } from '@/types/shop';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
-import { Filter, Home, LayoutGrid, ShoppingBag, X } from 'lucide-react';
+import { Filter, Home, LayoutGrid, ShoppingBag,MapPinned, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { statesList } from "@/constants/states";
 
 
 
@@ -56,9 +57,14 @@ const ShopPage = () => {
     // Initial Filter Data (for dropdowns - limited fetch)
     const [filterBrands, setFilterBrands] = useState<Brand[]>([]);
     const [filterCategories, setFilterCategories] = useState<Category[]>([]);
-    const [origins, setOrigins] = useState<{id: string, name: string}[]>([]);
+    const [origins, setOrigins] = useState<{
+  id: string;
+  name: string;
+  state: string;
+  stateSlug: string;
+}[]>([]);
 
-    const PAGE_SIZE = 12;
+    const PAGE_SIZE = 150;
 
     // Filters
     const [viewMode, setViewMode] = useState<'landing' | 'products'>(getInitialViewMode);
@@ -74,12 +80,14 @@ const ShopPage = () => {
     const [landingPageSelectedCategory, setLandingPageSelectedCategory] = useState<string | null>(null);
     const [selectedBrand, setSelectedBrand] = useState<string | null>(getInitialParam('brand') || null);
     const [selectedOrigin, setSelectedOrigin] = useState<string | null>(getInitialParam('origin') || null);
+    const [selectedState, setSelectedState] = useState<string | null>(getInitialParam('state') || null);
     const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
     const [spvRange, setSpvRange] = useState<[number, number]>([0, 5000]);
     const [sortBy, setSortBy] = useState<import('@/types/shop').FilterOptions['sort']>('order');
 
     // Filter Trigger (to reset pagination)
     const [filterTrigger, setFilterTrigger] = useState(0);
+   
 
     // Initialize from URL params and Path
     useEffect(() => {
@@ -88,12 +96,14 @@ const ShopPage = () => {
         const cat = params.get('category') || null;
         const brand = params.get('brand') || null;
         const origin = params.get('origin') || null;
+        const state = params.get('state') || null;
         
         // Only update if actually different to avoid unnecessary triggers
         setSearchQuery(prev => prev !== search ? search : prev);
         setSelectedCategory(prev => prev !== cat ? cat : prev);
         setSelectedBrand(prev => prev !== brand ? brand : prev);
         setSelectedOrigin(prev => prev !== origin ? origin : prev);
+        setSelectedState(prev => prev !== state ? state : prev);
 
         // Strict View Mode based on Path
         if (location.pathname === '/shop') {
@@ -116,6 +126,7 @@ useEffect(() => {
     selectedCategory,
     selectedBrand,
     selectedOrigin,
+    selectedState,
     searchQuery,
     location.pathname,
     location.search,
@@ -192,6 +203,7 @@ useEffect(() => {
         if (brandParam) params.set('brand', brandParam);
         
         if (selectedOrigin) params.set('origin', selectedOrigin);
+        if (selectedState) params.set('state', selectedState);
         
         const newSearch = params.toString();
         const currentSearch = location.search.startsWith('?') ? location.search.substring(1) : location.search;
@@ -219,7 +231,16 @@ useEffect(() => {
                 setProductsLoading(false);
                 setBrandsList(fetchedBrands); // Initialize brands list for landing view
                 setCategoriesList(fetchedCategoriesData.categories); // Initialize categories list for landing view
-                setOrigins(fetchedOrigins.docs.map(d => ({ id: d.id, name: d.data().name })));
+ setOrigins(
+  fetchedOrigins.docs.map(d => ({
+    id: d.id,
+    name: d.data().name,
+    state: d.data().state || '',
+    stateSlug: (d.data().stateSlug || '')
+      .toLowerCase()
+      .trim()
+  }))
+);
             } catch (error) {
                 console.error("Failed to load initial data", error);
                 toast.error("Failed to load shop data");
@@ -267,18 +288,83 @@ useEffect(() => {
                 searchQuery: debouncedSearch || undefined
             };
 
-            const result = await getProducts(constraints, lastDoc, PAGE_SIZE);
-            
-            let newProducts = result.products;
+      const result = await getProducts(constraints, lastDoc, PAGE_SIZE);
+
+
+// DEBUG LOGS
+
+
+
+
+let newProducts = result.products;
 
             // CLIENT SIDE FILTERS (that backend misses)
             // 1. Origin
             // 2. SPV
             // Ideally we move these to backend or accept generic "Client Search" limitation.
             
-            if (selectedOrigin && selectedOrigin !== 'all') {
-                newProducts = newProducts.filter(p => p.placeOfOrigin?.includes(selectedOrigin));
-            }
+const normalize = (str: string = "") =>
+  str
+    .toLowerCase()
+    .trim()
+    .replace(/,/g, "")
+    .replace(/-/g, " ")
+    .replace(/\s+/g, " ");
+
+
+// STATE FILTER
+if (selectedState) {
+
+   
+  const stateOrigins = origins
+    .filter(origin => origin.stateSlug?.toLowerCase().trim() ===
+selectedState?.toLowerCase().trim())
+    .map(origin => normalize(origin.name));
+
+
+  if (selectedState) {
+ 
+}
+
+  newProducts = newProducts.filter(product => {
+    const productOrigins = (product.placeOfOrigin || [])
+      .map(origin => normalize(origin));
+
+    return productOrigins.some(productOrigin =>
+  stateOrigins.some(stateOrigin => {
+    const p = normalize(productOrigin);
+    const s = normalize(stateOrigin);
+
+    return (
+      p === s ||
+      p.includes(s) ||
+      s.includes(p)
+    );
+  })
+);
+  });
+
+}
+
+
+// ORIGIN FILTER
+if (selectedOrigin) {
+  const selected = normalize(selectedOrigin);
+
+
+
+  newProducts = newProducts.filter(product => {
+    const productOrigins = (product.placeOfOrigin || [])
+      .map(origin => normalize(origin));
+
+    return productOrigins.some(productOrigin =>
+      productOrigin.includes(selected) ||
+      selected.includes(productOrigin)
+    );
+  });
+
+
+}
             
             if (spvRange[1] < 5000 || spvRange[0] > 0) {
                  newProducts = newProducts.filter(p => {
@@ -306,11 +392,13 @@ useEffect(() => {
     selectedCategory,
     selectedBrand,
     selectedOrigin,
+    selectedState,
     priceRange,
     spvRange,
     sortBy,
     filterCategories,
-    filterBrands
+    filterBrands,
+    origins,
 ]);
 
 
@@ -394,7 +482,7 @@ useEffect(() => {
             // VERY IMPORTANT:
             // wait until categories/brands load
             // before resolving slug filters
-
+await fetchProducts(false);
             if (
                 (selectedCategory && filterCategories.length === 0) ||
                 (selectedBrand && filterBrands.length === 0)
@@ -432,6 +520,7 @@ useEffect(() => {
     selectedCategory,
     selectedBrand,
     selectedOrigin,
+    selectedState,
     priceRange,
     spvRange,
     sortBy,
@@ -498,6 +587,7 @@ useEffect(() => {
         setSelectedCategory(null);
         setSelectedBrand(null);
         setSelectedOrigin(null);
+        setSelectedState(null);
         setPriceRange([0, 10000]);
         setSpvRange([0, 5000]);
         setSortBy('order');
@@ -563,6 +653,12 @@ useEffect(() => {
         });
         setViewMode('products');
     };
+    const filteredOrigins = selectedState
+  ? origins.filter(
+      origin => origin.stateSlug?.toLowerCase().trim() ===
+selectedState?.toLowerCase().trim()
+    )
+  : origins;
 
     const FilterContent = () => (
         <div className="space-y-6">
@@ -712,23 +808,39 @@ useEffect(() => {
                 <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide px-2">Place of Origin</h3>
 
                 {/* All Origins button */}
-                <button
-                    onClick={() => {
-                        setSelectedOrigin(null);
-                        setViewMode('products');
-                    }}
-                    className={`w-full flex items-center justify-between rounded-2xl px-4 py-2.5 transition-all duration-200 ${
-                        selectedOrigin === null
-                            ? 'bg-primary/10 text-primary font-bold border border-primary/20'
-                            : 'hover:bg-gray-50 text-gray-500'
-                    }`}
-                >
-                    <span className="text-sm font-semibold">All Origins</span>
-                    {selectedOrigin === null && <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">Active</span>}
-                </button>
+                <div className="space-y-2 mb-4">
+  <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide px-2">
+    State
+  </h3>
+
+  <Select
+    value={selectedState || "all"}
+    onValueChange={(value) => {
+      setSelectedState(value === "all" ? null : value);
+      setSelectedOrigin(null);
+    }}
+  >
+    <SelectTrigger>
+      <SelectValue placeholder="Select State" />
+    </SelectTrigger>
+
+    <SelectContent>
+      <SelectItem value="all">All States</SelectItem>
+
+      {statesList.map((state) => (
+        <SelectItem
+          key={state.slug}
+          value={state.slug}
+        >
+          {state.name}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</div>
 
                 <div className="space-y-1 max-h-[200px] overflow-y-auto pr-1 scrollbar-thin">
-                    {origins.map((origin) => {
+                    {filteredOrigins.map((origin) => {
                         const isActive = selectedOrigin === origin.name;
 
                         return (
@@ -818,62 +930,102 @@ useEffect(() => {
             </Button>
         </div>
     );
+const activeChips = useMemo(() => {
+  const chips: {
+    id: string;
+    label: string;
+    onClear: () => void;
+  }[] = [];
 
-    const activeChips = useMemo(() => {
-        const chips: { id: string; label: string; onClear: () => void }[] = [];
-        
-        if (debouncedSearch) {
-            chips.push({
-                id: 'search',
-                label: `Search: "${debouncedSearch}"`,
-                onClear: () => setSearchQuery('')
-            });
-        }
-        
-        if (selectedCategory) {
-            const cat = filterCategories.find(c => c.id === selectedCategory || c.slug === selectedCategory);
-            chips.push({
-                id: 'category',
-                label: `Category: ${cat?.name || 'Category'}`,
-                onClear: () => setSelectedCategory(null)
-            });
-        }
-        
-        if (selectedBrand) {
-            const brand = filterBrands.find(b => b.id === selectedBrand || b.slug === selectedBrand);
-            chips.push({
-                id: 'brand',
-                label: `Brand: ${brand?.name || 'Brand'}`,
-                onClear: () => setSelectedBrand(null)
-            });
-        }
-        
-        if (selectedOrigin) {
-            chips.push({
-                id: 'origin',
-                label: `Origin: ${selectedOrigin}`,
-                onClear: () => setSelectedOrigin(null)
-            });
-        }
-        
-        if (priceRange[0] > 0 || priceRange[1] < 10000) {
-            chips.push({
-                id: 'price',
-                label: `Price: ₹${priceRange[0]} - ₹${priceRange[1]}`,
-                onClear: () => setPriceRange([0, 10000])
-            });
-        }
-        
-        if (spvRange[0] > 0 || spvRange[1] < 5000) {
-            chips.push({
-                id: 'spv',
-                label: `SPV: ${spvRange[0]} - ${spvRange[1]} Coins`,
-                onClear: () => setSpvRange([0, 5000])
-            });
-        }
-        
-        return chips;
-    }, [debouncedSearch, selectedCategory, selectedBrand, selectedOrigin, priceRange, spvRange, filterCategories, filterBrands]);
+  if (debouncedSearch) {
+    chips.push({
+      id: "search",
+      label: `Search: "${debouncedSearch}"`,
+      onClear: () => setSearchQuery(""),
+    });
+  }
+
+  if (selectedCategory) {
+    const cat = filterCategories.find(
+      (c) =>
+        c.id === selectedCategory ||
+        c.slug === selectedCategory
+    );
+
+    chips.push({
+      id: "category",
+      label: `Category: ${cat?.name || "Category"}`,
+      onClear: () => setSelectedCategory(null),
+    });
+  }
+
+  if (selectedBrand) {
+    const brand = filterBrands.find(
+      (b) =>
+        b.id === selectedBrand ||
+        b.slug === selectedBrand
+    );
+
+    chips.push({
+      id: "brand",
+      label: `Brand: ${brand?.name || "Brand"}`,
+      onClear: () => setSelectedBrand(null),
+    });
+  }
+
+  // ✅ STATE CHIP
+  if (selectedState) {
+    const state = statesList.find(
+      (s) => s.slug === selectedState
+    );
+
+    chips.push({
+      id: "state",
+      label: `State: ${state?.name || selectedState}`,
+      onClear: () => {
+        setSelectedState(null);
+        setSelectedOrigin(null);
+      },
+    });
+  }
+
+  // ✅ ORIGIN CHIP
+  if (selectedOrigin) {
+    chips.push({
+      id: "origin",
+      label: `Origin: ${selectedOrigin}`,
+      onClear: () => setSelectedOrigin(null),
+    });
+  }
+
+  if (priceRange[0] > 0 || priceRange[1] < 10000) {
+    chips.push({
+      id: "price",
+      label: `Price: ₹${priceRange[0]} - ₹${priceRange[1]}`,
+      onClear: () => setPriceRange([0, 10000]),
+    });
+  }
+
+  if (spvRange[0] > 0 || spvRange[1] < 5000) {
+    chips.push({
+      id: "spv",
+      label: `SPV: ${spvRange[0]} - ${spvRange[1]} Coins`,
+      onClear: () => setSpvRange([0, 5000]),
+    });
+  }
+
+  return chips;
+}, [
+  debouncedSearch,
+  selectedCategory,
+  selectedBrand,
+  selectedState, // ✅ added
+  selectedOrigin,
+  priceRange,
+  spvRange,
+  filterCategories,
+  filterBrands,
+]);
 
     const isLandingPage = viewMode === 'landing';
 
@@ -1036,6 +1188,36 @@ useEffect(() => {
                                 ))}
                             </HorizontalScroll>
                         </section>
+                        {/* Shop By State */}
+<section className="pt-4">
+  <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+    <MapPinned className="h-6 w-6 text-primary" />
+    Shop by State
+  </h2>
+
+  <HorizontalScroll
+    itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[32%] sm:auto-cols-[31%] pb-4"
+  >
+    {statesList.map((state) => (
+      <div
+        key={state.id}
+        onClick={() => {
+          window.scrollTo(0, 0);
+          navigate(`/shop/filters?state=${state.slug}`);
+        }}
+        className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 flex flex-col items-center text-center gap-2 group-hover:scale-[1.02] snap-start"
+      >
+        <div className="h-14 w-14 sm:h-20 sm:w-20 rounded-full bg-gray-100 flex items-center justify-center">
+          <MapPinned className="h-7 w-7 text-primary" />
+        </div>
+
+        <h3 className="font-semibold text-gray-800 text-[10px] sm:text-sm line-clamp-2">
+          {state.name}
+        </h3>
+      </div>
+    ))}
+  </HorizontalScroll>
+</section>
 
                         {/* Recent Products Section */}
                         <section className="mt-12">

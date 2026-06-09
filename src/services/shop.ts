@@ -203,6 +203,16 @@ export const getActiveProducts = async (): Promise<Product[]> => {
       where('isVisible', '==', true)
   );
   const snapshot = await getDocs(q);
+  console.log(
+  "ALL FIREBASE PRODUCTS",
+  snapshot.docs.map(doc => ({
+    id: doc.id,
+    name: doc.data().name,
+    isVisible: doc.data().isVisible,
+    isActive: doc.data().isActive,
+    stock: doc.data().stock,
+  }))
+);
   const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
   
 // Client-side sort
