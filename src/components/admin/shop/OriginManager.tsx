@@ -9,11 +9,13 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { statesList } from '@/constants/states';
 
+import { uploadImageToR2 } from '@/services/cloudflare';
 interface Origin {
     id: string;
     name: string;
     state?: string;
     stateSlug?: string;
+    stateImage?: string;
     zone: string;
 }
 
@@ -23,6 +25,8 @@ export const OriginManager = () => {
     const [newOrigin, setNewOrigin] = useState('');
     const [newZone, setNewZone] = useState('A');
     const [newState, setNewState] = useState('');
+    const [stateImage, setStateImage] = useState('');
+    const [selectedImage, setSelectedImage] =useState<File | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     
     // Edit State
@@ -48,48 +52,60 @@ export const OriginManager = () => {
     }, []);
 
     const handleSave = async () => {
-        if (!newOrigin.trim()) return;
-        
-        try {
-            if (editingId) {
-                // Update existing
-                const selectedState = statesList.find(
-    s => s.name === newState
-);
+    if (!newOrigin.trim()) return;
 
-await updateDoc(doc(db, 'origins', editingId), {
-    name: newOrigin.trim(),
-    state: newState,
-    stateSlug: selectedState?.slug || '',
-    zone: newZone
-});
-                toast.success("Origin updated");
-            } else {
-                // Create new
-                const selectedState = statesList.find(
-    s => s.name === newState
-);
+    try {
+        let uploadedImageUrl = stateImage;
 
-await addDoc(collection(db, 'origins'), {
-    name: newOrigin.trim(),
-    state: newState,
-    stateSlug: selectedState?.slug || '',
-    zone: newZone
-});
-                toast.success("Origin added");
-            }
-            
-            resetForm();
-            fetchOrigins();
-        } catch (error) {
-            console.error(error);
-            toast.error(editingId ? "Failed to update origin" : "Failed to add origin");
+        if (selectedImage) {
+            uploadedImageUrl = await uploadImageToR2(
+                selectedImage,
+                'states'
+            );
         }
-    };
 
+        const selectedState = statesList.find(
+            s => s.name === newState
+        );
+
+        if (editingId) {
+            await updateDoc(doc(db, 'origins', editingId), {
+                name: newOrigin.trim(),
+                state: newState,
+                stateSlug: selectedState?.slug || '',
+                stateImage: uploadedImageUrl,
+                zone: newZone
+            });
+
+            toast.success("Origin updated");
+        } else {
+            await addDoc(collection(db, 'origins'), {
+                name: newOrigin.trim(),
+                state: newState,
+                stateSlug: selectedState?.slug || '',
+                stateImage: uploadedImageUrl,
+                zone: newZone
+            });
+
+            toast.success("Origin added");
+        }
+
+        resetForm();
+        fetchOrigins();
+
+    } catch (error) {
+        console.error(error);
+        toast.error(
+            editingId
+                ? "Failed to update origin"
+                : "Failed to add origin"
+        );
+    }
+};
     const handleEdit = (origin: Origin) => {
         setNewOrigin(origin.name);
         setNewState(origin.state || '');
+        setStateImage(origin.stateImage || '');
         setNewZone(origin.zone || 'A');
         setEditingId(origin.id);
         setIsDialogOpen(true);
@@ -107,13 +123,15 @@ await addDoc(collection(db, 'origins'), {
         }
     };
 
-    const resetForm = () => {
-        setNewOrigin('');
-        setNewState('');
-        setNewZone('A');
-        setEditingId(null);
-        setIsDialogOpen(false);
-    };
+  const resetForm = () => {
+  setNewOrigin('');
+  setNewState('');
+  setStateImage('');
+  setSelectedImage(null);
+  setNewZone('A');
+  setEditingId(null);
+  setIsDialogOpen(false);
+};
 
     return (
         <div className="space-y-4">
@@ -164,6 +182,53 @@ await addDoc(collection(db, 'origins'), {
             </option>
         ))}
     </select>
+</div>
+<div className="space-y-2">
+  <label className="text-sm font-medium">
+    State Image
+  </label>
+
+<div className="border-2 border-dashed border-[#D8D2C2] bg-[#FFFDF7] rounded-xl p-5 shadow-sm hover:border-[#C8BFAE] transition-all">
+    <input
+      type="file"
+      accept="image/*"
+      className="hidden"
+      id="state-image-upload"
+      onChange={(e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+          setSelectedImage(file);
+        }
+      }}
+    />
+
+    <label
+      htmlFor="state-image-upload"
+      className="cursor-pointer flex flex-col items-center justify-center gap-2"
+    >
+      <div className="text-sm font-medium text-blue-500 bg-color-grey">
+  Click to upload state image
+  
+</div>
+      {selectedImage ? (
+        <>
+          <img
+            src={URL.createObjectURL(selectedImage)}
+            alt="Preview"
+            className="h-24 w-24 rounded-lg object-cover border"
+          />
+          <span className="text-xs text-green-600">
+            {selectedImage.name}
+          </span>
+            
+        </>
+      ) : (
+        <span className="text-xs text-gray-400">
+          No image selected
+        </span>
+      )}
+    </label>
+  </div>
 </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Shipping Zone</label>

@@ -57,11 +57,12 @@ const ShopPage = () => {
     // Initial Filter Data (for dropdowns - limited fetch)
     const [filterBrands, setFilterBrands] = useState<Brand[]>([]);
     const [filterCategories, setFilterCategories] = useState<Category[]>([]);
-    const [origins, setOrigins] = useState<{
+   const [origins, setOrigins] = useState<{
   id: string;
   name: string;
   state: string;
   stateSlug: string;
+  stateImage?: string;
 }[]>([]);
 
     const PAGE_SIZE = 150;
@@ -97,6 +98,7 @@ const ShopPage = () => {
         const brand = params.get('brand') || null;
         const origin = params.get('origin') || null;
         const state = params.get('state') || null;
+      
         
         // Only update if actually different to avoid unnecessary triggers
         setSearchQuery(prev => prev !== search ? search : prev);
@@ -238,7 +240,8 @@ useEffect(() => {
     state: d.data().state || '',
     stateSlug: (d.data().stateSlug || '')
       .toLowerCase()
-      .trim()
+      .trim(),
+    stateImage: d.data().stateImage || ''
   }))
 );
             } catch (error) {
@@ -659,7 +662,38 @@ await fetchProducts(false);
 selectedState?.toLowerCase().trim()
     )
   : origins;
+const uniqueStates = useMemo(() => {
+  const map = new Map();
 
+  origins.forEach(origin => {
+    if (!map.has(origin.stateSlug)) {
+      map.set(origin.stateSlug, {
+        name: origin.state,
+        slug: origin.stateSlug,
+        image: origin.stateImage || ''
+      });
+    }
+  });
+
+  return Array.from(map.values());
+}, [origins]);
+  const statesWithImages = useMemo(() => {
+  return statesList.map((state) => {
+    const stateData = origins
+  .filter(
+    (o) =>
+      o.stateSlug?.toLowerCase().trim() ===
+      state.slug.toLowerCase().trim()
+  )
+  .find((o) => o.stateImage);
+    return {
+  ...state,
+  image: stateData?.stateImage || ""
+};
+  });
+}, [origins]);
+
+console.log("statesWithImages", statesWithImages);
     const FilterContent = () => (
         <div className="space-y-6">
             <div className="space-y-3">
@@ -827,7 +861,7 @@ selectedState?.toLowerCase().trim()
     <SelectContent>
       <SelectItem value="all">All States</SelectItem>
 
-      {statesList.map((state) => (
+      {uniqueStates.map((state) => (
         <SelectItem
           key={state.slug}
           value={state.slug}
@@ -1188,6 +1222,7 @@ const activeChips = useMemo(() => {
                                 ))}
                             </HorizontalScroll>
                         </section>
+                        
                         {/* Shop By State */}
 <section className="pt-4">
   <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
@@ -1198,7 +1233,7 @@ const activeChips = useMemo(() => {
   <HorizontalScroll
     itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[32%] sm:auto-cols-[31%] pb-4"
   >
-    {statesList.map((state) => (
+    {statesWithImages .map((state) => (
       <div
         key={state.id}
         onClick={() => {
@@ -1207,9 +1242,21 @@ const activeChips = useMemo(() => {
         }}
         className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 flex flex-col items-center text-center gap-2 group-hover:scale-[1.02] snap-start"
       >
-        <div className="h-14 w-14 sm:h-20 sm:w-20 rounded-full bg-gray-100 flex items-center justify-center">
-          <MapPinned className="h-7 w-7 text-primary" />
-        </div>
+    <div className="h-20 w-20 sm:h-28 sm:w-28 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+  {state.image ? (
+    <img
+      src={state.image}
+      alt={state.name}
+      className="h-full w-full object-cover"
+    />
+    
+  ) : (<><MapPinned className="h-7 w-7 text-primary" />
+  <p className="text-xs">{state.image ? "HAS IMAGE" : "NO IMAGE"}</p>
+  </>
+    
+    
+  )}
+</div>
 
         <h3 className="font-semibold text-gray-800 text-[10px] sm:text-sm line-clamp-2">
           {state.name}

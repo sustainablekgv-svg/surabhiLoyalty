@@ -6,40 +6,45 @@ import { ArrowLeft, Minus, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { getBrands } from '@/services/shop';
+import { getShippingConfig } from '@/services/shipping';
 
 const CartPage = () => {
   const { cart, removeFromCart, updateQuantity, cartTotal } = useShop();
   const navigate = useNavigate();
   const [brandsMap, setBrandsMap] = useState<Record<string, any>>({});
   const [shippingRates, setShippingRates] = useState<any>(null);
-  useEffect(() => {
-  setShippingRates({
-    "0.5kg": 60,
-    "1kg": 110,
-    "2kg": 150,
-    "3kg": 180,
-    "5kg": 220,
-    extraPerKg: 36,
-  });
+ useEffect(() => {
+  const loadShippingConfig = async () => {
+    try {
+      const config = await getShippingConfig();
+      setShippingRates(config);
+    } catch (error) {
+      console.error("Failed to load shipping config", error);
+    }
+  };
+
+  loadShippingConfig();
 }, []);
- const calculateShippingCharge = (
+const calculateShippingCharge = (
   weight: number,
   rates: any
 ) => {
-  if (!rates || weight <= 0) return 0;
+  if (!rates) return 0;
 
-  if (weight <= 0.5) return Number(rates["0.5kg"]);
-  if (weight <= 1) return Number(rates["1kg"]);
-  if (weight <= 2) return Number(rates["2kg"]);
-  if (weight <= 3) return Number(rates["3kg"]);
-  if (weight <= 5) return Number(rates["5kg"]);
+  const table = rates.rateTable?.A;
+  const extra = rates.extraPerKg?.A;
 
-  const extraWeight = weight - 5;
-  const extraKg = Math.ceil(extraWeight);
+  if (!table) return 0;
+
+  if (weight <= 0.5) return table[0];
+  if (weight <= 1) return table[1];
+  if (weight <= 2) return table[2];
+  if (weight <= 3) return table[3];
+  if (weight <= 5) return table[4];
 
   return (
-    Number(rates["5kg"]) +
-    extraKg * Number(rates["extraPerKg"])
+    table[4] +
+    Math.ceil(weight - 5) * extra
   );
 };
   useEffect(() => {
