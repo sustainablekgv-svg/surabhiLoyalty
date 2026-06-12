@@ -146,109 +146,161 @@ export const OriginManager = () => {
                             <Plus className="h-4 w-4 mr-2" /> Add Origin
                         </Button>
                     </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>{editingId ? "Edit Origin" : "Add Place of Origin"}</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4 mt-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">Place Name</label>
-                                <Input 
-                                    value={newOrigin} 
-                                    onChange={(e) => setNewOrigin(e.target.value)} 
-                                    placeholder="e.g. Kashmir, Ooty"
-                                />
-                            </div>
-                            <div className="space-y-2">
-    <label className="text-sm font-medium">
-        State
-    </label>
+                    <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
+    <DialogHeader>
+        <DialogTitle>
+            {editingId ? "Edit Origin" : "Add Place of Origin"}
+        </DialogTitle>
+    </DialogHeader>
 
-    <select
-        className="w-full border rounded-md p-2 h-10"
-        value={newState}
-        onChange={(e) => setNewState(e.target.value)}
-    >
-        <option value="">
-            Select State
-        </option>
+    <div className="flex-1 overflow-y-auto pr-2 space-y-4 mt-4">
+        <div className="space-y-2">
+            <label className="text-sm font-medium">
+                Place Name
+            </label>
 
-        {statesList.map((state) => (
-            <option
-                key={state.slug}
-                value={state.name}
+            <Input
+                value={newOrigin}
+                onChange={(e) =>
+                    setNewOrigin(e.target.value)
+                }
+                placeholder="e.g. Kashmir, Ooty"
+            />
+        </div>
+
+        <div className="space-y-2">
+            <label className="text-sm font-medium">
+                State
+            </label>
+
+            <select
+                className="w-full border rounded-md p-2 h-10"
+                value={newState}
+                onChange={(e) =>
+                    setNewState(e.target.value)
+                }
             >
-                {state.name}
-            </option>
-        ))}
-    </select>
-</div>
-<div className="space-y-2">
-  <label className="text-sm font-medium">
-    State Image
-  </label>
+                <option value="">
+                    Select State
+                </option>
 
-<div className="border-2 border-dashed border-[#D8D2C2] bg-[#FFFDF7] rounded-xl p-5 shadow-sm hover:border-[#C8BFAE] transition-all">
-    <input
-      type="file"
-      accept="image/*"
-      className="hidden"
-      id="state-image-upload"
-      onChange={(e) => {
-        const file = e.target.files?.[0];
-        if (file) {
-          setSelectedImage(file);
-        }
-      }}
-    />
+                {statesList.map((state) => (
+                    <option
+                        key={state.slug}
+                        value={state.name}
+                    >
+                        {state.name}
+                    </option>
+                ))}
+            </select>
+        </div>
 
-    <label
-      htmlFor="state-image-upload"
-      className="cursor-pointer flex flex-col items-center justify-center gap-2"
-    >
-      <div className="text-sm font-medium text-blue-500 bg-color-grey">
-  Click to upload state image
-  
-</div>
-      {selectedImage ? (
-        <>
-          <img
-            src={URL.createObjectURL(selectedImage)}
-            alt="Preview"
-            className="h-24 w-24 rounded-lg object-cover border"
-          />
-          <span className="text-xs text-green-600">
-            {selectedImage.name}
-          </span>
-            
-        </>
-      ) : (
-        <span className="text-xs text-gray-400">
-          No image selected
-        </span>
-      )}
-    </label>
-  </div>
-</div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">Shipping Zone</label>
-                                <select 
-                                    className="w-full border rounded-md p-2 h-10"
-                                    value={newZone}
-                                    onChange={(e) => setNewZone(e.target.value)}
-                                >
-                                    <option value="A">Zone A (Local/Regional)</option>
-                                    <option value="B">Zone B</option>
-                                    <option value="C">Zone C</option>
-                                    <option value="D">Zone D</option>
-                                    <option value="E">Zone E (Remote/Hilly)</option>
-                                </select>
-                            </div>
-                            <Button className="w-full" onClick={handleSave}>
-                                {editingId ? "Update Origin" : "Save Origin"}
-                            </Button>
-                        </div>
-                    </DialogContent>
+        <div className="space-y-2">
+            <label className="text-sm font-medium">
+                State Image
+            </label>
+
+            <div className="border-2 border-dashed border-[#D8D2C2] bg-[#FFFDF7] rounded-xl p-5 shadow-sm hover:border-[#C8BFAE] transition-all">
+                <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    id="state-image-upload"
+                    onChange={(e) => {
+                        const file =
+                            e.target.files?.[0];
+
+                        if (file) {
+                            setSelectedImage(file);
+                        }
+                    }}
+                />
+
+                <label
+                    htmlFor="state-image-upload"
+                    className="cursor-pointer flex flex-col items-center justify-center gap-2"
+                >
+                    <div className="text-sm font-medium text-blue-500">
+                        Click to upload state image
+                    </div>
+
+                    {selectedImage ? (
+                        <>
+                            <img
+                                src={URL.createObjectURL(
+                                    selectedImage
+                                )}
+                                alt="Preview"
+                                className="h-24 w-24 rounded-lg object-cover border"
+                            />
+
+                            <span className="text-xs text-green-600">
+                                {selectedImage.name}
+                            </span>
+                        </>
+                    ) : stateImage ? (
+                        <>
+                            <img
+                                src={stateImage}
+                                alt="State"
+                                className="h-24 w-24 rounded-lg object-cover border"
+                            />
+
+                            <span className="text-xs text-gray-500">
+                                Current image
+                            </span>
+                        </>
+                    ) : (
+                        <span className="text-xs text-gray-400">
+                            No image selected
+                        </span>
+                    )}
+                </label>
+            </div>
+        </div>
+
+        <div className="space-y-2">
+            <label className="text-sm font-medium">
+                Shipping Zone
+            </label>
+
+            <select
+                className="w-full border rounded-md p-2 h-10"
+                value={newZone}
+                onChange={(e) =>
+                    setNewZone(e.target.value)
+                }
+            >
+                <option value="A">
+                    Zone A (Local/Regional)
+                </option>
+                <option value="B">
+                    Zone B
+                </option>
+                <option value="C">
+                    Zone C
+                </option>
+                <option value="D">
+                    Zone D
+                </option>
+                <option value="E">
+                    Zone E (Remote/Hilly)
+                </option>
+            </select>
+        </div>
+    </div>
+
+    <div className="pt-4 border-t mt-4">
+        <Button
+            className="w-full"
+            onClick={handleSave}
+        >
+            {editingId
+                ? "Update Origin"
+                : "Save Origin"}
+        </Button>
+    </div>
+</DialogContent>
                 </Dialog>
             </div>
 
