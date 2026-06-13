@@ -39,6 +39,20 @@ export const generateSlug = (name: string): string => {
         .replace(/^-+|-+$/g, '');
 };
 
+
+export const generateProductFamily = (
+  productName: string
+): string => {
+  return productName
+    .toLowerCase()
+    .replace(/\b\d+\s*(ml|ltr|l|kg|g|pcs|pc)\b/g, '')
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim()
+    .replace(/^-|-$/g, '');
+};
+
 export const isSlugUnique = async (collectionName: string, slug: string, excludeId?: string): Promise<boolean> => {
     const q = query(collection(db, collectionName), where('slug', '==', slug));
     const snapshot = await getDocs(q);
@@ -70,6 +84,42 @@ export const backfillSlugs = async (collectionName: string) => {
     }
 
     return docs.length;
+};
+
+
+export const backfillProductFamilies = async () => {
+    const snapshot = await getDocs(
+        collection(db, 'products')
+    );
+
+    const batch = writeBatch(db);
+
+    let count = 0;
+
+    snapshot.docs.forEach(docSnap => {
+        const data = docSnap.data();
+
+        if (!data.productFamily) {
+
+            const productFamily =
+                generateProductFamily(
+                    data.name || ''
+                );
+
+            batch.update(docSnap.ref, {
+                productFamily,
+                updatedAt: serverTimestamp()
+            });
+
+            count++;
+        }
+    });
+
+    if (count > 0) {
+        await batch.commit();
+    }
+
+    return count;
 };
 
 // --- Display Order Helper ---
@@ -247,6 +297,34 @@ export const getProductBySlug = async (slug: string): Promise<Product | null> =>
         return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Product;
     }
     return null;
+};
+
+export const getProductsByFamily = async (
+    productFamily: string
+): Promise<Product[]> => {
+
+    if (!productFamily) return [];
+
+    const q = query(
+        collection(db, 'products'),
+        where('productFamily', '==', productFamily),
+        where('isActive', '==', true)
+    );
+
+    const snapshot = await getDocs(q);
+
+    const products = snapshot.docs.map(
+        doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as Product)
+    );
+
+    return products.sort(
+        (a, b) =>
+            (a.weightInKg || 0) -
+            (b.weightInKg || 0)
+    );
 };
 
 export const createProduct = async (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {

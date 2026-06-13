@@ -10,7 +10,10 @@ import { useAuth } from '@/hooks/auth-context';
 import { useShop } from '@/hooks/shop-context';
 import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 import { db } from '@/lib/firebase';
-import { getProductBySlug } from '@/services/shop';
+import {
+    getProductBySlug,
+    getProductsByFamily
+} from '@/services/shop';
 import { Product } from '@/types/shop';
 import { doc, getDoc } from 'firebase/firestore';
 import { Heart, Minus, Plus, Share2, ShoppingCart, Star, X } from 'lucide-react';
@@ -27,7 +30,8 @@ const ProductDetailsPage = () => {
     const { settings } = useGlobalSettings();
     const isPaused = settings.pauseOrders;
     
-    const [product, setProduct] = useState<Product | null>(null);
+    const [product, setProduct] = useState<Product | null>(null); 
+    const [variants, setVariants] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [quantity, setQuantity] = useState(1);
     const [selectedImage, setSelectedImage] = useState<string>('');
@@ -56,6 +60,10 @@ const ProductDetailsPage = () => {
     }, [slug]);
 
     useEffect(() => {
+    setQuantity(1);
+}, [product?.id]);
+
+    useEffect(() => {
         const fetchProduct = async () => {
             if (!slug) return;
             setLoading(true);
@@ -73,8 +81,28 @@ const ProductDetailsPage = () => {
                 }
 
                 if (productData) {
-                    setProduct(productData);
-                    setSelectedImage(productData.images?.[0] || '');
+
+    setProduct(productData);
+
+    setSelectedImage(
+        productData.images?.[0] || ''
+    );
+
+    if (productData.productFamily) {
+
+        const familyProducts =
+            await getProductsByFamily(
+                productData.productFamily
+            );
+
+        setVariants(familyProducts);
+
+    } else {
+
+        setVariants([productData]);
+
+    }
+
                     
                     // Redirect to slug URL if currently on ID URL
                     if (productData.slug && productData.slug !== slug) {
@@ -116,6 +144,39 @@ const ProductDetailsPage = () => {
         const max = product.trackInventory === false ? 999 : product.stock;
         return Math.min(max, prev + 1);
     });
+
+    const getVariantLabel = (
+    variant: Product
+) => {
+    const qty = Number(
+        variant.quantity
+    );
+
+    const unit =
+        variant.unitsOfMeasure;
+
+    if (
+        unit === 'g' &&
+        !isNaN(qty) &&
+        qty >= 1000
+    ) {
+        return `${qty / 1000}kg`;
+    }
+
+    if (
+        unit === 'ml' &&
+        !isNaN(qty) &&
+        qty >= 1000
+    ) {
+        return `${qty / 1000}L`;
+    }
+
+    return `${variant.quantity}${unit || ''}`;
+};
+
+const isVariantOutOfStock = (variant: Product) =>
+    variant.trackInventory === true &&
+    (variant.stock || 0) <= 0;
 
     return (
         <ShopLayout onBack={handleBack}>
@@ -336,12 +397,72 @@ const ProductDetailsPage = () => {
                         </div>
                     </div>
 
-                    <div 
-                        className="prose prose-sm text-gray-600 max-w-none text-justify overflow-hidden break-words"
-                        dangerouslySetInnerHTML={{ __html: product.description }}
-                    />
+                   <div 
+    className="prose prose-sm text-gray-600 max-w-none text-justify overflow-hidden break-words"
+    dangerouslySetInnerHTML={{ __html: product.description }}
+/>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm max-w-full">
+{/* Product Variants */}
+{variants.length > 1 && (
+    <div className="space-y-3">
+        <h3 className="font-semibold text-lg">
+            Available Options
+        </h3>
+
+        <p className="text-sm text-muted-foreground">
+    Selected:
+    <span className="ml-1 font-medium">
+        {getVariantLabel(product)}
+    </span>
+</p>
+
+        <div className="flex flex-wrap gap-2">
+            {variants.map((variant) => (
+                <Button
+    key={variant.id}
+    type="button"
+     disabled={isVariantOutOfStock(variant)}
+    variant={
+        variant.id === product.id
+            ? "default"
+            : "outline"
+    }
+    className={
+        variant.id === product.id
+            ? "ring-2 ring-primary ring-offset-2"
+            : ""
+    }
+    onClick={() =>
+    navigate(
+        `/shop/product/${variant.slug}`,
+        {
+            state: location.state
+        }
+    )
+}
+>
+    <div className="flex flex-col items-center">
+    <span>
+        {getVariantLabel(variant)}
+    </span>
+
+    <span className="text-xs opacity-70">
+        ₹{variant.sellingPrice || variant.price}
+    </span>
+
+    {isVariantOutOfStock(variant) && (
+        <span className="text-[10px] text-red-500">
+            Out of Stock
+        </span>
+    )}
+</div>
+</Button>
+            ))}
+        </div>
+    </div>
+)}
+
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm max-w-full">
                         <div className="p-3 bg-gray-50 rounded-lg overflow-hidden">
                             <span className="block text-gray-500 mb-1">Quantity</span>
                             <span className="font-medium break-words">

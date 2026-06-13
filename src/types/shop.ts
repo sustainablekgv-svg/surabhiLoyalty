@@ -31,6 +31,16 @@ export interface Product {
     totalReviews?: number;
     gst?: { title: string; percentage: number };
     slug: string;
+
+    /**
+ * Used to group multiple quantities/variants
+ * of the same product.
+ *
+ * Example:
+ * hallikar-desi-cow-bilona-ghee
+ */
+productFamily?: string;
+variants?: Product[];
 }
 
 export interface ProductReview {

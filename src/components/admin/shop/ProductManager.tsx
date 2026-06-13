@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { db } from '@/lib/firebase';
 import { isValidImageUrl } from '@/lib/image-utils';
 import { deleteImageFromR2 } from '@/services/cloudflare';
-import { createProduct, deleteGstSlab, deleteProduct, generateSlug, getBrands, getCategories, getProducts, initializeDisplayOrder, reorderProduct, updateGstSlab, updateProduct, backfillSlugs } from '@/services/shop';
+import { createProduct, deleteGstSlab, deleteProduct, generateSlug,generateProductFamily, getBrands, getCategories, getProducts, initializeDisplayOrder, reorderProduct, updateGstSlab, updateProduct, backfillSlugs,backfillProductFamilies } from '@/services/shop';
 import { Brand, Category, Product } from '@/types/shop';
 import { collection, doc, getDocs, orderBy, query, setDoc } from 'firebase/firestore';
 import { ArrowDown, ArrowUp, Edit, ListOrdered, Plus, Star, Trash2 } from 'lucide-react';
@@ -55,6 +55,8 @@ export const ProductManager = () => {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
+    const [isAddingVariant, setIsAddingVariant] = useState(false);
+
     // Form State
 
     const [formData, setFormData] = useState({
@@ -78,7 +80,8 @@ export const ProductManager = () => {
         gstTitle: '',
         gstPercentage: '',
         isFeatured: false,
-        slug: ''
+        slug: '',
+        productFamily: ''
     });
 
     const fetchData = async () => {
@@ -272,10 +275,13 @@ export const ProductManager = () => {
             if (isNaN(stock) || stock < 0) { toast.error("Stock cannot be negative"); return; }
             if (isNaN(spv) || spv < 0) { toast.error("SPV cannot be negative"); return; }
 
-            if (!formData.images || formData.images.length === 0) { 
-                toast.error("At least one product image is required"); 
-                return; 
-            }
+            if (
+    !isAddingVariant &&
+    (!formData.images || formData.images.length === 0)
+) {
+    toast.error("At least one product image is required");
+    return;
+}
 
             const productData: any = {
                 name: formData.name.trim(),
@@ -303,6 +309,12 @@ export const ProductManager = () => {
                 placeOfOrigin: formData.placeOfOrigin, // Array of origins
                 isFeatured: formData.isFeatured,
                 slug: formData.slug.trim() || generateSlug(formData.name),
+
+                productFamily:
+    generateProductFamily(
+        formData.name
+    ),
+                               
                 gst: formData.gstTitle && formData.gstPercentage ? {
                     title: formData.gstTitle,
                     percentage: Number(formData.gstPercentage)
@@ -400,7 +412,41 @@ export const ProductManager = () => {
         }
     };
 
+    const handleBackfillProductFamilies =
+async () => {
+
+    setLoading(true);
+
+    try {
+
+        const count =
+            await backfillProductFamilies();
+
+        toast.success(
+            `Generated product families for ${count} products`
+        );
+
+        fetchData();
+
+    } catch (error) {
+
+        console.error(error);
+
+        toast.error(
+            'Failed to backfill product families'
+        );
+
+    } finally {
+
+        setLoading(false);
+
+    }
+};
+
     const resetForm = () => {
+
+        setIsAddingVariant(false);
+
         setFormData({
             name: '',
             description: '',
@@ -422,11 +468,13 @@ export const ProductManager = () => {
             gstTitle: '',
             gstPercentage: '',
             isFeatured: false,
-            slug: ''
+            slug: '',
+            productFamily: ''
         });
     };
 
     const handleEdit = (product: Product) => {
+        setIsAddingVariant(false);
         setEditingProduct(product);
         setIsDialogOpen(true);
         // If categories are already loaded, we can set the form data safely. 
@@ -452,9 +500,66 @@ export const ProductManager = () => {
             gstTitle: product.gst?.title || '',
             gstPercentage: product.gst?.percentage?.toString() || '',
             isFeatured: product.isFeatured || false,
-            slug: product.slug || ''
+            slug: product.slug || '',
+            productFamily: product.productFamily || ''
         });
     };
+
+    const handleAddVariant = (product: Product) => {
+
+    setIsAddingVariant(true);
+
+    setEditingProduct(null);
+
+    setFormData({
+        name: product.name,
+        description: product.description,
+
+        brandId: product.brandId,
+        category: product.categoryId,
+
+        images: product.images || [],
+
+        placeOfOrigin:
+            product.placeOfOrigin || [],
+
+        gstTitle:
+            product.gst?.title || '',
+
+        gstPercentage:
+            product.gst?.percentage?.toString() || '',
+
+        productFamily:
+            product.productFamily || '',
+
+        quantity: '',
+        weightInKg: '',
+        stock: '',
+        price: '',
+        sellingPrice: '',
+        spv: '',
+
+        unitsOfMeasure:
+            product.unitsOfMeasure || '',
+
+        freeShipping:
+            product.freeShipping || false,
+
+        variantType:
+            product.variantType || '',
+
+        isVisible: true,
+
+        trackInventory:
+            product.trackInventory || false,
+
+        isFeatured: false,
+
+        slug: ''
+    });
+
+    setIsDialogOpen(true);
+};
 
     return (
         <div className="space-y-4">
@@ -534,33 +639,106 @@ export const ProductManager = () => {
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>
+
+                            <AlertDialog>
+    <AlertDialogTrigger asChild>
+        <Button
+            variant="outline"
+            title="Backfill Product Families"
+        >
+            <span className="text-xs font-bold">
+                Family
+            </span>
+        </Button>
+    </AlertDialogTrigger>
+
+    <AlertDialogContent>
+        <AlertDialogHeader>
+            <AlertDialogTitle>
+                Generate Product Families?
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+                This will generate productFamily values
+                for all products that do not already
+                have one.
+            </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        <AlertDialogFooter>
+            <AlertDialogCancel>
+                Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+                onClick={handleBackfillProductFamilies}
+            >
+                Generate
+            </AlertDialogAction>
+        </AlertDialogFooter>
+    </AlertDialogContent>
+</AlertDialog>
+
                         </div>
                     )}
                     <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
-                            <DialogTitle>{editingProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
+                            <DialogTitle>
+    {editingProduct
+        ? 'Edit Product'
+        : isAddingVariant
+        ? 'Add Product Variant'
+        : 'Add New Product'}
+</DialogTitle>
                         </DialogHeader>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Product Name</Label>
-                                    <Input required value={formData.name} onChange={e => {
-                                        const name = e.target.value;
-                                        const newSlug = generateSlug(name);
-                                        setFormData(prev => {
-                                            const shouldUpdateSlug = !prev.slug || prev.slug === generateSlug(prev.name);
-                                            return {
-                                                ...prev,
-                                                name,
-                                                slug: shouldUpdateSlug ? newSlug : prev.slug
-                                            };
-                                        });
-                                    }} />
+                                    <Input
+    required
+    disabled={isAddingVariant}
+    value={formData.name} onChange={e => {
+    const name = e.target.value;
+
+    const newSlug = generateSlug(name);
+
+    const newFamily =
+      generateProductFamily(name);
+
+    setFormData(prev => {
+
+        const shouldUpdateSlug =
+            !prev.slug ||
+            prev.slug === generateSlug(prev.name);
+
+        const shouldUpdateFamily =
+            !prev.productFamily ||
+            prev.productFamily ===
+                generateProductFamily(prev.name);
+
+        return {
+            ...prev,
+            name,
+
+            slug:
+                shouldUpdateSlug
+                    ? newSlug
+                    : prev.slug,
+
+            productFamily:
+                shouldUpdateFamily
+                    ? newFamily
+                    : prev.productFamily
+        };
+    });
+}} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Brand</Label>
-                                    <Select 
-                                        value={formData.brandId} 
+                                  <Select
+    disabled={isAddingVariant}
+    value={formData.brandId}
                                         onValueChange={(value) => setFormData({ ...formData, brandId: value })}
                                     >
                                         <SelectTrigger>
@@ -576,15 +754,37 @@ export const ProductManager = () => {
                                     </Select>
                                 </div>
                             </div>
+                            {!isAddingVariant && (
+    <div className="space-y-2">
+        <Label>Slug (URL Identifier)</Label>
+        <Input
+            required
+            value={formData.slug}
+            onChange={e =>
+                setFormData({
+                    ...formData,
+                    slug: e.target.value
+                })
+            }
+            placeholder="e.g. organic-honey"
+        />
+    </div>
+)}
+
                             <div className="space-y-2">
-                                <Label>Slug (URL Identifier)</Label>
-                                <Input 
-                                    required 
-                                    value={formData.slug} 
-                                    onChange={e => setFormData({ ...formData, slug: e.target.value })} 
-                                    placeholder="e.g. organic-honey"
-                                />
-                            </div>
+    <Label>Product Family</Label>
+
+    <Input
+    value={formData.productFamily}
+    readOnly
+    className="bg-muted"
+/>
+
+    <p className="text-xs text-muted-foreground">
+        Automatically generated from product name.
+Use the same base product name for all variants.
+    </p>
+</div>
                             <div className="space-y-2">
                                 <Label>Description</Label>
                                 <RichTextEditor 
@@ -596,8 +796,9 @@ export const ProductManager = () => {
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                     <Label>Category</Label>
-                                    <Select 
-                                        value={formData.category} 
+                                   <Select
+    disabled={isAddingVariant}
+    value={formData.category}
                                         onValueChange={(value) => setFormData({ ...formData, category: value })}
                                     >
                                         <SelectTrigger>
@@ -791,7 +992,7 @@ export const ProductManager = () => {
                                     </p>
                                 </div>
                             </div>
-
+                       {!isAddingVariant && (
                             <div className="space-y-2">
                                 <Label>Product Images</Label>
                                 <MultiImageUpload
@@ -801,6 +1002,7 @@ export const ProductManager = () => {
                                     maxImages={10}
                                 />
                             </div>
+                            )}
                             <Button type="submit" className="w-full">
                                 {editingProduct ? 'Update' : 'Create'} Product
                             </Button>
@@ -884,7 +1086,8 @@ export const ProductManager = () => {
                             <TableHead>Image</TableHead>
                             <TableHead>Name</TableHead>
                             <TableHead>Category</TableHead>
-                            <TableHead>Brand</TableHead>
+                            <TableHead>Brand</TableHead> 
+                            <TableHead>Family</TableHead>
                             <TableHead className="cursor-pointer hover:bg-gray-100" onClick={() => handleSort('sellingPrice')}>
                                 Price {sortConfig?.key === 'sellingPrice' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                             </TableHead>
@@ -935,7 +1138,12 @@ export const ProductManager = () => {
                                         )}
                                     </TableCell>
                                     <TableCell>{product.categoryName}</TableCell>
-                                    <TableCell>{product.brandName}</TableCell>
+                                    <TableCell>{product.brandName}</TableCell> 
+                                    <TableCell>
+    <span className="text-xs">
+        {product.productFamily || '-'}
+    </span>
+</TableCell>
                                     <TableCell>
                                         <div className="flex flex-col">
                                             <span className="font-bold">₹{product.sellingPrice}</span>
@@ -1003,6 +1211,14 @@ export const ProductManager = () => {
                                             <Button size="icon" variant="ghost" onClick={() => handleEdit(product)}>
                                                 <Edit className="h-4 w-4" />
                                             </Button>
+                                            <Button
+    size="icon"
+    variant="ghost"
+    title="Add Variant"
+    onClick={() => handleAddVariant(product)}
+>
+    <Plus className="h-4 w-4 text-green-600" />
+</Button>
                                             <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => handleDelete(product)}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>

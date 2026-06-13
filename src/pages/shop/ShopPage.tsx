@@ -1061,6 +1061,62 @@ const activeChips = useMemo(() => {
   filterBrands,
 ]);
 
+const groupedProducts = useMemo(() => {
+  const families = new Map<
+    string,
+    {
+      main: Product;
+      variants: Product[];
+    }
+  >();
+
+  products.forEach((product) => {
+
+
+    const key =
+      product.productFamily ||
+      product.id;
+
+    const existing =
+      families.get(key);
+
+    if (!existing) {
+      families.set(key, {
+        main: product,
+        variants: [product]
+      });
+
+      return;
+    }
+
+    existing.variants.push(product);
+
+    const currentPrice =
+      product.sellingPrice ||
+      product.price;
+
+    const existingPrice =
+      existing.main.sellingPrice ||
+      existing.main.price;
+
+    if (currentPrice < existingPrice) {
+      existing.main = product;
+    }
+  });
+
+  return Array.from(
+    families.values()
+  ).map((family) => ({
+    
+    ...family.main,
+    variants: family.variants.sort(
+      (a, b) =>
+        (a.weightInKg || 0) -
+        (b.weightInKg || 0)
+    )
+  }));
+}, [products]);
+
     const isLandingPage = viewMode === 'landing';
 
     return (
@@ -1393,22 +1449,21 @@ const activeChips = useMemo(() => {
                                             )}
                                         </div>
                                         
-                                        {products.length > 0 && (
-                                            <span className="text-xs font-semibold text-gray-500">
-                                                Showing {products.length} product{products.length !== 1 ? 's' : ''}
-                                            </span>
-                                        )}
+                                        {groupedProducts.length > 0 && (
+    <span className="text-xs font-semibold text-gray-500">
+        Showing {groupedProducts.length} product{groupedProducts.length !== 1 ? 's' : ''}
+    </span>
+)}
                                     </div>
                                    <div
-  className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 md:gap-6"
-  style={{
-    contentVisibility: 'auto',
-    containIntrinsicSize: '1px 1000px'
-  }}
+  className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 md:gap-6 overflow-visible"
 >
-                                        {products.map((product) => (
-                                            <ProductCard key={product.id} product={product} />
-                                        ))}
+                                        {groupedProducts.map((product) => (
+    <ProductCard
+      key={product.id}
+      product={product}
+    />
+  ))}
                                     </div>
                                     
                                     {/* Infinite Scroll Trigger */}
