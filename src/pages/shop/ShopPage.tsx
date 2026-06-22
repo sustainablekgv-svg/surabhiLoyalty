@@ -86,6 +86,9 @@ const ShopPage = () => {
     const [spvRange, setSpvRange] = useState<[number, number]>([0, 5000]);
     const [sortBy, setSortBy] = useState<import('@/types/shop').FilterOptions['sort']>('order');
 
+    const [openMobileProductId, setOpenMobileProductId] =
+  useState<string | null>(null);
+
     // Filter Trigger (to reset pagination)
     const [filterTrigger, setFilterTrigger] = useState(0);
    
@@ -1459,11 +1462,13 @@ const groupedProducts = useMemo(() => {
   className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 md:gap-6 overflow-visible"
 >
                                         {groupedProducts.map((product) => (
-    <ProductCard
-      key={product.id}
-      product={product}
-    />
-  ))}
+  <ProductCard
+    key={product.id}
+    product={product}
+    openMobileProductId={openMobileProductId}
+    setOpenMobileProductId={setOpenMobileProductId}
+  />
+))}
                                     </div>
                                     
                                     {/* Infinite Scroll Trigger */}

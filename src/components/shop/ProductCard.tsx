@@ -20,9 +20,20 @@ import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 interface ProductCardProps {
   product: Product;
   variant?: 'default' | 'wishlist';
+
+  openMobileProductId?: string | null;
+  setOpenMobileProductId?: (
+    id: string | null
+  ) => void;
 }
 
-const ProductCardComponent: React.FC<ProductCardProps> = ({ product, variant = 'default' }) => {
+const ProductCardComponent:
+React.FC<ProductCardProps> = ({
+  product,
+  variant = 'default',
+  openMobileProductId,
+  setOpenMobileProductId
+}) => {
   const { addToCart, toggleWishlist, isInWishlist } = useShop();
   const { user } = useAuth();
   const { settings } = useGlobalSettings();
@@ -37,8 +48,6 @@ const ProductCardComponent: React.FC<ProductCardProps> = ({ product, variant = '
   const [isPopupCollapsed, setIsPopupCollapsed] =
   React.useState(true);
 
-  const [mobilePopupVisible, setMobilePopupVisible] =
-  React.useState(false);
 
   const longPressRef =
   React.useRef<NodeJS.Timeout | null>(
@@ -59,7 +68,10 @@ const hasVariants =
   variants.length > 1;
 
 const hasManyVariants =
-  variants.length > 3;
+  variants.length > 2;
+
+  const mobilePopupVisible =
+  openMobileProductId === product.id;
 
 
 
@@ -77,12 +89,11 @@ const hasManyVariants =
   }}
 >
   <Card
-  className={cn(
-    "group relative overflow-visible border-0 bg-transparent shadow-none hover:shadow-lg transition-shadow duration-300 rounded-xl bg-white flex flex-col h-full",
-   showVariants &&
-!isPopupCollapsed &&
-"after:absolute after:inset-0 after:bg-black/40 after:rounded-xl after:z-10"
-  )}
+  className="
+    group relative overflow-visible border-0 bg-transparent
+    shadow-none hover:shadow-lg transition-shadow
+    duration-300 rounded-xl bg-white flex flex-col h-full
+  "
 >
 
     {hasVariants && showVariants && (
@@ -107,7 +118,7 @@ const hasManyVariants =
     -translate-x-1/2
     w-[75%]
     max-w-[220px]
-    py-2
+    py-1
     px-3
     bg-white
     border-2
@@ -128,15 +139,15 @@ const hasManyVariants =
 `
   )}
 >
-    <div className="mb-3 flex items-center justify-between">
-  <h4 className="text-sm font-semibold text-gray-900">
+    <div className="mb-1 flex items-center justify-between">
+  <h4 className="text-xs font-medium text-gray-900">
     Select Size
   </h4>
 
 <button
   type="button"
   className="
-    text-xl
+    text-base
     font-medium
     text-gray-500
     hover:text-black
@@ -170,17 +181,17 @@ const hasManyVariants =
     ease-in-out
     `,
     isPopupCollapsed
-      ? "max-h-0 opacity-0"
-      : hasManyVariants
-      ? "max-h-[210px] opacity-100"
-      : "max-h-[180px] opacity-100"
+  ? "max-h-0 opacity-0"
+  : hasManyVariants
+  ? "max-h-[165px] opacity-100"
+  : "max-h-[180px] opacity-100"
   )}
 >
   <div
   className={cn(
     "space-y-2 pr-1",
     hasManyVariants &&
-      "overflow-y-auto max-h-[155px]"
+"overflow-y-auto max-h-[100px]"
   )}
 >
     {variants.map((variant) => (
@@ -226,9 +237,12 @@ const hasManyVariants =
     ) {
       longPressRef.current =
         setTimeout(() => {
-          setMobilePopupVisible(true);
-          setIsPopupCollapsed(false);
-        }, 200);
+  setOpenMobileProductId?.(
+    product.id
+  );
+
+  setIsPopupCollapsed(false);
+}, 200);
     }
   }}
 
@@ -320,7 +334,7 @@ const hasManyVariants =
       isPopupCollapsed
   ? "max-h-[52px]"
   : hasManyVariants
-  ? "max-h-[210px]"
+  ? "max-h-[155px]"
   : "max-h-[190px]"
     )}
   >
@@ -328,11 +342,19 @@ const hasManyVariants =
       type="button"
       className="w-full px-4 py-3 flex justify-between items-center"
       onClick={() => {
-  if (!isPopupCollapsed) {
+ if (!isPopupCollapsed) {
   setIsPopupCollapsed(true);
+
+  setOpenMobileProductId?.(
+    null
+  );
 } else {
-    setIsPopupCollapsed(false);
-  }
+  setOpenMobileProductId?.(
+    product.id
+  );
+
+  setIsPopupCollapsed(false);
+}
 }}
     >
       <span>Size</span>
@@ -346,7 +368,7 @@ const hasManyVariants =
  <div
   className={cn(
     hasManyVariants &&
-      "max-h-[155px] overflow-y-auto"
+"max-h-[100px] overflow-y-auto"
   )}
 >
         {variants.map((variant) => (
