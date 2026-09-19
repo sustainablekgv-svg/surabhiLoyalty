@@ -194,3 +194,14 @@ export interface Origin {
     name: string;
     zone: string; // A, B, C, D, E
 }
+
+export interface Banner {
+    id: string;
+    imageUrl: string;
+    linkUrl?: string;
+    displayOrder: number;
+    isActive: boolean;
+    createdAt: any;
+    updatedAt: any;
+}
+

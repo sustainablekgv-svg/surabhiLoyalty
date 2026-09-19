@@ -70,9 +70,20 @@ export const uploadImageToR2 = async (file: File, folder: string = 'uploads'): P
         }
 
         // 2. Upload to R2 using the Signed URL
-        // Note: This determines if CORS is configured correctly on the R2 bucket.
-        // console.log("Uploading to R2...");
-        const uploadResponse = await fetch(signedUrl, {
+        // Bypass CORS in local development by using Vite proxy
+        let uploadUrl = signedUrl;
+        if (import.meta.env.DEV) {
+            try {
+                const urlObj = new URL(signedUrl);
+                if (urlObj.hostname.includes('r2.cloudflarestorage.com')) {
+                    uploadUrl = `/r2-proxy${urlObj.pathname}${urlObj.search}`;
+                }
+            } catch (e) {
+                console.error("Error formatting dev proxy URL:", e);
+            }
+        }
+
+        const uploadResponse = await fetch(uploadUrl, {
             method: 'PUT',
             headers: {
                 'Content-Type': file.type,

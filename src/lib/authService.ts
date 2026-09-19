@@ -29,7 +29,16 @@ export const getCustomerByMobile = async (
       throw new Error('User not found');
     }
 
-    const customerDoc = querySnapshot.docs[0];
+    // Sort matching customer documents to pick the doc with actual balances / active doc
+    const sortedDocs = [...querySnapshot.docs].sort((a, b) => {
+      const dataA = a.data() as CustomerType;
+      const dataB = b.data() as CustomerType;
+      const scoreA = (dataA.surabhiBalance || 0) + (dataA.cumTotal || 0) + (dataA.shippingBalance || 0);
+      const scoreB = (dataB.surabhiBalance || 0) + (dataB.cumTotal || 0) + (dataB.shippingBalance || 0);
+      return scoreB - scoreA;
+    });
+
+    const customerDoc = sortedDocs[0];
     const customerData = customerDoc.data() as CustomerType;
 
     // Compare password with stored password (encrypted or plain)

@@ -36,6 +36,7 @@ import { toast } from '@/hooks/use-toast';
 import { useDebouncedSearch } from '@/hooks/useDebounce';
 import { useActiveStores, useInvalidateQueries, useTransactions } from '@/hooks/useFirebaseQueries';
 import { useFilterPreferences } from '@/hooks/useLocalStorage';
+import { SalesReturnManagement } from './SalesReturnManagement';
 
 export const SalesManagement = () => {
   // Use cached data with React Query
@@ -310,9 +311,10 @@ export const SalesManagement = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2 max-w-xs">
+        <TabsList className="grid w-full grid-cols-3 max-w-sm sm:max-w-md">
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
           <TabsTrigger value="recharges">Recharges</TabsTrigger>
+          <TabsTrigger value="sales-return">Sales Return</TabsTrigger>
         </TabsList>
 
         <TabsContent value="transactions">
@@ -839,6 +841,10 @@ export const SalesManagement = () => {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="sales-return" className="mt-0">
+          <SalesReturnManagement />
         </TabsContent>
       </Tabs>
     </div>

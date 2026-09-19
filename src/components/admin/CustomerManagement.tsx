@@ -334,6 +334,7 @@ export const CustomerManagement = () => {
       district: customer.district || 'N/A',
       walletBalance: customer.walletBalance,
       surabhiBalance: customer.surabhiBalance,
+      surbhiTotal: customer.surbhiTotal ?? 0,
       sevaTotal: customer.sevaTotal,
       shippingBalance: customer.shippingBalance || 0,
       walletRechargeDone: customer.walletRechargeDone,
@@ -349,6 +350,7 @@ export const CustomerManagement = () => {
     const isNumericField =
       name === 'walletBalance' ||
       name === 'surabhiBalance' ||
+      name === 'surbhiTotal' ||
       name === 'sevaTotal' ||
       name === 'shippingBalance';
 
@@ -411,6 +413,7 @@ export const CustomerManagement = () => {
         district: editedData.district,
         walletBalance: editedData.walletBalance,
         surabhiBalance: editedData.surabhiBalance,
+        surbhiTotal: editedData.surbhiTotal,
         sevaTotal: editedData.sevaTotal,
         shippingBalance: increment(shippingAdjustment),
         walletRechargeDone: editedData.walletRechargeDone,
@@ -730,15 +733,15 @@ export const CustomerManagement = () => {
 
       {/* Edit Customer Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-2">
             <DialogTitle>Edit Customer Details</DialogTitle>
             <DialogDescription>
               Make changes to customer profile here. Click save when you're done.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-2 xs:gap-3 sm:gap-4 py-2 xs:py-3 sm:py-4">
+          <div className="grid gap-2 xs:gap-3 sm:gap-4 py-2 px-6 overflow-y-auto flex-1">
             <div className="grid grid-cols-4 items-center gap-2 xs:gap-3 sm:gap-4">
               <Label htmlFor="customerName" className="text-right text-xs xs:text-sm">
                 Full Name
@@ -872,6 +875,22 @@ export const CustomerManagement = () => {
             </div>
 
             <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="surbhiTotal" className="text-right">
+                Lifetime Surabhi
+              </Label>
+              <Input
+                id="surbhiTotal"
+                name="surbhiTotal"
+                type="number"
+                step="any"
+                value={editedData.surbhiTotal ?? 0}
+                onChange={handleInputChange}
+                className="col-span-3"
+                placeholder="Lifetime Surabhi Value"
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="sevaTotal" className="text-right">
                 Seva Coins
               </Label>
@@ -946,7 +965,7 @@ export const CustomerManagement = () => {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="px-6 py-4 border-t bg-slate-50/50">
             <Button
               variant="outline"
               onClick={() => setIsEditDialogOpen(false)}

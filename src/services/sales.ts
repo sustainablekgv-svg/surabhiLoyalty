@@ -308,6 +308,7 @@ export const processSaleTransaction = async (params: {
 
     const updateData: any = {
         surabhiBalance: increment(saleCalculation.surabhiCoinsEarned),
+        surbhiTotal: increment(saleCalculation.surabhiCoinsEarned),
         sevaBalance: increment(sevaContribution),
         sevaTotal: increment(sevaContribution),
         cumTotal: newCumTotal,

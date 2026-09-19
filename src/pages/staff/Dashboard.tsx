@@ -3,6 +3,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import {
     History,
     Home,
+    RotateCcw,
     ShoppingCart,
     Store,
     TrendingUp,
@@ -13,6 +14,8 @@ import {
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+
+import { SalesReturnManagement } from '@/components/admin/SalesReturnManagement';
 
 import { SalesManagement } from '@/components/staff/SalesManagement';
 import StoreAccounts from '@/components/staff/storeAccounts';
@@ -153,7 +156,7 @@ const StoreDashboard = () => {
             <div className="mb-4 sm:mb-6 md:mb-8 overflow-x-hidden overflow-y-hidden">
               <TabsList
                 className={`grid w-full bg-gray-100 p-0.5 rounded-lg overflow-y-hidden ${
-                  walletEnabled ? 'grid-cols-6' : 'grid-cols-5'
+                  walletEnabled ? 'grid-cols-7' : 'grid-cols-6'
                 }`}
               >
                 {[
@@ -161,6 +164,7 @@ const StoreDashboard = () => {
                   { value: 'register', icon: UserPlus, label: 'Register' },
                   { value: 'recharge', icon: Wallet, label: 'Wallet' },
                   { value: 'sales', icon: ShoppingCart, label: 'Sales' },
+                  { value: 'sales-return', icon: RotateCcw, label: 'Returns' },
                   { value: 'transactions', icon: History, label: 'Transactions' },
                   { value: 'accounts', icon: WalletCards, label: 'Accounts' },
                   // { value: 'tpin', icon: Shield, label: 'TPIN' },
@@ -210,6 +214,13 @@ const StoreDashboard = () => {
 
               <TabsContent value="sales" className="pt-2">
                 <SalesManagement
+                  storeLocation={user?.storeLocation || ''}
+                  demoStore={user?.demoStore || false}
+                />
+              </TabsContent>
+
+              <TabsContent value="sales-return" className="pt-2">
+                <SalesReturnManagement
                   storeLocation={user?.storeLocation || ''}
                   demoStore={user?.demoStore || false}
                 />

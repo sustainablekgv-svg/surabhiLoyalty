@@ -186,62 +186,46 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [initializeAuth, isInitialized]);
 
   // Real-time listener for user data
-useEffect(() => {
-
-  let unsubscribeDoc: (() => void) | undefined;
+  useEffect(() => {
+    let unsubscribeDoc: (() => void) | undefined;
 
     if (user && isInitialized) {
       const collectionName = user.role === 'customer' ? 'Customers' : 'staff';
       const userDocId = user.id;
 
-    if (userDocId) {
+      if (userDocId) {
+        unsubscribeDoc = onSnapshot(
+          doc(db, collectionName, userDocId),
+          (snapshot) => {
+            if (snapshot.exists()) {
+              const updatedData = {
+                ...snapshot.data(),
+                id: snapshot.id,
+                role: user.role,
+              } as User;
 
-      unsubscribeDoc = onSnapshot(
-        doc(db, collectionName, userDocId),
-
-        (snapshot) => {
-
-          if (snapshot.exists()) {
-
-            const updatedData = {
-              ...snapshot.data(),
-              id: snapshot.id,
-              role: user.role,
-            } as User;
-
-            setUser(prevUser => {
-
-              if (
-                JSON.stringify(prevUser) !==
-                JSON.stringify(updatedData)
-              ) {
-
-                storageUtils.setUser(updatedData);
-
-                return updatedData;
-              }
-
-              return prevUser;
-            });
+              setUser(prevUser => {
+                if (JSON.stringify(prevUser) !== JSON.stringify(updatedData)) {
+                  storageUtils.setUser(updatedData);
+                  return updatedData;
+                }
+                return prevUser;
+              });
+            }
+          },
+          (error) => {
+            console.error('Realtime listener error:', error);
           }
-        },
-
-        (error) => {
-          console.error('Realtime listener error:', error);
-        }
-      );
-    }
-  }
-
-  return () => {
-
-    if (unsubscribeDoc) {
-      unsubscribeDoc();
+        );
+      }
     }
 
-  };
-
-}, [user?.id, user?.role, isInitialized]);
+    return () => {
+      if (unsubscribeDoc) {
+        unsubscribeDoc();
+      }
+    };
+  }, [user?.id, user?.role, isInitialized]);
 
   const updateActivity = useCallback(() => {
     if (user) {

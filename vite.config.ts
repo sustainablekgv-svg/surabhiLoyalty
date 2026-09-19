@@ -9,6 +9,14 @@ export default defineConfig({
   server: {
     host: true,
     port: 5174,
+    allowedHosts: true,
+    proxy: {
+      '^/r2-proxy/.*': {
+        target: 'https://surabhi.8a5712560c3eaaf1437ee5879d9064c6.r2.cloudflarestorage.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/r2-proxy/, ''),
+      },
+    },
   },
   resolve: {
     alias: {

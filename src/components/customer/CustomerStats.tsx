@@ -47,50 +47,86 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const userMobile = (user as any)?.customerMobile;
+
   useEffect(() => {
-    if (!userId) return;
+    if (!userId && !userMobile) return;
 
-    setLoading(true);
-    const docRef = doc(db, 'Customers', userId);
+    let unsubscribe: (() => void) | undefined;
 
-    const unsubscribe = onSnapshot(
-      docRef,
-      (docSnap) => {
-        if (docSnap.exists()) {
-          const customer = { id: docSnap.id, ...docSnap.data() } as CustomerType;
-          setCustomerData(customer);
-
-          // Fetch activities for this customer
-          if (customer.customerMobile) {
-            const activitiesQuery = query(
-              collection(db, 'Activity'),
-              where('customerMobile', '==', customer.customerMobile),
-              orderBy('createdAt', 'desc'),
-              limit(3)
-            );
-
-            getDocs(activitiesQuery).then((querySnapshot) => {
-              const activitiesData = querySnapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-              })) as ActivityType[];
-              setActivities(activitiesData);
+    if (userMobile) {
+      const q = query(collection(db, 'Customers'), where('customerMobile', '==', userMobile));
+      unsubscribe = onSnapshot(
+        q,
+        (snap) => {
+          if (!snap.empty) {
+            const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as CustomerType));
+            docs.sort((a, b) => {
+              const scoreA = (Number(a.surabhiBalance) || 0) + (Number(a.cumTotal) || 0) + (Number(a.shippingBalance) || 0);
+              const scoreB = (Number(b.surabhiBalance) || 0) + (Number(b.cumTotal) || 0) + (Number(b.shippingBalance) || 0);
+              return scoreB - scoreA;
             });
+            setCustomerData(docs[0]);
+            setError(null);
+          } else {
+            setError('No customer data found');
           }
-        } else {
-          setError('No customer data found');
+          setLoading(false);
+        },
+        (err) => {
+          console.error('Error listening to customer by mobile:', err);
+          setError('Failed to fetch customer data');
+          setLoading(false);
         }
-        setLoading(false);
-      },
-      (err) => {
-        // console.error('Error listening to customer data:', err);
-        setError('Failed to fetch customer data');
-        setLoading(false);
-      }
+      );
+    } else if (userId) {
+      const docRef = doc(db, 'Customers', userId);
+      unsubscribe = onSnapshot(
+        docRef,
+        (docSnap) => {
+          if (docSnap.exists()) {
+            setCustomerData({ id: docSnap.id, ...docSnap.data() } as CustomerType);
+            setError(null);
+          } else {
+            setError('No customer data found');
+          }
+          setLoading(false);
+        },
+        (err) => {
+          console.error('Error listening to customer by ID:', err);
+          setError('Failed to fetch customer data');
+          setLoading(false);
+        }
+      );
+    }
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [userId, userMobile]);
+
+  useEffect(() => {
+    if (!customerData?.customerMobile) return;
+
+    const activitiesQuery = query(
+      collection(db, 'Activity'),
+      where('customerMobile', '==', customerData.customerMobile),
+      orderBy('createdAt', 'desc'),
+      limit(3)
     );
 
-    return () => unsubscribe();
-  }, [userId]);
+    getDocs(activitiesQuery)
+      .then((querySnapshot) => {
+        const activitiesData = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as ActivityType[];
+        setActivities(activitiesData);
+      })
+      .catch((err) => {
+        console.error('Error fetching activities:', err);
+      });
+  }, [customerData?.customerMobile]);
 
   const handleRefreshing = async () => {
     if (!customerData?.customerMobile) return;
@@ -200,75 +236,42 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
     }
   };
 
+  const getVal = (val: any) => {
+    const n = Number(val);
+    return (Number.isFinite(n) ? n : 0).toFixed(2);
+  };
+
   const stats = [
     {
-  title: 'Lifetime Surabhi Value',
-  value: `₹${(customerData.surbhiTotal || 0).toFixed(2)}`,
-  description: 'Total coins earned (₹ value)',
+      title: 'Lifetime Surabhi Value',
+      value: `₹${getVal(customerData.surbhiTotal)}`,
+      description: 'Total coins earned (₹ value)',
       icon: Wallet,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
       borderColor: 'border-purple-200',
     },
     {
-       title: 'Surabhi Balance',
-  value: `₹${(customerData.surabhiBalance || 0).toFixed(2)}`,
+      title: 'Surabhi Balance',
+      value: `₹${getVal(customerData.surabhiBalance)}`,
       description: 'Your available balance',
       icon: TrendingUp,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
       borderColor: 'border-blue-200',
     },
-
-    // {
-    //   title: 'Referral Coins Earned',
-    //   value: `₹${(customerData.surabhiReferral || 0).toFixed(2)}`,
-    //   description: 'Coins earned via referrals',
-    //   icon: Target,
-    //   color: 'text-orange-600',
-    //   bgColor: 'bg-orange-50',
-    //   borderColor: 'border-orange-200',
-    // },
-    // {
-    //   title: 'My Surabhi Rating',
-    //   value: (customerData.surabhiBalance || 0).toString(),
-    //   description: 'Your customer rating',
-    //   icon: Heart,
-    //   color: 'text-red-600',
-    //   bgColor: 'bg-red-50',
-    //   borderColor: 'border-red-200',
-    // },
-    // {
-    //   title: 'Total Referrals',
-    //   value: totalReferrals.toString(),
-    //   description: 'Friends you referred',
-    //   icon: Gift,
-    //   color: 'text-green-600',
-    //   bgColor: 'bg-green-50',
-    //   borderColor: 'border-green-200',
-    // },
     {
-title: 'Shipping Credit Balance',
-value: `₹${(customerData.shippingBalance || 0).toFixed(2)}`,
-description: 'Available shipping credits',
-icon: Truck,
-color: 'text-purple-600',
-bgColor: 'bg-purple-50',
-borderColor: 'border-purple-200',
-},
-
-    // {
-    //   title: 'Lifetime Shipping Credits',
-    //   value: `₹${(customerData.shippingTotal || 0).toFixed(2)}`,
-    //   description: 'Total credits earned',
-    //   icon: TrendingUp,
-    //   color: 'text-emerald-600',
-    //   bgColor: 'bg-emerald-50',
-    //   borderColor: 'border-emerald-200',
-    // },
+      title: 'Shipping Credit Balance',
+      value: `₹${getVal(customerData.shippingBalance)}`,
+      description: 'Available shipping credits',
+      icon: Truck,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+      borderColor: 'border-purple-200',
+    },
     {
       title: 'Lifetime Seva Balance',
-      value: `₹${(customerData.sevaTotal || 0).toFixed(2)}`,
+      value: `₹${getVal(customerData.sevaTotal)}`,
       description: 'Total Seva Contributions',
       icon: Heart,
       color: 'text-red-600',
@@ -277,7 +280,7 @@ borderColor: 'border-purple-200',
     },
     {
       title: 'Lifetime Amount Spent',
-      value: `₹${(customerData.cumTotal || 0).toFixed(2)}`,
+      value: `₹${getVal(customerData.cumTotal)}`,
       description: 'Total sales value since joining',
       icon: ShoppingCart,
       color: 'text-emerald-600',
@@ -286,7 +289,7 @@ borderColor: 'border-purple-200',
     },
     {
       title: 'Lifetime Target Spend',
-      value: `₹${(customerData.cummulativeTarget || 0).toFixed(2)}`,
+      value: `₹${getVal(customerData.cummulativeTarget)}`,
       description: 'Quarterly spending target',
       icon: Target,
       color: 'text-rose-600',

@@ -29,6 +29,7 @@ import { Brand, Category, Product } from '@/types/shop';
 import SEO from '@/components/SEO';
 import { CoinsFrozenPopup } from '@/components/shop/CoinsFrozenPopup';
 import { useCoinsPopup } from '@/hooks/useCoinsPopup';
+import { BannerCarousel } from '@/components/shop/BannerCarousel';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -216,6 +217,9 @@ const LandingPage = () => {
           </div>
         </div>
       </header>
+
+      {/* Banners */}
+      <BannerCarousel />
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-12 sm:py-20">
