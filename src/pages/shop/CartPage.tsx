@@ -1,415 +1,479 @@
 import { ShopLayout } from '@/components/shop/ShopLayout';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useShop } from '@/hooks/shop-context';
 import { isValidImageUrl } from '@/lib/image-utils';
-import { ArrowLeft, Minus, Plus, Trash2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { getBrands } from '@/services/shop';
 import { getShippingConfig } from '@/services/shipping';
+import { getBrands } from '@/services/shop';
+import {
+  ArrowRight,
+  ChevronRight,
+  Info,
+  MapPin,
+  Minus,
+  Package,
+  Plus,
+  RotateCcw,
+  Scale,
+  ShieldCheck,
+  ShoppingBag,
+  ShoppingCart,
+  Trash2,
+  Truck,
+} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 
 const CartPage = () => {
   const { cart, removeFromCart, updateQuantity, cartTotal } = useShop();
   const navigate = useNavigate();
   const [brandsMap, setBrandsMap] = useState<Record<string, any>>({});
   const [shippingRates, setShippingRates] = useState<any>(null);
- useEffect(() => {
-  const loadShippingConfig = async () => {
-    try {
-      const config = await getShippingConfig();
-      setShippingRates(config);
-    } catch (error) {
-      console.error("Failed to load shipping config", error);
-    }
+
+  useEffect(() => {
+    const loadShippingConfig = async () => {
+      try {
+        const config = await getShippingConfig();
+        setShippingRates(config);
+      } catch (error) {
+        console.error('Failed to load shipping config', error);
+      }
+    };
+
+    loadShippingConfig();
+  }, []);
+
+  const calculateShippingCharge = (weight: number, rates: any) => {
+    if (!rates) return 0;
+    const table = rates.rateTable?.A;
+    const extra = rates.extraPerKg?.A;
+    if (!table) return 0;
+
+    if (weight <= 0.5) return table[0];
+    if (weight <= 1) return table[1];
+    if (weight <= 2) return table[2];
+    if (weight <= 3) return table[3];
+    if (weight <= 5) return table[4];
+
+    return table[4] + Math.ceil(weight - 5) * (extra || 0);
   };
 
-  loadShippingConfig();
-}, []);
-const calculateShippingCharge = (
-  weight: number,
-  rates: any
-) => {
-  if (!rates) return 0;
-
-  const table = rates.rateTable?.A;
-  const extra = rates.extraPerKg?.A;
-
-  if (!table) return 0;
-
-  if (weight <= 0.5) return table[0];
-  if (weight <= 1) return table[1];
-  if (weight <= 2) return table[2];
-  if (weight <= 3) return table[3];
-  if (weight <= 5) return table[4];
-
-  return (
-    table[4] +
-    Math.ceil(weight - 5) * extra
-  );
-};
   useEffect(() => {
     const loadBrands = async () => {
       try {
         const brands = await getBrands();
-
         const map: Record<string, any> = {};
-
-        brands.forEach((brand) => {
+        brands.forEach(brand => {
           map[brand.id] = brand;
         });
-
         setBrandsMap(map);
       } catch (error) {
-        console.error("Error loading brands", error);
+        console.error('Error loading brands', error);
       }
     };
 
     loadBrands();
   }, []);
+
   const groupedBrands = cart.reduce((acc, item) => {
-    
-  const brand = item.brandName || 'Other Brand';
+    const brand = item.brandName || 'Other Brand';
+    if (!acc[brand]) {
+      acc[brand] = [];
+    }
+    acc[brand].push(item);
+    return acc;
+  }, {} as Record<string, typeof cart>);
 
-  if (!acc[brand]) {
-    acc[brand] = [];
-  }
-
-  acc[brand].push(item);
-
-  return acc;
-}, {} as Record<string, typeof cart>);
-console.log("shippingRates", shippingRates);
-const totalShipping = Object.values(groupedBrands).reduce(
-  (total, products) => {
+  const totalShipping = Object.values(groupedBrands).reduce((total, products) => {
     const totalWeight = products.reduce(
-      (sum, item) =>
-        sum +
-        ((Number(item.weightInKg || item.weight || 0) || 0) *
-          item.quantity),
+      (sum, item) => sum + (Number(item.weightInKg || item.weight || 0) || 0) * item.quantity,
       0
     );
+    const deliveryCharge = calculateShippingCharge(totalWeight, shippingRates);
+    return total + deliveryCharge;
+  }, 0);
 
-    const deliveryCharge = calculateShippingCharge(
-  totalWeight,
-  shippingRates
-);
+  const totalSpv = cart.reduce(
+    (sum, item) => sum + (Number(item.spv) || 0) * item.quantity,
+    0
+  );
 
-return total + deliveryCharge;
-  },
-  0
-);
-
-const grandTotal = cartTotal + totalShipping;
+  const grandTotal = cartTotal + totalShipping;
+  const brandCount = Object.keys(groupedBrands).length;
 
   return (
     <ShopLayout title="Shopping Cart" onBack={() => navigate('/shop')}>
-    <div>{cart.length > 0 && (
-  <div className="mb-6">
-  <div className="flex justify-center">
-    <div className="inline-flex flex-col items-center rounded-2xl bg-gradient-to-r from-purple-400 via-violet-400 to-orange-400 px-8 py-6 text-white shadow-lg text-center">
-
-      <h2 className="text-xl md:text-3xl font-bold mb-4">
-        🚚 Your Purchase Supports {Object.keys(groupedBrands).length} brands to become Sustainable
-      </h2>
-      <p className="inline-flex items-center rounded-full bg-yellow-400 text-slate-900 px-5 py-2 text-[16px] md:text-[18px] font-bold shadow-lg mb-4">
-  🚚 Total of {Object.keys(groupedBrands).length} shipments will be delivered to your location.
-</p>
-      
-<p className="text-[14px] text-white/80 mt-2 max-w-2xl leading-relaxed">
-  Delivery charges shown are estimated. Final shipping charges will be calculated after packing based on actual weight, and any difference will be automatically adjusted in your shipping wallet as a credit or debit.
-</p>
-    </div>
-  </div>
-</div>
-)}</div>
-      <div className="max-w-4xl mx-auto py-4">
+      <div className="max-w-6xl mx-auto px-2 sm:px-4 lg:px-8 py-3 md:py-6">
         {cart.length === 0 ? (
-          <div className="text-center py-20">
-            <h2 className="text-2xl font-semibold mb-4">Your cart is empty</h2>
-            <Button onClick={() => navigate('/shop')}>Continue Shopping</Button>
-            
+          <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+            <div className="h-20 w-20 rounded-full bg-white border border-slate-200 flex items-center justify-center mb-6 shadow-sm">
+              <ShoppingCart className="h-10 w-10 text-slate-400" />
+            </div>
+            <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
+              Your cart is empty
+            </h2>
+            <p className="text-slate-500 mb-8 max-w-md text-sm md:text-base leading-relaxed">
+              Looks like you haven't added anything to your cart yet. Discover organic, farm-fresh,
+              and sustainable products in our shop.
+            </p>
+            <Button
+              size="lg"
+              onClick={() => navigate('/shop')}
+              className="rounded-full px-8 bg-slate-900 hover:bg-slate-800 text-white font-semibold shadow-md"
+            >
+              <ShoppingBag className="h-4 w-4 mr-2" />
+              Explore Products
+            </Button>
           </div>
         ) : (
           <>
-          
-          <div className="grid gap-8 md:grid-cols-3">
-            <div className="md:col-span-2 space-y-4">
-              {Object.entries(groupedBrands).map(([brandName, products]) => (
-  <div
-    key={brandName}
-    className="overflow-hidden rounded-2xl border bg-white shadow-md"
-  >
-    {/* Brand Ribbon */}
-
-  {(() => {
-    const totalWeight = products.reduce(
-      (sum, item) =>
-        sum +
-        ((Number(item.weightInKg || item.weight || 0) || 0) *
-          item.quantity),
-      0
-    );
-    
-    const totalProductAmount = products.reduce(
-  (total, item) => total + (item.price * item.quantity),
-  0
-);
-
-    const deliveryCharge = calculateShippingCharge(
-  totalWeight,
-  shippingRates
-);
-  
-
-    return (
-      <div className="rounded-2xl overflow-hidden shadow-sm border border-slate-200">
-  <div className="rounded-2xl p-5 border border-white/30 shadow-lg bg-gradient-to-r from-purple-400 via-pink-300 to-orange-300 backdrop-blur-sm">
-
-    <div className="text-xs uppercase tracking-wider text-white-500 font-semibold mb-4 bg-orange">
-      Sold & Shipped By
-    </div>
-
-    <div className="flex items-start gap-4">
-
-      <div className="h-14 w-14 w-min-[56px] rounded-xl bg-white border overflow-hidden flex items-center justify-center shrink-0">
-
-  {brandsMap[products[0]?.brandId]?.logo ? (
-  <img
-    src={brandsMap[products[0].brandId].logo}
-    alt={brandName}
-    className="h-full w-full object-contain p-1"
-  />
-) : (
-  <span className="text-lg font-bold text-gray-400">
-    {brandName?.charAt(0)}
-  </span>
-)}
-
-</div>
-
-      <div className="flex-1">
-
-        <h3 className="text-lg md:text-xl font-bold text-slate-900">
-          {brandName}
-        </h3>
-
-        <div className="mt-1 flex items-center gap-2 text-grey">
-          <span>📍</span>
-
-          <span>
-            {(products[0]?.placeOfOrigin || []).join(', ') || 'India'}
-          </span>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-
-          <span className="inline-flex items-center rounded-full bg-purple-50 text-purple-700 px-3 py-1 text-sm font-medium">
-            📦 {products.length} {products.length === 1 ? 'Product' : 'Products'}
-          </span>
-           <span className="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 px-3 py-1 text-sm font-medium">
-  💰 ₹{totalProductAmount.toLocaleString()}
-</span>
-
-          <span className="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-3 py-1 text-sm font-medium">
-            ⚖️ {totalWeight.toFixed(2)} Kg
-          </span>
-
-          <span className="inline-flex items-center rounded-full bg-green-50 text-green-700 px-3 py-1 text-sm font-medium">
-            🚚 ₹{deliveryCharge} Delivery
-          </span>
-
-        </div>
-
-      </div>
-
-    </div>
-
-  </div>
-  </div>
-);
-  })()}
-
-
-    {/* Products */}
-    <div className="p-3 space-y-3">
-      {products.map((item) => (
-        <div
-          key={item.productId}
-          className="flex gap-3 md:gap-4 p-3 md:p-4 bg-white rounded-lg border relative"
-        >
-          <div
-            className="h-20 w-20 md:h-24 md:w-24 bg-white rounded-md overflow-hidden flex-shrink-0 cursor-pointer flex items-center justify-center border"
-            onClick={() =>
-              navigate(`/shop/product/${item.slug || item.productId}`, {
-                state: { from: '/shop/cart' },
-              })
-            }
-          >
-            {isValidImageUrl(item.image) ? (
-              <img
-                src={item.image}
-                alt={item.name}
-                className="max-h-full max-w-full object-contain"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-gray-400 text-xs">
-                No Img
-              </div>
-            )}
-          </div>
-
-          <div className="flex-1 flex flex-col justify-between">
-            <div className="pr-8">
-              <h3
-                className="font-medium text-base md:text-lg cursor-pointer hover:underline line-clamp-2"
-                onClick={() =>
-                  navigate(`/shop/product/${item.slug || item.productId}`)
-                }
-              >
-                {item.name}- {item.productQuantity}
-      {item.unitsOfMeasure}
-      
-      
-              </h3>
-
-              <div className="flex flex-wrap gap-2 mt-1">
-               
-                  {(item.weightInKg || item.weight) && (
-  <span className="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
-    ⚖️ {Number(item.weightInKg || item.weight).toFixed(2)} Kg × {item.quantity}
-    = {(Number(item.weightInKg || item.weight) * item.quantity).toFixed(2)} Kg
-  </span>
-)}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between mt-2">
-              <div className="flex flex-col gap-1">
-
-  
-
-
-
-  {/* Total Price */}
-  <div className="flex items-center gap-2">
-    <span className="font-bold text-2xl">
-      ₹{(item.price * item.quantity).toFixed(2)}
-    </span>
-
-    {item.originalPrice &&
-      item.originalPrice > item.price && (
-        <span className="text-xs text-gray-400 line-through">
-          ₹{item.originalPrice}
-        </span>
-      )}
-  </div>
-
-  {/* Price Calculation */}
-  <div className="text-[11px] text-slate-500">
-    ₹{item.price} × {item.quantity}
-    = ₹{(item.price * item.quantity).toFixed(2)}
-  </div>
-
-  {/* SPV */}
-  {item.spv > 0 && (
-    <div className="text-[10px] text-purple-600 font-semibold bg-purple-50 px-1.5 py-0.5 rounded-full w-fit">
-      SPV: {(item.spv * item.quantity).toFixed(0)}
-    </div>
-  )}
-
-</div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-7 w-7 md:h-8 md:w-8"
-                  onClick={() =>
-                    updateQuantity(
-                      item.productId,
-                      item.quantity - 1
-                    )
-                  }
-                >
-                  <Minus className="h-3 w-3" />
-                </Button>
-
-                <span className="w-6 md:w-8 text-center text-sm">
-                  {item.quantity}
-                </span>
-
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-7 w-7 md:h-8 md:w-8"
-                  onClick={() =>
-                    updateQuantity(
-                      item.productId,
-                      item.quantity + 1
-                    )
-                  }
-                  disabled={item.quantity >= item.maxStock}
-                >
-                  <Plus className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-red-500 hover:text-red-600 hover:bg-red-50 absolute top-2 right-2 md:static"
-            onClick={() =>
-              removeFromCart(item.productId)
-            }
-          >
-            <Trash2 className="h-4 w-4 md:h-5 md:w-5" />
-          </Button>
-        </div>
-      ))}
-    </div>
-  </div>
-))}
-            </div>
-            
-            <div className="md:col-span-1">
-                <div className="bg-white p-6 rounded-lg shadow-sm border sticky top-24">
-                    <h3 className="text-lg font-semibold mb-4">Order Summary</h3>
-                    <div className="space-y-3 mb-4">
-
-  <div className="flex justify-between">
-    <span className="text-gray-600">Subtotal</span>
-    <span>₹{cartTotal}</span>
-  </div>
-
-  <div className="flex justify-between">
-    <span className="text-gray-600">
-      Shipping ({Object.keys(groupedBrands).length} Brands)
-    </span>
-    <span className="text-green-600 font-medium">
-      ₹{totalShipping}
-    </span>
-  </div>
-
-</div>
-
-<div className="border-t pt-4 mb-6">
-  <div className="flex justify-between font-bold text-xl">
-    <span>Total</span>
-    <span>₹{grandTotal}</span>
-  </div>
-</div>
-                    <div className="border-t pt-4 mb-6">
-                        <div className="flex justify-between font-bold text-lg">
-                            <span>Total</span>
-                            <span>₹{grandTotal}</span>
-                        </div>
-                    </div>
-                    <Button className="w-full text-lg py-6" onClick={() => navigate('/shop/checkout')}>Proceed to Checkout</Button>
+            {/* Sustainability & Multi-brand Delivery Card */}
+            <div className="mb-6 rounded-2xl border border-emerald-100 bg-gradient-to-r from-emerald-50/70 via-white to-amber-50/50 p-5 md:p-6 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="h-11 w-11 rounded-xl bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Truck className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                      Sustainable Direct-from-Farm Delivery
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl leading-relaxed">
+                      Your purchase directly supports{' '}
+                      <span className="font-semibold text-emerald-800">
+                        {brandCount} artisanal brand{brandCount > 1 ? 's' : ''}
+                      </span>
+                      . Items are shipped directly from origin farms and makers for peak freshness.
+                    </p>
+                  </div>
                 </div>
+
+                <div className="inline-flex items-center gap-2 self-start sm:self-auto rounded-full bg-white border border-emerald-200/80 px-3.5 py-1.5 shadow-xs text-xs font-semibold text-slate-800 shrink-0">
+                  <Package className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>
+                    {brandCount} direct shipment{brandCount > 1 ? 's' : ''}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-3.5 border-t border-emerald-100/70 flex items-center gap-2 text-[11px] sm:text-xs text-slate-500">
+                <Info className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                <span>
+                  Delivery charges are estimated based on package weight. Final weight adjustments are
+                  automatically credited or debited to your shipping wallet upon dispatch.
+                </span>
+              </div>
             </div>
-          </div>
+
+            {/* Layout Grid: 2/3 Cart Items + 1/3 Summary */}
+            <div className="grid gap-6 lg:grid-cols-3 items-start">
+              {/* Left Column: Grouped by Brand */}
+              <div className="lg:col-span-2 space-y-6">
+                {Object.entries(groupedBrands).map(([brandName, products]) => {
+                  const totalWeight = products.reduce(
+                    (sum, item) =>
+                      sum + (Number(item.weightInKg || item.weight || 0) || 0) * item.quantity,
+                    0
+                  );
+
+                  const totalProductAmount = products.reduce(
+                    (total, item) => total + item.price * item.quantity,
+                    0
+                  );
+
+                  const deliveryCharge = calculateShippingCharge(totalWeight, shippingRates);
+                  const brandLogo = brandsMap[products[0]?.brandId]?.logo;
+                  const originPlace = (products[0]?.placeOfOrigin || []).join(', ') || 'India';
+
+                  return (
+                    <Card
+                      key={brandName}
+                      className="border border-slate-200 bg-white rounded-xl shadow-xs overflow-hidden"
+                    >
+                      {/* Brand Group Header */}
+                      <CardHeader className="bg-slate-50/80 border-b border-slate-100 p-4 sm:p-5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-3.5">
+                            <div className="h-12 w-12 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
+                              {brandLogo ? (
+                                <img
+                                  src={brandLogo}
+                                  alt={brandName}
+                                  className="h-full w-full object-contain"
+                                />
+                              ) : (
+                                <span className="text-base font-bold text-slate-500">
+                                  {brandName?.charAt(0)}
+                                </span>
+                              )}
+                            </div>
+
+                            <div>
+                              <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+                                Sold & Shipped By
+                              </div>
+                              <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                                {brandName}
+                              </h3>
+                              <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5">
+                                <MapPin className="h-3 w-3 text-slate-400" />
+                                <span>{originPlace}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Brand Meta Tags */}
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                            <Badge
+                              variant="outline"
+                              className="bg-white text-slate-700 border-slate-200 font-medium text-[11px] py-0.5"
+                            >
+                              <Package className="h-3 w-3 mr-1 text-slate-400" />
+                              {products.length} {products.length === 1 ? 'item' : 'items'}
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className="bg-slate-50 text-slate-700 border-slate-200 font-medium text-[11px] py-0.5"
+                            >
+                              <Scale className="h-3 w-3 mr-1 text-slate-500" />
+                              {totalWeight.toFixed(2)} Kg
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className="bg-emerald-50 text-emerald-700 border-emerald-200/60 font-semibold text-[11px] py-0.5"
+                            >
+                              <Truck className="h-3 w-3 mr-1 text-emerald-600" />₹{deliveryCharge}{' '}
+                              delivery
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className="bg-emerald-50/50 text-emerald-800 border-emerald-200/60 font-bold text-[11px] py-0.5"
+                            >
+                              ₹{totalProductAmount.toLocaleString()}
+                            </Badge>
+                          </div>
+                        </div>
+                      </CardHeader>
+
+                      {/* Product Items List */}
+                      <CardContent className="p-0 divide-y divide-slate-100">
+                        {products.map(item => {
+                          const itemWeight = Number(item.weightInKg || item.weight || 0);
+                          const totalLineWeight = itemWeight * item.quantity;
+
+                          return (
+                            <div
+                              key={item.productId}
+                              className="p-4 sm:p-5 flex gap-3.5 sm:gap-4 items-start sm:items-center justify-between hover:bg-slate-50/50 transition-colors"
+                            >
+                              {/* Product Thumbnail */}
+                              <div
+                                className="h-20 w-20 sm:h-22 sm:w-22 rounded-xl bg-slate-50 border border-slate-200/80 p-1 flex items-center justify-center shrink-0 cursor-pointer overflow-hidden group"
+                                onClick={() =>
+                                  navigate(`/shop/product/${item.slug || item.productId}`, {
+                                    state: { from: '/shop/cart' },
+                                  })
+                                }
+                              >
+                                {isValidImageUrl(item.image) ? (
+                                  <img
+                                    src={item.image}
+                                    alt={item.name}
+                                    className="h-full w-full object-contain transition-transform duration-200 group-hover:scale-105"
+                                  />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center text-slate-400 text-xs font-medium">
+                                    No Image
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Product Details */}
+                              <div className="flex-1 min-w-0 pr-2">
+                                <h4
+                                  className="font-semibold text-sm sm:text-base text-slate-900 cursor-pointer hover:text-emerald-700 transition-colors line-clamp-2 leading-snug"
+                                  onClick={() =>
+                                    navigate(`/shop/product/${item.slug || item.productId}`, {
+                                      state: { from: '/shop/cart' },
+                                    })
+                                  }
+                                >
+                                  {item.name}
+                                  {item.productQuantity && (
+                                    <span className="text-slate-500 font-normal">
+                                      {' '}
+                                      — {item.productQuantity} {item.unitsOfMeasure || ''}
+                                    </span>
+                                  )}
+                                </h4>
+
+                                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                  {itemWeight > 0 && (
+                                    <span className="inline-flex items-center text-[11px] font-medium text-slate-500 bg-slate-100 rounded-md px-2 py-0.5">
+                                      <Scale className="h-3 w-3 mr-1 text-slate-400" />
+                                      {itemWeight.toFixed(2)} Kg × {item.quantity} ={' '}
+                                      {totalLineWeight.toFixed(2)} Kg
+                                    </span>
+                                  )}
+
+                                  {item.spv > 0 && (
+                                    <span className="inline-flex items-center text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/60 rounded-md px-2 py-0.5">
+                                      SPV: {(item.spv * item.quantity).toFixed(0)}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Price block */}
+                                <div className="flex items-baseline gap-2 mt-2">
+                                  <span className="font-bold text-base sm:text-lg text-slate-900">
+                                    ₹{(item.price * item.quantity).toLocaleString()}
+                                  </span>
+                                  {item.originalPrice && item.originalPrice > item.price && (
+                                    <span className="text-xs text-slate-400 line-through">
+                                      ₹{(item.originalPrice * item.quantity).toLocaleString()}
+                                    </span>
+                                  )}
+                                  {item.quantity > 1 && (
+                                    <span className="text-[11px] text-slate-400">
+                                      (₹{item.price} each)
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Quantity & Delete Controls */}
+                              <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3 shrink-0">
+                                <div className="flex items-center border border-slate-200 rounded-lg bg-white shadow-xs">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                                    onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                                  >
+                                    <Minus className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <span className="w-8 text-center text-xs sm:text-sm font-semibold text-slate-900">
+                                    {item.quantity}
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                                    onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                                    disabled={item.quantity >= (item.maxStock || 999)}
+                                  >
+                                    <Plus className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                  onClick={() => removeFromCart(item.productId)}
+                                  title="Remove item"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {/* Right Column: Order Summary (Sticky Sidebar) */}
+              <div className="lg:col-span-1">
+                <Card className="border border-slate-200 bg-white rounded-xl shadow-xs overflow-hidden sticky top-20">
+                  <CardHeader className="bg-slate-50 border-b border-slate-100 py-4 px-6">
+                    <CardTitle className="text-lg font-bold text-slate-900">
+                      Order Summary
+                    </CardTitle>
+                  </CardHeader>
+
+                  <CardContent className="p-6 space-y-4">
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between text-slate-600">
+                        <span>Items Subtotal</span>
+                        <span className="font-semibold text-slate-900">
+                          ₹{cartTotal.toLocaleString()}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between text-slate-600">
+                        <span className="flex items-center gap-1">
+                          Estimated Shipping
+                          <span className="text-[11px] text-slate-400 font-normal">
+                            ({brandCount} {brandCount === 1 ? 'brand' : 'brands'})
+                          </span>
+                        </span>
+                        <span className="font-semibold text-slate-900">
+                          ₹{totalShipping.toLocaleString()}
+                        </span>
+                      </div>
+
+                      {totalSpv > 0 && (
+                        <div className="flex justify-between items-center text-xs text-amber-800 bg-amber-50/70 border border-amber-200/60 rounded-lg px-3 py-2">
+                          <span className="font-medium">Total SPV Points Earnable</span>
+                          <span className="font-bold">{totalSpv.toFixed(0)} SPV</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="border-t border-slate-100 pt-4">
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-base font-bold text-slate-900">Grand Total</span>
+                        <span className="text-2xl font-black text-slate-900">
+                          ₹{grandTotal.toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5 text-right">
+                        Inclusive of all estimated taxes & delivery
+                      </p>
+                    </div>
+
+                    <Button
+                      size="lg"
+                      className="w-full text-base py-6 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-md transition-all group"
+                      onClick={() => navigate('/shop/checkout')}
+                    >
+                      <span>Proceed to Checkout</span>
+                      <ArrowRight className="h-4 w-4 ml-2 transition-transform group-hover:translate-x-1" />
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      className="w-full text-slate-600 hover:text-slate-900 text-sm"
+                      onClick={() => navigate('/shop')}
+                    >
+                      Continue Shopping
+                    </Button>
+
+                    <div className="p-3 bg-amber-50/60 border border-amber-200/70 rounded-xl">
+                      <p className="text-xs text-amber-800 leading-relaxed">
+                        <span className="font-semibold">Note:</span> Delivery charges are estimated. Final charges will be confirmed upon dispatch based on actual packed weight, with any difference credited or debited to your wallet.
+                      </p>
+                    </div>
+
+                    {/* Trust badges */}
+                    <div className="pt-2 border-t border-slate-100 space-y-2">
+                      <div className="flex items-center gap-2 text-xs text-slate-600">
+                        <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <span>100% Genuine, chemical-free direct farm sourcing</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-slate-600">
+                        <RotateCcw className="h-4 w-4 text-slate-500 shrink-0" />
+                        <span>Transparent weight adjustment guarantee</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </>
         )}
       </div>
