@@ -45,9 +45,9 @@ const StoreDashboard = () => {
       toast.error('Please login to access this page');
       return;
     }
-    if (user.role !== 'staff') {
+    if (user.role !== 'staff' && user.role !== 'admin') {
       navigate('/');
-      toast.error('Access restricted to staff only');
+      toast.error('Access restricted to staff and admins only');
       return;
     }
 

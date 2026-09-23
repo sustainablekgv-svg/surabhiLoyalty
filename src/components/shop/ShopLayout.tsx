@@ -48,6 +48,12 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({ children, title = 'Shop'
                     <span className="hidden sm:inline">Back to Dashboard</span>
                     <span className="sm:hidden">Admin</span>
                   </Button>
+               ) : user.role === 'staff' ? (
+                  <Button variant="default" size="sm" onClick={() => navigate('/staff/dashboard')} className="gap-1 bg-purple-600 hover:bg-purple-700 text-white text-xs px-2 md:px-3">
+                    <LayoutDashboard className="h-3 w-3 md:h-4 md:w-4" />
+                    <span className="hidden sm:inline">Store Dashboard</span>
+                    <span className="sm:hidden">Store</span>
+                  </Button>
                ) : (
                   <Button variant="ghost" size="icon" onClick={() => navigate('/customer/dashboard')} title="My Profile" className="h-8 w-8 md:h-10 md:w-10">
                     <User className="h-4 w-4 md:h-5 md:w-5" />

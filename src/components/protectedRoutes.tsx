@@ -32,8 +32,21 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
   }
 
   // Check role-based access
-  // Admin and staff can access any protected route for testing/management
-  if (requiredRole && user?.role !== requiredRole && user?.role !== 'admin' && user?.role !== 'staff') {
+  if (requiredRole && user?.role !== requiredRole) {
+    // Admin has access across management routes
+    if (user?.role === 'admin' && (requiredRole === 'staff' || requiredRole === 'admin')) {
+      return <>{children}</>;
+    }
+    // Redirect to user's proper role dashboard
+    if (user?.role === 'admin') {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
+    if (user?.role === 'staff') {
+      return <Navigate to="/staff/dashboard" replace />;
+    }
+    if (user?.role === 'customer') {
+      return <Navigate to="/customer/dashboard" replace />;
+    }
     return <Navigate to="/" replace />;
   }
 

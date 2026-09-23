@@ -171,15 +171,17 @@ const passwordMatches = (stored: string | undefined, plain: string): boolean => 
 /**
  * Secure Server-Side Login
  * Authenticates user credentials, sets custom claims (role), and issues a Firebase Custom Token.
+ * Supports smart role detection: if a user logs in from customer form but is staff/admin (or vice versa),
+ * it seamlessly authenticates their verified account and returns their proper role and dashboard access.
  */
 export const loginWithCredentials = functions.https.onCall(
   { region: 'us-central1', cors: true },  
   async (request: functions.https.CallableRequest<any>) => {
     const { mobile, password, role } = request.data || {};
-    if (!mobile || !password || !role) {
+    if (!mobile || !password) {
       throw new functions.https.HttpsError(
         'invalid-argument',
-        'Mobile number, password, and role are required.'
+        'Mobile number and password are required.'
       );
     }
 
@@ -195,78 +197,98 @@ export const loginWithCredentials = functions.https.onCall(
     const db = admin.firestore();
     let userDoc: admin.firestore.QueryDocumentSnapshot | null = null;
     let userData: any = null;
-    let userRole = role;
+    let userRole = role || 'customer';
 
-    if (role === 'customer') {
-      const snap = await db.collection('Customers').where('customerMobile', '==', cleanMobile).get();
-      if (snap.empty) {
-        throw new functions.https.HttpsError(
-          'unauthenticated',
-          'Invalid mobile number or credentials.'
-        );
-      }
-      // Pick best matching document if duplicate accounts exist
-      const sorted = [...snap.docs].sort((a, b) => {
-        const dA = a.data();
-        const dB = b.data();
-        const sA = (dA.surabhiBalance || 0) + (dA.cumTotal || 0) + (dA.shippingBalance || 0);
-        const sB = (dB.surabhiBalance || 0) + (dB.cumTotal || 0) + (dB.shippingBalance || 0);
-        return sB - sA;
-      });
-      userDoc = sorted[0];
-      userData = userDoc.data();
-
-      if (!passwordMatches(userData.customerPassword, cleanPassword)) {
-        throw new functions.https.HttpsError(
-          'unauthenticated',
-          'Invalid mobile number or credentials.'
-        );
-      }
-      userRole = 'customer';
-    } else if (role === 'staff' || role === 'admin') {
+    const checkStaff = async () => {
       const snap = await db.collection('staff').where('staffMobile', '==', cleanMobile).get();
-      if (snap.empty) {
-        throw new functions.https.HttpsError(
-          'unauthenticated',
-          'Invalid mobile number or credentials.'
-        );
+      if (!snap.empty) {
+        const doc = snap.docs[0];
+        const data = doc.data();
+        if (passwordMatches(data.staffPassword, cleanPassword)) {
+          return { doc, data, role: data.role || 'staff' };
+        }
       }
-      userDoc = snap.docs[0];
-      userData = userDoc.data();
+      return null;
+    };
 
-      if (userData.role !== role) {
-        throw new functions.https.HttpsError(
-          'permission-denied',
-          `Access denied. Account is registered as ${userData.role}.`
-        );
+    const checkCustomer = async () => {
+      const snap = await db.collection('Customers').where('customerMobile', '==', cleanMobile).get();
+      if (!snap.empty) {
+        const sorted = [...snap.docs].sort((a, b) => {
+          const dA = a.data();
+          const dB = b.data();
+          const sA = (dA.surabhiBalance || 0) + (dA.cumTotal || 0) + (dA.shippingBalance || 0);
+          const sB = (dB.surabhiBalance || 0) + (dB.cumTotal || 0) + (dB.shippingBalance || 0);
+          return sB - sA;
+        });
+        for (const doc of sorted) {
+          const data = doc.data();
+          if (passwordMatches(data.customerPassword, cleanPassword)) {
+            return { doc, data, role: 'customer' };
+          }
+        }
       }
+      return null;
+    };
 
-      if (role !== 'admin' && userData.staffStatus !== 'active') {
-        throw new functions.https.HttpsError(
-          'permission-denied',
-          'Staff account is inactive. Please contact your administrator.'
-        );
+    // Primary check according to role preference
+    if (role === 'staff' || role === 'admin') {
+      const staffRes = await checkStaff();
+      if (staffRes) {
+        userDoc = staffRes.doc;
+        userData = staffRes.data;
+        userRole = staffRes.role;
+      } else {
+        // Fallback: check customer accounts
+        const custRes = await checkCustomer();
+        if (custRes) {
+          userDoc = custRes.doc;
+          userData = custRes.data;
+          userRole = 'customer';
+        }
       }
-
-      if (!passwordMatches(userData.staffPassword, cleanPassword)) {
-        throw new functions.https.HttpsError(
-          'unauthenticated',
-          'Invalid mobile number or credentials.'
-        );
-      }
-      userRole = userData.role;
     } else {
-      throw new functions.https.HttpsError('invalid-argument', 'Invalid role requested.');
+      // Default: check customer accounts first
+      const custRes = await checkCustomer();
+      if (custRes) {
+        userDoc = custRes.doc;
+        userData = custRes.data;
+        userRole = 'customer';
+      } else {
+        // Fallback: check staff/admin accounts
+        const staffRes = await checkStaff();
+        if (staffRes) {
+          userDoc = staffRes.doc;
+          userData = staffRes.data;
+          userRole = staffRes.role;
+        }
+      }
+    }
+
+    if (!userDoc || !userData) {
+      throw new functions.https.HttpsError(
+        'unauthenticated',
+        'Invalid mobile number or credentials.'
+      );
+    }
+
+    // Check active status for staff accounts
+    if (userRole === 'staff' && userData.staffStatus !== 'active') {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'Staff account is inactive. Please contact your administrator.'
+      );
     }
 
     const authUid = userDoc.id;
+    let targetUid = authUid;
     const email =
       (userRole === 'customer' ? userData.customerEmail : userData.staffEmail) ||
       `${cleanMobile}@surabhiloyalty.local`;
     const displayName =
       (userRole === 'customer' ? userData.customerName : userData.staffName) || cleanMobile;
 
-    // Ensure Auth user exists with UID matching document ID
+    // Ensure Auth user exists with UID matching document ID or handle existing email
     try {
       await admin.auth().getUser(authUid);
     } catch (err: any) {
@@ -279,6 +301,23 @@ export const loginWithCredentials = functions.https.onCall(
           });
         } catch (createErr: any) {
           logger.warn(`Could not create Auth user with uid ${authUid}:`, createErr);
+          if (createErr.code === 'auth/email-already-exists') {
+            try {
+              // Try creating with a unique virtual email for this UID
+              await admin.auth().createUser({
+                uid: authUid,
+                email: `${cleanMobile}.${authUid.slice(0, 6)}@surabhiloyalty.local`,
+                displayName: displayName,
+              });
+            } catch (virtualErr) {
+              try {
+                const existing = await admin.auth().getUserByEmail(email);
+                targetUid = existing.uid;
+              } catch (lookupErr) {
+                logger.error('Failed to locate existing user by email:', lookupErr);
+              }
+            }
+          }
         }
       }
     }
@@ -290,8 +329,8 @@ export const loginWithCredentials = functions.https.onCall(
     };
 
     // Set Custom Claims and mint Custom Token
-    await admin.auth().setCustomUserClaims(authUid, claims);
-    const customToken = await admin.auth().createCustomToken(authUid, claims);
+    await admin.auth().setCustomUserClaims(targetUid, claims);
+    const customToken = await admin.auth().createCustomToken(targetUid, claims);
 
     const safeUser = {
       ...userData,
@@ -440,6 +479,7 @@ export const registerCustomerAccount = functions.https.onCall(
     }
 
     const authUid = docRef.id;
+    let targetUid = authUid;
     const email = data.customerEmail || `${cleanMobile}@surabhiloyalty.local`;
     try {
       await admin.auth().createUser({
@@ -449,11 +489,27 @@ export const registerCustomerAccount = functions.https.onCall(
       });
     } catch (err: any) {
       logger.warn('Auth user create during signup notice:', err);
+      if (err.code === 'auth/email-already-exists') {
+        try {
+          await admin.auth().createUser({
+            uid: authUid,
+            email: `${cleanMobile}.${authUid.slice(0, 6)}@surabhiloyalty.local`,
+            displayName: name,
+          });
+        } catch (vErr) {
+          try {
+            const existing = await admin.auth().getUserByEmail(email);
+            targetUid = existing.uid;
+          } catch (e) {
+            logger.error('Failed to resolve auth user by email on signup:', e);
+          }
+        }
+      }
     }
 
     const claims = { role: 'customer', docId: authUid };
-    await admin.auth().setCustomUserClaims(authUid, claims);
-    const customToken = await admin.auth().createCustomToken(authUid, claims);
+    await admin.auth().setCustomUserClaims(targetUid, claims);
+    const customToken = await admin.auth().createCustomToken(targetUid, claims);
 
     const safeUser = { ...newCustomer, id: authUid };
     delete safeUser.customerPassword;

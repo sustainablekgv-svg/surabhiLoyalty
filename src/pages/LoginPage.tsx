@@ -143,32 +143,28 @@ const LoginPage = () => {
     try {
       const user = await login(formData.mobile, formData.password, formData.role);
 
-      if (user.role !== formData.role) {
-        toast.error(`Access denied. You are not registered as ${formData.role}`);
-        setIsLoading(false);
-        return;
-      }
+      const actualRole = user.role;
+      const greetingName = user.customerName || (user as any).staffName || 'User';
+      toast.success(`Login successful! Welcome, ${greetingName}`);
 
-      toast.success('Login successful!');
-
-      //Reset popup flag
+      // Reset popup flag
       sessionStorage.removeItem('coinsPopupShown');
 
-      // Navigate based on role and previous location
+      // Navigate based on verified role and previous location
       let redirectPath;
 
       const from = location.state?.from;
       const fromPath = typeof from === 'string' ? from : from?.pathname || '';
       
-      if (formData.role === 'customer' && fromPath && !fromPath.startsWith('/login')) {
+      if (actualRole === 'customer' && fromPath && !fromPath.startsWith('/login')) {
           redirectPath = fromPath + (from?.search || '');
       } else {
           redirectPath =
-            formData.role === 'admin'
+            actualRole === 'admin'
               ? '/admin/dashboard'
-              : formData.role === 'staff'
+              : actualRole === 'staff'
                 ? '/staff/dashboard'
-                : '/';
+                : '/customer/dashboard';
       }
 
       navigate(redirectPath, { replace: true });
@@ -315,7 +311,7 @@ const LoginPage = () => {
           </CardHeader>
 
           <CardContent>
-            {exclusiveMode && !showForgotPassword && (
+            {!showForgotPassword && (
               <div className="mb-6 bg-purple-50/50 backdrop-blur-sm border border-purple-100 rounded-xl p-1.5 flex justify-around gap-1.5 shadow-inner animate-in fade-in duration-350">
                 {[
                   { role: 'customer', label: 'Customer', icon: UserCircle, color: 'text-purple-600', activeBg: 'text-purple-700 bg-white border border-gray-200/50 shadow-sm' },
