@@ -1092,7 +1092,7 @@ if (
                             currentOrder.shippingPointsEarned || 0,
                         shippingCreditsUsed:
                             currentOrder.shippingPointsUsed || 0,
-                        cumTotalAmount: itemsTotalAfterCoins,
+                        cumTotalAmount: currentOrder.totalAmount - (currentOrder.netShippingCharges || 0) + (currentOrder.shippingPointsUsed || 0),
                         rewardOverrides:
                             rewardOverrides.surabhiCoinsEarned !== undefined
                                 ? rewardOverrides

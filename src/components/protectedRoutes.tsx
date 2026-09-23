@@ -22,7 +22,13 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    let loginPath = "/login";
+    if (requiredRole === 'admin') {
+      loginPath = "/admin/login";
+    } else if (requiredRole === 'staff') {
+      loginPath = "/shop/login";
+    }
+    return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 
   // Check role-based access

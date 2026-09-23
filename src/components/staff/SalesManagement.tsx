@@ -248,8 +248,12 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         ((selectedCustomer.sevaTotal || 0) + sevaContribution).toFixed(2)
       );
 
-      // Update cumTotal and set saleElgibility based on cumulative total and student status
-      const newCumTotal = customRound((selectedCustomer.cumTotal || 0) + saleAmount);
+      // Update cumTotal based on Net Payable - Shipping Fee + Shipping Credits used
+      const netPayable = saleCalculation.walletDeduction + saleCalculation.cashPayment;
+      const shippingFeeVal = saleCalculation.netShippingPayable;
+      const shippingCreditsUsedVal = saleCalculation.shippingCreditsUsed;
+      const additionToCumTotal = netPayable - shippingFeeVal + shippingCreditsUsedVal;
+      const newCumTotal = customRound((selectedCustomer.cumTotal || 0) + additionToCumTotal);
       const isEligible = selectedCustomer.isStudent
         ? newCumTotal >= 499 // Student minimum is 499
         : newCumTotal >= 999; // Regular customer minimum is 999

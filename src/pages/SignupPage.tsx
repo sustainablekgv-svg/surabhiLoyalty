@@ -240,15 +240,13 @@ const SignupPage = () => {
     }
 
     if (
-  !formData.customerName ||
-  !formData.customerMobile ||
-  !formData.dateOfBirth ||
-  !formData.gender ||
-  !formData.customerPassword
-) {
-  toast.error('All fields are mandatory');
-  return false;
-}
+      !formData.customerName ||
+      !formData.customerMobile ||
+      !formData.customerPassword
+    ) {
+      toast.error('Name, mobile number, and password are required.');
+      return false;
+    }
 
     const cleanedMobile = formData.customerMobile.replace(/\D/g, '');
     if (cleanedMobile.length !== 10) {
@@ -493,7 +491,7 @@ setTimeout(() => {
 
               <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="dateOfBirth">Date of Birth *</Label>
+                    <Label htmlFor="dateOfBirth">Date of Birth (Optional)</Label>
                     <div className="relative">
                         <Input
                             type="date"
@@ -502,13 +500,11 @@ setTimeout(() => {
                             value={formData.dateOfBirth}
                             onChange={handleInputChange}
                             className="w-full h-12 px-3 text-base text-gray-700 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors"
-                            required
                         />
-                        {/* Custom styling placeholder handled by native input placeholder semantics if needed */}
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="gender">Gender *</Label>
+                    <Label htmlFor="gender">Gender (Optional)</Label>
                     <div className="relative">
                         {/* <UserCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 z-10" /> */}
                         <Select value={formData.gender} onValueChange={handleGenderChange}>

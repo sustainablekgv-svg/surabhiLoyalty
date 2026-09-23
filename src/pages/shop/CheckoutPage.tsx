@@ -228,7 +228,7 @@ setShippingConfig(config);
             shippingCreditsEarned: 0,
             originZone: originObj?.zone || 'A',
             groupSpv: 0,
-            creditPercentage: brandObj?.shippingPercentage ?? (currentStore?.shippingCommission || 0)
+            creditPercentage: brandObj?.shippingPercentage || (currentStore?.shippingCommission || 0)
           };
         }
         acc[groupKey].items.push(item);
@@ -595,19 +595,7 @@ const shippingDueAmount = useMemo(() => {
       return;
     }
 
-    const isIncomplete = !customerData?.customerName || 
-                         customerData.customerName === 'Valued Customer' || 
-                         !customerData?.gender || 
-                         customerData.gender === 'other' || 
-                         !customerData?.dateOfBirth;
 
-    if (isIncomplete) {
-      toast.error("Please complete your profile details (Name, Gender, and DOB) to place an order.", {
-        duration: 5000,
-      });
-      navigate('/customer/dashboard', { state: { activeTab: 'settings' } });
-      return;
-    }
 
     if (!formData.state || !formData.street || !formData.zipCode || !formData.mobile) {
       toast.error("Please fill in all required address fields");

@@ -189,7 +189,7 @@ export const OrderManager = () => {
                     shipping: 0,
                     originZone: originObj?.zone || 'A',
                     groupSpv: 0,
-                    creditPercentage: brandObj?.shippingPercentage ?? (currentStore?.shippingCommission || 0)
+                    creditPercentage: brandObj?.shippingPercentage || (currentStore?.shippingCommission || 0)
                 };
             }
             acc[groupKey].items.push(item);

@@ -168,11 +168,10 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
     if (
       !formData.customerName ||
       !formData.customerMobile ||
-      !formData.customerPassword ||
-      !formData.gender
+      !formData.customerPassword
     ) {
       // console.log('Validation failed - missing required fields');
-      toast.error('Please fill all required fields');
+      toast.error('Please fill all required fields (Name, Mobile, Password)');
       return;
     }
     // console.log('Form validation passed');
@@ -539,7 +538,7 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                 {/* Gender Field */}
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">
-                    Gender <span className="text-red-500">*</span>
+                    Gender (Optional)
                   </label>
                   <div className="flex gap-4">
                     <label className="inline-flex items-center">
@@ -550,7 +549,6 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
                         checked={formData.gender === 'male'}
                         onChange={() => setFormData({ ...formData, gender: 'male' })}
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500"
-                        required
                       />
                       <span className="ml-2 text-gray-700">Male</span>
                     </label>

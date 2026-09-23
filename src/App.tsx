@@ -75,6 +75,8 @@ const App = () => {
                 />
                 <Route path="/ref/:code" element={<ReferralRedirect />} />
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/admin/login" element={<LoginPage />} />
+                <Route path="/shop/login" element={<LoginPage />} />
                 <Route path="/signup" element={<SignupPage />} />
                 {/* <Route path="/create-admin" element={<CreateAdmin />} /> */}
                 <Route

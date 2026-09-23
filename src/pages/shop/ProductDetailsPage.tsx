@@ -186,30 +186,66 @@ const isVariantOutOfStock = (variant: Product) =>
                 image={product.images?.[0]}
                 url={window.location.href}
                 type="product"
-                keywords={`${product.name}, ${product.brandName}, ${product.categoryName}, organic products, sustainable kgv, buy ${product.name} online`}
-                jsonLd={{
-                    "@context": "https://schema.org/",
-                    "@type": "Product",
-                    "name": product.name,
-                    "image": product.images,
-                    "description": product.description.replace(/<[^>]*>?/gm, ''),
-                    "brand": {
-                        "@type": "Brand",
-                        "name": product.brandName || "Surabhi"
+                price={product.sellingPrice || product.price}
+                currency="INR"
+                availability={product.stock > 0 ? "InStock" : "OutOfStock"}
+                brand={product.brandName || "Sustainable KGV"}
+                keywords={`${product.name}, ${product.brandName || ''}, ${product.categoryName || ''}, organic products, sustainable kgv, buy ${product.name} online`}
+                jsonLd={[
+                    {
+                        "@context": "https://schema.org/",
+                        "@type": "Product",
+                        "name": product.name,
+                        "image": product.images || [product.images?.[0]],
+                        "description": product.description.replace(/<[^>]*>?/gm, ''),
+                        "brand": {
+                            "@type": "Brand",
+                            "name": product.brandName || "Sustainable KGV"
+                        },
+                        "offers": {
+                            "@type": "Offer",
+                            "url": window.location.href,
+                            "priceCurrency": "INR",
+                            "price": product.sellingPrice || product.price,
+                            "availability": product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
+                        },
+                        "aggregateRating": product.totalReviews ? {
+                            "@type": "AggregateRating",
+                            "ratingValue": product.averageRating,
+                            "reviewCount": product.totalReviews
+                        } : undefined
                     },
-                    "offers": {
-                        "@type": "Offer",
-                        "url": window.location.href,
-                        "priceCurrency": "INR",
-                        "price": product.sellingPrice || product.price,
-                        "availability": product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
-                    },
-                    "aggregateRating": product.totalReviews ? {
-                        "@type": "AggregateRating",
-                        "ratingValue": product.averageRating,
-                        "reviewCount": product.totalReviews
-                    } : undefined
-                }}
+                    {
+                        "@context": "https://schema.org",
+                        "@type": "BreadcrumbList",
+                        "itemListElement": [
+                            {
+                                "@type": "ListItem",
+                                "position": 1,
+                                "name": "Home",
+                                "item": "https://www.sustainablekgv.com/"
+                            },
+                            {
+                                "@type": "ListItem",
+                                "position": 2,
+                                "name": "Shop",
+                                "item": "https://www.sustainablekgv.com/shop"
+                            },
+                            ...(product.categoryName ? [{
+                                "@type": "ListItem",
+                                "position": 3,
+                                "name": product.categoryName,
+                                "item": `https://www.sustainablekgv.com/shop?category=${encodeURIComponent(product.categoryName)}`
+                            }] : []),
+                            {
+                                "@type": "ListItem",
+                                "position": product.categoryName ? 4 : 3,
+                                "name": product.name,
+                                "item": window.location.href
+                            }
+                        ]
+                    }
+                ]}
             />
             <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
                 {/* Image Gallery */}

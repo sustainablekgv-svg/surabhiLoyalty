@@ -46,14 +46,6 @@ export const AccountSettings = ({ userId }: AccountSettingsProps) => {
       toast.error('Please enter a valid full name');
       return;
     }
-    if (!editGender || editGender === 'other') {
-      toast.error('Please select male or female gender');
-      return;
-    }
-    if (!editDob) {
-      toast.error('Please enter your date of birth');
-      return;
-    }
 
     setIsSaving(true);
     try {
@@ -474,7 +466,7 @@ export const AccountSettings = ({ userId }: AccountSettingsProps) => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="editGender" className="text-sm font-medium text-gray-700">Gender *</Label>
+                  <Label htmlFor="editGender" className="text-sm font-medium text-gray-700">Gender (Optional)</Label>
                   <select
                     id="editGender"
                     value={editGender}
@@ -489,7 +481,7 @@ export const AccountSettings = ({ userId }: AccountSettingsProps) => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="editDob" className="text-sm font-medium text-gray-700">Date of Birth *</Label>
+                  <Label htmlFor="editDob" className="text-sm font-medium text-gray-700">Date of Birth (Optional)</Label>
                   <Input
                     id="editDob"
                     type="date"
@@ -544,9 +536,6 @@ export const AccountSettings = ({ userId }: AccountSettingsProps) => {
                     <p className="text-sm font-semibold text-gray-900 mt-0.5 capitalize">
                       {customerData.gender || 'Not Provided'}
                     </p>
-                    {(!customerData.gender || customerData.gender === 'other') && (
-                      <span className="text-[10px] text-red-500 font-medium mt-1 block">⚠️ Gender must be Male or Female to order</span>
-                    )}
                   </div>
                 </div>
 
@@ -565,9 +554,6 @@ export const AccountSettings = ({ userId }: AccountSettingsProps) => {
                           })
                         : 'Not Provided'}
                     </p>
-                    {!customerData.dateOfBirth && (
-                      <span className="text-[10px] text-red-500 font-medium mt-1 block">⚠️ Date of Birth must be updated to order</span>
-                    )}
                   </div>
                 </div>
               </div>
