@@ -206,72 +206,69 @@ if (
     toast.info("Moved to cart from wishlist");
   }
 
-  // ✅ FIREBASE SYNC
-  if (user?.uid) {
+    // ✅ FIREBASE SYNC
+    const userId = user?.id || (user as any)?.uid;
+    if (userId) {
+      console.log("USER ID:", userId);
 
-    console.log("USER UID:", user.uid);
+      const updatedCart = [
+        ...cart,
+        {
+          ...product,
+          productId: product.id,
+          quantity: quantity || 1
+        }
+      ];
 
-    const updatedCart = [
-      ...cart,
-      {
-        ...product,
-        productId: product.id,
-        quantity: quantity || 1
-      }
-    ];
+      console.log("UPDATED CART:", updatedCart);
 
-    console.log("UPDATED CART:", updatedCart);
+      await syncCartToFirebase(
+        userId,
+        updatedCart as CartItem[]
+      );
+    }
+  };
 
-    await syncCartToFirebase(
-      user.uid,
-      updatedCart as CartItem[]
-    );
-  }
-};
+  // ✅ UPDATED REMOVE FROM CART WITH FIREBASE SYNC
+  const handleRemoveFromCart = async (
+    productId: string
+  ) => {
+    await removeFromCart(productId);
 
-// ✅ UPDATED REMOVE FROM CART WITH FIREBASE SYNC
-const handleRemoveFromCart = async (
-  productId: string
-) => {
+    const userId = user?.id || (user as any)?.uid;
+    if (userId) {
+      const updatedCart = cart.filter(
+        item => item.productId !== productId
+      );
 
-  await removeFromCart(productId);
+      await syncCartToFirebase(
+        userId,
+        updatedCart
+      );
+    }
+  };
 
-  if (user?.uid) {
+  // ✅ UPDATED QUANTITY UPDATE WITH FIREBASE SYNC
+  const handleUpdateQuantity = async (
+    productId: string,
+    quantity: number
+  ) => {
+    await updateQuantity(productId, quantity);
 
-    const updatedCart = cart.filter(
-      item => item.productId !== productId
-    );
+    const userId = user?.id || (user as any)?.uid;
+    if (userId) {
+      const updatedCart = cart.map(item =>
+        item.productId === productId
+          ? { ...item, quantity }
+          : item
+      );
 
-    await syncCartToFirebase(
-      user.uid,
-      updatedCart
-    );
-  }
-};
-
-
-// ✅ UPDATED QUANTITY UPDATE WITH FIREBASE SYNC
-const handleUpdateQuantity = async (
-  productId: string,
-  quantity: number
-) => {
-
-  await updateQuantity(productId, quantity);
-
-  if (user?.uid) {
-
-    const updatedCart = cart.map(item =>
-      item.productId === productId
-        ? { ...item, quantity }
-        : item
-    );
-
-    await syncCartToFirebase(
-      user.uid,
-      updatedCart
-    );
-  }
-};
+      await syncCartToFirebase(
+        userId,
+        updatedCart
+      );
+    }
+  };
   return (
     <ShopContext.Provider
       value={{
