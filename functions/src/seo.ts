@@ -87,9 +87,9 @@ export const serverSideDynamicSEO = functions.https.onRequest(async (req, res) =
   let description = 'Empowering farmers and gopalaks through a sustainable rewards ecosystem. Shop premium organic products, earn Surabhi Coins, and contribute to community welfare.';
   let keywords = 'Sustainable KGV, organic products, gopalak support, farmer rewards, Seva Coins, Surabhi Coins, organic shopping';
   let image = `${siteDomain}/kgv.png`;
-  let canonicalUrl = `${siteDomain}${requestPath}`;
+  const canonicalUrl = `${siteDomain}${requestPath}`;
   let type = 'website';
-  let productExtraMeta: { [key: string]: string } = {};
+  const productExtraMeta: { [key: string]: string } = {};
   let jsonLdList: any[] = [
     {
       "@context": "https://schema.org",

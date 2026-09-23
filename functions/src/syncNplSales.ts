@@ -44,7 +44,7 @@ export const syncNplSales = functions.https.onRequest(async (req, res) => {
         const q = customersRef.where('customerMobile', '==', customerMobile).limit(1);
         const snapshot = await q.get();
 
-        let customerDoc = snapshot.empty ? null : snapshot.docs[0];
+        const customerDoc = snapshot.empty ? null : snapshot.docs[0];
         let customerData = customerDoc ? customerDoc.data() : null;
         let customerId = customerDoc ? customerDoc.id : null;
 

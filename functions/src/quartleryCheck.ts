@@ -24,7 +24,7 @@ export const checkQuarterlyCriteria = functions.scheduler.onSchedule(
     // schedule: '*/10 * * * *',
     timeZone: 'Asia/Kolkata',
   },
-  async event => {
+  async (_event) => {
     const customersSnapshot = await db.collection('Customers').get();
 
     const updates: Promise<any>[] = [];
