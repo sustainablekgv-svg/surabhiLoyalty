@@ -381,7 +381,7 @@ export const CustomerDetails = () => {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Password</p>
-              <p className="font-mono">{customer.customerPassword || 'Not set'}</p>
+              <p className="font-mono text-muted-foreground">{customer.customerPassword ? '••••••••' : 'Not set'}</p>
             </div>
           </CardContent>
         </Card>

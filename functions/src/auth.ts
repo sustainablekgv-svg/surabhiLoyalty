@@ -1,5 +1,6 @@
 import * as CryptoJS from "crypto-js";
 import * as admin from "firebase-admin";
+import * as functions from "firebase-functions/v2";
 import * as logger from "firebase-functions/logger";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 
@@ -155,3 +156,345 @@ export const onCustomerUpdate = onDocumentWritten("Customers/{customerId}", asyn
     logger.error(`Failed to sync customer ${customerId} to Auth`, error);
   }
 });
+
+const passwordMatches = (stored: string | undefined, plain: string): boolean => {
+  if (!stored) return false;
+  try {
+    const decrypted = decryptText(stored);
+    if (decrypted.trim() === plain.trim()) return true;
+  } catch {
+    // Plaintext fallback
+  }
+  return stored.trim() === plain.trim();
+};
+
+/**
+ * Secure Server-Side Login
+ * Authenticates user credentials, sets custom claims (role), and issues a Firebase Custom Token.
+ */
+export const loginWithCredentials = functions.https.onCall(
+  { region: 'us-central1', cors: true },  
+  async (request: functions.https.CallableRequest<any>) => {
+    const { mobile, password, role } = request.data || {};
+    if (!mobile || !password || !role) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Mobile number, password, and role are required.'
+      );
+    }
+
+    const cleanMobile = String(mobile).replace(/\D/g, '').slice(-10);
+    const cleanPassword = String(password).trim();
+    if (cleanMobile.length !== 10) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Please enter a valid 10-digit mobile number.'
+      );
+    }
+
+    const db = admin.firestore();
+    let userDoc: admin.firestore.QueryDocumentSnapshot | null = null;
+    let userData: any = null;
+    let userRole = role;
+
+    if (role === 'customer') {
+      const snap = await db.collection('Customers').where('customerMobile', '==', cleanMobile).get();
+      if (snap.empty) {
+        throw new functions.https.HttpsError(
+          'unauthenticated',
+          'Invalid mobile number or credentials.'
+        );
+      }
+      // Pick best matching document if duplicate accounts exist
+      const sorted = [...snap.docs].sort((a, b) => {
+        const dA = a.data();
+        const dB = b.data();
+        const sA = (dA.surabhiBalance || 0) + (dA.cumTotal || 0) + (dA.shippingBalance || 0);
+        const sB = (dB.surabhiBalance || 0) + (dB.cumTotal || 0) + (dB.shippingBalance || 0);
+        return sB - sA;
+      });
+      userDoc = sorted[0];
+      userData = userDoc.data();
+
+      if (!passwordMatches(userData.customerPassword, cleanPassword)) {
+        throw new functions.https.HttpsError(
+          'unauthenticated',
+          'Invalid mobile number or credentials.'
+        );
+      }
+      userRole = 'customer';
+    } else if (role === 'staff' || role === 'admin') {
+      const snap = await db.collection('staff').where('staffMobile', '==', cleanMobile).get();
+      if (snap.empty) {
+        throw new functions.https.HttpsError(
+          'unauthenticated',
+          'Invalid mobile number or credentials.'
+        );
+      }
+      userDoc = snap.docs[0];
+      userData = userDoc.data();
+
+      if (userData.role !== role) {
+        throw new functions.https.HttpsError(
+          'permission-denied',
+          `Access denied. Account is registered as ${userData.role}.`
+        );
+      }
+
+      if (role !== 'admin' && userData.staffStatus !== 'active') {
+        throw new functions.https.HttpsError(
+          'permission-denied',
+          'Staff account is inactive. Please contact your administrator.'
+        );
+      }
+
+      if (!passwordMatches(userData.staffPassword, cleanPassword)) {
+        throw new functions.https.HttpsError(
+          'unauthenticated',
+          'Invalid mobile number or credentials.'
+        );
+      }
+      userRole = userData.role;
+    } else {
+      throw new functions.https.HttpsError('invalid-argument', 'Invalid role requested.');
+    }
+
+    const authUid = userDoc.id;
+    const email =
+      (userRole === 'customer' ? userData.customerEmail : userData.staffEmail) ||
+      `${cleanMobile}@surabhiloyalty.local`;
+    const displayName =
+      (userRole === 'customer' ? userData.customerName : userData.staffName) || cleanMobile;
+
+    // Ensure Auth user exists with UID matching document ID
+    try {
+      await admin.auth().getUser(authUid);
+    } catch (err: any) {
+      if (err.code === 'auth/user-not-found') {
+        try {
+          await admin.auth().createUser({
+            uid: authUid,
+            email: email,
+            displayName: displayName,
+          });
+        } catch (createErr: any) {
+          logger.warn(`Could not create Auth user with uid ${authUid}:`, createErr);
+        }
+      }
+    }
+
+    const claims = {
+      role: userRole,
+      storeLocation: userData.storeLocation || null,
+      docId: userDoc.id,
+    };
+
+    // Set Custom Claims and mint Custom Token
+    await admin.auth().setCustomUserClaims(authUid, claims);
+    const customToken = await admin.auth().createCustomToken(authUid, claims);
+
+    const safeUser = {
+      ...userData,
+      id: userDoc.id,
+      role: userRole,
+    };
+    delete safeUser.customerPassword;
+    delete safeUser.staffPassword;
+
+    logger.info(`User ${cleanMobile} successfully authenticated with role ${userRole}`);
+    return {
+      customToken,
+      user: safeUser,
+    };
+  }
+);
+
+/**
+ * Secure Server-Side Customer Registration
+ * Validates inputs, checks uniqueness, sets initial zero-balances, and provisions Auth.
+ */
+export const registerCustomerAccount = functions.https.onCall(
+  { region: 'us-central1', cors: true },
+  async (request: functions.https.CallableRequest<any>) => {
+    const data = request.data || {};
+    const cleanMobile = String(data.customerMobile || '').replace(/\D/g, '').slice(-10);
+    const cleanPassword = String(data.customerPassword || '').trim();
+    const name = String(data.customerName || '').trim();
+
+    if (!name || cleanMobile.length !== 10 || cleanPassword.length < 6) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Name, valid 10-digit mobile number, and minimum 6-character password are required.'
+      );
+    }
+
+    const db = admin.firestore();
+    const existing = await db.collection('Customers').where('customerMobile', '==', cleanMobile).get();
+    if (!existing.empty) {
+      throw new functions.https.HttpsError(
+        'already-exists',
+        'A customer with this mobile number already exists.'
+      );
+    }
+
+    let realReferredByMobile: string | null = null;
+    let referrerDocId: string | null = null;
+
+    if (data.referredBy) {
+      const trimmed = String(data.referredBy).trim();
+      const upper = trimmed.toUpperCase();
+      const searchCodes = upper.startsWith('REF-') ? [upper] : [upper, `REF-${upper}`];
+
+      const codeSnap = await db.collection('Customers').where('referralCode', 'in', searchCodes).limit(1).get();
+      if (!codeSnap.empty) {
+        const refData = codeSnap.docs[0].data();
+        realReferredByMobile = refData.customerMobile;
+        referrerDocId = codeSnap.docs[0].id;
+      } else {
+        const phone = trimmed.replace(/\D/g, '').slice(-10);
+        if (phone.length === 10) {
+          const mobileSnap = await db.collection('Customers').where('customerMobile', '==', phone).limit(1).get();
+          if (!mobileSnap.empty) {
+            const refData = mobileSnap.docs[0].data();
+            realReferredByMobile = refData.customerMobile;
+            referrerDocId = mobileSnap.docs[0].id;
+          }
+        }
+      }
+    }
+
+    // Generate unique referral code
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let uniqueCode = '';
+    for (let i = 0; i < 6; i++) {
+      uniqueCode += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    // Encrypt password securely on server
+    const encryptedPassword = CryptoJS.AES.encrypt(cleanPassword, SECRET_KEY, {
+      mode: CryptoJS.mode.CBC,
+      padding: CryptoJS.pad.Pkcs7,
+    }).toString();
+
+    const newCustomer: any = {
+      role: 'customer',
+      customerName: name,
+      customerMobile: cleanMobile,
+      customerPassword: encryptedPassword,
+      gender: data.gender || '',
+      dateOfBirth: data.dateOfBirth || '',
+      isStudent: !!data.isStudent,
+      storeLocation: data.storeLocation || 'Sustainable KGV Online',
+      demoStore: !!data.demoStore,
+      referredBy: realReferredByMobile,
+      referralCode: uniqueCode,
+      referredUsers: null,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      joinedDate: admin.firestore.FieldValue.serverTimestamp(),
+      tpin: data.tpin ? CryptoJS.AES.encrypt(String(data.tpin), SECRET_KEY).toString() : '',
+      walletRechargeDone: false,
+      saleElgibility: true,
+      walletId: `WAL-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      walletBalance: 0,
+      walletBalanceCurrentMonth: 0,
+      surabhiBalance: 0,
+      surabhiCredit: 0,
+      surabhiDebit: 0,
+      surabhiReferral: 0,
+      surabhiBalanceCurrentMonth: 0,
+      sevaBalance: 0,
+      sevaCredit: 0,
+      sevaDebit: 0,
+      sevaTotal: 0,
+      sevaBalanceCurrentMonth: 0,
+      coinsFrozen: false,
+      lastTransactionDate: null,
+      lastQuarterCheck: null,
+      currentQuarterStart: admin.firestore.FieldValue.serverTimestamp(),
+      cumTotal: 0,
+      surbhiTotal: 0,
+      quartersPast: 0,
+      cummulativeTarget: 0,
+      targetMet: false,
+      shippingBalance: 0,
+      shippingCredit: 0,
+      shippingDebit: 0,
+      shippingTotal: 0,
+      shippingBalanceCurrentMonth: 0,
+    };
+
+    const docRef = await db.collection('Customers').add(newCustomer);
+
+    if (referrerDocId) {
+      try {
+        await db.collection('Customers').doc(referrerDocId).update({
+          referredUsers: admin.firestore.FieldValue.arrayUnion({
+            customerMobile: cleanMobile,
+            customerName: name,
+            createdAt: admin.firestore.Timestamp.now(),
+          }),
+        });
+      } catch (e) {
+        logger.error('Failed to update referrer doc:', e);
+      }
+    }
+
+    const authUid = docRef.id;
+    const email = data.customerEmail || `${cleanMobile}@surabhiloyalty.local`;
+    try {
+      await admin.auth().createUser({
+        uid: authUid,
+        email: email,
+        displayName: name,
+      });
+    } catch (err: any) {
+      logger.warn('Auth user create during signup notice:', err);
+    }
+
+    const claims = { role: 'customer', docId: authUid };
+    await admin.auth().setCustomUserClaims(authUid, claims);
+    const customToken = await admin.auth().createCustomToken(authUid, claims);
+
+    const safeUser = { ...newCustomer, id: authUid };
+    delete safeUser.customerPassword;
+
+    logger.info(`Registered new customer ${cleanMobile} (${docRef.id})`);
+    return {
+      success: true,
+      customToken,
+      user: safeUser,
+    };
+  }
+);
+
+/**
+ * Validates a referral code or phone without exposing the database to unauthenticated clients.
+ */
+export const validateReferralCode = functions.https.onCall(
+  { region: 'us-central1', cors: true },
+  async (request: functions.https.CallableRequest<any>) => {
+    const codeOrPhone = String(request.data?.codeOrPhone || '').trim();
+    if (!codeOrPhone) return { valid: false };
+
+    const db = admin.firestore();
+    const upper = codeOrPhone.toUpperCase();
+    const searchCodes = upper.startsWith('REF-') ? [upper] : [upper, `REF-${upper}`];
+
+    let snap = await db.collection('Customers').where('referralCode', 'in', searchCodes).limit(1).get();
+    if (snap.empty && /^\d{10}$/.test(codeOrPhone.replace(/\D/g, ''))) {
+      const cleanPhone = codeOrPhone.replace(/\D/g, '').slice(-10);
+      snap = await db.collection('Customers').where('customerMobile', '==', cleanPhone).limit(1).get();
+    }
+
+    if (snap.empty) {
+      return { valid: false };
+    }
+
+    const refData = snap.docs[0].data();
+    return {
+      valid: true,
+      customerName: refData.customerName || 'Referrer',
+      eligible: refData.walletRechargeDone === true || refData.saleElgibility === true,
+    };
+  }
+);

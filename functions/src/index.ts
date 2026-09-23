@@ -76,3 +76,6 @@ export const checkOjivaBalance = checkOjivaBalanceFn;
 // export const syncNplSales = syncNplSalesFn;
 export const serverSideDynamicSEO = seo.serverSideDynamicSEO;
 export const generateDynamicSitemap = seo.generateDynamicSitemap;
+export const loginWithCredentials = auth.loginWithCredentials;
+export const registerCustomerAccount = auth.registerCustomerAccount;
+export const validateReferralCode = auth.validateReferralCode;

@@ -1,9 +1,10 @@
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signInWithCustomToken,
   type User as FirebaseAuthUser,
 } from 'firebase/auth';
-import { addDoc, arrayUnion, collection, doc, getDoc, getDocs, query, Timestamp, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, Timestamp, updateDoc, where } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 
 import { encryptText, isEncrypted, safeDecryptText } from '@/lib/encryption';
@@ -16,87 +17,47 @@ const callSyncFirebaseAuthForUpload = httpsCallable<
   { success: boolean }
 >(functions, 'syncFirebaseAuthForUpload');
 
+const callLoginWithCredentials = httpsCallable<
+  { mobile: string; password: string; role: 'customer' | 'staff' | 'admin' },
+  { customToken: string; user: User }
+>(functions, 'loginWithCredentials');
+
+const callRegisterCustomerAccount = httpsCallable<
+  RegisterCustomerData,
+  { success: boolean; customToken: string; user: CustomerType }
+>(functions, 'registerCustomerAccount');
+
+const callValidateReferralCode = httpsCallable<
+  { codeOrPhone: string },
+  { valid: boolean; customerName?: string; eligible?: boolean }
+>(functions, 'validateReferralCode');
+
+export const validateReferralCode = async (codeOrPhone: string) => {
+  try {
+    const res = await callValidateReferralCode({ codeOrPhone });
+    return res.data;
+  } catch {
+    return { valid: false };
+  }
+};
+
 export const getCustomerByMobile = async (
   mobile: string,
   password: string
 ): Promise<User | null> => {
   try {
-    const customersRef = collection(db, 'Customers');
-    const q = query(customersRef, where('customerMobile', '==', mobile));
-    const querySnapshot = await getDocs(q);
-
-    if (querySnapshot.empty) {
-      throw new Error('User not found');
-    }
-
-    // Sort matching customer documents to pick the doc with actual balances / active doc
-    const sortedDocs = [...querySnapshot.docs].sort((a, b) => {
-      const dataA = a.data() as CustomerType;
-      const dataB = b.data() as CustomerType;
-      const scoreA = (dataA.surabhiBalance || 0) + (dataA.cumTotal || 0) + (dataA.shippingBalance || 0);
-      const scoreB = (dataB.surabhiBalance || 0) + (dataB.cumTotal || 0) + (dataB.shippingBalance || 0);
-      return scoreB - scoreA;
+    const res = await callLoginWithCredentials({
+      mobile,
+      password,
+      role: 'customer',
     });
-
-    const customerDoc = sortedDocs[0];
-    const customerData = customerDoc.data() as CustomerType;
-
-    // Compare password with stored password (encrypted or plain)
-    if (!customerData.customerPassword) {
-      throw new Error('User has no password set');
+    if (res.data?.customToken) {
+      await signInWithCustomToken(auth, res.data.customToken);
     }
-
-    let passwordMatch = false;
-    let debugInfo = '';
-
-    if (isEncrypted(customerData.customerPassword)) {
-      // Try to decrypt the stored password
-      const decryptedStoredPassword = safeDecryptText(customerData.customerPassword);
-      
-      const cleanDecrypted = decryptedStoredPassword?.replace(/^"|"$/g, '').trim() || '';
-      const cleanPassword = password?.replace(/^"|"$/g, '').trim() || '';
-      
-      passwordMatch = cleanDecrypted === cleanPassword;
-      
-      // Safety fallback: what if the password just LOOKS encrypted but is actually plain text?
-      if (!passwordMatch) {
-          const cleanStoredRaw = customerData.customerPassword?.replace(/^"|"$/g, '').trim() || '';
-          if (cleanStoredRaw === cleanPassword) {
-              passwordMatch = true;
-          }
-      }
-      
-      if (!passwordMatch) {
-          debugInfo = `Encrypted branch mismatch. Input: "${password}" (len: ${password?.length}). Decrypted: "${decryptedStoredPassword}" (len: ${decryptedStoredPassword?.length}). Plain fallback matched: ${customerData.customerPassword === password}`;
-          console.error('[Auth Debug]', debugInfo);
-      }
-    } else {
-      // Direct comparison for unencrypted passwords (backward compatibility)
-      const cleanStoredRaw = customerData.customerPassword?.replace(/^"|"$/g, '').trim() || '';
-      const cleanPassword = password?.replace(/^"|"$/g, '').trim() || '';
-      passwordMatch = cleanStoredRaw === cleanPassword;
-      
-      if (!passwordMatch) {
-          debugInfo = `Plain branch mismatch. Input: "${password}" (len: ${password?.length}). Stored: "${customerData.customerPassword}" (len: ${customerData.customerPassword?.length})`;
-          console.error('[Auth Debug]', debugInfo);
-      }
-    }
-
-    if (passwordMatch) {
-      return {
-        ...customerData,
-        id: customerDoc.id,
-        role: 'customer', // Ensure role is set
-      };
-    } else {
-      throw new Error('Incorrect password');
-    }
+    return res.data?.user || null;
   } catch (error: any) {
-    // console.error('Error fetching customer:', error);
-    if (error.message === 'User not found' || error.message === 'Incorrect password' || error.message === 'User has no password set') {
-      throw error;
-    }
-    throw new Error('Failed to authenticate customer: ' + (error?.message || ''));
+    const msg = error?.message || error?.details?.message || 'Invalid mobile number or credentials';
+    throw new Error(msg);
   }
 };
 
@@ -106,113 +67,29 @@ export const getStaffByMobile = async (
   role: 'admin' | 'staff'
 ): Promise<User | null> => {
   try {
-    // Query staff collection for the mobile number
-    const staffRef = collection(db, 'staff');
-    const q = query(staffRef, where('staffMobile', '==', mobile));
-    const querySnapshot = await getDocs(q);
-
-    if (querySnapshot.empty) {
-      throw new Error('Staff user not found');
+    const res = await callLoginWithCredentials({
+      mobile,
+      password,
+      role,
+    });
+    if (res.data?.customToken) {
+      await signInWithCustomToken(auth, res.data.customToken);
     }
-
-    // Get the first matching document (assuming mobile is unique)
-    const doc = querySnapshot.docs[0];
-    const staffData = doc.data() as StaffType;
-    // console.log('The line 36 is', staffData);
-    
-    // Compare password with stored password (encrypted or plain)
-    if (!staffData.staffPassword) {
-      throw new Error('Staff user has no password set');
-    }
-
-    let passwordMatch = false;
-    let debugInfo = '';
-
-    if (isEncrypted(staffData.staffPassword)) {
-      // Try to decrypt the stored password
-      const decryptedStoredPassword = safeDecryptText(staffData.staffPassword);
-      
-      const cleanDecrypted = decryptedStoredPassword?.replace(/^"|"$/g, '').trim() || '';
-      const cleanPassword = password?.replace(/^"|"$/g, '').trim() || '';
-      
-      passwordMatch = cleanDecrypted === cleanPassword;
-      
-      // Safety fallback: what if the password just LOOKS encrypted but is actually plain text?
-      if (!passwordMatch) {
-          const cleanStoredRaw = staffData.staffPassword?.replace(/^"|"$/g, '').trim() || '';
-          if (cleanStoredRaw === cleanPassword) {
-              passwordMatch = true;
-          }
-      }
-
-      if (!passwordMatch) {
-          debugInfo = `Encrypted branch mismatch. Input: "${password}" (len: ${password?.length}). Decrypted: "${decryptedStoredPassword}" (len: ${decryptedStoredPassword?.length}). Plain fallback matched: ${staffData.staffPassword === password}`;
-          console.error('[Auth Debug]', debugInfo);
-      }
-    } else {
-      // Direct comparison for unencrypted passwords (backward compatibility)
-      const cleanStoredRaw = staffData.staffPassword?.replace(/^"|"$/g, '').trim() || '';
-      const cleanPassword = password?.replace(/^"|"$/g, '').trim() || '';
-      passwordMatch = cleanStoredRaw === cleanPassword;
-      
-      if (!passwordMatch) {
-          debugInfo = `Plain branch mismatch. Input: "${password}" (len: ${password?.length}). Stored: "${staffData.staffPassword}" (len: ${staffData.staffPassword?.length})`;
-          console.error('[Auth Debug]', debugInfo);
-      }
-    }
-
-    if (!passwordMatch) {
-      throw new Error('Incorrect password');
-    }
-
-    // Verify role if specified
-    if (role && staffData.role !== role) {
-      throw new Error(`Role mismatch: Expected ${role} but found ${staffData.role}`);
-    }
-
-    // Check if staff status is active
-    if (staffData.role !== 'admin' && staffData.staffStatus !== 'active') {
-      throw new Error('Staff account is disabled. Please contact administrator.');
-    }
-
-    // For staff role, check if the store is active
-    if (role === 'staff' && staffData.storeLocation) {
-      const storesRef = collection(db, 'stores');
-      const storeQuery = query(storesRef, where('storeName', '==', staffData.storeLocation));
-      const storeSnapshot = await getDocs(storeQuery);
-
-      if (!storeSnapshot.empty) {
-        const storeData = storeSnapshot.docs[0].data();
-        if (storeData.storeStatus !== 'active') {
-          throw new Error('Store is currently disabled. Please contact administrator.');
-        }
-      } else {
-        throw new Error('Store not found. Please contact administrator.');
-      }
-    }
-
-    // Map to User interface
-    return {
-      ...staffData,
-      id: doc.id,
-    };
-  } catch (error) {
-    // console.error('Error fetching staff:', error);
-    throw error; // Re-throw to preserve error message
+    return res.data?.user || null;
+  } catch (error: any) {
+    const msg = error?.message || error?.details?.message || 'Invalid mobile number or credentials';
+    throw new Error(msg);
   }
 };
 
 export const verifyUserExists = async (user: User): Promise<boolean> => {
   try {
-    let userDoc;
-    if (user.role === 'customer') {
-      userDoc = await getDoc(doc(db, 'Customers', user.id));
-    } else {
-      userDoc = await getDoc(doc(db, 'staff', user.id));
+    if (auth.currentUser) {
+      const tokenResult = await auth.currentUser.getIdTokenResult();
+      return !!tokenResult?.claims?.role;
     }
-    return userDoc.exists();
+    return false;
   } catch (error) {
-    // console.error('Error verifying user existence:', error);
     return false;
   }
 };
@@ -391,146 +268,17 @@ interface RegisterCustomerData {
 
 export const registerCustomer = async (data: RegisterCustomerData): Promise<CustomerType> => {
   try {
-    const customersRef = collection(db, 'Customers');
-    
-    // Check if customer already exists
-    const q = query(customersRef, where('customerMobile', '==', data.customerMobile));
-    const querySnapshot = await getDocs(q);
-
-    if (!querySnapshot.empty) {
-      throw new Error('Customer with this mobile number already exists');
-    }
-
-    // Encrypt password
-    const encryptedPassword = encryptText(data.customerPassword);
-
-    // Generate Referral Code (e.g., A1B2C)
-    const generateCode = () => {
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No I, O, 0, 1 for clarity
-      let result = '';
-      for (let i = 0; i < 6; i++) { // Increased length slightly for uniqueness since prefix is gone
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    const res = await callRegisterCustomerAccount(data);
+    if (res.data?.customToken) {
+      try {
+        await signInWithCustomToken(auth, res.data.customToken);
+      } catch (authErr) {
+        console.warn('Custom token sign-in notice on register:', authErr);
       }
-      return result;
-    };
-
-    // Ensure uniqueness (simple retry)
-    let uniqueCode = generateCode();
-    // Ideally we check DB for collision, but probability is low for now. 
-    // TODO: Add collision check loop if scaling.
-
-    let realReferredByMobile: string | null = null;
-    let referrerDocId: string | null = null;
-
-    if (data.referredBy) {
-         const trimmedReferredBy = data.referredBy.trim();
-         const upperInput = trimmedReferredBy.toUpperCase();
-         const isRefCodeWithPrefix = upperInput.startsWith('REF-');
-         const searchCodes = isRefCodeWithPrefix ? [upperInput] : [upperInput, `REF-${upperInput}`];
-         
-         // Check if it's a code
-         const qCode = query(customersRef, where('referralCode', 'in', searchCodes));
-         const snapshotCode = await getDocs(qCode);
-         
-         if (!snapshotCode.empty) {
-             const referrerData = snapshotCode.docs[0].data() as CustomerType;
-             realReferredByMobile = referrerData.customerMobile;
-             referrerDocId = snapshotCode.docs[0].id;
-         } else {
-             // Fallback: Check if it's a mobile number (Legacy support during transition)
-             const qMobile = query(customersRef, where('customerMobile', '==', data.referredBy.trim()));
-             const snapshotMobile = await getDocs(qMobile);
-             if (!snapshotMobile.empty) {
-                 const referrerData = snapshotMobile.docs[0].data() as CustomerType;
-                 realReferredByMobile = referrerData.customerMobile;
-                 referrerDocId = snapshotMobile.docs[0].id;
-             }
-         }
     }
-
-    const newCustomer: CustomerType = {
-      role: 'customer',
-      customerName: data.customerName,
-      customerMobile: data.customerMobile,
-      customerPassword: encryptedPassword,
-      gender: data.gender,
-      dateOfBirth: data.dateOfBirth,
-      isStudent: data.isStudent,
-      storeLocation: data.storeLocation,
-      demoStore: data.demoStore,
-      referredBy: realReferredByMobile, // Store Verified Mobile here for logic continuity
-      referralCode: uniqueCode,         // Store New Code
-      referredUsers: null,
-      
-      // Defaults
-      createdAt: Timestamp.now(),
-      joinedDate: Timestamp.now(),
-      
-      tpin: data.tpin ? encryptText(data.tpin) : '',
-      
-      walletRechargeDone: false,
-      saleElgibility: true,
-      
-      walletId: `WAL-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      walletBalance: 0,
-      walletBalanceCurrentMonth: 0,
-      
-      surabhiBalance: 0,
-      surabhiCredit: 0,
-      surabhiDebit: 0,
-      surabhiReferral: 0,
-      surabhiBalanceCurrentMonth: 0,
-      
-      sevaBalance: 0,
-      sevaCredit: 0,
-      sevaDebit: 0,
-      sevaTotal: 0,
-      sevaBalanceCurrentMonth: 0,
-      
-      coinsFrozen: false,
-      
-      lastTransactionDate: null,
-      lastQuarterCheck: null,
-      currentQuarterStart: Timestamp.now(),
-      
-      cumTotal: 0,
-      surbhiTotal: 0,
-      
-      quartersPast: 0,
-      cummulativeTarget: 0, 
-      targetMet: false,
-      shippingBalance: 0,
-      shippingCredit: 0,
-      shippingDebit: 0,
-      shippingTotal: 0,
-      shippingBalanceCurrentMonth: 0,
-    };
-
-    const docRef = await addDoc(customersRef, newCustomer);
-
-    // If there's a referrer, update their document
-    if (referrerDocId) {
-        try {
-            await updateDoc(doc(db, 'Customers', referrerDocId), {
-                referredUsers: arrayUnion({
-                    customerMobile: data.customerMobile,
-                    customerName: data.customerName,
-                    createdAt: Timestamp.now()
-                })
-            });
-        } catch (e) {
-            console.error("Failed to update referrer doc:", e);
-            // We don't throw here as the main registration was successful
-        }
-    }
-    
-    return {
-      ...newCustomer,
-      id: docRef.id
-    };
-
+    return res.data.user;
   } catch (error: any) {
-    // console.error('Error registering customer:', error);
-    throw new Error(error.message || 'Failed to register customer');
+    const msg = error?.message || error?.details?.message || 'Failed to register customer';
+    throw new Error(msg);
   }
 };

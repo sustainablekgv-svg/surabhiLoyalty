@@ -79,39 +79,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
-      // Verify user still exists in database
-      const userExists = await verifyUserExists(storedUser);
+      if (!auth.currentUser) {
+        // Give Firebase Auth indexedDB persistence a moment to initialize
+        await new Promise(r => setTimeout(r, 200));
+      }
 
-      if (userExists) {
-        setUser(storedUser);
-        sessionManager.updateActivity();
-
-        // Ensure Firebase Auth is also active if not already
-        // This is critical for httpsCallable functions like image upload
-        if (!auth.currentUser) {
-          const email = storedUser.role === 'customer' 
-            ? (storedUser as CustomerType).customerEmail 
-            : (storedUser as StaffType).staffEmail;
-          
-          const encryptedPassword = storedUser.role === 'customer'
-            ? (storedUser as CustomerType).customerPassword
-            : (storedUser as StaffType).staffPassword;
-
-          if (email && encryptedPassword) {
-            const password = safeDecryptText(encryptedPassword);
-            if (password) {
-              // console.log('[Auth] Attempting automatic Firebase re-authentication');
-              ensureFirebaseAuth(email, password, { 
-                allowCreate: false, 
-                tolerateFailure: true 
-              }).catch(() => {
-                 // console.warn('[Auth] Automatic Firebase re-authentication failed');
-              });
-            }
-          }
+      if (auth.currentUser) {
+        try {
+          const tokenResult = await auth.currentUser.getIdTokenResult();
+          const verifiedRole = (tokenResult.claims.role as 'admin' | 'staff' | 'customer') || storedUser.role;
+          const verifiedUser = {
+            ...storedUser,
+            role: verifiedRole,
+          };
+          setUser(verifiedUser);
+          sessionManager.updateActivity();
+        } catch {
+          storageUtils.clearAll();
+          setUser(null);
         }
       } else {
+        // No valid Firebase Auth session found
         storageUtils.clearAll();
+        setUser(null);
       }
     } catch (error) {
       // console.error('Auth initialization error:', error);
@@ -250,31 +240,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (!userData) {
         throw new Error('Authentication failed: No user data returned');
-      }
-
-      const isValidEmail = (value: string) => {
-        const trimmed = value.trim();
-        if (!trimmed) {
-          return false;
-        }
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
-      };
-
-      // Try to sign in with Firebase if email exists
-      const email = userData.role === 'customer' 
-        ? (userData as CustomerType).customerEmail 
-        : (userData as StaffType).staffEmail;
-
-      const normalizedEmail = email?.trim();
-      const shouldAttemptFirebaseAuth =
-        !!normalizedEmail && isValidEmail(normalizedEmail) && password.length >= 6;
-
-      if (shouldAttemptFirebaseAuth) {
-        // Ensure Firebase auth so callable functions work (e.g. R2 upload URL)
-        await ensureFirebaseAuth(normalizedEmail!, password, {
-          allowCreate: role !== 'customer',
-          tolerateFailure: true,
-        });
       }
 
       // Set user state and storage

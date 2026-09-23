@@ -9,12 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { registerCustomer } from '@/lib/authService';
-
-// import { PasswordStrengthIndicator } from '@/components/ui/password-strength';
-import { db } from '@/lib/firebase';
-import { CustomerType } from '@/types/types';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { registerCustomer, validateReferralCode } from '@/lib/authService';
 import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 import SEO from '@/components/SEO';
 
@@ -36,8 +31,6 @@ const SignupPage = () => {
  
 
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingMobile, setIsCheckingMobile] = useState(false);
-  const [mobileStatus, setMobileStatus] = useState<'none' | 'available' | 'exists' | 'error'>('none');
   const [formData, setFormData] = useState({
     customerName: '',
     customerMobile: '',
@@ -50,38 +43,7 @@ const SignupPage = () => {
   });
 
  
-  useEffect(() => {
-    const checkMobileAvailability = async () => {
-      const cleaned = formData.customerMobile.replace(/\D/g, '');
-      if (cleaned.length !== 10) {
-        setMobileStatus('none');
-        return;
-      }
 
-      setIsCheckingMobile(true);
-      setMobileStatus('none');
-
-      try {
-        const customersCollection = collection(db, 'Customers');
-        const q = query(customersCollection, where('customerMobile', '==', cleaned));
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-          setMobileStatus('exists');
-        } else {
-          setMobileStatus('available');
-        }
-      } catch (err) {
-        console.error('Error prechecking mobile number:', err);
-        setMobileStatus('error');
-      } finally {
-        setIsCheckingMobile(false);
-      }
-    };
-
-    const timer = setTimeout(checkMobileAvailability, 500);
-    return () => clearTimeout(timer);
-  }, [formData.customerMobile]);
 
 
 
@@ -156,27 +118,14 @@ const SignupPage = () => {
       setIsFetchingReferral(true);
       setReferralNotFound(false);
       try {
-        const customersCollection = collection(db, 'Customers');
-        
-        let snapshot;
-        if (isFullPhone) {
-           let q = query(customersCollection, where('customerMobile', '==', refInput));
-           snapshot = await getDocs(q);
-        } else {
-           const upperInput = refInput.toUpperCase();
-           const searchCodes = isRefCodeWithPrefix ? [upperInput] : [upperInput, `REF-${upperInput}`];
-           let q = query(customersCollection, where('referralCode', 'in', searchCodes));
-           snapshot = await getDocs(q);
-        }
+        const res = await validateReferralCode(refInput);
 
-        if (!snapshot.empty) {
-          const data = snapshot.docs[0].data() as CustomerType;
+        if (res && res.valid) {
           if (
-            data.walletRechargeDone === true ||
-            data.saleElgibility === true ||
+            res.eligible ||
             settings?.allowReferralsWithoutPurchase
           ) {
-            setReferralName(data.customerName);
+            setReferralName(res.customerName || 'Referrer');
             setReferralNotFound(false);
           } else {
             setReferralName(null);
@@ -234,10 +183,7 @@ const SignupPage = () => {
       return false;
     }
 
-    if (mobileStatus === 'exists') {
-      toast.error('This mobile number is already registered. Please login.');
-      return false;
-    }
+
 
     if (
       !formData.customerName ||
@@ -272,10 +218,7 @@ const SignupPage = () => {
     return;
   }
 
-  if (mobileStatus === 'exists') {
-    toast.error('This mobile number is already registered. Please login.');
-    return;
-  }
+
 
   setOtpDialogOpen(true);
   return;
@@ -464,27 +407,7 @@ setTimeout(() => {
                 {formData.customerMobile.length > 0 && formData.customerMobile.length < 10 && (
                   <p className="text-xs text-amber-600">{10 - formData.customerMobile.length} more digit{10 - formData.customerMobile.length !== 1 ? 's' : ''} needed</p>
                 )}
-                {formData.customerMobile.length === 10 && (
-                  <>
-                    {isCheckingMobile && (
-                      <p className="text-xs text-purple-600 flex items-center gap-1 font-medium">
-                        <Loader2 className="h-3 w-3 animate-spin text-purple-500" />
-                        Checking mobile availability...
-                      </p>
-                    )}
-                    {!isCheckingMobile && mobileStatus === 'available' && (
-                      <p className="text-xs text-green-600 font-medium">✓ Available for signup</p>
-                    )}
-                    {!isCheckingMobile && mobileStatus === 'exists' && (
-                      <p className="text-xs text-red-500 font-medium flex items-center gap-1">
-                        ⚠️ This mobile number is already registered. Please login instead.
-                      </p>
-                    )}
-                    {!isCheckingMobile && mobileStatus === 'error' && (
-                      <p className="text-xs text-amber-600">Could not verify registration state</p>
-                    )}
-                  </>
-                )}
+
               </div>
 
               )}

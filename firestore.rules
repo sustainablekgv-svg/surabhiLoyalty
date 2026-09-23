@@ -1,13 +1,156 @@
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // OTP material (hashes + verification tokens) — only Cloud Functions
-    // (Admin SDK) may touch this. Clients must never read or write it.
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.role == 'admin' || 
+         request.auth.token.email == 'admin@sustainablekgv.com');
+    }
+
+    function isStaff() {
+      return isAuthenticated() && 
+        (request.auth.token.role == 'staff' || isAdmin());
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && 
+        (request.auth.uid == userId || 
+         (request.auth.token.docId != null && request.auth.token.docId == userId));
+    }
+
+    // OTP material — strictly isolated to Cloud Functions (Admin SDK)
     match /phone_otps/{doc=**} {
       allow read, write: if false;
     }
 
+    // Staff accounts
+    match /staff/{staffId} {
+      // Staff and Admin can view staff profiles for store operations
+      allow read: if isStaff();
+      // Only Admin can create, modify, or delete staff records
+      allow write: if isAdmin();
+    }
+
+    // Customers collection
+    match /Customers/{customerId} {
+      // Staff/Admin can view all customers for POS/lookup; customer can only view own profile
+      allow read: if isStaff() || isOwner(customerId);
+
+      // Staff or Admin can register in-store customers; online signups handled via Cloud Function
+      allow create: if isStaff() || isAdmin();
+
+      // Updates:
+      // Staff and Admin have full POS update permissions.
+      // Individual customers can update personal profile fields, but CANNOT tamper with balances or roles!
+      allow update: if isStaff() || isAdmin() || (
+        isOwner(customerId) && 
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'walletBalance', 
+          'walletBalanceCurrentMonth',
+          'surabhiBalance', 
+          'surabhiCredit',
+          'surabhiDebit',
+          'surabhiReferral',
+          'surabhiBalanceCurrentMonth',
+          'sevaBalance',
+          'sevaCredit',
+          'sevaDebit',
+          'sevaTotal',
+          'sevaBalanceCurrentMonth',
+          'cumTotal', 
+          'surbhiTotal',
+          'shippingBalance', 
+          'shippingCredit',
+          'shippingDebit',
+          'shippingTotal',
+          'role'
+        ])
+      );
+
+      // Only Admin can delete customer records
+      allow delete: if isAdmin();
+    }
+
+    // Sales transactions & Customer history
+    match /Sales/{saleId} {
+      allow read: if isStaff() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow write: if isStaff();
+    }
+
+    match /CustomerTx/{txId} {
+      allow read: if isStaff() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow write: if isStaff();
+    }
+
+    match /Activity/{activityId} {
+      allow read, write: if isStaff();
+    }
+
+    // Public catalog (Products, Categories, Stores, Banners, Settings)
+    match /stores/{storeId} {
+      allow read: if true;
+      allow write: if isAdmin() || isStaff();
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /categories/{catId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /brands/{brandId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /banners/{bannerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /inventory/{invId} {
+      allow read: if true;
+      allow write: if isStaff();
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+    }
+
+    // E-commerce orders
+    match /orders/{orderId} {
+      allow read: if isStaff() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update: if isStaff() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // Payment logs — only Cloud Functions with Admin SDK may write
+    match /payments/{paymentId} {
+      allow read: if isStaff() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow write: if false;
+    }
+
+    // Default fallback: unauthenticated clients cannot read/write any other document
     match /{document=**} {
-      allow read, write: if true;
+      allow read: if isStaff();
+      allow write: if isAdmin();
     }
   }
 }
