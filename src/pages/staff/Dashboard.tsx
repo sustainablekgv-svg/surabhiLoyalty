@@ -121,7 +121,7 @@ const StoreDashboard = () => {
     );
   }
 
-  if (!user || user.role !== 'staff') {
+  if (!user || (user.role !== 'staff' && user.role !== 'admin')) {
     return null;
   }
 
