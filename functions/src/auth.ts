@@ -342,6 +342,16 @@ export const loginWithCredentials = functions.https.onCall(
       }
     }
 
+    // A disabled Firebase account must not be able to receive a new custom
+    // token through this credential-login flow.
+    const authRecord = await admin.auth().getUser(targetUid);
+    if (authRecord.disabled) {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'This account is disabled. Please contact support.'
+      );
+    }
+
     const claims = {
       role: userRole,
       storeLocation: userData.storeLocation || null,
@@ -765,7 +775,7 @@ export const updateUserProfile = functions.https.onCall(
         if (newPlainPassword) authUpdate.password = newPlainPassword;
         if (sanitizedUpdates.customerName) authUpdate.displayName = sanitizedUpdates.customerName;
 
-        await admin.auth().updateUser(callerUid, authUpdate);
+        await admin.auth().updateUser(targetUserId, authUpdate);
       } catch (authSyncErr) {
         logger.warn(`Firebase Auth sync during profile update for ${callerUid}:`, authSyncErr);
       }

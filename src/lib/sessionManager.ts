@@ -66,6 +66,8 @@ export const sessionManager = {
   },
 
   updateActivity: (): void => {
+    // Remove the legacy client-readable token left by older deployments.
+    localStorage.removeItem('sessionToken');
     const now = Date.now();
     const currentTabId = tabSync.getTabId();
     const sessions = getTabSessions();
@@ -94,6 +96,8 @@ export const sessionManager = {
   },
 
   initializeSession: (): void => {
+    // Remove the legacy client-readable token left by older deployments.
+    localStorage.removeItem('sessionToken');
     const currentTabId = tabSync.getTabId();
     const now = Date.now();
 
