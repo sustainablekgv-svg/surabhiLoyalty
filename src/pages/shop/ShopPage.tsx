@@ -762,52 +762,21 @@ await fetchProducts(false);
 
         return Array.from(map.values());
     }, [originsWithProducts]);
-  const statesWithImages = useMemo(() => {
-  return statesList.map((state) => {
-    const stateData = origins
-  .filter(
-    (o) =>
-      o.stateSlug?.toLowerCase().trim() ===
-      state.slug.toLowerCase().trim()
-  )
-  .find((o) => o.stateImage);
-    return {
-  ...state,
-  image: stateData?.stateImage || ""
-};
-  })
-  .filter((state) => {
-    if (!activeMetadata) return true;
-    if (activeMetadata.placeOfOrigins.size === 0) return false;
-    
-    const normStateName = normalizeOrigin(state.name);
-    const normStateSlug = normalizeOrigin(state.slug);
-
-    const matchingOrigins = origins.filter(o => 
-      o.stateSlug?.toLowerCase().trim() === state.slug.toLowerCase().trim() ||
-      normalizeOrigin(o.state) === normStateName
-    );
-
-    for (const origin of matchingOrigins) {
-      const normOrigin = normalizeOrigin(origin.name);
-      for (const prodOrigin of activeMetadata.placeOfOrigins) {
-        const p = normalizeOrigin(prodOrigin);
-        if (p === normOrigin || p.includes(normOrigin) || normOrigin.includes(p)) {
-          return true;
-        }
-      }
-    }
-
-    for (const prodOrigin of activeMetadata.placeOfOrigins) {
-      const p = normalizeOrigin(prodOrigin);
-      if (p === normStateName || p.includes(normStateName) || normStateName.includes(p) || p === normStateSlug) {
-        return true;
-      }
-    }
-
-    return false;
-  });
-}, [origins, activeMetadata]);
+    const statesWithImages = useMemo(() => {
+        return statesList.map((state) => {
+            const stateData = origins
+                .filter(
+                    (o) =>
+                        o.stateSlug?.toLowerCase().trim() ===
+                        state.slug.toLowerCase().trim()
+                )
+                .find((o) => o.stateImage);
+            return {
+                ...state,
+                image: stateData?.stateImage || ""
+            };
+        });
+    }, [origins]);
 
 
     const FilterContent = () => (
