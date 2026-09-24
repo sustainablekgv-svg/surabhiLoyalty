@@ -17,15 +17,18 @@ const db = admin.firestore();
 // You should set these via: firebase functions:config:set razorpay.key_id="KEY" razorpay.key_secret="SECRET"
 // Or use built-in param support.
 
-const razorpayKeyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_YOUR_KEY_ID'; 
-const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET || 'YOUR_KEY_SECRET';
+const razorpayKeyId = process.env.RAZORPAY_KEY_ID || '';
+const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET || '';
 
 const razorpay = new Razorpay({
     key_id: razorpayKeyId,
     key_secret: razorpayKeySecret,
 });
 
-const razorpayWebhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || 'YOUR_WEBHOOK_SECRET';
+const razorpayWebhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || '';
+
+const isPrivileged = (request: { auth?: { token?: Record<string, unknown> } | null }) =>
+    request.auth?.token?.role === 'admin' || request.auth?.token?.role === 'staff';
 
 export const createRazorpayOrder = functions.https.onCall(async (request) => {
     // Check if user is authenticated
@@ -36,18 +39,26 @@ export const createRazorpayOrder = functions.https.onCall(async (request) => {
         );
     }
 
-    const { amount, currency = 'INR', receipt = 'receipt#1', userId } = request.data;
+    const { amount, currency = 'INR', receipt = 'receipt#1', userId } = request.data || {};
 
-    if (!amount || !userId) {
+    const numericAmount = Number(amount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0 || numericAmount > 1000000 || !userId) {
         throw new functions.https.HttpsError(
             'invalid-argument',
             'The function must be called with a valid amount and userId.'
         );
     }
+    if (!razorpayKeyId || !razorpayKeySecret) {
+        throw new functions.https.HttpsError('failed-precondition', 'Payment service is not configured.');
+    }
+    if (currency !== 'INR' || typeof userId !== 'string' ||
+        (!isPrivileged(request) && userId !== request.auth.uid)) {
+        throw new functions.https.HttpsError('permission-denied', 'You may only create payments for your own account.');
+    }
 
     try {
         const options = {
-            amount: Math.round(amount * 100), // amount in the smallest currency unit (paise for INR)
+            amount: Math.round(numericAmount * 100), // amount in the smallest currency unit (paise for INR)
             currency,
             receipt,
         };
@@ -82,7 +93,7 @@ export const verifyRazorpayPayment = functions.https.onCall(async (request) => {
         );
     }
 
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = request.data;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = request.data || {};
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
          throw new functions.https.HttpsError(
@@ -93,12 +104,22 @@ export const verifyRazorpayPayment = functions.https.onCall(async (request) => {
 
     const body = razorpay_order_id + '|' + razorpay_payment_id;
 
+    const payment = await db.collection('payments').doc(razorpay_order_id).get();
+    if (!payment.exists || (!isPrivileged(request) && payment.data()?.userId !== request.auth.uid)) {
+        throw new functions.https.HttpsError('permission-denied', 'Payment does not belong to this account.');
+    }
+    if (!razorpayKeySecret) {
+        throw new functions.https.HttpsError('failed-precondition', 'Payment service is not configured.');
+    }
+
     const expectedSignature = crypto
         .createHmac('sha256', razorpayKeySecret)
         .update(body.toString())
         .digest('hex');
 
-    if (expectedSignature === razorpay_signature) {
+    const expected = Buffer.from(expectedSignature, 'utf8');
+    const actual = Buffer.from(String(razorpay_signature), 'utf8');
+    if (expected.length === actual.length && crypto.timingSafeEqual(expected, actual)) {
         // Payment is verified
         await db.collection('payments').doc(razorpay_order_id).update({
             status: 'authorized',
@@ -118,7 +139,7 @@ export const verifyRazorpayPayment = functions.https.onCall(async (request) => {
 export const razorpayWebhook = functions.https.onRequest({ cors: true }, async (req, res) => {
     const signature = req.headers['x-razorpay-signature'] as string;
 
-    if (!signature) {
+    if (!signature || !razorpayWebhookSecret) {
         res.status(400).send('Missing signature');
         return;
     }

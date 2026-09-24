@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Slider } from '@/components/ui/slider';
 import { db } from '@/lib/firebase';
-import { getBrands, getBrandsPaginated, getCategories, getProducts } from '@/services/shop';
+import { getActiveCategoriesAndBrandsWithProducts, getBrands, getBrandsPaginated, getCategories, getProducts } from '@/services/shop';
 import { Brand, Category, Product } from '@/types/shop';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import { Filter, Home, LayoutGrid, ShoppingBag,MapPinned, X } from 'lucide-react';
@@ -57,13 +57,27 @@ const ShopPage = () => {
     // Initial Filter Data (for dropdowns - limited fetch)
     const [filterBrands, setFilterBrands] = useState<Brand[]>([]);
     const [filterCategories, setFilterCategories] = useState<Category[]>([]);
-   const [origins, setOrigins] = useState<{
-  id: string;
-  name: string;
-  state: string;
-  stateSlug: string;
-  stateImage?: string;
-}[]>([]);
+    const [activeMetadata, setActiveMetadata] = useState<{
+        categoryIds: Set<string>;
+        categorySlugs: Set<string>;
+        brandIds: Set<string>;
+        brandSlugs: Set<string>;
+        placeOfOrigins: Set<string>;
+    } | null>(null);
+    const activeMetadataRef = useRef<{
+        categoryIds: Set<string>;
+        categorySlugs: Set<string>;
+        brandIds: Set<string>;
+        brandSlugs: Set<string>;
+        placeOfOrigins: Set<string>;
+    } | null>(null);
+    const [origins, setOrigins] = useState<{
+        id: string;
+        name: string;
+        state: string;
+        stateSlug: string;
+        stateImage?: string;
+    }[]>([]);
 
     const PAGE_SIZE = 150;
 
@@ -225,28 +239,46 @@ useEffect(() => {
     useEffect(() => {
         const loadInitialData = async () => {
             try {
-                const [fetchedBrands, fetchedCategoriesData, fetchedOrigins] = await Promise.all([
+                const [fetchedBrands, fetchedCategoriesData, fetchedOrigins, activeMeta] = await Promise.all([
                     getBrands(), 
                     getCategories(100), 
-                    getDocs(query(collection(db, 'origins'), orderBy('name')))
+                    getDocs(query(collection(db, 'origins'), orderBy('name'))),
+                    getActiveCategoriesAndBrandsWithProducts()
                 ]);
+
+                activeMetadataRef.current = activeMeta;
+                setActiveMetadata(activeMeta);
+
+                const filteredCats = fetchedCategoriesData.categories.filter(cat => 
+                    cat.isActive !== false && (
+                        activeMeta.categoryIds.has(cat.id) ||
+                        (cat.slug && activeMeta.categorySlugs.has(cat.slug.toLowerCase().trim()))
+                    )
+                );
+
+                const filteredBrs = fetchedBrands.filter(b => 
+                    b.isActive !== false && (
+                        activeMeta.brandIds.has(b.id) ||
+                        (b.slug && activeMeta.brandSlugs.has(b.slug.toLowerCase().trim()))
+                    )
+                );
                 
-                setFilterBrands(fetchedBrands);
-                setFilterCategories(fetchedCategoriesData.categories);
+                setFilterBrands(filteredBrs);
+                setFilterCategories(filteredCats);
                 setProductsLoading(false);
-                setBrandsList(fetchedBrands); // Initialize brands list for landing view
-                setCategoriesList(fetchedCategoriesData.categories); // Initialize categories list for landing view
- setOrigins(
-  fetchedOrigins.docs.map(d => ({
-    id: d.id,
-    name: d.data().name,
-    state: d.data().state || '',
-    stateSlug: (d.data().stateSlug || '')
-      .toLowerCase()
-      .trim(),
-    stateImage: d.data().stateImage || ''
-  }))
-);
+                setBrandsList(filteredBrs); // Initialize brands list for landing view
+                setCategoriesList(filteredCats); // Initialize categories list for landing view
+                setOrigins(
+                    fetchedOrigins.docs.map(d => ({
+                        id: d.id,
+                        name: d.data().name,
+                        state: d.data().state || '',
+                        stateSlug: (d.data().stateSlug || '')
+                            .toLowerCase()
+                            .trim(),
+                        stateImage: d.data().stateImage || ''
+                    }))
+                );
             } catch (error) {
                 console.error("Failed to load initial data", error);
                 toast.error("Failed to load shop data");
@@ -445,10 +477,23 @@ if (selectedOrigin) {
             const lastDoc = isLoadMore ? brandsLastDoc : null;
             const result = await getBrandsPaginated(100, lastDoc); 
             
+            const meta = activeMetadataRef.current || await getActiveCategoriesAndBrandsWithProducts();
+            if (!activeMetadataRef.current) {
+                activeMetadataRef.current = meta;
+                setActiveMetadata(meta);
+            }
+
+            const filtered = result.brands.filter(b => 
+                b.isActive !== false && (
+                    meta.brandIds.has(b.id) ||
+                    (b.slug && meta.brandSlugs.has(b.slug.toLowerCase().trim()))
+                )
+            );
+
             if (isLoadMore) {
-                setBrandsList(prev => [...prev, ...result.brands]);
+                setBrandsList(prev => [...prev, ...filtered]);
             } else {
-                setBrandsList(result.brands);
+                setBrandsList(filtered);
             }
             setBrandsLastDoc(result.lastDoc);
             setBrandsHasMore(result.brands.length >= 100);
@@ -466,10 +511,23 @@ if (selectedOrigin) {
             const lastDoc = isLoadMore ? categoriesLastDoc : null;
             const result = await getCategories(100, lastDoc);
             
+            const meta = activeMetadataRef.current || await getActiveCategoriesAndBrandsWithProducts();
+            if (!activeMetadataRef.current) {
+                activeMetadataRef.current = meta;
+                setActiveMetadata(meta);
+            }
+
+            const filtered = result.categories.filter(cat => 
+                cat.isActive !== false && (
+                    meta.categoryIds.has(cat.id) ||
+                    (cat.slug && meta.categorySlugs.has(cat.slug.toLowerCase().trim()))
+                )
+            );
+
             if (isLoadMore) {
-                setCategoriesList(prev => [...prev, ...result.categories]);
+                setCategoriesList(prev => [...prev, ...filtered]);
             } else {
-                setCategoriesList(result.categories);
+                setCategoriesList(filtered);
             }
             setCategoriesLastDoc(result.lastDoc);
             setCategoriesHasMore(result.categories.length >= 100);
@@ -659,27 +717,51 @@ await fetchProducts(false);
         });
         setViewMode('products');
     };
+
+    const normalizeOrigin = (str: string = "") =>
+        str
+            .toLowerCase()
+            .trim()
+            .replace(/,/g, "")
+            .replace(/-/g, " ")
+            .replace(/\s+/g, " ");
+
+    const originsWithProducts = useMemo(() => {
+        if (!activeMetadata) return origins;
+        if (activeMetadata.placeOfOrigins.size === 0) return [];
+        return origins.filter(origin => {
+            const normOrigin = normalizeOrigin(origin.name);
+            for (const prodOrigin of activeMetadata.placeOfOrigins) {
+                const p = normalizeOrigin(prodOrigin);
+                if (p === normOrigin || p.includes(normOrigin) || normOrigin.includes(p)) {
+                    return true;
+                }
+            }
+            return false;
+        });
+    }, [origins, activeMetadata]);
+
     const filteredOrigins = selectedState
-  ? origins.filter(
-      origin => origin.stateSlug?.toLowerCase().trim() ===
-selectedState?.toLowerCase().trim()
-    )
-  : origins;
-const uniqueStates = useMemo(() => {
-  const map = new Map();
+        ? originsWithProducts.filter(
+            origin => origin.stateSlug?.toLowerCase().trim() ===
+            selectedState?.toLowerCase().trim()
+        )
+        : originsWithProducts;
+    const uniqueStates = useMemo(() => {
+        const map = new Map();
 
-  origins.forEach(origin => {
-    if (!map.has(origin.stateSlug)) {
-      map.set(origin.stateSlug, {
-        name: origin.state,
-        slug: origin.stateSlug,
-        image: origin.stateImage || ''
-      });
-    }
-  });
+        originsWithProducts.forEach(origin => {
+            if (origin.stateSlug && !map.has(origin.stateSlug)) {
+                map.set(origin.stateSlug, {
+                    name: origin.state,
+                    slug: origin.stateSlug,
+                    image: origin.stateImage || ''
+                });
+            }
+        });
 
-  return Array.from(map.values());
-}, [origins]);
+        return Array.from(map.values());
+    }, [originsWithProducts]);
   const statesWithImages = useMemo(() => {
   return statesList.map((state) => {
     const stateData = origins
@@ -693,218 +775,260 @@ const uniqueStates = useMemo(() => {
   ...state,
   image: stateData?.stateImage || ""
 };
-  });
-}, [origins]);
+  })
+  .filter((state) => {
+    if (!activeMetadata) return true;
+    if (activeMetadata.placeOfOrigins.size === 0) return false;
+    
+    const normStateName = normalizeOrigin(state.name);
+    const normStateSlug = normalizeOrigin(state.slug);
 
-console.log("statesWithImages", statesWithImages);
+    const matchingOrigins = origins.filter(o => 
+      o.stateSlug?.toLowerCase().trim() === state.slug.toLowerCase().trim() ||
+      normalizeOrigin(o.state) === normStateName
+    );
+
+    for (const origin of matchingOrigins) {
+      const normOrigin = normalizeOrigin(origin.name);
+      for (const prodOrigin of activeMetadata.placeOfOrigins) {
+        const p = normalizeOrigin(prodOrigin);
+        if (p === normOrigin || p.includes(normOrigin) || normOrigin.includes(p)) {
+          return true;
+        }
+      }
+    }
+
+    for (const prodOrigin of activeMetadata.placeOfOrigins) {
+      const p = normalizeOrigin(prodOrigin);
+      if (p === normStateName || p.includes(normStateName) || normStateName.includes(p) || p === normStateSlug) {
+        return true;
+      }
+    }
+
+    return false;
+  });
+}, [origins, activeMetadata]);
+
+
     const FilterContent = () => (
         <div className="space-y-6">
-            <div className="space-y-3">
-                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide px-2">Categories</h3>
+            {filterCategories.length > 0 && (
+                <div className="space-y-3">
+                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide px-2">Categories</h3>
 
-                {/* All Products */}
-                <button
-                    onClick={() => {
-                        setSelectedCategory(null);
-                        setSelectedBrand(null);
-                        setViewMode('products');
-                    }}
-                    className={`w-full flex items-center justify-between rounded-2xl px-4 py-2.5 transition-all duration-200 ${
-                        selectedCategory === null
-                            ? 'bg-primary/10 text-primary font-bold border border-primary/20'
-                            : 'hover:bg-gray-50 text-gray-500'
-                    }`}
-                >
-                    <span className="text-sm font-semibold">All Categories</span>
-                    {selectedCategory === null && <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">Active</span>}
-                </button>
+                    {/* All Products */}
+                    <button
+                        onClick={() => {
+                            setSelectedCategory(null);
+                            setSelectedBrand(null);
+                            setViewMode('products');
+                        }}
+                        className={`w-full flex items-center justify-between rounded-2xl px-4 py-2.5 transition-all duration-200 ${
+                            selectedCategory === null
+                                ? 'bg-primary/10 text-primary font-bold border border-primary/20'
+                                : 'hover:bg-gray-50 text-gray-500'
+                        }`}
+                    >
+                        <span className="text-sm font-semibold">All Categories</span>
+                        {selectedCategory === null && <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">Active</span>}
+                    </button>
 
-                {/* Categories List */}
-                <div className="space-y-1 max-h-[240px] overflow-y-auto pr-1 scrollbar-thin">
-                    {filterCategories.map((cat) => {
-                        const isActive = selectedCategory === cat.id || selectedCategory === cat.slug;
+                    {/* Categories List */}
+                    <div className="space-y-1 max-h-[240px] overflow-y-auto pr-1 scrollbar-thin">
+                        {filterCategories.map((cat) => {
+                            const isActive = selectedCategory === cat.id || selectedCategory === cat.slug;
 
-                        return (
-                            <button
-                                key={cat.id}
-                                type="button"
-                                onClick={() => toggleCategory(cat.slug || cat.id)}
-                                className={`w-full flex items-center justify-between rounded-xl px-3 py-2 transition-all duration-200 ${
-                                    isActive
-                                        ? 'bg-primary text-white font-semibold shadow-sm scale-[1.01]'
-                                        : 'hover:bg-gray-50 text-gray-700'
-                                }`}
-                            >
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                    <div className="h-8 w-8 rounded-lg overflow-hidden bg-gray-100 shrink-0 shadow-inner">
-                                        {cat.images?.[0] || cat.image ? (
-                                            <img
-                                                src={cat.images?.[0] || cat.image}
-                                                alt={cat.name}
-                                                loading="lazy"
-                                                decoding="async"
-                                                className="h-full w-full object-cover"
-                                            />
-                                        ) : (
-                                            <div className="h-full w-full flex items-center justify-center text-xs">
-                                                📦
-                                            </div>
-                                        )}
+                            return (
+                                <button
+                                    key={cat.id}
+                                    type="button"
+                                    onClick={() => toggleCategory(cat.slug || cat.id)}
+                                    className={`w-full flex items-center justify-between rounded-xl px-3 py-2 transition-all duration-200 ${
+                                        isActive
+                                            ? 'bg-primary text-white font-semibold shadow-sm scale-[1.01]'
+                                            : 'hover:bg-gray-50 text-gray-700'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className="h-8 w-8 rounded-lg overflow-hidden bg-gray-100 shrink-0 shadow-inner">
+                                            {cat.images?.[0] || cat.image ? (
+                                                <img
+                                                    src={cat.images?.[0] || cat.image}
+                                                    alt={cat.name}
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                    className="h-full w-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="h-full w-full flex items-center justify-center text-xs">
+                                                    📦
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <span className="text-xs text-left truncate font-medium">
+                                            {cat.name}
+                                        </span>
                                     </div>
 
-                                    <span className="text-xs text-left truncate font-medium">
-                                        {cat.name}
-                                    </span>
-                                </div>
-
-                                {isActive ? (
-                                    <X className="h-3.5 w-3.5 text-white/80 hover:text-white" />
-                                ) : (
-                                    <span className="text-sm text-gray-400">›</span>
-                                )}
-                            </button>
-                        );
-                    })}
+                                    {isActive ? (
+                                        <X className="h-3.5 w-3.5 text-white/80 hover:text-white" />
+                                    ) : (
+                                        <span className="text-sm text-gray-400">›</span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
-            </div>
+            )}
 
-            <div className="space-y-3 pt-4 border-t border-gray-100">
-                <div className="flex items-center justify-between px-2">
-                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide">Brands</h3>
-                    {selectedCategory && (
-                        <span className="text-[9px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                            Filtered
-                        </span>
+            {displayedFilterBrands.length > 0 && (
+                <div className="space-y-3 pt-4 border-t border-gray-100">
+                    <div className="flex items-center justify-between px-2">
+                        <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide">Brands</h3>
+                        {selectedCategory && (
+                            <span className="text-[9px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                                Filtered
+                            </span>
+                        )}
+                    </div>
+
+                    {/* All Brands button */}
+                    <button
+                        onClick={() => {
+                            setSelectedBrand(null);
+                            setViewMode('products');
+                        }}
+                        className={`w-full flex items-center justify-between rounded-2xl px-4 py-2.5 transition-all duration-200 ${
+                            selectedBrand === null
+                                ? 'bg-primary/10 text-primary font-bold border border-primary/20'
+                                : 'hover:bg-gray-50 text-gray-500'
+                        }`}
+                    >
+                        <span className="text-sm font-semibold">All Brands</span>
+                        {selectedBrand === null && <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">Active</span>}
+                    </button>
+
+                    <div className="space-y-1 max-h-[240px] overflow-y-auto pr-1 scrollbar-thin">
+                        {displayedFilterBrands.map((brand) => {
+                            const isActive = selectedBrand === brand.id || selectedBrand === brand.slug;
+
+                            return (
+                                <button
+                                    key={brand.id}
+                                    type="button"
+                                    onClick={() => toggleBrand(brand.slug || brand.id)}
+                                    className={`w-full flex items-center justify-between rounded-xl px-3 py-2 transition-all duration-200 ${
+                                        isActive
+                                            ? 'bg-primary text-white font-semibold shadow-sm scale-[1.01]'
+                                            : 'hover:bg-gray-50 text-gray-700'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className="h-8 w-8 rounded-lg overflow-hidden bg-gray-100 shrink-0 shadow-inner">
+                                            {brand.images?.[0] || brand.logo ? (
+                                                <img
+                                                    src={brand.images?.[0] || brand.logo}
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                    className="h-full w-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="h-full w-full flex items-center justify-center text-xs">
+                                                    🏷️
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <span className="text-xs text-left truncate font-medium">
+                                            {brand.name}
+                                        </span>
+                                    </div>
+
+                                    {isActive ? (
+                                        <X className="h-3.5 w-3.5 text-white/80 hover:text-white" />
+                                    ) : (
+                                        <span className="text-sm text-gray-400">›</span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {(uniqueStates.length > 0 || filteredOrigins.length > 0) && (
+                <div className="space-y-3 pt-4 border-t border-gray-100">
+                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide px-2">Place of Origin</h3>
+
+                    {/* All Origins button */}
+                    {uniqueStates.length > 0 && (
+                        <div className="space-y-2 mb-4">
+                            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide px-2">
+                                State
+                            </h3>
+
+                            <Select
+                                value={selectedState || "all"}
+                                onValueChange={(value) => {
+                                    setSelectedState(value === "all" ? null : value);
+                                    setSelectedOrigin(null);
+                                }}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select State" />
+                                </SelectTrigger>
+
+                                <SelectContent>
+                                    <SelectItem value="all">All States</SelectItem>
+
+                                    {uniqueStates.map((state) => (
+                                        <SelectItem
+                                            key={state.slug}
+                                            value={state.slug}
+                                        >
+                                            {state.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+
+                    {filteredOrigins.length > 0 && (
+                        <div className="space-y-1 max-h-[200px] overflow-y-auto pr-1 scrollbar-thin">
+                            {filteredOrigins.map((origin) => {
+                                const isActive = selectedOrigin === origin.name;
+
+                                return (
+                                    <button
+                                        key={origin.id}
+                                        type="button"
+                                        onClick={() => toggleOrigin(origin.name)}
+                                        className={`w-full flex items-center justify-between rounded-xl px-3 py-2 transition-all duration-200 ${
+                                            isActive
+                                                ? 'bg-primary text-white font-semibold shadow-sm scale-[1.01]'
+                                                : 'hover:bg-gray-50 text-gray-700'
+                                        }`}
+                                    >
+                                        <span className="text-xs text-left truncate font-medium px-1">
+                                            {origin.name}
+                                        </span>
+
+                                        {isActive ? (
+                                            <X className="h-3.5 w-3.5 text-white/80 hover:text-white" />
+                                        ) : (
+                                            <span className="text-sm text-gray-400">›</span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     )}
                 </div>
+            )}
 
-                {/* All Brands button */}
-                <button
-                    onClick={() => {
-                        setSelectedBrand(null);
-                        setViewMode('products');
-                    }}
-                    className={`w-full flex items-center justify-between rounded-2xl px-4 py-2.5 transition-all duration-200 ${
-                        selectedBrand === null
-                            ? 'bg-primary/10 text-primary font-bold border border-primary/20'
-                            : 'hover:bg-gray-50 text-gray-500'
-                    }`}
-                >
-                    <span className="text-sm font-semibold">All Brands</span>
-                    {selectedBrand === null && <span className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">Active</span>}
-                </button>
-
-                <div className="space-y-1 max-h-[240px] overflow-y-auto pr-1 scrollbar-thin">
-                    {displayedFilterBrands.map((brand) => {
-                        const isActive = selectedBrand === brand.id || selectedBrand === brand.slug;
-
-                        return (
-                            <button
-                                key={brand.id}
-                                type="button"
-                                onClick={() => toggleBrand(brand.slug || brand.id)}
-                                className={`w-full flex items-center justify-between rounded-xl px-3 py-2 transition-all duration-200 ${
-                                    isActive
-                                        ? 'bg-primary text-white font-semibold shadow-sm scale-[1.01]'
-                                        : 'hover:bg-gray-50 text-gray-700'
-                                }`}
-                            >
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                    <div className="h-8 w-8 rounded-lg overflow-hidden bg-gray-100 shrink-0 shadow-inner">
-                                        {brand.images?.[0] || brand.logo ? (
-                                            <img
-                                                src={brand.images?.[0] || brand.logo}
-                                                loading="lazy"
-                                                decoding="async"
-                                                className="h-full w-full object-cover"
-                                            />
-                                        ) : (
-                                            <div className="h-full w-full flex items-center justify-center text-xs">
-                                                🏷️
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <span className="text-xs text-left truncate font-medium">
-                                        {brand.name}
-                                    </span>
-                                </div>
-
-                                {isActive ? (
-                                    <X className="h-3.5 w-3.5 text-white/80 hover:text-white" />
-                                ) : (
-                                    <span className="text-sm text-gray-400">›</span>
-                                )}
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-
-            <div className="space-y-3 pt-4 border-t border-gray-100">
-                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide px-2">Place of Origin</h3>
-
-                {/* All Origins button */}
-                <div className="space-y-2 mb-4">
-  <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wide px-2">
-    State
-  </h3>
-
-  <Select
-    value={selectedState || "all"}
-    onValueChange={(value) => {
-      setSelectedState(value === "all" ? null : value);
-      setSelectedOrigin(null);
-    }}
-  >
-    <SelectTrigger>
-      <SelectValue placeholder="Select State" />
-    </SelectTrigger>
-
-    <SelectContent>
-      <SelectItem value="all">All States</SelectItem>
-
-      {uniqueStates.map((state) => (
-        <SelectItem
-          key={state.slug}
-          value={state.slug}
-        >
-          {state.name}
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-</div>
-
-                <div className="space-y-1 max-h-[200px] overflow-y-auto pr-1 scrollbar-thin">
-                    {filteredOrigins.map((origin) => {
-                        const isActive = selectedOrigin === origin.name;
-
-                        return (
-                            <button
-                                key={origin.id}
-                                type="button"
-                                onClick={() => toggleOrigin(origin.name)}
-                                className={`w-full flex items-center justify-between rounded-xl px-3 py-2 transition-all duration-200 ${
-                                    isActive
-                                        ? 'bg-primary text-white font-semibold shadow-sm scale-[1.01]'
-                                        : 'hover:bg-gray-50 text-gray-700'
-                                }`}
-                            >
-                                <span className="text-xs text-left truncate font-medium px-1">
-                                    {origin.name}
-                                </span>
-
-                                {isActive ? (
-                                    <X className="h-3.5 w-3.5 text-white/80 hover:text-white" />
-                                ) : (
-                                    <span className="text-sm text-gray-400">›</span>
-                                )}
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
 
             <div className="space-y-3 pt-4 border-t border-gray-100 px-1">
                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Price Range</h3>
@@ -1220,110 +1344,112 @@ const groupedProducts = useMemo(() => {
                     <div className="space-y-12 py-4">
                         
                         {/* Categories Section */}
-                        <section className="pt-4">
-                            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-                                <ShoppingBag className="h-6 w-6 text-primary" /> Shop by Category
-                            </h2>
-                            <HorizontalScroll 
-                               itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[32%] sm:auto-cols-[31%] pb-4"
-                            >
-                                {categoriesList.map(cat => (
-                                    <div 
-                                        key={cat.id} 
-                                        onClick={() => {
-                                            window.scrollTo(0, 0);
-                                            navigate(`/shop/filters?category=${cat.slug || cat.id}`);
-                                        }}
-                                        className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 flex flex-col items-center text-center gap-2 group-hover:scale-[1.02] snap-start"
-                                    >
-                                        <div className="h-14 w-14 sm:h-20 sm:w-20 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform shadow-inner">
-                                            {cat.image ? (
-                                                <img src={cat.image} alt={cat.name} className="h-full w-full object-cover" />
-                                            ) : (
-                                                <ShoppingBag className="h-6 w-6 text-gray-400" />
-                                            )}
+                        {categoriesList.length > 0 && (
+                            <section className="pt-4">
+                                <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                                    <ShoppingBag className="h-6 w-6 text-primary" /> Shop by Category
+                                </h2>
+                                <HorizontalScroll 
+                                   itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[32%] sm:auto-cols-[31%] pb-4"
+                                >
+                                    {categoriesList.map(cat => (
+                                        <div 
+                                            key={cat.id} 
+                                            onClick={() => {
+                                                window.scrollTo(0, 0);
+                                                navigate(`/shop/filters?category=${cat.slug || cat.id}`);
+                                            }}
+                                            className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 flex flex-col items-center text-center gap-2 group-hover:scale-[1.02] snap-start"
+                                        >
+                                            <div className="h-14 w-14 sm:h-20 sm:w-20 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform shadow-inner">
+                                                {cat.image ? (
+                                                    <img src={cat.image} alt={cat.name} className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <ShoppingBag className="h-6 w-6 text-gray-400" />
+                                                )}
+                                            </div>
+                                            <h3 className="font-semibold text-gray-800 text-[10px] sm:text-sm line-clamp-2">{cat.name}</h3>
                                         </div>
-                                        <h3 className="font-semibold text-gray-800 text-[10px] sm:text-sm line-clamp-2">{cat.name}</h3>
-                                    </div>
-                                ))}
-                            </HorizontalScroll>
-                        </section>
+                                    ))}
+                                </HorizontalScroll>
+                            </section>
+                        )}
 
                         {/* Brands Section */}
-                        <section className="pt-8 border-t border-gray-100">
-                            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
-                                <h2 className="text-2xl font-bold flex items-center gap-2">
-                                    <LayoutGrid className="h-6 w-6 text-primary" /> Shop by Brand
-                                </h2>
-                            </div>
+                        {displayedLandingBrands.length > 0 && (
+                            <section className="pt-8 border-t border-gray-100">
+                                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8">
+                                    <h2 className="text-2xl font-bold flex items-center gap-2">
+                                        <LayoutGrid className="h-6 w-6 text-primary" /> Shop by Brand
+                                    </h2>
+                                </div>
 
-                            <HorizontalScroll 
-                                itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[32%] sm:auto-cols-[31%] pb-4"
-                            >
-                                {displayedLandingBrands.map(brand => (
-                                    <div 
-                                        key={brand.id} 
-                                        onClick={() => {
-                                            window.scrollTo(0, 0);
-                                            navigate(`/shop/filters?brand=${brand.slug || brand.id}`);
-                                        }}
-                                        className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 sm:p-4 flex flex-col items-center justify-center text-center gap-3 group-hover:scale-[1.02] snap-start"
-                                    >
-                                        <div className="h-8 sm:h-14 w-full flex items-center justify-center overflow-hidden">
-                                             {brand.logo ? (
-                                                <img src={brand.logo} alt={brand.name} className="max-h-full max-w-full object-contain group-hover:scale-110 transition-transform" />
-                                             ) : (
-                                                <span className="text-xl font-bold text-gray-400">{brand.name[0]}</span>
-                                            )}
+                                <HorizontalScroll 
+                                    itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[32%] sm:auto-cols-[31%] pb-4"
+                                >
+                                    {displayedLandingBrands.map(brand => (
+                                        <div 
+                                            key={brand.id} 
+                                            onClick={() => {
+                                                window.scrollTo(0, 0);
+                                                navigate(`/shop/filters?brand=${brand.slug || brand.id}`);
+                                            }}
+                                            className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 sm:p-4 flex flex-col items-center justify-center text-center gap-3 group-hover:scale-[1.02] snap-start"
+                                        >
+                                            <div className="h-8 sm:h-14 w-full flex items-center justify-center overflow-hidden">
+                                                 {brand.logo ? (
+                                                    <img src={brand.logo} alt={brand.name} className="max-h-full max-w-full object-contain group-hover:scale-110 transition-transform" />
+                                                 ) : (
+                                                    <span className="text-xl font-bold text-gray-400">{brand.name[0]}</span>
+                                                )}
+                                            </div>
+                                            <h3 className="font-semibold text-gray-800 text-[9px] sm:text-xs line-clamp-2 px-2">{brand.name}</h3>
                                         </div>
-                                        <h3 className="font-semibold text-gray-800 text-[9px] sm:text-xs line-clamp-2 px-2">{brand.name}</h3>
-                                    </div>
-                                ))}
-                            </HorizontalScroll>
-                        </section>
+                                    ))}
+                                </HorizontalScroll>
+                            </section>
+                        )}
                         
                         {/* Shop By State */}
-<section className="pt-4">
-  <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-    <MapPinned className="h-6 w-6 text-primary" />
-    Shop by State
-  </h2>
+                        {statesWithImages.length > 0 && (
+                            <section className="pt-4">
+                                <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                                    <MapPinned className="h-6 w-6 text-primary" />
+                                    Shop by State
+                                </h2>
 
-  <HorizontalScroll
-    itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[32%] sm:auto-cols-[31%] pb-4"
-  >
-    {statesWithImages .map((state) => (
-      <div
-        key={state.id}
-        onClick={() => {
-          window.scrollTo(0, 0);
-          navigate(`/shop/filters?state=${state.slug}`);
-        }}
-        className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 flex flex-col items-center text-center gap-2 group-hover:scale-[1.02] snap-start"
-      >
-    <div className="h-20 w-20 sm:h-28 sm:w-28 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-  {state.image ? (
-    <img
-      src={state.image}
-      alt={state.name}
-      className="h-full w-full object-cover"
-    />
-    
-  ) : (<><MapPinned className="h-7 w-7 text-primary" />
-  <p className="text-xs">{state.image ? "HAS IMAGE" : "NO IMAGE"}</p>
-  </>
-    
-    
-  )}
-</div>
+                                <HorizontalScroll
+                                    itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[32%] sm:auto-cols-[31%] pb-4"
+                                >
+                                    {statesWithImages.map((state) => (
+                                        <div
+                                            key={state.id}
+                                            onClick={() => {
+                                                window.scrollTo(0, 0);
+                                                navigate(`/shop/filters?state=${state.slug}`);
+                                            }}
+                                            className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 flex flex-col items-center text-center gap-2 group-hover:scale-[1.02] snap-start"
+                                        >
+                                            <div className="h-20 w-20 sm:h-28 sm:w-28 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                                                {state.image ? (
+                                                    <img
+                                                        src={state.image}
+                                                        alt={state.name}
+                                                        className="h-full w-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <MapPinned className="h-7 w-7 text-primary" />
+                                                )}
+                                            </div>
 
-        <h3 className="font-semibold text-gray-800 text-[10px] sm:text-sm line-clamp-2">
-          {state.name}
-        </h3>
-      </div>
-    ))}
-  </HorizontalScroll>
-</section>
+                                            <h3 className="font-semibold text-gray-800 text-[10px] sm:text-sm line-clamp-2">
+                                                {state.name}
+                                            </h3>
+                                        </div>
+                                    ))}
+                                </HorizontalScroll>
+                            </section>
+                        )}
 
                         {/* Recent Products Section */}
                         <section className="mt-12">

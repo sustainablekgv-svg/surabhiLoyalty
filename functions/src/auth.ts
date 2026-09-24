@@ -3,6 +3,7 @@ import * as admin from "firebase-admin";
 import * as functions from "firebase-functions/v2";
 import * as logger from "firebase-functions/logger";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
+import { hashSecret, isSecretHash, verifySecretHash } from './credentialSecurity';
 
 // Ensure admin is initialized (it might be in index.ts, but safe to call if not)
 if (admin.apps.length === 0) {
@@ -12,11 +13,14 @@ if (admin.apps.length === 0) {
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-const SECRET_KEY = process.env.VITE_ENCRYPTION_SECRET || 'default-test-secret-key-32-chars';
-logger.info(`Auth Sync initialized. Secret Key starts with: ${SECRET_KEY.substring(0, 4)}... length: ${SECRET_KEY.length}`);
+const SECRET_KEY = process.env.ENCRYPTION_SECRET || process.env.VITE_ENCRYPTION_SECRET || '';
+if (!SECRET_KEY) {
+  logger.error('ENCRYPTION_SECRET is not configured; password operations will fail closed.');
+}
 
 
 const decryptText = (encryptedText: string): string => {
+  if (!SECRET_KEY) throw new Error('Server encryption is not configured');
   try {
     const decrypted = CryptoJS.AES.decrypt(encryptedText, SECRET_KEY, {
       mode: CryptoJS.mode.CBC,
@@ -60,6 +64,7 @@ export const onStaffUpdate = onDocumentWritten("staff/{staffId}", async (event) 
     logger.warn(`Staff ${staffId} has empty password. skipping.`);
     return;
   }
+  if (isSecretHash(newPasswordEncrypted)) return;
 
   try {
     const plainPassword = decryptText(newPasswordEncrypted);
@@ -122,6 +127,7 @@ export const onCustomerUpdate = onDocumentWritten("Customers/{customerId}", asyn
   if (!newPasswordEncrypted) {
     return;
   }
+  if (isSecretHash(newPasswordEncrypted)) return;
 
   try {
     const plainPassword = decryptText(newPasswordEncrypted);
@@ -157,15 +163,16 @@ export const onCustomerUpdate = onDocumentWritten("Customers/{customerId}", asyn
   }
 });
 
-const passwordMatches = (stored: string | undefined, plain: string): boolean => {
-  if (!stored) return false;
+const passwordMatches = async (stored: string | undefined, plain: string): Promise<{ valid: boolean; legacy: boolean }> => {
+  if (!stored) return { valid: false, legacy: false };
+  if (isSecretHash(stored)) return { valid: await verifySecretHash(stored, plain), legacy: false };
   try {
     const decrypted = decryptText(stored);
-    if (decrypted.trim() === plain.trim()) return true;
+    if (decrypted.trim() === plain.trim()) return { valid: true, legacy: true };
   } catch {
     // Plaintext fallback
   }
-  return stored.trim() === plain.trim();
+  return { valid: stored.trim() === plain.trim(), legacy: true };
 };
 
 /**
@@ -197,6 +204,7 @@ export const loginWithCredentials = functions.https.onCall(
     const db = admin.firestore();
     let userDoc: admin.firestore.QueryDocumentSnapshot | null = null;
     let userData: any = null;
+    let matchedLegacyPassword = false;
     let userRole = role || 'customer';
 
     const checkStaff = async () => {
@@ -204,8 +212,9 @@ export const loginWithCredentials = functions.https.onCall(
       if (!snap.empty) {
         const doc = snap.docs[0];
         const data = doc.data();
-        if (passwordMatches(data.staffPassword, cleanPassword)) {
-          return { doc, data, role: data.role || 'staff' };
+        const match = await passwordMatches(data.staffPassword, cleanPassword);
+        if (match.valid) {
+          return { doc, data, role: data.role || 'staff', legacy: match.legacy };
         }
       }
       return null;
@@ -223,8 +232,9 @@ export const loginWithCredentials = functions.https.onCall(
         });
         for (const doc of sorted) {
           const data = doc.data();
-          if (passwordMatches(data.customerPassword, cleanPassword)) {
-            return { doc, data, role: 'customer' };
+          const match = await passwordMatches(data.customerPassword, cleanPassword);
+          if (match.valid) {
+            return { doc, data, role: 'customer', legacy: match.legacy };
           }
         }
       }
@@ -238,6 +248,7 @@ export const loginWithCredentials = functions.https.onCall(
         userDoc = staffRes.doc;
         userData = staffRes.data;
         userRole = staffRes.role;
+        matchedLegacyPassword = staffRes.legacy;
       } else {
         // Fallback: check customer accounts
         const custRes = await checkCustomer();
@@ -245,6 +256,7 @@ export const loginWithCredentials = functions.https.onCall(
           userDoc = custRes.doc;
           userData = custRes.data;
           userRole = 'customer';
+          matchedLegacyPassword = custRes.legacy;
         }
       }
     } else {
@@ -254,6 +266,7 @@ export const loginWithCredentials = functions.https.onCall(
         userDoc = custRes.doc;
         userData = custRes.data;
         userRole = 'customer';
+        matchedLegacyPassword = custRes.legacy;
       } else {
         // Fallback: check staff/admin accounts
         const staffRes = await checkStaff();
@@ -261,6 +274,7 @@ export const loginWithCredentials = functions.https.onCall(
           userDoc = staffRes.doc;
           userData = staffRes.data;
           userRole = staffRes.role;
+          matchedLegacyPassword = staffRes.legacy;
         }
       }
     }
@@ -270,6 +284,12 @@ export const loginWithCredentials = functions.https.onCall(
         'unauthenticated',
         'Invalid mobile number or credentials.'
       );
+    }
+
+    if (matchedLegacyPassword) {
+      const passwordField = userRole === 'customer' ? 'customerPassword' : 'staffPassword';
+      await userDoc.ref.update({ [passwordField]: await hashSecret(cleanPassword) });
+      userData = { ...userData, [passwordField]: undefined };
     }
 
     // Check active status for staff accounts
@@ -411,16 +431,13 @@ export const registerCustomerAccount = functions.https.onCall(
     }
 
     // Encrypt password securely on server
-    const encryptedPassword = CryptoJS.AES.encrypt(cleanPassword, SECRET_KEY, {
-      mode: CryptoJS.mode.CBC,
-      padding: CryptoJS.pad.Pkcs7,
-    }).toString();
+    const passwordHash = await hashSecret(cleanPassword);
 
     const newCustomer: any = {
       role: 'customer',
       customerName: name,
       customerMobile: cleanMobile,
-      customerPassword: encryptedPassword,
+      customerPassword: passwordHash,
       gender: data.gender || '',
       dateOfBirth: data.dateOfBirth || '',
       isStudent: !!data.isStudent,
@@ -431,7 +448,7 @@ export const registerCustomerAccount = functions.https.onCall(
       referredUsers: null,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       joinedDate: admin.firestore.FieldValue.serverTimestamp(),
-      tpin: data.tpin ? CryptoJS.AES.encrypt(String(data.tpin), SECRET_KEY).toString() : '',
+      tpin: data.tpin ? await hashSecret(String(data.tpin)) : '',
       walletRechargeDone: false,
       saleElgibility: true,
       walletId: `WAL-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -553,5 +570,35 @@ export const validateReferralCode = functions.https.onCall(
       customerName: refData.customerName || 'Referrer',
       eligible: refData.walletRechargeDone === true || refData.saleElgibility === true,
     };
+  }
+);
+
+/** Verifies a customer's TPIN without exposing the stored credential to the browser. */
+export const verifyCustomerTpin = functions.https.onCall(
+  { region: 'us-central1' },
+  async (request) => {
+    const role = request.auth?.token?.role;
+    if (role !== 'admin' && role !== 'staff') {
+      throw new functions.https.HttpsError('permission-denied', 'Staff authorization is required.');
+    }
+    const customerId = String(request.data?.customerId || '').trim();
+    const tpin = String(request.data?.tpin || '').trim();
+    if (!customerId || !/^\d{4,8}$/.test(tpin)) {
+      throw new functions.https.HttpsError('invalid-argument', 'A valid customer ID and TPIN are required.');
+    }
+    const ref = admin.firestore().collection('Customers').doc(customerId);
+    const snapshot = await ref.get();
+    if (!snapshot.exists) {
+      throw new functions.https.HttpsError('not-found', 'Customer not found.');
+    }
+    const data = snapshot.data() || {};
+    const match = await passwordMatches(data.tpin, tpin);
+    if (!match.valid) {
+      throw new functions.https.HttpsError('permission-denied', 'Invalid TPIN.');
+    }
+    if (match.legacy) {
+      await ref.update({ tpin: await hashSecret(tpin) });
+    }
+    return { valid: true };
   }
 );

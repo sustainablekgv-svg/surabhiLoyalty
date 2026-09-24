@@ -1,8 +1,8 @@
 import * as crypto from 'crypto';
 
-import * as CryptoJS from 'crypto-js';
 import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
+import { hashSecret } from './credentialSecurity';
 import * as functions from 'firebase-functions/v2';
 
 if (admin.apps.length === 0) {
@@ -620,14 +620,8 @@ export const verifyPhoneOtp = functions.https.onCall(
 /*                  Reset password (consumes OTP verification)                */
 /* -------------------------------------------------------------------------- */
 
-const PASSWORD_ENCRYPTION_SECRET =
-  process.env.VITE_ENCRYPTION_SECRET || 'default-test-secret-key-32-chars';
-
-function encryptPassword(plain: string): string {
-  return CryptoJS.AES.encrypt(plain, PASSWORD_ENCRYPTION_SECRET, {
-    mode: CryptoJS.mode.CBC,
-    padding: CryptoJS.pad.Pkcs7,
-  }).toString();
+async function encryptPassword(plain: string): Promise<string> {
+  return hashSecret(plain);
 }
 
 type ResetPasswordRequest = {
@@ -721,7 +715,7 @@ export const resetCustomerPassword = functions.https.onCall(
     }
     const custRef = custSnap.docs[0].ref;
 
-    const encrypted = encryptPassword(newPassword);
+    const encrypted = await encryptPassword(newPassword);
     await custRef.update({ customerPassword: encrypted });
     await otpDoc.ref.update({ consumed: true, consumed_at: admin.firestore.FieldValue.serverTimestamp() });
 

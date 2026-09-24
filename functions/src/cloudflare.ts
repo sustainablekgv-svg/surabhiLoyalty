@@ -63,6 +63,14 @@ const httpDeleteAllowedOrigins = new Set([
   'http://127.0.0.1:5173',
 ]);
 
+function isPrivileged(auth: { token?: Record<string, unknown> } | null | undefined): boolean {
+  return auth?.token?.role === 'admin' || auth?.token?.role === 'staff';
+}
+
+function isOwnedKey(key: string, uid: string): boolean {
+  return key === uid || key.startsWith(`${uid}/`);
+}
+
 function setHttpDeleteCors(req: Request, res: any): void {
   const origin = req.headers.origin;
   if (origin && httpDeleteAllowedOrigins.has(origin)) {
@@ -75,7 +83,7 @@ function setHttpDeleteCors(req: Request, res: any): void {
 }
 
 /** Shared R2 delete implementation (callable + HTTP). */
-async function deleteR2ObjectByKeyOrUrl(key: string | undefined, fileUrl: string | undefined): Promise<string> {
+async function deleteR2ObjectByKeyOrUrl(key: string | undefined, fileUrl: string | undefined, uid: string, privileged: boolean): Promise<string> {
   const { client, bucketName } = getR2Client();
   let targetKey = key;
 
@@ -100,6 +108,9 @@ async function deleteR2ObjectByKeyOrUrl(key: string | undefined, fileUrl: string
 
   if (!targetKey) {
     throw new functions.https.HttpsError('invalid-argument', 'Could not determine file key');
+  }
+  if (!privileged && !isOwnedKey(targetKey, uid)) {
+    throw new functions.https.HttpsError('permission-denied', 'You may only delete your own files');
   }
 
   await client.send(
@@ -134,6 +145,10 @@ export const createR2UploadUrl = functions.https.onCall({
       'The function must be called with a valid filename and contentType.'
     );
   }
+  if (typeof filename !== 'string' || filename.length > 200 ||
+      typeof contentType !== 'string' || !/^image\/(jpeg|png|gif|webp|avif)$/.test(contentType)) {
+    throw new functions.https.HttpsError('invalid-argument', 'Only supported image files up to 200 characters are allowed.');
+  }
   
   try {
       const { client, bucketName, accountId } = getR2Client();
@@ -142,8 +157,8 @@ export const createR2UploadUrl = functions.https.onCall({
       // Sanitize filename and add random prefix to avoid collisions
       const sanitizedFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
       // Use folder if provided, sanitize it too to prevent directory traversal
-      const sanitizedFolder = folder.replace(/[^a-zA-Z0-9-_]/g, ''); 
-      const key = `${sanitizedFolder}/${Date.now()}-${sanitizedFilename}`;
+      const sanitizedFolder = String(folder).replace(/[^a-zA-Z0-9-_]/g, '').slice(0, 40) || 'uploads';
+      const key = `${request.auth.uid}/${sanitizedFolder}/${Date.now()}-${sanitizedFilename}`;
 
       // console.log(`Generating signed URL for key: ${key}, contentType: ${contentType}`);
 
@@ -181,7 +196,7 @@ export const deleteImageFromR2 = functions.https.onCall({
     }
 
     try {
-        const targetKey = await deleteR2ObjectByKeyOrUrl(key, fileUrl);
+        const targetKey = await deleteR2ObjectByKeyOrUrl(key, fileUrl, request.auth.uid, isPrivileged(request.auth));
         return { success: true, message: `Deleted ${targetKey}` };
     } catch (error: unknown) {
         console.error('Error deleting image from R2:', error);
@@ -223,8 +238,9 @@ export const deleteImageFromR2Http = onRequest(
     }
 
     const idToken = authHeader.slice('Bearer '.length).trim();
+    let decodedToken: admin.auth.DecodedIdToken;
     try {
-      await admin.auth().verifyIdToken(idToken);
+      decodedToken = await admin.auth().verifyIdToken(idToken);
     } catch (e) {
       console.warn('deleteImageFromR2Http: invalid ID token', e);
       res.status(401).json({ error: 'Invalid or expired ID token' });
@@ -252,7 +268,12 @@ export const deleteImageFromR2Http = onRequest(
     }
 
     try {
-      const targetKey = await deleteR2ObjectByKeyOrUrl(key, fileUrl);
+      const targetKey = await deleteR2ObjectByKeyOrUrl(
+        key,
+        fileUrl,
+        decodedToken.uid,
+        isPrivileged({ token: decodedToken })
+      );
       res.status(200).json({ success: true, message: `Deleted ${targetKey}` });
     } catch (error: unknown) {
       console.error('deleteImageFromR2Http R2 error:', error);

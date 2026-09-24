@@ -1,6 +1,7 @@
 import * as CryptoJS from "crypto-js";
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions/v2";
+import { hashSecret, isSecretHash, verifySecretHash } from './credentialSecurity';
 
 if (admin.apps.length === 0) {
   admin.initializeApp();
@@ -24,10 +25,11 @@ const isEncrypted = (text: string): boolean =>
 const getSecretKey = () =>
   process.env.ENCRYPTION_SECRET ||
   process.env.VITE_ENCRYPTION_SECRET ||
-  "default-test-secret-key-32-chars";
+  "";
 
 const decryptText = (encryptedText: string): string => {
   const secret = getSecretKey();
+  if (!secret) throw new Error("Server encryption is not configured");
   const decrypted = CryptoJS.AES.decrypt(encryptedText, secret, {
     mode: CryptoJS.mode.CBC,
     padding: CryptoJS.pad.Pkcs7,
@@ -39,17 +41,18 @@ const decryptText = (encryptedText: string): string => {
   return plainText;
 };
 
-const passwordMatches = (stored: string | undefined, plain: string): boolean => {
-  if (!stored) return false;
+const passwordMatches = async (stored: string | undefined, plain: string): Promise<{ valid: boolean; legacy: boolean }> => {
+  if (!stored) return { valid: false, legacy: false };
+  if (isSecretHash(stored)) return { valid: await verifySecretHash(stored, plain), legacy: false };
   if (isEncrypted(stored)) {
     try {
-      return decryptText(stored) === plain;
+      return { valid: decryptText(stored) === plain, legacy: true };
     } catch (err) {
       console.error("Password decryption match failed:", err);
-      return false;
+      return { valid: false, legacy: true };
     }
   }
-  return stored === plain;
+  return { valid: stored === plain, legacy: true };
 };
 
 const isValidEmail = (value: string): boolean => {
@@ -131,12 +134,16 @@ export const syncFirebaseAuthForUpload = functions.https.onCall(
 
         const doc = snap.docs[0];
         const data = doc.data();
-        if (!passwordMatches(data.customerPassword, password)) {
+        const passwordMatch = await passwordMatches(data.customerPassword, password);
+        if (!passwordMatch.valid) {
           console.warn(`Password mismatch for customer ${mobile}`);
           throw new functions.https.HttpsError(
             "permission-denied",
             "Invalid credentials"
           );
+        }
+        if (passwordMatch.legacy) {
+          await doc.ref.update({ customerPassword: await hashSecret(password) });
         }
 
         const email = String(data.customerEmail || "").trim() || `${mobile}@sustainablekgv.com`;
@@ -183,12 +190,16 @@ export const syncFirebaseAuthForUpload = functions.https.onCall(
         );
       }
 
-      if (!passwordMatches(data.staffPassword, password)) {
+      const passwordMatch = await passwordMatches(data.staffPassword, password);
+      if (!passwordMatch.valid) {
         console.warn(`Password mismatch for staff ${mobile}`);
         throw new functions.https.HttpsError(
           "permission-denied",
           "Invalid credentials"
         );
+      }
+      if (passwordMatch.legacy) {
+        await doc.ref.update({ staffPassword: await hashSecret(password) });
       }
 
       if (appRole === "staff" && data.staffStatus !== "active") {

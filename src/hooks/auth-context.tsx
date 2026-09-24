@@ -1,5 +1,5 @@
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
     getCustomerByMobile,
@@ -42,10 +42,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [authUnsubscribe, setAuthUnsubscribe] = useState<(() => void) | null>(null);
+  const initializationStarted = useRef(false);
 
-  // Update initializeAuth to be more robust
-  const initializeAuth = useCallback(async () => {
+  const withoutSensitiveCredentials = (value: User): User => {
+    const sanitized = { ...value } as User & {
+      customerPassword?: unknown;
+      staffPassword?: unknown;
+      tpin?: unknown;
+    };
+    delete sanitized.customerPassword;
+    delete sanitized.staffPassword;
+    delete sanitized.tpin;
+    return sanitized;
+  };
+
+  // Firebase restores its persisted user asynchronously. Initialization must
+  // therefore happen from onAuthStateChanged, rather than by sampling
+  // auth.currentUser after an arbitrary timeout.
+  const initializeAuth = useCallback(async (firebaseUser: typeof auth.currentUser) => {
     try {
       setIsLoading(true);
 
@@ -79,20 +93,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
-      if (!auth.currentUser) {
-        // Give Firebase Auth indexedDB persistence a moment to initialize
-        await new Promise(r => setTimeout(r, 200));
-      }
-
-      if (auth.currentUser) {
+      if (firebaseUser) {
         try {
-          const tokenResult = await auth.currentUser.getIdTokenResult();
-          const verifiedRole = (tokenResult.claims.role as 'admin' | 'staff' | 'customer') || storedUser.role;
-          const verifiedUser = {
+          const tokenResult = await firebaseUser.getIdTokenResult();
+          const claimRole = tokenResult.claims.role;
+          if (claimRole !== 'admin' && claimRole !== 'staff' && claimRole !== 'customer') {
+            storageUtils.clearAll();
+            setUser(null);
+            return;
+          }
+          const verifiedRole = claimRole;
+          const claimDocId = tokenResult.claims.docId;
+          if (claimDocId && claimDocId !== storedUser.id) {
+            storageUtils.clearAll();
+            setUser(null);
+            return;
+          }
+          const verifiedUser = withoutSensitiveCredentials({
             ...storedUser,
             role: verifiedRole,
-          };
+          } as User);
           setUser(verifiedUser);
+          storageUtils.setUser(verifiedUser);
           sessionManager.updateActivity();
         } catch {
           storageUtils.clearAll();
@@ -112,18 +134,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  // Update the main useEffect with tab synchronization
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
     let tabSyncUnsubscribers: (() => void)[] = [];
 
     const initAuth = async () => {
       try {
-        // Every tab should listen to its own Firebase auth state changes
-        // to ensure auth.currentUser is populated and httpsCallable works.
         unsubscribe = onAuthStateChanged(auth, async firebaseUser => {
-          if (!isInitialized) {
-            await initializeAuth();
+          if (!initializationStarted.current) {
+            initializationStarted.current = true;
+            await initializeAuth(firebaseUser);
+          } else if (!firebaseUser) {
+            // Handle a later Firebase sign-out (including token revocation or
+            // sign-out from another auth flow) after startup has completed.
+            setUser(null);
+            storageUtils.clearAll();
           }
 
           // Broadcast auth state change to other tabs
@@ -132,8 +157,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             timestamp: Date.now(),
           });
         });
-        setAuthUnsubscribe(() => unsubscribe);
-
         // Set up tab synchronization listeners
         const logoutUnsubscribe = tabSync.subscribe('LOGOUT', message => {
           if (message.tabId !== tabSync.getTabId()) {
@@ -155,9 +178,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         tabSyncUnsubscribers = [logoutUnsubscribe, authChangeUnsubscribe];
 
-        if (!isInitialized) {
-          await initializeAuth();
-        }
       } catch (error) {
         // console.error('Auth initialization error:', error);
         setIsInitialized(true);
@@ -173,7 +193,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       tabSyncUnsubscribers.forEach(unsub => unsub());
     };
-  }, [initializeAuth, isInitialized]);
+  }, [initializeAuth]);
 
   // Real-time listener for user data
   useEffect(() => {
@@ -193,11 +213,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 id: snapshot.id,
                 role: user.role,
               } as User;
+              const safeUpdatedData = withoutSensitiveCredentials(updatedData);
 
               setUser(prevUser => {
-                if (JSON.stringify(prevUser) !== JSON.stringify(updatedData)) {
-                  storageUtils.setUser(updatedData);
-                  return updatedData;
+                if (JSON.stringify(prevUser) !== JSON.stringify(safeUpdatedData)) {
+                  storageUtils.setUser(safeUpdatedData);
+                  return safeUpdatedData;
                 }
                 return prevUser;
               });

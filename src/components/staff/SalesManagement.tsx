@@ -41,7 +41,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/auth-context';
-import { decryptText, isEncrypted } from '@/lib/encryption';
+import { verifyCustomerTpin } from '@/lib/authService';
 import { db } from '@/lib/firebase';
 import { getUserMobile, getUserName } from '@/lib/userUtils';
 import {
@@ -1148,37 +1148,10 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
     }
   };
 
-  const verifyTPINAndProcess = () => {
+  const verifyTPINAndProcess = async () => {
     try {
       const enteredTPINStr = String(enteredTPIN).trim();
-      
-      // Master override check - MUST be first
-      if (enteredTPINStr === '1234') {
-        setShowTPINModal(false);
-        setEnteredTPIN('');
-        handleSale();
-        return;
-      }
-
-      const storedTPIN = selectedCustomer.tpin;
-      let isValidTPIN = false;
-
-      // Since all TPINs are encrypted, decrypt the stored TPIN and compare
-      if (isEncrypted(storedTPIN)) {
-        const decryptedStoredTPIN = decryptText(storedTPIN);
-        isValidTPIN = enteredTPINStr === decryptedStoredTPIN;
-      } else {
-        // Fallback for any unencrypted TPINs (direct comparison)
-        isValidTPIN = enteredTPINStr === storedTPIN;
-      }
-
-      // console.log('TPIN verification:', {
-      //   entered: enteredTPINStr,
-      //   storedEncrypted: storedTPIN,
-      //   isEncrypted: isEncrypted(storedTPIN),
-      //   isValid: isValidTPIN,
-      // });
-
+      const isValidTPIN = await verifyCustomerTpin(selectedCustomer.id, enteredTPINStr);
       if (isValidTPIN) {
         setShowTPINModal(false);
         setEnteredTPIN('');

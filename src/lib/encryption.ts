@@ -28,8 +28,7 @@ const SECRET_KEY = (() => {
       envSecret = 'default-test-secret-key-32-chars';
     } else {
       console.error('VITE_ENCRYPTION_SECRET environment variable is not set. Check your .env file.');
-      // Using a fallback so the app doesn't immediately crash, but decryption will fail.
-      envSecret = 'default-test-secret-key-32-chars';
+      envSecret = '';
     }
   }
 
@@ -56,6 +55,9 @@ export const encryptText = (text: string): string => {
   if (!text || typeof text !== 'string') {
     throw new Error('Invalid input: text must be a non-empty string');
   }
+  if (!SECRET_KEY) {
+    throw new Error('Encryption is not configured');
+  }
 
   try {
     // Use AES-256-CBC with random IV for better security
@@ -75,14 +77,13 @@ export const encryptText = (text: string): string => {
   }
 };
 
-const FALLBACK_KEY = 'default-test-secret-key-32-chars';
-
 /**
  * Safely attempts to decrypt text, returns null if decryption fails
  * @param text - The text to decrypt
  * @returns The decrypted text or null if decryption fails
  */
 export const safeDecryptText = (text: string): string | null => {
+  if (!SECRET_KEY) return null;
   try {
     const decrypted = CryptoJS.AES.decrypt(text, SECRET_KEY, {
       mode: CryptoJS.mode.CBC,
@@ -92,18 +93,6 @@ export const safeDecryptText = (text: string): string | null => {
     if (plainText) return plainText;
   } catch (err) {
     // Try fallback below
-  }
-
-  // Try fallback key
-  try {
-    const decryptedFallback = CryptoJS.AES.decrypt(text, FALLBACK_KEY, {
-      mode: CryptoJS.mode.CBC,
-      padding: CryptoJS.pad.Pkcs7,
-    });
-    const plainTextFallback = decryptedFallback.toString(CryptoJS.enc.Utf8);
-    if (plainTextFallback) return plainTextFallback;
-  } catch (errFallback) {
-    console.error('safeDecryptText error (both keys failed):', errFallback);
   }
 
   return null;

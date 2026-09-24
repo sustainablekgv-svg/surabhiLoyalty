@@ -533,6 +533,90 @@ export const getBrands = async (categoryId?: string): Promise<Brand[]> => {
     }
 };
 
+/**
+ * Fetches the IDs and Slugs of categories and brands that have at least one active product.
+ * Used across the e-commerce store to hide empty categories/brands and prevent blank sections.
+ */
+export const getActiveCategoriesAndBrandsWithProducts = async (): Promise<{
+    categoryIds: Set<string>;
+    categorySlugs: Set<string>;
+    brandIds: Set<string>;
+    brandSlugs: Set<string>;
+    placeOfOrigins: Set<string>;
+}> => {
+    try {
+        const q = query(
+            collection(db, 'products'),
+            where('isActive', '==', true)
+        );
+        const snapshot = await getDocs(q);
+
+        const categoryIds = new Set<string>();
+        const categorySlugs = new Set<string>();
+        const brandIds = new Set<string>();
+        const brandSlugs = new Set<string>();
+        const placeOfOrigins = new Set<string>();
+
+        snapshot.docs.forEach(docSnap => {
+            const data = docSnap.data();
+            if (data.isVisible === false) return;
+
+            if (data.categoryId) categoryIds.add(String(data.categoryId));
+            if (data.categorySlug) categorySlugs.add(String(data.categorySlug).toLowerCase().trim());
+            if (data.brandId) brandIds.add(String(data.brandId));
+            if (data.brandSlug) brandSlugs.add(String(data.brandSlug).toLowerCase().trim());
+
+            if (Array.isArray(data.placeOfOrigin)) {
+                data.placeOfOrigin.forEach((origin: string) => {
+                    if (origin) {
+                        placeOfOrigins.add(String(origin).toLowerCase().trim());
+                    }
+                });
+            }
+        });
+
+        return { categoryIds, categorySlugs, brandIds, brandSlugs, placeOfOrigins };
+    } catch (error) {
+        console.error("Error fetching active category and brand IDs with products:", error);
+        return {
+            categoryIds: new Set(),
+            categorySlugs: new Set(),
+            brandIds: new Set(),
+            brandSlugs: new Set(),
+            placeOfOrigins: new Set(),
+        };
+    }
+};
+
+export const getActiveShopCategories = async (): Promise<Category[]> => {
+    const [allCatsData, activeMetadata] = await Promise.all([
+        getCategories(100),
+        getActiveCategoriesAndBrandsWithProducts()
+    ]);
+
+    return allCatsData.categories.filter(cat => 
+        cat.isActive !== false && (
+            activeMetadata.categoryIds.has(cat.id) ||
+            (cat.slug && activeMetadata.categorySlugs.has(cat.slug.toLowerCase().trim()))
+        )
+    );
+};
+
+export const getActiveShopBrands = async (categoryId?: string): Promise<Brand[]> => {
+    const [allBrands, activeMetadata] = await Promise.all([
+        getBrands(categoryId),
+        getActiveCategoriesAndBrandsWithProducts()
+    ]);
+
+    return allBrands.filter(brand =>
+        brand.isActive !== false && (
+            activeMetadata.brandIds.has(brand.id) ||
+            (brand.slug && activeMetadata.brandSlugs.has(brand.slug.toLowerCase().trim()))
+        )
+    );
+};
+
+
 export const getBrandsPaginated = async (
     pageSize: number = 10,
     lastDoc?: any,

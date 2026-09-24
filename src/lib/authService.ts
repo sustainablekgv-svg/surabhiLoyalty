@@ -32,6 +32,16 @@ const callValidateReferralCode = httpsCallable<
   { valid: boolean; customerName?: string; eligible?: boolean }
 >(functions, 'validateReferralCode');
 
+const callVerifyCustomerTpin = httpsCallable<
+  { customerId: string; tpin: string },
+  { valid: boolean }
+>(functions, 'verifyCustomerTpin');
+
+export const verifyCustomerTpin = async (customerId: string, tpin: string): Promise<boolean> => {
+  const result = await callVerifyCustomerTpin({ customerId, tpin });
+  return result.data.valid === true;
+};
+
 export const validateReferralCode = async (codeOrPhone: string) => {
   try {
     const res = await callValidateReferralCode({ codeOrPhone });

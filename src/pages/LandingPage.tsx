@@ -21,7 +21,7 @@ import { ProductCard } from '@/components/shop/ProductCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { HorizontalScroll } from '@/components/ui/horizontal-scroll';
-import { getBrands, getCategories, getFeaturedProducts } from '@/services/shop';
+import { getActiveShopBrands, getActiveShopCategories, getFeaturedProducts } from '@/services/shop';
 import { Brand, Category, Product } from '@/types/shop';
 
 //pop-up 
@@ -75,11 +75,11 @@ const LandingPage = () => {
       try {
         const [products, cats, brs] = await Promise.all([
           getFeaturedProducts(),
-          getCategories(60), // Increased to fill 4 rows
-          getBrands()
+          getActiveShopCategories(),
+          getActiveShopBrands()
         ]);
         setFeaturedProducts(products);
-        setCategories(cats.categories);
+        setCategories(cats);
         setBrands(brs);
       } catch (error) {
         console.error("Error fetching landing page data", error);
@@ -414,72 +414,76 @@ const LandingPage = () => {
       </section>
 
       {/* Categories & Brands Section */}
-      {!loading && (
+      {!loading && (categories.length > 0 || brands.length > 0) && (
         <section className="container mx-auto px-4 py-12 bg-white/40 backdrop-blur-sm">
           <div className="space-y-16">
             {/* Categories */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-                  <ShoppingBag className="h-6 w-6 sm:h-8 sm:w-8 text-primary" /> Shop by Category
-                </h2>
-                <Button variant="ghost" onClick={() => navigate('/shop')} className="text-purple-600 font-bold">
-                  View All →
-                </Button>
-              </div>
-              <HorizontalScroll 
-                itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[calc(25%-9px)] sm:auto-cols-[calc(25%-18px)] pb-4"
-              >
-                {categories.map(cat => (
-                  <div 
-                    key={cat.id} 
-                    onClick={() => navigate(`/shop/filters?category=${cat.slug || cat.id}`)}
-                    className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 flex flex-col items-center text-center gap-2 group-hover:scale-[1.02] snap-start"
-                  >
-                    <div className="h-14 w-14 sm:h-20 sm:w-20 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform shadow-inner border border-purple-50">
-                      {cat.image ? (
-                        <img src={cat.image} alt={cat.name} className="h-full w-full object-cover" />
-                      ) : (
-                        <ShoppingBag className="h-6 w-6 text-gray-400" />
-                      )}
+            {categories.length > 0 && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+                    <ShoppingBag className="h-6 w-6 sm:h-8 sm:w-8 text-primary" /> Shop by Category
+                  </h2>
+                  <Button variant="ghost" onClick={() => navigate('/shop')} className="text-purple-600 font-bold">
+                    View All →
+                  </Button>
+                </div>
+                <HorizontalScroll 
+                  itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[calc(25%-9px)] sm:auto-cols-[calc(25%-18px)] pb-4"
+                >
+                  {categories.map(cat => (
+                    <div 
+                      key={cat.id} 
+                      onClick={() => navigate(`/shop/filters?category=${cat.slug || cat.id}`)}
+                      className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 flex flex-col items-center text-center gap-2 group-hover:scale-[1.02] snap-start"
+                    >
+                      <div className="h-14 w-14 sm:h-20 sm:w-20 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform shadow-inner border border-purple-50">
+                        {cat.image ? (
+                          <img src={cat.image} alt={cat.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <ShoppingBag className="h-6 w-6 text-gray-400" />
+                        )}
+                      </div>
+                      <h3 className="font-semibold text-gray-800 text-[10px] sm:text-sm line-clamp-1">{cat.name}</h3>
                     </div>
-                    <h3 className="font-semibold text-gray-800 text-[10px] sm:text-sm line-clamp-1">{cat.name}</h3>
-                  </div>
-                ))}
-              </HorizontalScroll>
-            </div>
+                  ))}
+                </HorizontalScroll>
+              </div>
+            )}
 
             {/* Brands */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-                  <LayoutGrid className="h-6 w-6 sm:h-8 sm:w-8 text-primary" /> Shop by Brand
-                </h2>
-                <Button variant="ghost" onClick={() => navigate('/shop')} className="text-purple-600 font-bold">
-                  Explore All →
-                </Button>
-              </div>
-              <HorizontalScroll 
-                itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[calc(25%-9px)] sm:auto-cols-[calc(25%-18px)] pb-4"
-              >
-                {brands.map(brand => (
-                  <div 
-                    key={brand.id} 
-                    onClick={() => navigate(`/shop/filters?brand=${brand.slug || brand.id}`)}
-                    className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 sm:p-4 flex flex-col items-center justify-center text-center gap-3 group-hover:scale-[1.02] snap-start"
-                  >
-                    <div className="h-8 sm:h-14 w-full flex items-center justify-center overflow-hidden">
-                      {brand.logo ? (
-                        <img src={brand.logo} alt={brand.name} className="max-h-full max-w-full object-contain group-hover:scale-110 transition-transform" />
-                      ) : (
-                        <span className="text-xl font-bold text-gray-400">{brand.name[0]}</span>
-                      )}
+            {brands.length > 0 && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+                    <LayoutGrid className="h-6 w-6 sm:h-8 sm:w-8 text-primary" /> Shop by Brand
+                  </h2>
+                  <Button variant="ghost" onClick={() => navigate('/shop')} className="text-purple-600 font-bold">
+                    Explore All →
+                  </Button>
+                </div>
+                <HorizontalScroll 
+                  itemClassName="grid grid-rows-3 grid-flow-col gap-3 sm:gap-6 auto-cols-[calc(25%-9px)] sm:auto-cols-[calc(25%-18px)] pb-4"
+                >
+                  {brands.map(brand => (
+                    <div 
+                      key={brand.id} 
+                      onClick={() => navigate(`/shop/filters?brand=${brand.slug || brand.id}`)}
+                      className="group cursor-pointer bg-white rounded-xl border hover:shadow-md transition-all p-3 sm:p-4 flex flex-col items-center justify-center text-center gap-3 group-hover:scale-[1.02] snap-start"
+                    >
+                      <div className="h-8 sm:h-14 w-full flex items-center justify-center overflow-hidden">
+                        {brand.logo ? (
+                          <img src={brand.logo} alt={brand.name} className="max-h-full max-w-full object-contain group-hover:scale-110 transition-transform" />
+                        ) : (
+                          <span className="text-xl font-bold text-gray-400">{brand.name[0]}</span>
+                        )}
+                      </div>
+                      <h3 className="font-semibold text-gray-800 text-[9px] sm:text-xs line-clamp-1 px-2">{brand.name}</h3>
                     </div>
-                    <h3 className="font-semibold text-gray-800 text-[9px] sm:text-xs line-clamp-1 px-2">{brand.name}</h3>
-                  </div>
-                ))}
-              </HorizontalScroll>
-            </div>
+                  ))}
+                </HorizontalScroll>
+              </div>
+            )}
           </div>
         </section>
       )}
