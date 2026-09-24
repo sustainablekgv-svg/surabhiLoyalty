@@ -1,5 +1,5 @@
 import { safeDecryptText } from '@/lib/encryption';
-import { doc, getDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, Timestamp } from 'firebase/firestore';
 import { Calendar, Edit3, Key, Lock, Phone, RefreshCw, Save, Settings, User, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/auth-context';
-import { encryptText } from '@/lib/encryption';
+import { updateCustomerProfile } from '@/lib/authService';
 import { db } from '@/lib/firebase';
 import { CustomerType } from '@/types/types';
 
@@ -49,13 +49,12 @@ export const AccountSettings = ({ userId }: AccountSettingsProps) => {
 
     setIsSaving(true);
     try {
-      const docRef = doc(db, 'Customers', userId);
       const updateData = {
         customerName: editName.trim(),
         gender: editGender,
         dateOfBirth: editDob,
       };
-      await updateDoc(docRef, updateData);
+      await updateCustomerProfile(userId, updateData);
 
       setCustomerData(prev => (prev ? { ...prev, ...updateData } : null));
       setIsEditingProfile(false);
@@ -120,13 +119,10 @@ export const AccountSettings = ({ userId }: AccountSettingsProps) => {
 
     setIsSaving(true);
     try {
-      const encryptedPassword = encryptText(newPassword.trim());
-      const docRef = doc(db, 'Customers', userId);
-      await updateDoc(docRef, {
-        customerPassword: encryptedPassword,
-      });
+      const password = newPassword.trim();
+      await updateCustomerProfile(userId, { customerPassword: password });
 
-      setCustomerData(prev => (prev ? { ...prev, customerPassword: encryptedPassword } : null));
+      setCustomerData(prev => (prev ? { ...prev, customerPassword: '' } : null));
       setIsEditingPassword(false);
       setNewPassword('');
       toast.success('Password updated successfully');
@@ -146,13 +142,10 @@ export const AccountSettings = ({ userId }: AccountSettingsProps) => {
 
     setIsSaving(true);
     try {
-      const encryptedTpin = encryptText(newTpin.trim());
-      const docRef = doc(db, 'Customers', userId);
-      await updateDoc(docRef, {
-        tpin: encryptedTpin,
-      });
+      const tpin = newTpin.trim();
+      await updateCustomerProfile(userId, { tpin });
 
-      setCustomerData(prev => (prev ? { ...prev, tpin: encryptedTpin } : null));
+      setCustomerData(prev => (prev ? { ...prev, tpin: '' } : null));
       setIsEditingTpin(false);
       setNewTpin('');
       toast.success('TPIN updated successfully');

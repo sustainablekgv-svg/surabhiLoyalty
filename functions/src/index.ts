@@ -80,3 +80,5 @@ export const loginWithCredentials = auth.loginWithCredentials;
 export const registerCustomerAccount = auth.registerCustomerAccount;
 export const validateReferralCode = auth.validateReferralCode;
 export const verifyCustomerTpin = auth.verifyCustomerTpin;
+export const updateUserProfile = auth.updateUserProfile;
+export const updateCustomerProfile = auth.updateCustomerProfile;

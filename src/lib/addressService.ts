@@ -1,12 +1,12 @@
 import { Address } from '@/types/shop';
 import { CustomerType } from '@/types/types';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
+import { updateCustomerProfile } from '@/lib/authService';
 import { db } from './firebase';
 
 export const getAddresses = async (userId: string): Promise<Address[]> => {
   try {
-    const docRef = doc(db, 'Customers', userId);
-    const docSnap = await getDoc(docRef);
+    const docSnap = await getDoc(doc(db, 'Customers', userId));
 
     if (docSnap.exists()) {
       const data = docSnap.data() as CustomerType;
@@ -32,9 +32,7 @@ export const addAddress = async (userId: string, address: Address): Promise<Addr
     const currentAddresses = data.addresses || [];
     const newAddresses = [...currentAddresses, address];
 
-    await updateDoc(docRef, {
-      addresses: newAddresses
-    });
+    await updateCustomerProfile(userId, { addresses: newAddresses });
 
     return newAddresses;
   } catch (error) {
@@ -45,8 +43,7 @@ export const addAddress = async (userId: string, address: Address): Promise<Addr
 
 export const updateAddress = async (userId: string, index: number, address: Address): Promise<Address[]> => {
   try {
-    const docRef = doc(db, 'Customers', userId);
-    const docSnap = await getDoc(docRef);
+    const docSnap = await getDoc(doc(db, 'Customers', userId));
 
     if (!docSnap.exists()) {
       throw new Error('Customer not found');
@@ -62,9 +59,7 @@ export const updateAddress = async (userId: string, index: number, address: Addr
     const newAddresses = [...currentAddresses];
     newAddresses[index] = address;
 
-    await updateDoc(docRef, {
-      addresses: newAddresses
-    });
+    await updateCustomerProfile(userId, { addresses: newAddresses });
 
     return newAddresses;
   } catch (error) {
@@ -75,8 +70,7 @@ export const updateAddress = async (userId: string, index: number, address: Addr
 
 export const deleteAddress = async (userId: string, index: number): Promise<Address[]> => {
   try {
-    const docRef = doc(db, 'Customers', userId);
-    const docSnap = await getDoc(docRef);
+    const docSnap = await getDoc(doc(db, 'Customers', userId));
 
     if (!docSnap.exists()) {
       throw new Error('Customer not found');
@@ -91,9 +85,7 @@ export const deleteAddress = async (userId: string, index: number): Promise<Addr
 
     const newAddresses = currentAddresses.filter((_, i) => i !== index);
 
-    await updateDoc(docRef, {
-      addresses: newAddresses
-    });
+    await updateCustomerProfile(userId, { addresses: newAddresses });
 
     return newAddresses;
   } catch (error) {

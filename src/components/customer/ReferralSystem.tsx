@@ -57,24 +57,6 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
       if (docSnap.exists()) {
         const customerData = docSnap.data();
         
-        // Lazy Migration: Generate Code if missing
-        if (!customerData.referralCode) {
-           const generateCode = () => {
-              const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-              let result = '';
-              for (let i = 0; i < 5; i++) {
-                result += chars.charAt(Math.floor(Math.random() * chars.length));
-              }
-              return `REF-${result}`;
-           };
-           const newCode = generateCode();
-           await import('firebase/firestore').then(({ updateDoc }) => {
-              updateDoc(docRef, { referralCode: newCode });
-           });
-           
-           customerData.referralCode = newCode; // Update local state immediately
-        }
-
         setUserData(customerData);
         setReferralIncome(customerData.surabhiReferral || 0);
 

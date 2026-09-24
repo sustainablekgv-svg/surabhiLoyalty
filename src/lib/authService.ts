@@ -37,6 +37,24 @@ const callVerifyCustomerTpin = httpsCallable<
   { valid: boolean }
 >(functions, 'verifyCustomerTpin');
 
+const callUpdateUserProfile = httpsCallable<
+  { userId?: string; updates: Record<string, any> },
+  { success: boolean; message?: string; updatedFields?: string[] }
+>(functions, 'updateUserProfile');
+
+export const updateCustomerProfile = async (
+  userId: string,
+  updates: Record<string, any>
+): Promise<{ success: boolean; message?: string; updatedFields?: string[] }> => {
+  try {
+    const res = await callUpdateUserProfile({ userId, updates });
+    return res.data;
+  } catch (error: any) {
+    const msg = error?.message || error?.details?.message || 'Failed to update profile';
+    throw new Error(msg);
+  }
+};
+
 export const verifyCustomerTpin = async (customerId: string, tpin: string): Promise<boolean> => {
   const result = await callVerifyCustomerTpin({ customerId, tpin });
   return result.data.valid === true;

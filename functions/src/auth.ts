@@ -602,3 +602,184 @@ export const verifyCustomerTpin = functions.https.onCall(
     return { valid: true };
   }
 );
+
+/**
+ * Secure Server-Side User/Customer Profile Update
+ * Requires valid JWT Authentication (request.auth).
+ * Strictly validates caller identity and enforces whitelisted profile fields.
+ * Prevents client-side manipulation of balances, roles, or sensitive administrative metadata.
+ */
+export const updateUserProfile = functions.https.onCall(
+  { region: 'us-central1', cors: true },
+  async (request: functions.https.CallableRequest<any>) => {
+    // 1. JWT Authentication Verification
+    if (!request.auth || !request.auth.uid) {
+      throw new functions.https.HttpsError(
+        'unauthenticated',
+        'Authentication required. Please sign in to update your profile.'
+      );
+    }
+
+    const callerUid = request.auth.uid;
+    const tokenClaims = request.auth.token || {};
+    const callerRole = tokenClaims.role || 'customer';
+    const callerDocId = tokenClaims.docId || callerUid;
+
+    const data = request.data || {};
+    const targetUserId = String(data.userId || callerDocId).trim();
+
+    // 2. Authorization Check: Regular users can ONLY update their own document
+    const isSelf = targetUserId === callerDocId || targetUserId === callerUid;
+    const isAdminUser = callerRole === 'admin';
+
+    if (!isSelf && !isAdminUser) {
+      logger.warn(`Unauthorized profile update attempt by UID ${callerUid} on target ${targetUserId}`);
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'You are not authorized to update another user profile.'
+      );
+    }
+
+    const rawUpdates = data.updates || {};
+    if (typeof rawUpdates !== 'object' || rawUpdates === null || Array.isArray(rawUpdates)) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Invalid update payload.'
+      );
+    }
+
+    // 3. Strict Whitelist of Editable Fields (reject / ignore any sensitive balance or role fields)
+    const allowedFields = [
+      'customerName',
+      'name',
+      'displayName',
+      'customerPassword',
+      'password',
+      'tpin',
+      'gender',
+      'dateOfBirth',
+      'addresses',
+      'deliveryAddress',
+      'city',
+      'state',
+      'pincode',
+      'address'
+    ];
+
+    const sanitizedUpdates: Record<string, any> = {};
+    let newPlainPassword = '';
+    let newPlainTpin = '';
+
+    for (const key of Object.keys(rawUpdates)) {
+      if (!allowedFields.includes(key)) {
+        logger.warn(`Ignoring disallowed field '${key}' in profile update from ${callerUid}`);
+        continue;
+      }
+
+      const val = rawUpdates[key];
+
+      if (key === 'customerName' || key === 'name' || key === 'displayName') {
+        const nameVal = String(val || '').trim();
+        if (nameVal.length > 0 && nameVal.length <= 100) {
+          sanitizedUpdates.customerName = nameVal;
+        }
+      } else if (key === 'customerPassword' || key === 'password') {
+        const passVal = String(val || '').trim();
+        if (passVal) {
+          if (passVal.length < 6) {
+            throw new functions.https.HttpsError(
+              'invalid-argument',
+              'Password must be at least 6 characters long.'
+            );
+          }
+          newPlainPassword = passVal;
+        }
+      } else if (key === 'tpin') {
+        const tpinVal = String(val || '').trim();
+        if (tpinVal) {
+          if (!/^\d{4}$/.test(tpinVal)) {
+            throw new functions.https.HttpsError(
+              'invalid-argument',
+              'TPIN must be a 4-digit numeric code.'
+            );
+          }
+          newPlainTpin = tpinVal;
+        }
+      } else if (key === 'gender') {
+        const g = String(val || '').toLowerCase().trim();
+        if (['male', 'female', 'other', ''].includes(g)) {
+          sanitizedUpdates.gender = g;
+        }
+      } else if (key === 'dateOfBirth') {
+        sanitizedUpdates.dateOfBirth = String(val || '').slice(0, 30);
+      } else if (key === 'addresses' && Array.isArray(val)) {
+        sanitizedUpdates.addresses = val.slice(0, 10);
+      } else if (key === 'deliveryAddress' && typeof val === 'object' && val !== null) {
+        sanitizedUpdates.deliveryAddress = val;
+      } else if (['city', 'state', 'pincode', 'address'].includes(key)) {
+        sanitizedUpdates[key] = String(val || '').trim().slice(0, 200);
+      }
+    }
+
+    // 4. Hash sensitive credentials securely on server side
+    if (newPlainPassword) {
+      sanitizedUpdates.customerPassword = await hashSecret(newPlainPassword);
+    }
+    if (newPlainTpin) {
+      sanitizedUpdates.tpin = await hashSecret(newPlainTpin);
+    }
+
+    if (Object.keys(sanitizedUpdates).length === 0) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'No valid profile fields provided for update.'
+      );
+    }
+
+    sanitizedUpdates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+
+    const db = admin.firestore();
+    
+    // Check Customers collection first, then users collection
+    let targetDocRef = db.collection('Customers').doc(targetUserId);
+    let targetDocSnap = await targetDocRef.get();
+
+    if (!targetDocSnap.exists) {
+      const userDocRef = db.collection('users').doc(targetUserId);
+      const userDocSnap = await userDocRef.get();
+      if (userDocSnap.exists) {
+        targetDocRef = userDocRef;
+        targetDocSnap = userDocSnap;
+      } else {
+        throw new functions.https.HttpsError('not-found', 'User record not found.');
+      }
+    }
+
+    // Execute update via Admin SDK (bypasses Firestore client-side security rules)
+    await targetDocRef.update(sanitizedUpdates);
+
+    // Sync Firebase Auth user if password or name was updated
+    if (newPlainPassword || sanitizedUpdates.customerName) {
+      try {
+        const authUpdate: admin.auth.UpdateRequest = {};
+        if (newPlainPassword) authUpdate.password = newPlainPassword;
+        if (sanitizedUpdates.customerName) authUpdate.displayName = sanitizedUpdates.customerName;
+
+        await admin.auth().updateUser(callerUid, authUpdate);
+      } catch (authSyncErr) {
+        logger.warn(`Firebase Auth sync during profile update for ${callerUid}:`, authSyncErr);
+      }
+    }
+
+    logger.info(`Profile updated securely via Cloud Function for user ${targetUserId} by ${callerUid}`);
+
+    return {
+      success: true,
+      message: 'Profile updated successfully.',
+      updatedFields: Object.keys(sanitizedUpdates).filter(k => k !== 'customerPassword' && k !== 'tpin'),
+    };
+  }
+);
+
+/** Alias for updateUserProfile for convenience */
+export const updateCustomerProfile = updateUserProfile;

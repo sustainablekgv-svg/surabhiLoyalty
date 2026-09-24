@@ -35,6 +35,15 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Users collection
+    match /users/{userId} {
+      // Allow users to read their own data; staff/admin can read
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin() || isStaff());
+      // Strictly deny all creates, updates, and deletes from the client side!
+      // All writes must happen only through Cloud Functions via Firebase Admin SDK.
+      allow write: if false;
+    }
+
     // Customers collection
     match /Customers/{customerId} {
       // Staff/Admin can view all customers for POS/lookup; customer can ONLY view own profile
@@ -44,40 +53,28 @@ service cloud.firestore {
       allow create: if isStaff() || isAdmin();
 
       // Updates:
-      // Staff and Admin have full POS update permissions.
-      // Individual customers can update personal profile fields, but CANNOT tamper with balances or roles!
-      allow update: if isStaff() || isAdmin() || (
-        isOwner(customerId) && 
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-          'walletBalance', 
-          'walletBalanceCurrentMonth',
-          'surabhiBalance', 
-          'surabhiCredit', 
-          'surabhiDebit',
-          'surabhiReferral',
-          'surabhiBalanceCurrentMonth',
-          'sevaBalance',
-          'sevaCredit',
-          'sevaDebit',
-          'sevaTotal',
-          'sevaBalanceCurrentMonth',
-          'cumTotal', 
-          'surbhiTotal',
-          'shippingBalance', 
-          'shippingCredit',
-          'shippingDebit',
-          'shippingTotal',
-          'role'
-        ])
-      );
+      // STRICTLY BLOCK customer direct updates from the client side!
+      // All customer profile modifications must go through secure Cloud Functions (updateUserProfile).
+      // Only Staff and Admin are permitted direct POS operational updates.
+      allow update: if isStaff() || isAdmin();
 
       // Only Admin can delete customer records
       allow delete: if isAdmin();
     }
 
-    // Subcollections of Customers (cart, wishlist, etc.)
-    match /Customers/{customerId}/{allSubcollections=**} {
+    // Customer-owned shopping data. Keep this explicit: a recursive wildcard
+    // here would let a customer create or modify arbitrary nested documents.
+    match /Customers/{customerId}/cart/{cartId} {
       allow read, write: if isStaff() || isOwner(customerId);
+    }
+
+    match /Customers/{customerId}/wishlist/{wishlistId} {
+      allow read, write: if isStaff() || isOwner(customerId);
+    }
+
+    // No other customer subcollections are client-writable by default.
+    match /Customers/{customerId}/{allSubcollections=**} {
+      allow read, write: if isStaff();
     }
 
     // CollectionGroup for cart management

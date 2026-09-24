@@ -1,7 +1,6 @@
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-
 
 import { Button } from '@/components/ui/button';
 import {
@@ -14,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { decryptText, encryptText, isEncrypted } from '@/lib/encryption';
+import { updateCustomerProfile } from '@/lib/authService';
 import { db } from '@/lib/firebase';
 import { CustomerType, User } from '@/types/types';
 
@@ -25,7 +24,11 @@ interface CustomerSettingsProps {
 }
 
 export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSettingsProps) => {
-  const [formData, setFormData] = useState<Partial<CustomerType>>({
+  const [formData, setFormData] = useState<{
+    customerName: string;
+    customerPassword?: string;
+    tpin?: string;
+  }>({
     customerName: '',
     customerPassword: '',
     tpin: '',
@@ -36,43 +39,19 @@ export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSetting
   useEffect(() => {
     const fetchCustomerData = async () => {
       try {
-        // Fetch customer data directly using the user.id
         const customerRef = doc(db, 'Customers', user.id);
         const customerSnapshot = await getDoc(customerRef);
 
         if (customerSnapshot.exists()) {
           const data = customerSnapshot.data() as CustomerType;
           setCustomerData(data);
-          // Decrypt password and TPIN for display
-          let decryptedPassword = '';
-          let decryptedTpin = '';
-
-          try {
-            decryptedPassword = data.customerPassword
-              ? isEncrypted(data.customerPassword)
-                ? decryptText(data.customerPassword)
-                : data.customerPassword
-              : '';
-          } catch (error) {
-            // console.error('Error decrypting password:', error);
-            decryptedPassword = 'Error decrypting password';
-          }
-
-          try {
-            decryptedTpin = data.tpin ? (isEncrypted(data.tpin) ? decryptText(data.tpin) : data.tpin) : '';
-          } catch (error) {
-            // console.error('Error decrypting TPIN:', error);
-            decryptedTpin = 'Error decrypting TPIN';
-          }
-
           setFormData({
-            customerName: data.customerName,
-            customerPassword: decryptedPassword,
-            tpin: decryptedTpin,
+            customerName: data.customerName || '',
+            customerPassword: '',
+            tpin: '',
           });
         }
       } catch (error) {
-        // console.error('Error fetching customer data:', error);
         toast.error('Failed to load your profile information');
       }
     };
@@ -93,69 +72,42 @@ export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSetting
   const handleSaveChanges = async () => {
     if (!user.id) return;
 
-    setIsUpdating(true);
-    try {
-      // Only include fields that have values and are different from current
-      const updateData: Partial<CustomerType> = {};
+    const updatePayload: Record<string, any> = {};
 
-      // Required fields that should always be included if they exist in formData
-      if (formData.customerName && formData.customerName !== customerData?.customerName) {
-        updateData.customerName = formData.customerName;
-      }
+    if (formData.customerName && formData.customerName.trim() !== customerData?.customerName) {
+      updatePayload.customerName = formData.customerName.trim();
+    }
 
-      // Conditional updates for sensitive fields - encrypt both password and TPIN
-      if (formData.tpin) {
-        // Decrypt stored TPIN to compare with current input
-        let storedTpin = '';
-        try {
-          storedTpin = customerData?.tpin
-            ? isEncrypted(customerData.tpin)
-              ? decryptText(customerData.tpin)
-              : customerData.tpin
-            : '';
-        } catch (error) {
-          // console.error('Error decrypting stored TPIN:', error);
-        }
-
-        if (formData.tpin !== storedTpin) {
-          updateData.tpin = encryptText(formData.tpin.trim());
-        }
-      }
-
-      if (formData.customerPassword) {
-        // Decrypt stored password to compare with current input
-        let storedPassword = '';
-        try {
-          storedPassword = customerData?.customerPassword
-            ? isEncrypted(customerData.customerPassword)
-              ? decryptText(customerData.customerPassword)
-              : customerData.customerPassword
-            : '';
-        } catch (error) {
-          // console.error('Error decrypting stored password:', error);
-        }
-
-        if (formData.customerPassword !== storedPassword) {
-          updateData.customerPassword = encryptText(formData.customerPassword.trim());
-        }
-      }
-
-      // Verify we have at least one field to update
-      if (Object.keys(updateData).length === 0) {
-        toast.info('No changes detected');
+    if (formData.customerPassword && formData.customerPassword.trim()) {
+      const pass = formData.customerPassword.trim();
+      if (pass.length < 6) {
+        toast.error('Password must be at least 6 characters long');
         return;
       }
+      updatePayload.customerPassword = pass;
+    }
 
-      // Update customer document directly using user.id
-      const customerRef = doc(db, 'Customers', user.id);
-      await updateDoc(customerRef, updateData);
+    if (formData.tpin && formData.tpin.trim()) {
+      const tpin = formData.tpin.trim();
+      if (!/^\d{4}$/.test(tpin)) {
+        toast.error('TPIN must be a 4-digit number');
+        return;
+      }
+      updatePayload.tpin = tpin;
+    }
 
-      // console.log('Customer record updated for ID:', user.id);
+    if (Object.keys(updatePayload).length === 0) {
+      toast.info('No changes detected');
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      // Execute profile update securely through Cloud Function with JWT Auth
+      await updateCustomerProfile(user.id, updatePayload);
       toast.success('Profile updated successfully');
-
       onOpenChange(false);
     } catch (error) {
-      // console.error('Error updating customer profile:', error);
       toast.error('Update failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setIsUpdating(false);
@@ -206,12 +158,13 @@ export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSetting
               htmlFor="customerPassword"
               className="text-[10px] xs:text-xs sm:text-sm font-semibold"
             >
-              Password
+              New Password (Optional)
             </Label>
             <Input
               id="customerPassword"
               name="customerPassword"
-              type="text"
+              type="password"
+              placeholder="Leave blank to keep unchanged"
               value={formData.customerPassword || ''}
               onChange={handleInputChange}
               className="text-gray-800 font-medium h-8 xs:h-9 sm:h-10 text-xs xs:text-sm px-2 xs:px-3"
@@ -220,12 +173,14 @@ export const CustomerSettings = ({ user, isOpen, onOpenChange }: CustomerSetting
 
           <div className="space-y-0.5 xs:space-y-1 sm:space-y-2">
             <Label htmlFor="tpin" className="text-[10px] xs:text-xs sm:text-sm font-semibold">
-              Transaction PIN (TPIN)
+              New 4-digit TPIN (Optional)
             </Label>
             <Input
               id="tpin"
               name="tpin"
-              type="text"
+              type="password"
+              maxLength={4}
+              placeholder="Leave blank to keep unchanged"
               value={formData.tpin || ''}
               onChange={handleInputChange}
               className="text-gray-800 font-medium h-8 xs:h-9 sm:h-10 text-xs xs:text-sm px-2 xs:px-3"
