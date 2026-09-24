@@ -1,27 +1,13 @@
 import { tabSync } from './tabSync';
 
 const INACTIVITY_TIMEOUT_MINUTES = 30;
-const SESSION_TOKEN_KEY = 'sessionToken';
 const LAST_ACTIVITY_KEY = 'lastActive';
 const USER_KEY = 'user';
 const TAB_SESSIONS_KEY = 'tabSessions';
 
-// Generate a secure random session token
-const generateSessionToken = (): string => {
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
-};
-
-// Validate session token format
-const isValidSessionToken = (token: string): boolean => {
-  return typeof token === 'string' && /^[a-f0-9]{64}$/.test(token);
-};
-
 // Tab-specific session management
 interface TabSession {
   tabId: string;
-  sessionToken: string;
   lastActivity: number;
   isActive: boolean;
 }
@@ -69,8 +55,7 @@ export const sessionManager = {
     const sessions = getTabSessions();
     const currentSession = sessions[currentTabId];
 
-    // Check if current tab has a valid session
-    if (!currentSession || !isValidSessionToken(currentSession.sessionToken)) {
+    if (!currentSession) {
       return true;
     }
 
@@ -89,7 +74,6 @@ export const sessionManager = {
     if (!sessions[currentTabId]) {
       sessions[currentTabId] = {
         tabId: currentTabId,
-        sessionToken: generateSessionToken(),
         lastActivity: now,
         isActive: true,
       };
@@ -100,11 +84,7 @@ export const sessionManager = {
 
     setTabSessions(sessions);
 
-    // Also update legacy storage for backward compatibility
     localStorage.setItem(LAST_ACTIVITY_KEY, now.toString());
-    if (!localStorage.getItem(SESSION_TOKEN_KEY)) {
-      localStorage.setItem(SESSION_TOKEN_KEY, sessions[currentTabId].sessionToken);
-    }
 
     // Broadcast session update to other tabs
     tabSync.broadcast('SESSION_UPDATE', {
@@ -115,21 +95,17 @@ export const sessionManager = {
 
   initializeSession: (): void => {
     const currentTabId = tabSync.getTabId();
-    const sessionToken = generateSessionToken();
     const now = Date.now();
 
     const sessions = getTabSessions();
     sessions[currentTabId] = {
       tabId: currentTabId,
-      sessionToken,
       lastActivity: now,
       isActive: true,
     };
 
     setTabSessions(sessions);
 
-    // Legacy storage
-    localStorage.setItem(SESSION_TOKEN_KEY, sessionToken);
     localStorage.setItem(LAST_ACTIVITY_KEY, now.toString());
   },
 
@@ -138,13 +114,11 @@ export const sessionManager = {
     const sessions = getTabSessions();
     const currentSession = sessions[currentTabId];
 
-    if (currentSession && isValidSessionToken(currentSession.sessionToken)) {
-      return currentSession.sessionToken;
+    if (currentSession) {
+      // Compatibility signal only; this is not an authentication token.
+      return 'active';
     }
-
-    // Fallback to legacy storage
-    const token = localStorage.getItem(SESSION_TOKEN_KEY);
-    return token && isValidSessionToken(token) ? token : null;
+    return null;
   },
 
   clearSession: (): void => {
@@ -164,7 +138,7 @@ export const sessionManager = {
     // Clear legacy session data
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(LAST_ACTIVITY_KEY);
-    localStorage.removeItem(SESSION_TOKEN_KEY);
+    localStorage.removeItem('sessionToken');
 
     // Clear any other sensitive data
     const keysToRemove = [];
@@ -188,10 +162,6 @@ export const sessionManager = {
 
     // All session data must be present and valid
     if (!currentSession || !user) {
-      return false;
-    }
-
-    if (!isValidSessionToken(currentSession.sessionToken)) {
       return false;
     }
 

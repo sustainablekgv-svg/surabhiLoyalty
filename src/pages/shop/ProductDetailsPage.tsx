@@ -433,10 +433,9 @@ const isVariantOutOfStock = (variant: Product) =>
                         </div>
                     </div>
 
-                   <div 
+                   <div
     className="prose prose-sm text-gray-600 max-w-none text-justify overflow-hidden break-words"
-    dangerouslySetInnerHTML={{ __html: product.description }}
-/>
+                    >{product.description}</div>
 
 {/* Product Variants */}
 {variants.length > 1 && (

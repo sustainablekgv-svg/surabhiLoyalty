@@ -1473,10 +1473,9 @@ const groupedProducts = useMemo(() => {
                                     <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
                                         {filterBrands.find(b => b.id === selectedBrand)?.name}
                                     </h2>
-                                    <div 
+                                    <div
                                         className="prose prose-sm text-gray-600 max-w-none overflow-hidden break-words"
-                                        dangerouslySetInnerHTML={{ __html: filterBrands.find(b => b.id === selectedBrand)?.description || '' }}
-                                    />
+                                    >{filterBrands.find(b => b.id === selectedBrand)?.description || ''}</div>
                                 </div>
                             )}
 

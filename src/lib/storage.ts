@@ -16,7 +16,12 @@ export const storageUtils = {
 
   setUser: (user: any): void => {
     try {
-      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+      // Firebase Auth/Firestore remain the source of truth. Do not persist
+      // balances, phone numbers, credentials, or other profile data here.
+      localStorage.setItem(
+        STORAGE_KEYS.USER,
+        JSON.stringify({ id: user?.id, role: user?.role })
+      );
     } catch (error) {
       // console.error('Error storing user:', error);
     }
@@ -51,5 +56,6 @@ export const storageUtils = {
   clearAll: (): void => {
     localStorage.removeItem(STORAGE_KEYS.USER);
     localStorage.removeItem(STORAGE_KEYS.LAST_ACTIVE);
+    localStorage.removeItem('sessionToken');
   },
 };
