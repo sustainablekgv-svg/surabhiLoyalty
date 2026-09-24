@@ -268,9 +268,9 @@ interface RegisterCustomerData {
   customerMobile: string;
   customerPassword: string;
   gender: string;
-  dateOfBirth: string;
+  dateOfBirth?: string;
   storeLocation: string;
-  referredBy: string | null;
+  referredBy?: string | null;
   isStudent: boolean;
   demoStore: boolean;
   tpin?: string;

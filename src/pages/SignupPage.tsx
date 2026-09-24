@@ -273,9 +273,9 @@ const SignupPage = () => {
       customerMobile: formData.customerMobile,
       customerPassword: formData.customerPassword,
       gender: formData.gender,
-      dateOfBirth: formData.dateOfBirth,
+      ...(formData.dateOfBirth ? { dateOfBirth: formData.dateOfBirth } : {}),
       storeLocation: formData.storeLocation,
-      referredBy: finalReferredBy,
+      ...(finalReferredBy ? { referredBy: finalReferredBy } : {}),
       isStudent,
       demoStore: false,
     });
