@@ -11,6 +11,7 @@ import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { PaginationControl } from '@/components/ui/pagination';
 import { db } from '@/lib/firebase';
 import { isValidImageUrl } from '@/lib/image-utils';
 import { deleteImageFromR2 } from '@/services/cloudflare';
@@ -25,7 +26,7 @@ export const ProductManager = () => {
     // Client-side pagination state
     const [allProducts, setAllProducts] = useState<Product[]>([]);
     const [page, setPage] = useState(1);
-    const PAGE_SIZE = 10;
+    const [pageSize, setPageSize] = useState(10);
 
     const [brands, setBrands] = useState<Brand[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -167,14 +168,11 @@ export const ProductManager = () => {
     }, [allProducts, searchTerm, filterBrandId, sortConfig]);
 
     const products = React.useMemo(() => {
-        const start = (page - 1) * PAGE_SIZE;
-        return filteredProducts.slice(start, start + PAGE_SIZE);
-    }, [filteredProducts, page]);
+        const start = (page - 1) * pageSize;
+        return filteredProducts.slice(start, start + pageSize);
+    }, [filteredProducts, page, pageSize]);
 
-    const hasMore = (page * PAGE_SIZE) < filteredProducts.length;
-
-    const loadNext = () => setPage(p => p + 1);
-    const loadPrev = () => setPage(p => Math.max(1, p - 1));
+    const totalPages = Math.ceil(filteredProducts.length / pageSize);
 
     // Reset page on filter change
     useEffect(() => {
@@ -1239,28 +1237,23 @@ Use the same base product name for all variants.
                 </Table>
             </div>
             
-             {/* Pagination Controls */}
-             <div className="flex items-center justify-between px-2">
-                <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={loadPrev} 
-                    disabled={page <= 1 || loading}
-                >
-                    Previous
-                </Button>
-                <div className="text-sm text-gray-500">
-                    Page {page}
-                </div>
-                <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={loadNext} 
-                    disabled={!hasMore || loading}
-                >
-                    Next
-                </Button>
-            </div>
+            {/* Pagination Controls */}
+            {filteredProducts.length > 0 && (
+                <PaginationControl
+                    currentPage={page}
+                    totalPages={totalPages}
+                    totalItems={filteredProducts.length}
+                    pageSize={pageSize}
+                    pageSizeOptions={[10, 25, 50, 100]}
+                    onPageChange={(p) => setPage(p)}
+                    onPageSizeChange={(newSize) => {
+                        setPageSize(newSize);
+                        setPage(1);
+                    }}
+                    itemLabel="products"
+                    className="mt-4"
+                />
+            )}
         </div>
     );
 };

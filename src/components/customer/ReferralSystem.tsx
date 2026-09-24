@@ -78,30 +78,25 @@ export const ReferralSystem = ({ userMobile, userName, userId }: ReferralSystemP
         setUserData(customerData);
         setReferralIncome(customerData.surabhiReferral || 0);
 
-        // Fetch referred customers using the data directly from docSnap
-        const referredCustomersQuery = query(
-          collection(db, 'Customers'),
-          where('referredBy', '==', customerData.customerMobile)
-        );
-        const referredCustomersSnapshot = await getDocs(referredCustomersQuery);
-
+        // Load referred members directly from the customer's own document (avoids querying other customers' docs)
         const customersData: ReferredCustomer[] = [];
-        referredCustomersSnapshot.forEach(doc => {
-          const data = doc.data();
-          customersData.push({
-            name: data.customerName,
-            mobile: data.customerMobile,
-            email: data.customerEmail,
-            storeLocation: data.storeLocation,
-            walletBalance: data.walletBalance,
-            walletRechargeDone: data.walletRechargeDone,
-            saleEligibility: data.saleEligibility,
-            surabhiBalance: data.surabhiBalance,
-            sevaCoinsTotal: data.sevaCoinsTotal,
-            createdAt: data.createdAt,
-            lastTransactionDate: data.lastTransactionDate,
+        if (Array.isArray(customerData.referredUsers)) {
+          customerData.referredUsers.forEach((ref: any) => {
+            customersData.push({
+              name: ref.customerName || 'Referred Member',
+              mobile: ref.customerMobile || '',
+              email: '',
+              storeLocation: ref.storeLocation || '',
+              walletBalance: 0,
+              walletRechargeDone: true,
+              saleEligibility: true,
+              surabhiBalance: 0,
+              sevaCoinsTotal: 0,
+              createdAt: ref.createdAt,
+              lastTransactionDate: undefined,
+            });
           });
-        });
+        }
 
         setReferredCustomers(customersData);
       }

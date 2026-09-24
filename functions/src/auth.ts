@@ -326,6 +326,7 @@ export const loginWithCredentials = functions.https.onCall(
       role: userRole,
       storeLocation: userData.storeLocation || null,
       docId: userDoc.id,
+      customerMobile: cleanMobile,
     };
 
     // Set Custom Claims and mint Custom Token
@@ -507,7 +508,7 @@ export const registerCustomerAccount = functions.https.onCall(
       }
     }
 
-    const claims = { role: 'customer', docId: authUid };
+    const claims = { role: 'customer', docId: authUid, customerMobile: cleanMobile };
     await admin.auth().setCustomUserClaims(targetUid, claims);
     const customToken = await admin.auth().createCustomToken(targetUid, claims);
 

@@ -54,7 +54,28 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
 
     let unsubscribe: (() => void) | undefined;
 
-    if (userMobile) {
+    const targetDocId = userId || (user as any)?.id || (user as any)?.docId;
+
+    if (targetDocId) {
+      const docRef = doc(db, 'Customers', targetDocId);
+      unsubscribe = onSnapshot(
+        docRef,
+        (docSnap) => {
+          if (docSnap.exists()) {
+            setCustomerData({ id: docSnap.id, ...docSnap.data() } as CustomerType);
+            setError(null);
+          } else {
+            setError('No customer data found');
+          }
+          setLoading(false);
+        },
+        (err) => {
+          console.error('Error listening to customer by ID:', err);
+          setError('Failed to fetch customer data');
+          setLoading(false);
+        }
+      );
+    } else if (userMobile) {
       const q = query(collection(db, 'Customers'), where('customerMobile', '==', userMobile));
       unsubscribe = onSnapshot(
         q,
@@ -79,31 +100,12 @@ export const CustomerStats = ({ userId }: CustomerStatsProps) => {
           setLoading(false);
         }
       );
-    } else if (userId) {
-      const docRef = doc(db, 'Customers', userId);
-      unsubscribe = onSnapshot(
-        docRef,
-        (docSnap) => {
-          if (docSnap.exists()) {
-            setCustomerData({ id: docSnap.id, ...docSnap.data() } as CustomerType);
-            setError(null);
-          } else {
-            setError('No customer data found');
-          }
-          setLoading(false);
-        },
-        (err) => {
-          console.error('Error listening to customer by ID:', err);
-          setError('Failed to fetch customer data');
-          setLoading(false);
-        }
-      );
     }
 
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [userId, userMobile]);
+  }, [userId, userMobile, user]);
 
   useEffect(() => {
     if (!customerData?.customerMobile) return;

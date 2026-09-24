@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PaginationControl } from '@/components/ui/pagination';
 import {
   Table,
   TableBody,
@@ -263,84 +264,20 @@ const StoreAccounts = ({
 
           {/* Pagination Controls */}
           {allTransactions.length > 0 && (
-            <div className="flex flex-col xs:flex-row items-center justify-between mt-4 gap-4">
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600">Records per page:</span>
-                <select
-                  value={recordsPerPage}
-                  onChange={e => handleRecordsPerPageChange(e.target.value)}
-                  className="border rounded-md px-2 py-1 text-sm"
-                >
-                  {[5, 10, 20, 50].map(size => (
-                    <option key={size} value={size}>
-                      {size}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => paginate(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="h-8 xs:h-9 text-xs xs:text-sm px-2 xs:px-3"
-                >
-                  Prev
-                </Button>
-
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  // Show first, last and nearby pages
-                  if (totalPages <= 5) {
-                    return i + 1;
-                  }
-                  if (currentPage <= 3) {
-                    return i + 1;
-                  }
-                  if (currentPage >= totalPages - 2) {
-                    return totalPages - 4 + i;
-                  }
-                  return currentPage - 2 + i;
-                }).map(number => (
-                  <Button
-                    key={number}
-                    variant={currentPage === number ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => paginate(number)}
-                    className="h-8 xs:h-9 w-8 xs:w-9 p-0 text-xs xs:text-sm"
-                  >
-                    {number}
-                  </Button>
-                ))}
-
-                {totalPages > 5 && currentPage < totalPages - 2 && (
-                  <span className="px-2">...</span>
-                )}
-
-                {totalPages > 5 && currentPage < totalPages - 2 && (
-                  <Button variant="outline" size="sm" onClick={() => paginate(totalPages)}>
-                    {totalPages}
-                  </Button>
-                )}
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => paginate(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="h-8 xs:h-9 text-xs xs:text-sm px-2 xs:px-3"
-                >
-                  Next
-                </Button>
-              </div>
-
-              <div className="text-sm text-gray-600">
-                Showing {indexOfFirstRecord + 1}-
-                {Math.min(indexOfLastRecord, allTransactions.length)} of {allTransactions.length}{' '}
-                records
-              </div>
-            </div>
+            <PaginationControl
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={allTransactions.length}
+              pageSize={recordsPerPage}
+              pageSizeOptions={[5, 10, 20, 50]}
+              onPageChange={paginate}
+              onPageSizeChange={(newSize) => {
+                setRecordsPerPage(newSize);
+                setCurrentPage(1);
+              }}
+              itemLabel="records"
+              className="mt-4"
+            />
           )}
         </CardContent>
       </Card>

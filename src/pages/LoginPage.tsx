@@ -1,5 +1,5 @@
-import { ArrowLeft, Coins, Eye, EyeOff, Loader2, Shield, UserCircle, Users, Store } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { ArrowLeft, Coins, Eye, EyeOff, Loader2, Shield, Store, UserCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/auth-context';
+import { getUserName } from '@/lib/userUtils';
 import { resetCustomerPassword } from '@/services/otpService';
 
 const LoginPage = () => {
@@ -144,7 +145,7 @@ const LoginPage = () => {
       const user = await login(formData.mobile, formData.password, formData.role);
 
       const actualRole = user.role;
-      const greetingName = user.customerName || (user as any).staffName || 'User';
+      const greetingName = getUserName(user) || 'User';
       toast.success(`Login successful! Welcome, ${greetingName}`);
 
       // Reset popup flag

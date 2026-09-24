@@ -13,7 +13,7 @@ import { calculateShippingCost, getShippingConfig, getWeightBracketLabel, parseW
 import { adjustOrderShippingBalance, deleteOrder, getOrders, getProducts, getStoreByLocation, updateOrderItems, updateOrderStatus, updateOrderTotal } from '@/services/shop';
 import { CartItem, Order, Product } from '@/types/shop';
 import { collection, getDocs } from 'firebase/firestore';
-import { Check, Package, Pencil, Plus, Search, Trash2, TrendingUp, Truck, X } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Package, Pencil, Plus, Search, Trash2, TrendingUp, Truck, X } from 'lucide-react';
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { getUserName } from '@/lib/userUtils';
@@ -1125,26 +1125,40 @@ export const OrderManager = () => {
                 </Table>
             </div>
             {/* Pagination Controls */}
-             <div className="flex items-center justify-between px-2">
-                <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={loadPrev} 
-                    disabled={page <= 1 || loading}
-                >
-                    Previous
-                </Button>
-                <div className="text-sm text-gray-500">
-                    Page {page}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-2 py-3 border-t border-border/60 text-xs sm:text-sm text-muted-foreground w-full">
+                <div className="flex items-center gap-2">
+                    <span>
+                        Page <strong className="font-semibold text-foreground">{page}</strong>
+                        {orders.length > 0 && (
+                            <> &bull; Showing <strong className="font-semibold text-foreground">{orders.length}</strong> orders</>
+                        )}
+                    </span>
                 </div>
-                <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={loadNext} 
-                    disabled={!hasMore || loading}
-                >
-                    Next
-                </Button>
+                <div className="flex items-center gap-1.5">
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={loadPrev} 
+                        disabled={page <= 1 || loading}
+                        className="h-8 px-2.5 text-xs gap-1"
+                    >
+                        <ChevronLeft className="h-4 w-4" />
+                        <span>Previous</span>
+                    </Button>
+                    <span className="h-8 px-3 flex items-center justify-center font-bold text-xs bg-primary text-primary-foreground rounded-md shadow-sm">
+                        {page}
+                    </span>
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={loadNext} 
+                        disabled={!hasMore || loading}
+                        className="h-8 px-2.5 text-xs gap-1"
+                    >
+                        <span>Next</span>
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
             </div>
 
             <AlertDialog open={!!orderToDelete} onOpenChange={(open) => !open && setOrderToDelete(null)}>

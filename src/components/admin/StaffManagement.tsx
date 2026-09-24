@@ -33,6 +33,7 @@ import { PasswordDecryptor } from './PasswordDecryptor';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PaginationControl } from '@/components/ui/pagination';
 import {
   Dialog,
   DialogContent,
@@ -113,6 +114,8 @@ export const StaffManagement = () => {
   const [isStaffDialogOpen, setIsStaffDialogOpen] = useState<boolean>(false);
   const [currentStaff, setCurrentStaff] = useState<Partial<StaffType> | null>(null);
   const [isDeleteStaffDialogOpen, setIsDeleteStaffDialogOpen] = useState<boolean>(false);
+  const [staffPage, setStaffPage] = useState<number>(1);
+  const [staffPageSize, setStaffPageSize] = useState<number>(10);
 
   // Store state
   const [isStoreDialogOpen, setIsStoreDialogOpen] = useState<boolean>(false);
@@ -704,7 +707,7 @@ export const StaffManagement = () => {
                   </TableBody>
                 ) : (
                   <TableBody>
-                    {staff.map(member => (
+                    {staff.slice((staffPage - 1) * staffPageSize, staffPage * staffPageSize).map(member => (
                       // console.log('demoStore value:', member.demoStore),
                       <TableRow key={member.id}>
                         <TableCell className="font-medium text-xs xs:text-sm">
@@ -789,6 +792,23 @@ export const StaffManagement = () => {
                 )}
               </Table>
             </div>
+
+            {staff.length > 0 && (
+              <PaginationControl
+                currentPage={staffPage}
+                totalPages={Math.ceil(staff.length / staffPageSize)}
+                totalItems={staff.length}
+                pageSize={staffPageSize}
+                pageSizeOptions={[5, 10, 25, 50]}
+                onPageChange={setStaffPage}
+                onPageSizeChange={(newSize) => {
+                  setStaffPageSize(newSize);
+                  setStaffPage(1);
+                }}
+                itemLabel="staff members"
+                className="mt-3"
+              />
+            )}
           </CardContent>
         </Card>
       ) : activeTab === 'stores' ? (

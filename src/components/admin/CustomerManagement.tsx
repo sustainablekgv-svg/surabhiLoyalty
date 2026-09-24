@@ -25,6 +25,7 @@ import { PasswordDecryptor } from './PasswordDecryptor';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PaginationControl } from '@/components/ui/pagination';
 import {
     Dialog,
     DialogContent,
@@ -95,6 +96,14 @@ export const CustomerManagement = () => {
   const [cartVisibleCount, setCartVisibleCount] = useState(5);
   const cartSentinelRef = useRef<HTMLDivElement | null>(null);
 
+  // Customer Table Pagination
+  const [customerPage, setCustomerPage] = useState(1);
+  const [customerPageSize, setCustomerPageSize] = useState(10);
+
+  useEffect(() => {
+    setCustomerPage(1);
+  }, [debouncedSearchTerm, filterStore]);
+
   // ==========================================
   // 3. Derived Variables & Computed Properties
   // ==========================================
@@ -114,6 +123,12 @@ export const CustomerManagement = () => {
 
     return matchesSearch && matchesStore;
   });
+
+  const totalCustomerPages = Math.ceil(filteredCustomers.length / customerPageSize);
+  const paginatedCustomers = filteredCustomers.slice(
+    (customerPage - 1) * customerPageSize,
+    customerPage * customerPageSize
+  );
 
   const totalStats = {
     totalCustomers: customers.filter(customer => customer.demoStore === false).length,
@@ -1170,7 +1185,7 @@ export const CustomerManagement = () => {
                     </p>
                   </div>
                 ) : (
-                  filteredCustomers.map(customer => (
+                  paginatedCustomers.map(customer => (
                     <div
                       key={customer.customerMobile}
                       className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg gap-2 sm:gap-4"
@@ -1252,6 +1267,23 @@ export const CustomerManagement = () => {
                   ))
                 )}
               </div>
+
+              {filteredCustomers.length > 0 && (
+                <PaginationControl
+                  currentPage={customerPage}
+                  totalPages={totalCustomerPages}
+                  totalItems={filteredCustomers.length}
+                  pageSize={customerPageSize}
+                  pageSizeOptions={[10, 25, 50, 100]}
+                  onPageChange={setCustomerPage}
+                  onPageSizeChange={(newSize) => {
+                    setCustomerPageSize(newSize);
+                    setCustomerPage(1);
+                  }}
+                  itemLabel="customers"
+                  className="mt-4 pt-3"
+                />
+              )}
             </CardContent>
           </Card>
         </div>

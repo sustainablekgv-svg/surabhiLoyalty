@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PaginationControl } from '@/components/ui/pagination';
 import {
   Select,
   SelectContent,
@@ -107,8 +108,7 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   // Handle records per page change
-  const handleRecordsPerPageChange = (value: string) => {
-    const newRecordsPerPage = Number(value);
+  const handleRecordsPerPageChange = (newRecordsPerPage: number) => {
     setRecordsPerPage(newRecordsPerPage);
     setCurrentPage(1);
   };
@@ -657,84 +657,17 @@ export const TransactionsPage = ({ storeLocation, demoStore }: TransactionsPageP
 
       {/* Pagination */}
       {filteredTransactions.length > 0 && (
-        <div className="flex flex-col xs:flex-row items-center justify-between mt-3 xs:mt-4 gap-2 xs:gap-4">
-          <div className="flex items-center gap-1 xs:gap-2">
-            <Label htmlFor="recordsPerPage" className="text-xs xs:text-sm">
-              Records per page:
-            </Label>
-            <Select value={recordsPerPage.toString()} onValueChange={handleRecordsPerPageChange}>
-              <SelectTrigger className="w-[80px] xs:w-[100px] h-8 xs:h-9 text-xs xs:text-sm">
-                <SelectValue placeholder="Select" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="5">5</SelectItem>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="20">20</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center gap-1 xs:gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => paginate(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="h-8 xs:h-9 text-xs xs:text-sm px-2 xs:px-3"
-            >
-              Prev
-            </Button>
-
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              // Show first, last and nearby pages
-              if (totalPages <= 5) {
-                return i + 1;
-              }
-              if (currentPage <= 3) {
-                return i + 1;
-              }
-              if (currentPage >= totalPages - 2) {
-                return totalPages - 4 + i;
-              }
-              return currentPage - 2 + i;
-            }).map(number => (
-              <Button
-                key={number}
-                variant={currentPage === number ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => paginate(number)}
-                className="h-8 xs:h-9 w-8 xs:w-9 p-0 text-xs xs:text-sm"
-              >
-                {number}
-              </Button>
-            ))}
-
-            {totalPages > 5 && currentPage < totalPages - 2 && <span className="px-2">...</span>}
-
-            {totalPages > 5 && currentPage < totalPages - 2 && (
-              <Button variant="outline" size="sm" onClick={() => paginate(totalPages)}>
-                {totalPages}
-              </Button>
-            )}
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => paginate(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="h-8 xs:h-9 text-xs xs:text-sm px-2 xs:px-3"
-            >
-              Next
-            </Button>
-          </div>
-
-          <div className="text-sm text-gray-600">
-            Showing {indexOfFirstRecord + 1}-
-            {Math.min(indexOfLastRecord, filteredTransactions.length)} of{' '}
-            {filteredTransactions.length} records
-          </div>
-        </div>
+        <PaginationControl
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredTransactions.length}
+          pageSize={recordsPerPage}
+          pageSizeOptions={[5, 10, 20, 50]}
+          onPageChange={paginate}
+          onPageSizeChange={handleRecordsPerPageChange}
+          itemLabel="transactions"
+          className="mt-4"
+        />
       )}
     </div>
   );

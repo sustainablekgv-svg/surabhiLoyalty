@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getProducts, updateProduct } from '@/services/shop';
 import { Product } from '@/types/shop';
-import { Save, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Save, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -150,26 +150,40 @@ export const InventoryManager = () => {
                 </Table>
             </div>
             {/* Pagination Controls */}
-             <div className="flex items-center justify-between px-2">
-                <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={loadPrev} 
-                    disabled={page <= 1 || loading}
-                >
-                    Previous
-                </Button>
-                <div className="text-sm text-gray-500">
-                    Page {page}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-2 py-3 border-t border-border/60 text-xs sm:text-sm text-muted-foreground w-full">
+                <div className="flex items-center gap-2">
+                    <span>
+                        Page <strong className="font-semibold text-foreground">{page}</strong>
+                        {products.length > 0 && (
+                            <> &bull; Showing <strong className="font-semibold text-foreground">{products.length}</strong> items</>
+                        )}
+                    </span>
                 </div>
-                <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={loadNext} 
-                    disabled={!hasMore || loading}
-                >
-                    Next
-                </Button>
+                <div className="flex items-center gap-1.5">
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={loadPrev} 
+                        disabled={page <= 1 || loading}
+                        className="h-8 px-2.5 text-xs gap-1"
+                    >
+                        <ChevronLeft className="h-4 w-4" />
+                        <span>Previous</span>
+                    </Button>
+                    <span className="h-8 px-3 flex items-center justify-center font-bold text-xs bg-primary text-primary-foreground rounded-md shadow-sm">
+                        {page}
+                    </span>
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={loadNext} 
+                        disabled={!hasMore || loading}
+                        className="h-8 px-2.5 text-xs gap-1"
+                    >
+                        <span>Next</span>
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
             </div>
         </div>
     );

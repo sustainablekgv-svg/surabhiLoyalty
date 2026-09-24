@@ -181,7 +181,7 @@ export interface AdminHeaderProps {
 
 export interface CustomerTxType {
   id?: string;
-  type: 'recharge' | 'sale' | 'referral' | 'seva_allocation' | 'shipping_adjustment';
+  type: 'recharge' | 'sale' | 'referral' | 'seva_allocation' | 'shipping_adjustment' | 'return' | 'sale_return';
   invoiceId?: string; // Optional invoice ID field
   // staffName: string; // Used in recharge
   // Common Fields
@@ -191,7 +191,7 @@ export interface CustomerTxType {
   storeName: string; // Only for recharge
   createdAt: Timestamp;
   demoStore: boolean; // Indicates if transaction is from a demo store
-  paymentMethod?: 'cash' | 'wallet' | 'mixed' | 'admin' | 'online' | 'cod';
+  paymentMethod?: 'cash' | 'wallet' | 'mixed' | 'admin' | 'online' | 'cod' | 'bank_transfer' | 'store_credit';
   processedBy: string; // Used in sale
   remarks: string; // Description of the transaction
 
@@ -331,6 +331,7 @@ export interface AccountTxType {
 
 export interface StoreAccountsProps {
   storeLocation: string;
+  userRole?: string;
 }
 
 // export interface AdminDeck {

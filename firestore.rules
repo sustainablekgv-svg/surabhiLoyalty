@@ -38,7 +38,7 @@ service cloud.firestore {
 
     // Customers collection
     match /Customers/{customerId} {
-      // Staff/Admin can view all customers for POS/lookup; customer can only view own profile
+      // Staff/Admin can view all customers for POS/lookup; customer can ONLY view own profile
       allow read: if isStaff() || isOwner(customerId);
 
       // Staff or Admin can register in-store customers; online signups handled via Cloud Function
@@ -53,7 +53,7 @@ service cloud.firestore {
           'walletBalance', 
           'walletBalanceCurrentMonth',
           'surabhiBalance', 
-          'surabhiCredit',
+          'surabhiCredit', 
           'surabhiDebit',
           'surabhiReferral',
           'surabhiBalanceCurrentMonth',
@@ -76,6 +76,16 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Subcollections of Customers (cart, wishlist, etc.)
+    match /Customers/{customerId}/{allSubcollections=**} {
+      allow read, write: if isStaff() || isOwner(customerId);
+    }
+
+    // CollectionGroup for cart management
+    match /{path=**}/cart/{docId} {
+      allow read: if isStaff() || isAdmin();
+    }
+
     // Sales transactions & Customer history
     match /Sales/{saleId} {
       allow read: if isStaff() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
@@ -83,12 +93,40 @@ service cloud.firestore {
     }
 
     match /CustomerTx/{txId} {
-      allow read: if isStaff() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow read: if isStaff() || (
+        isAuthenticated() && (
+          resource.data.customerId == request.auth.uid ||
+          (request.auth.token.customerMobile != null && resource.data.customerMobile == request.auth.token.customerMobile) ||
+          (request.auth.token.phone_number != null && request.auth.token.phone_number.matches('.*' + resource.data.customerMobile + '$'))
+        )
+      );
       allow write: if isStaff();
     }
 
-    match /Activity/{activityId} {
+    match /AccountTx/{txId} {
       allow read, write: if isStaff();
+    }
+
+    match /Activity/{activityId} {
+      allow read: if isStaff() || (
+        isAuthenticated() && (
+          (request.auth.token.customerMobile != null && resource.data.customerMobile == request.auth.token.customerMobile) ||
+          (request.auth.token.phone_number != null && request.auth.token.phone_number.matches('.*' + resource.data.customerMobile + '$'))
+        )
+      );
+      allow create: if isStaff() || (
+        isAuthenticated() && (
+          request.auth.token.customerMobile == null || 
+          request.resource.data.customerMobile == request.auth.token.customerMobile
+        )
+      );
+      allow update, delete: if isStaff() || isAdmin();
+    }
+
+    // Seva Pool
+    match /SevaPool/{poolId} {
+      allow read: if true;
+      allow write: if isStaff() || isAdmin();
     }
 
     // Public catalog (Products, Categories, Stores, Banners, Settings)
@@ -108,6 +146,11 @@ service cloud.firestore {
     }
 
     match /brands/{brandId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /origins/{originId} {
       allow read: if true;
       allow write: if isAdmin();
     }
@@ -136,8 +179,19 @@ service cloud.firestore {
     // E-commerce orders
     match /orders/{orderId} {
       allow read: if isStaff() || (isAuthenticated() && resource.data.userId == request.auth.uid);
-      allow create: if isAuthenticated();
-      allow update: if isStaff() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isStaff() || (
+        isAuthenticated() && 
+        resource.data.userId == request.auth.uid && 
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'status', 
+          'paymentStatus', 
+          'totalAmount', 
+          'items', 
+          'adminCut', 
+          'adminProfit'
+        ])
+      );
       allow delete: if isAdmin();
     }
 
