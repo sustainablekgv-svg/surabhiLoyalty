@@ -309,42 +309,61 @@ export const loginWithCredentials = functions.https.onCall(
       (userRole === 'customer' ? userData.customerName : userData.staffName) || cleanMobile;
 
     // Ensure Auth user exists with UID matching document ID or handle existing email
+    let authRecord: admin.auth.UserRecord | null = null;
     try {
-      await admin.auth().getUser(authUid);
+      authRecord = await admin.auth().getUser(targetUid);
     } catch (err: any) {
       if (err.code === 'auth/user-not-found') {
         try {
-          await admin.auth().createUser({
+          authRecord = await admin.auth().createUser({
             uid: authUid,
             email: email,
             displayName: displayName,
           });
+          targetUid = authRecord.uid;
         } catch (createErr: any) {
           logger.warn(`Could not create Auth user with uid ${authUid}:`, createErr);
           if (createErr.code === 'auth/email-already-exists') {
             try {
+              const existing = await admin.auth().getUserByEmail(email);
+              targetUid = existing.uid;
+              authRecord = existing;
+            } catch (lookupErr) {
+              logger.error('Failed to locate existing user by email:', lookupErr);
+            }
+          }
+          if (!authRecord) {
+            try {
               // Try creating with a unique virtual email for this UID
-              await admin.auth().createUser({
+              authRecord = await admin.auth().createUser({
                 uid: authUid,
                 email: `${cleanMobile}.${authUid.slice(0, 6)}@surabhiloyalty.local`,
                 displayName: displayName,
               });
+              targetUid = authRecord.uid;
             } catch (virtualErr) {
-              try {
-                const existing = await admin.auth().getUserByEmail(email);
-                targetUid = existing.uid;
-              } catch (lookupErr) {
-                logger.error('Failed to locate existing user by email:', lookupErr);
-              }
+              logger.error('Failed to create fallback virtual user:', virtualErr);
             }
           }
         }
       }
     }
 
+    // Fallback lookup if not yet set
+    if (!authRecord) {
+      try {
+        authRecord = await admin.auth().getUser(targetUid);
+      } catch (finalLookupErr) {
+        logger.error(`Could not locate or provision Auth record for ${targetUid}:`, finalLookupErr);
+        throw new functions.https.HttpsError(
+          'internal',
+          'Failed to initialize authentication session. Please try again.'
+        );
+      }
+    }
+
     // A disabled Firebase account must not be able to receive a new custom
     // token through this credential-login flow.
-    const authRecord = await admin.auth().getUser(targetUid);
     if (authRecord.disabled) {
       throw new functions.https.HttpsError(
         'permission-denied',
