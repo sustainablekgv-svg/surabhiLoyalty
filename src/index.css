@@ -192,6 +192,15 @@
     word-break: break-word;
     overflow-x: hidden;
   }
+  .prose .ql-align-center {
+    text-align: center;
+  }
+  .prose .ql-align-right {
+    text-align: right;
+  }
+  .prose .ql-align-justify {
+    text-align: justify;
+  }
 }
 
 /* Ensure all images are responsive */

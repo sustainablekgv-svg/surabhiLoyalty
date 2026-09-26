@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { statesList } from "@/constants/states";
+import { formatRichText } from '@/lib/utils';
 
 
 
@@ -1475,7 +1476,10 @@ const groupedProducts = useMemo(() => {
                                     </h2>
                                     <div
                                         className="prose prose-sm text-gray-600 max-w-none overflow-hidden break-words"
-                                    >{filterBrands.find(b => b.id === selectedBrand)?.description || ''}</div>
+                                        dangerouslySetInnerHTML={{
+                                            __html: formatRichText(filterBrands.find(b => b.id === selectedBrand)?.description || '')
+                                        }}
+                                    />
                                 </div>
                             )}
 

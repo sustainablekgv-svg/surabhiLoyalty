@@ -20,6 +20,7 @@ import { Heart, Minus, Plus, Share2, ShoppingCart, Star, X } from 'lucide-react'
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { formatRichText, stripHtml } from '@/lib/utils';
 
 const ProductDetailsPage = () => {
     const { id: slug } = useParams<{ id: string }>();
@@ -182,7 +183,7 @@ const isVariantOutOfStock = (variant: Product) =>
         <ShopLayout onBack={handleBack}>
             <SEO 
                 title={product.name}
-                description={product.description.replace(/<[^>]*>?/gm, '').substring(0, 160)}
+                description={stripHtml(product.description).substring(0, 160)}
                 image={product.images?.[0]}
                 url={window.location.href}
                 type="product"
@@ -197,7 +198,7 @@ const isVariantOutOfStock = (variant: Product) =>
                         "@type": "Product",
                         "name": product.name,
                         "image": product.images || [product.images?.[0]],
-                        "description": product.description.replace(/<[^>]*>?/gm, ''),
+                        "description": stripHtml(product.description),
                         "brand": {
                             "@type": "Brand",
                             "name": product.brandName || "Sustainable KGV"
@@ -434,8 +435,9 @@ const isVariantOutOfStock = (variant: Product) =>
                     </div>
 
                    <div
-    className="prose prose-sm text-gray-600 max-w-none text-justify overflow-hidden break-words"
-                    >{product.description}</div>
+                        className="prose prose-sm text-gray-600 max-w-none text-justify overflow-hidden break-words"
+                        dangerouslySetInnerHTML={{ __html: formatRichText(product.description) }}
+                    />
 
 {/* Product Variants */}
 {variants.length > 1 && (
