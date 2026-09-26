@@ -21,6 +21,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { formatRichText, stripHtml } from '@/lib/utils';
+import { RichTextRenderer } from '@/components/ui/rich-text-renderer';
 
 const ProductDetailsPage = () => {
     const { id: slug } = useParams<{ id: string }>();
@@ -434,9 +435,9 @@ const isVariantOutOfStock = (variant: Product) =>
                         </div>
                     </div>
 
-                   <div
-                        className="prose prose-sm text-gray-600 max-w-none text-justify overflow-hidden break-words"
-                        dangerouslySetInnerHTML={{ __html: formatRichText(product.description) }}
+                    <RichTextRenderer 
+                        content={product.description} 
+                        className="text-gray-600 text-justify" 
                     />
 
 {/* Product Variants */}

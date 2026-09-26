@@ -19,6 +19,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { statesList } from "@/constants/states";
 import { formatRichText } from '@/lib/utils';
+import { RichTextRenderer } from '@/components/ui/rich-text-renderer';
 
 
 
@@ -1474,11 +1475,9 @@ const groupedProducts = useMemo(() => {
                                     <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
                                         {filterBrands.find(b => b.id === selectedBrand)?.name}
                                     </h2>
-                                    <div
-                                        className="prose prose-sm text-gray-600 max-w-none overflow-hidden break-words"
-                                        dangerouslySetInnerHTML={{
-                                            __html: formatRichText(filterBrands.find(b => b.id === selectedBrand)?.description || '')
-                                        }}
+                                    <RichTextRenderer
+                                        content={filterBrands.find(b => b.id === selectedBrand)?.description}
+                                        className="text-gray-600"
                                     />
                                 </div>
                             )}

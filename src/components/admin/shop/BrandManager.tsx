@@ -6,10 +6,10 @@ import { Label } from '@/components/ui/label';
 import { MultiImageUpload } from '@/components/ui/multi-image-upload';
 import { PreviewableImage } from '@/components/ui/previewable-image';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { RichTextRenderer } from '@/components/ui/rich-text-renderer';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { isValidImageUrl } from '@/lib/image-utils';
-import { stripHtml } from '@/lib/utils';
 import { deleteImageFromR2 } from '@/services/cloudflare';
 import { createBrand, deleteBrand, generateSlug, getBrands, getCategories, initializeDisplayOrder, reorderBrand, updateBrand, backfillSlugs } from '@/services/shop';
 import { Brand, Category } from '@/types/shop';
@@ -449,7 +449,7 @@ export const BrandManager = () => {
                                         )}
                                     </TableCell>
                                     <TableCell className="font-medium">{brand.name}</TableCell>
-                                    <TableCell className="max-w-xs truncate">{stripHtml(brand.description)}</TableCell>
+                                    <TableCell className="max-w-xs truncate"><RichTextRenderer content={brand.description} className="line-clamp-2 text-xs !my-0 prose-p:!my-0" /></TableCell>
                                     <TableCell>
                                         <div className="flex gap-2">
                                             <Button variant="ghost" size="icon" onClick={() => handleEdit(brand)}>
