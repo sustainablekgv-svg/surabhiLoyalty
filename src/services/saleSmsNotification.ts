@@ -23,6 +23,13 @@ type SaleSmsResponse = {
  */
 export async function notifyCustomerSaleSms(payload: SaleSmsPayload): Promise<void> {
   if (!auth.currentUser) {
+    try {
+      await auth.authStateReady();
+    } catch {
+      // ignore
+    }
+  }
+  if (!auth.currentUser) {
     console.warn('[saleSms] Skipped: no Firebase signed-in user');
     return;
   }

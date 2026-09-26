@@ -39,8 +39,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/auth-context';
 import { db } from '@/lib/firebase';
+import { fetchReferrerCustomer } from '@/lib/referrerUtils';
 import { getUserMobile, getUserName } from '@/lib/userUtils';
-import { notifyWalletRechargeSms } from '@/services/ojivaSmsNotification';
+import { notifyReferrerCreditedSms, notifyWalletRechargeSms } from '@/services/ojivaSmsNotification';
 import {
   AccountTxType,
   ActivityType,
@@ -566,127 +567,142 @@ export const WalletRecharge = ({ storeLocation, demoStore }: WalletRechargeProps
         // );
       }
 
-      const staffCollection = collection(db, 'staff');
-      const staffQuery = query(staffCollection, where('staffMobile', '==', getUserMobile(user)));
-      const staffSnapshot = await getDocs(staffQuery);
+      // Update staff metrics in non-fatal block
+      try {
+        const staffCollection = collection(db, 'staff');
+        const staffMobile = getUserMobile(user);
+        if (staffMobile) {
+          const staffQuery = query(staffCollection, where('staffMobile', '==', staffMobile));
+          const staffSnapshot = await getDocs(staffQuery);
 
-      if (staffSnapshot.empty) {
-        throw new Error('Staff member not found in database');
+          if (!staffSnapshot.empty) {
+            const staffDoc = staffSnapshot.docs[0];
+            const staffUpdates: Partial<StaffType> = {
+              staffRechargesCount: increment(1) as unknown as number,
+              lastActive: Timestamp.fromDate(new Date()),
+            };
+            await updateDoc(staffDoc.ref, staffUpdates);
+          }
+        }
+      } catch (staffErr) {
+        console.warn('Failed to update staff telemetry during recharge (non-fatal):', staffErr);
       }
-
-      const staffDoc = staffSnapshot.docs[0];
-      const staffRef = staffDoc.ref;
-
-      // Validate updateData against StaffType interface
-      const staffUpdates: Partial<StaffType> = {
-        staffRechargesCount: increment(1) as unknown as number,
-        lastActive: Timestamp.fromDate(new Date()),
-      };
-
-      await updateDoc(staffRef, staffUpdates);
 
       // Only update SevaPool for non-demo stores
       if (!storeDetails?.demoStore && sevaAmountEarned > 0) {
-        const poolRef = doc(db, 'SevaPool', 'main');
-        await updateDoc(poolRef, {
-          currentSevaBalance: Number((sevaPool.currentSevaBalance + sevaAmountEarned).toFixed(2)),
-          contributionsCurrentMonth: increment(1),
-          totalContributions: increment(1),
-          lastAllocatedDate: serverTimestamp(),
-        });
+        try {
+          const poolRef = doc(db, 'SevaPool', 'main');
+          await updateDoc(poolRef, {
+            currentSevaBalance: increment(sevaAmountEarned),
+            contributionsCurrentMonth: increment(1),
+            totalContributions: increment(1),
+            lastAllocatedDate: serverTimestamp(),
+          });
+        } catch (poolErr) {
+          console.warn('Failed to update SevaPool during recharge (non-fatal):', poolErr);
+        }
       }
 
       // Handle referral Surabhi Coins if customer has a referrer
       if (currentData.referredBy && referralAmount > 0) {
-        // Find referrer's document
-        const referrerQuery = query(
-          customersCollection,
-          where('customerMobile', '==', currentData.referredBy)
-        );
-        const referrerSnapshot = await getDocs(referrerQuery);
+        try {
+          const referrerData = await fetchReferrerCustomer(currentData.referredBy);
 
-        if (!referrerSnapshot.empty) {
-          const referrerDoc = referrerSnapshot.docs[0];
-          const referrerData = referrerDoc.data() as CustomerType;
+          if (referrerData && referrerData.id) {
+            const referrerRef = doc(db, 'Customers', referrerData.id);
 
-          // Update referrer's Surabhi balance without modifying referredUsers
-          await updateDoc(referrerDoc.ref, {
-            surabhiBalance: increment(referralAmount),
-            surbhiTotal: increment(referralAmount),
-            surabhiReferral: increment(referralAmount),
-          });
+            // Update referrer's Surabhi balance without modifying referredUsers
+            await updateDoc(referrerRef, {
+              surabhiBalance: increment(referralAmount),
+              surbhiTotal: increment(referralAmount),
+              surabhiReferral: increment(referralAmount),
+            });
 
-          // Fetch the store information for the referrer's store
-          const referrerStoreQuery = query(
-            collection(db, 'stores'),
-            where('storeName', '==', referrerData.storeLocation)
-          );
-          const referrerStoreSnapshot = await getDocs(referrerStoreQuery);
-          let referrerStoreDetails = null;
+            // Fetch the store information for the referrer's store
+            let referrerStoreDetails: StoreType | null = null;
+            if (referrerData.storeLocation) {
+              const referrerStoreQuery = query(
+                collection(db, 'stores'),
+                where('storeName', '==', referrerData.storeLocation)
+              );
+              const referrerStoreSnapshot = await getDocs(referrerStoreQuery);
+              if (!referrerStoreSnapshot.empty) {
+                referrerStoreDetails = referrerStoreSnapshot.docs[0].data() as StoreType;
+              }
+            }
 
-          if (!referrerStoreSnapshot.empty) {
-            referrerStoreDetails = referrerStoreSnapshot.docs[0].data() as StoreType;
+            const referrerMobile = referrerData.customerMobile || currentData.referredBy;
+
+            // Add activity record for referrer here to avoid duplicate records
+            await addActivityRecord({
+              type: 'referral',
+              remarks: `${referrerMobile} - Earned Surabhi Referral of ₹${referralAmount} for Wallet Recharge of ${currentData.customerName}`,
+              amount: rechargeAmountNum,
+              customerName: referrerData.customerName,
+              customerMobile: referrerMobile,
+              storeLocation: referrerData.storeLocation,
+              createdAt: Timestamp.fromDate(new Date()),
+              demoStore: demoStore,
+            });
+
+            // Add CustomerTx record for the referral Surabhi Coins earned by referrer
+            const referrerTxData: Omit<CustomerTxType, 'id'> = {
+              type: 'referral',
+              customerMobile: referrerMobile,
+              customerName: referrerData.customerName,
+              storeLocation: referrerData.storeLocation,
+              storeName: referrerData.storeLocation,
+              createdAt: Timestamp.fromDate(new Date()),
+              demoStore: storeDetails.demoStore || false,
+              paymentMethod: 'admin',
+              processedBy: getUserName(user),
+              amount: referralAmount,
+              surabhiEarned: referralAmount,
+              sevaEarned: 0,
+              referralEarned: referralAmount,
+              referredBy: null,
+              adminProft: 0,
+              surabhiUsed: 0,
+              walletDeduction: 0,
+              cashPayment: 0,
+              previousBalance: {
+                walletBalance: referrerData.walletBalance || 0,
+                surabhiBalance: referrerData.surabhiBalance || 0,
+              },
+              newBalance: {
+                walletBalance: referrerData.walletBalance || 0,
+                surabhiBalance: (referrerData.surabhiBalance || 0) + referralAmount,
+              },
+              walletCredit: 0,
+              walletDebit: 0,
+              walletBalance: referrerData.walletBalance || 0,
+              surabhiDebit: 0,
+              surabhiCredit: referralAmount,
+              surabhiBalance: (referrerData.surabhiBalance || 0) + referralAmount,
+              sevaCredit: 0,
+              sevaDebit: 0,
+              sevaBalance: referrerData.sevaBalanceCurrentMonth || 0,
+              sevaTotal: referrerData.sevaTotal || 0,
+              storeSevaBalance: referrerStoreDetails ? referrerStoreDetails.storeSevaBalance : 0,
+              remarks: `Referral bonus of ₹${referralAmount} for recharge by ${selectedCustomer.customerName}`,
+            };
+
+            await addDoc(collection(db, 'CustomerTx'), referrerTxData);
+
+            // Notify referrer via SMS
+            if (!demoStore) {
+              void notifyReferrerCreditedSms({
+                referrerPhone: referrerMobile,
+                surabhiCoinsEarned: referralAmount,
+                newSurabhiBalance: (referrerData.surabhiBalance || 0) + referralAmount,
+                refereePhone: selectedCustomer.customerMobile,
+              });
+            }
+          } else {
+            console.warn('Referrer customer not found for:', currentData.referredBy);
           }
-
-          // Add activity record for referrer here to avoid duplicate records
-          await addActivityRecord({
-            type: 'referral',
-            remarks: `${currentData.referredBy} - Earned Surabhi Referral of ₹${referralAmount} for Sale Purchase of ${currentData.customerName}`,
-            amount: rechargeAmountNum,
-            customerName: referrerData.customerName,
-            customerMobile: currentData.referredBy,
-            storeLocation: referrerData.storeLocation,
-            createdAt: Timestamp.fromDate(new Date()),
-            demoStore: demoStore,
-          });
-
-          // Add CustomerTx record for the referral Surabhi Coins earned by referrer
-          const referrerTxData: Omit<CustomerTxType, 'id'> = {
-            type: 'referral',
-            customerMobile: currentData.referredBy,
-            customerName: referrerData.customerName,
-            storeLocation: referrerData.storeLocation,
-            storeName: referrerData.storeLocation,
-            createdAt: Timestamp.fromDate(new Date()),
-            demoStore: storeDetails.demoStore || false,
-            paymentMethod: 'admin',
-            processedBy: getUserName(user),
-            amount: referralAmount,
-            surabhiEarned: referralAmount,
-            sevaEarned: 0,
-            referralEarned: referralAmount,
-            referredBy: null,
-            adminProft: 0,
-            surabhiUsed: 0,
-            walletDeduction: 0,
-            cashPayment: 0,
-            previousBalance: {
-              walletBalance: referrerData.walletBalance,
-              surabhiBalance: referrerData.surabhiBalance,
-            },
-            newBalance: {
-              walletBalance: referrerData.walletBalance,
-              surabhiBalance: referrerData.surabhiBalance + referralAmount,
-            },
-            walletCredit: 0,
-            walletDebit: 0,
-            walletBalance: referrerData.walletBalance,
-            surabhiDebit: 0,
-            surabhiCredit: referralAmount,
-            surabhiBalance: referrerData.surabhiBalance + referralAmount,
-            sevaCredit: 0,
-            sevaDebit: 0,
-            sevaBalance: referrerData.sevaBalanceCurrentMonth || 0,
-            sevaTotal: referrerData.sevaTotal || 0,
-            storeSevaBalance: referrerStoreDetails ? referrerStoreDetails.storeSevaBalance : 0,
-            remarks: `Referral bonus of ₹${referralAmount} for referring ${selectedCustomer.customerName}`,
-          };
-
-          await addDoc(collection(db, 'CustomerTx'), referrerTxData);
-
-          // console.log(
-          //   `Referral bonus of ${referralAmount} credited to ${referrerData.customerName}`
-          // );
+        } catch (refErr) {
+          console.error('Error processing referrer reward during recharge (non-fatal):', refErr);
         }
       }
 

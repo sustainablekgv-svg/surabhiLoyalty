@@ -43,6 +43,7 @@ import {
 import { useAuth } from '@/hooks/auth-context';
 import { verifyCustomerTpin } from '@/lib/authService';
 import { db } from '@/lib/firebase';
+import { fetchReferrerCustomer } from '@/lib/referrerUtils';
 import { getUserMobile, getUserName } from '@/lib/userUtils';
 import {
   notifyCoinsCreditedSms,
@@ -71,21 +72,6 @@ import {
 // Custom rounding function: floor if decimal < 0.5, ceil if decimal >= 0.5
 const customRound = (value: number): number => {
   return Math.round(value * 100) / 100;
-};
-
-const fetchCustomerByMobile = async (mobile: string): Promise<CustomerType | null> => {
-  try {
-    const q = query(collection(db, 'Customers'), where('customerMobile', '==', mobile));
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-      const doc = querySnapshot.docs[0];
-      return { id: doc.id, ...doc.data() } as CustomerType;
-    }
-    return null;
-  } catch (error) {
-    // console.error('Error fetching referrer:', error);
-    return null;
-  }
 };
 
 // Generate a unique invoice ID or use the provided one
@@ -286,73 +272,6 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
 
       await updateDoc(customerRef, updateData);
 
-      // Handle Referrer Income for non-cash/non-mixed payments
-      // For cash/mixed payments, referrer income is handled in a separate block below
-      if (
-        selectedCustomer.referredBy &&
-        referralEarnedAdj > 0 &&
-        paymentMethod !== 'cash' &&
-        paymentMethod !== 'mixed'
-      ) {
-        try {
-          // Find referrer's document
-          const customersCollection = collection(db, 'Customers');
-          const referrerQuery = query(
-            customersCollection,
-            where('customerMobile', '==', selectedCustomer.referredBy)
-          );
-          const referrerSnapshot = await getDocs(referrerQuery);
-
-          if (!referrerSnapshot.empty) {
-            const referrerDoc = referrerSnapshot.docs[0];
-            const referrerData = referrerDoc.data() as CustomerType;
-            const referralAmount = referralEarnedAdj;
-
-            // console.log('Referrer Data:', referrerData);
-            // console.log('New Referred User:', selectedCustomer.customerName);
-            // console.log('Referral Amount:', referralAmount);
-
-            // Safely increment referral amount (handle null/NaN)
-            const incrementAmount =
-              Number.isNaN(referralAmount) || referralAmount === null ? 0 : referralAmount;
-
-            // Update referrer's data - only update Surabhi balance without modifying referredUsers
-            await updateDoc(referrerDoc.ref, {
-              surabhiReferral: increment(incrementAmount),
-              surabhiBalance: increment(incrementAmount),
-              surbhiTotal: increment(incrementAmount),
-            });
-
-            // Add activity record for referrer
-            await addActivityRecord({
-              type: 'referral',
-              remarks: `${selectedCustomer.referredBy} got ₹${incrementAmount} referral from ${selectedCustomer.customerName}'s recharge of ₹${saleCalculation.totalAmount}`,
-              amount: incrementAmount,
-              customerMobile: selectedCustomer.referredBy,
-              storeLocation: selectedCustomer.storeLocation,
-              customerName: referrerData.customerName,
-              createdAt: Timestamp.fromDate(new Date()),
-              demoStore: demoStore,
-            });
-
-            if (!demoStore && incrementAmount > 0) {
-              const newReferrerBalance =
-                Number(referrerData.surabhiBalance || 0) + incrementAmount;
-              void notifyReferrerCreditedSms({
-                referrerPhone: referrerData.customerMobile,
-                surabhiCoinsEarned: incrementAmount,
-                newSurabhiBalance: newReferrerBalance,
-                refereePhone: selectedCustomer.customerMobile,
-              });
-            }
-          } else {
-            // console.warn(`Referrer with mobile ${selectedCustomer.referredBy} not found`);
-          }
-        } catch (error) {
-          // console.error('Error processing referral:', error);
-          // Consider adding error handling/retry logic here
-        }
-      }
 
       // Add seva contribution activity record for cash and mixed payments
       if ((paymentMethod === 'cash' || paymentMethod === 'mixed') && sevaContribution > 0) {
@@ -530,21 +449,19 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         };
         await addDoc(collection(db, 'AccountTx'), cashAccountTxData);
 
-        // Fetch current SevaPool data to increment balance properly
-        const poolRef = doc(db, 'SevaPool', 'main');
-        const poolDoc = await getDoc(poolRef);
-        const sevaPool = poolDoc.data();
-
-        // Only update SevaPool for non-demo storesp
-        if (!storeDetails?.demoStore) {
-          await updateDoc(poolRef, {
-            currentSevaBalance: Number((sevaPool.currentSevaBalance + sevaContribution).toFixed(2)),
-            contributionsCurrentMonth: increment(1),
-            totalContributions: increment(1),
-            totalAllocations: sevaPool.totalAllocations,
-            allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
-            lastAllocatedDate: serverTimestamp(),
-          });
+        // Only update SevaPool for non-demo stores
+        if (!storeDetails?.demoStore && sevaContribution > 0) {
+          try {
+            const poolRef = doc(db, 'SevaPool', 'main');
+            await updateDoc(poolRef, {
+              currentSevaBalance: increment(sevaContribution),
+              contributionsCurrentMonth: increment(1),
+              totalContributions: increment(1),
+              lastAllocatedDate: serverTimestamp(),
+            });
+          } catch (sevaErr) {
+            console.warn('Non-fatal: SevaPool update failed:', sevaErr);
+          }
         }
         const cashCustomerTxData: Omit<CustomerTxType, 'id'> = {
           type: 'sale',
@@ -676,22 +593,19 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
           };
 
           await addDoc(collection(db, 'AccountTx'), mixedAccountTxData);
-          const poolRef = doc(db, 'SevaPool', 'main');
-          const poolDoc = await getDoc(poolRef);
-          const sevaPool = poolDoc.data();
-
           // Only update SevaPool for non-demo stores
-          if (!storeDetails?.demoStore) {
-            await updateDoc(poolRef, {
-              currentSevaBalance: Number(
-                (sevaPool.currentSevaBalance + sevaContribution).toFixed(2)
-              ),
-              contributionsCurrentMonth: increment(1),
-              totalContributions: increment(1),
-              totalAllocations: sevaPool.totalAllocations,
-              allocationsCurrentMonth: sevaPool.allocationsCurrentMonth,
-              lastAllocatedDate: serverTimestamp(),
-            });
+          if (!storeDetails?.demoStore && sevaContribution > 0) {
+            try {
+              const poolRef = doc(db, 'SevaPool', 'main');
+              await updateDoc(poolRef, {
+                currentSevaBalance: increment(sevaContribution),
+                contributionsCurrentMonth: increment(1),
+                totalContributions: increment(1),
+                lastAllocatedDate: serverTimestamp(),
+              });
+            } catch (sevaErr) {
+              console.warn('Non-fatal: SevaPool update failed:', sevaErr);
+            }
           }
 
           const mixedCustomerTxData: Omit<CustomerTxType, 'id'> = {
@@ -795,44 +709,40 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
         }
       }
 
-      const staffCollection = collection(db, 'staff');
-      const staffQuery = query(staffCollection, where('staffMobile', '==', getUserMobile(user)));
-      const staffSnapshot = await getDocs(staffQuery);
+      // Update staff sales count (non-fatal telemetry)
+      try {
+        const staffMobile = getUserMobile(user);
+        const cleanStaffMobile = staffMobile ? staffMobile.replace(/\D/g, '').slice(-10) : '';
+        if (cleanStaffMobile) {
+          const staffCollection = collection(db, 'staff');
+          const staffQuery = query(staffCollection, where('staffMobile', '==', cleanStaffMobile));
+          const staffSnapshot = await getDocs(staffQuery);
 
-      if (staffSnapshot.empty) {
-        throw new Error('Staff member not found in database');
+          if (!staffSnapshot.empty) {
+            const staffDoc = staffSnapshot.docs[0];
+            const staffRef = staffDoc.ref;
+            const staffUpdates: Partial<StaffType> = {
+              staffSalesCount: increment(1) as unknown as number,
+              lastActive: Timestamp.fromDate(new Date()),
+            };
+            await updateDoc(staffRef, staffUpdates);
+          }
+        }
+      } catch (staffErr) {
+        console.warn('Non-fatal: could not update staff sales count / last active:', staffErr);
       }
 
-      const staffDoc = staffSnapshot.docs[0];
-      const staffRef = staffDoc.ref;
-
-      // Validate updateData against StaffType interface
-      const staffUpdates: Partial<StaffType> = {
-        staffSalesCount: increment(1) as unknown as number,
-        lastActive: Timestamp.fromDate(new Date()),
-      };
-
-      await updateDoc(staffRef, staffUpdates);
-
-      // Handle Referrer Income - Only for cash or mixed payments
-      // For mixed payments, only process if not already processed for wallet payment
-      if (
-        (paymentMethod === 'cash' || paymentMethod === 'mixed') &&
-        selectedCustomer.referredBy &&
-        referralEarnedAdj > 0
-        //  &&
-        // Only process if not already processed for wallet payment
-        // !(paymentMethod === 'mixed' && saleCalculation?.walletDeduction > 0)
-      ) {
+      // Handle Referrer Income for all payment methods
+      const referredByVal = customerDoc.data()?.referredBy || selectedCustomer.referredBy;
+      if (referredByVal && referralEarnedAdj > 0) {
         try {
-          // Find referrer's document
-          const referrer = await fetchCustomerByMobile(selectedCustomer.referredBy);
+          const referrer = await fetchReferrerCustomer(referredByVal);
 
           if (referrer) {
-            const referralAmount = referralEarnedAdj;
-            const referrerRef = doc(db, 'Customers', referrer.id); // Assuming you have id field
-            // console.log('The referrer id is', referrerRef);
-            // Update referrer's balances - only update Surabhi balance without modifying referredUsers
+            const referralAmount = customRound(referralEarnedAdj);
+            const referrerRef = doc(db, 'Customers', referrer.id);
+
+            // Update referrer's balances
             await updateDoc(referrerRef, {
               surabhiBalance: increment(referralAmount),
               surabhiReferral: increment(referralAmount),
@@ -841,19 +751,20 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             });
 
             // Fetch store details for the referrer's store location
-            const referrerStoreQuery = query(
-              collection(db, 'stores'),
-              where('storeName', '==', referrer.storeLocation) // Use referrer's store location
-            );
-
-            const referrerStoreSnapshot = await getDocs(referrerStoreQuery);
-            let referrerStoreDetails = null;
-
-            if (!referrerStoreSnapshot.empty) {
-              referrerStoreDetails = referrerStoreSnapshot.docs[0].data() as StoreType;
-            } else {
-              // console.error('No store found for referrer location:', referrer.storeLocation);
+            let referrerStoreDetails: StoreType | null = null;
+            if (referrer.storeLocation) {
+              const referrerStoreQuery = query(
+                collection(db, 'stores'),
+                where('storeName', '==', referrer.storeLocation)
+              );
+              const referrerStoreSnapshot = await getDocs(referrerStoreQuery);
+              if (!referrerStoreSnapshot.empty) {
+                referrerStoreDetails = referrerStoreSnapshot.docs[0].data() as StoreType;
+              }
             }
+
+            const referrerOldSurabhi = Number(referrer.surabhiBalance || 0);
+            const referrerNewSurabhi = Number((referrerOldSurabhi + referralAmount).toFixed(2));
 
             // Add CustomerTx record for the referral Surabhi Coins earned by referrer
             const referrerTxData: Omit<CustomerTxType, 'id'> = {
@@ -861,11 +772,11 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
               customerMobile: referrer.customerMobile,
               demoStore: referrerStoreDetails?.demoStore || false,
               customerName: referrer.customerName,
-              storeLocation: referrer.storeLocation,
-              storeName: referrer.storeLocation,
+              storeLocation: referrer.storeLocation || storeLocation,
+              storeName: referrer.storeLocation || storeLocation,
               createdAt: Timestamp.fromDate(new Date()),
               paymentMethod: 'admin',
-              processedBy: getUserName(user),
+              processedBy: getUserName(user) || 'Staff',
               invoiceId: txInvoiceId,
               remarks: `Referral bonus for referring ${selectedCustomer.customerName}`,
               amount: 0,
@@ -873,7 +784,7 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
               sevaEarned: 0,
               referralEarned: referralAmount,
               referredBy: '',
-              
+
               // SPV fields
               spvEntered: Number((parseFloat(spvEntered) || 0).toFixed(2)),
               adjustedSpv: Number(adjustedSpv.toFixed(2)),
@@ -885,26 +796,26 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
               cashPayment: 0,
               adminProft: 0,
               previousBalance: {
-                walletBalance: referrer.walletBalance,
-                surabhiBalance: referrer.surabhiBalance,
-                shippingBalance: referrer.shippingBalance || 0,
+                walletBalance: Number((referrer.walletBalance || 0).toFixed(2)),
+                surabhiBalance: referrerOldSurabhi,
+                shippingBalance: Number((referrer.shippingBalance || 0).toFixed(2)),
               },
               newBalance: {
-                walletBalance: referrer.walletBalance,
-                surabhiBalance: (referrer.surabhiBalance || 0) + referralAmount,
-                shippingBalance: referrer.shippingBalance || 0,
+                walletBalance: Number((referrer.walletBalance || 0).toFixed(2)),
+                surabhiBalance: referrerNewSurabhi,
+                shippingBalance: Number((referrer.shippingBalance || 0).toFixed(2)),
               },
               walletCredit: 0,
               walletDebit: 0,
-              walletBalance: referrer.walletBalance,
+              walletBalance: Number((referrer.walletBalance || 0).toFixed(2)),
               surabhiDebit: 0,
               surabhiCredit: referralAmount,
-              surabhiBalance: (referrer.surabhiBalance || 0) + referralAmount,
+              surabhiBalance: referrerNewSurabhi,
               sevaCredit: 0,
               sevaDebit: 0,
-              sevaBalance: referrer.sevaBalanceCurrentMonth || 0,
-              sevaTotal: referrer.sevaTotal || 0,
-              storeSevaBalance: referrerStoreDetails ? referrerStoreDetails.storeSevaBalance : 0,
+              sevaBalance: Number((referrer.sevaBalanceCurrentMonth || 0).toFixed(2)),
+              sevaTotal: Number((referrer.sevaTotal || 0).toFixed(2)),
+              storeSevaBalance: referrerStoreDetails ? Number((referrerStoreDetails.storeSevaBalance || 0).toFixed(2)) : 0,
             };
 
             await addDoc(collection(db, 'CustomerTx'), referrerTxData);
@@ -912,10 +823,10 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             // Add activity record for referrer
             await addActivityRecord({
               type: 'referral',
-              remarks: `${selectedCustomer.referredBy} got ₹${referralAmount} referral from ${selectedCustomer.customerName}'s purchase of ₹${saleCalculation.totalAmount}`,
+              remarks: `${referrer.customerMobile} got ₹${referralAmount} referral from ${selectedCustomer.customerName}'s purchase of ₹${saleCalculation.totalAmount}`,
               amount: referralAmount,
-              customerMobile: selectedCustomer.referredBy,
-              storeLocation: referrer.storeLocation,
+              customerMobile: referrer.customerMobile,
+              storeLocation: referrer.storeLocation || storeLocation,
               customerName: referrer.customerName,
               createdAt: Timestamp.fromDate(new Date()),
               demoStore: demoStore,
@@ -926,21 +837,19 @@ export const SalesManagement = ({ storeLocation, demoStore }: SalesManagementPro
             );
 
             if (!demoStore) {
-              const newReferrerSurabhiBalance =
-                Number(referrer.surabhiBalance || 0) + referralAmount;
               void notifyReferrerCreditedSms({
                 referrerPhone: referrer.customerMobile,
                 surabhiCoinsEarned: referralAmount,
-                newSurabhiBalance: newReferrerSurabhiBalance,
+                newSurabhiBalance: referrerNewSurabhi,
                 refereePhone: selectedCustomer.customerMobile,
               });
             }
           } else {
-            // console.warn(`Referrer with mobile ${selectedCustomer.referredBy} not found`);
+            console.warn(`Referrer with identifier "${referredByVal}" not found`);
             toast.warning(`Referrer not found - bonus not credited`);
           }
         } catch (error) {
-          // console.error('Error processing referral:', error);
+          console.error('Error processing referral bonus:', error);
           toast.error('Failed to process referral bonus');
         }
       }

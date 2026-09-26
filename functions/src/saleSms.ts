@@ -62,7 +62,7 @@ export type SendSaleSmsRequest = {
  * Env: only `A2ZSMS_USERNAME` and `A2ZSMS_PASSWORD` (see functions/.env.example).
  */
 export const sendSaleNotificationSms = functions.https.onCall(
-  { region: 'us-central1' },
+  { region: 'us-central1', cors: true },
   async (request) => {
     if (!request.auth) {
       throw new functions.https.HttpsError(
@@ -154,7 +154,7 @@ export type SendCartReminderRequest = {
  * Tells the customer how many items are pending in their cart and provides the website URL.
  */
 export const sendCartReminderSms = functions.https.onCall(
-  { region: 'us-central1' },
+  { region: 'us-central1', cors: true },
   async (request) => {
     if (!request.auth) {
       throw new functions.https.HttpsError(

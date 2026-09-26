@@ -17,9 +17,11 @@ import {
   serverTimestamp,
   Timestamp,
   updateDoc,
-  where
+  where,
 } from 'firebase/firestore';
+import { fetchReferrerCustomer } from '@/lib/referrerUtils';
 import { getUserName } from '@/lib/userUtils';
+import { notifyReferrerCreditedSms } from '@/services/ojivaSmsNotification';
 
 // --- Types ---
 
@@ -38,21 +40,6 @@ export interface SaleCalculation {
 
 export const customRound = (num: number): number => {
   return Math.round(num * 100) / 100;
-};
-
-const fetchCustomerByMobile = async (mobile: string): Promise<CustomerType | null> => {
-  try {
-    const q = query(collection(db, 'Customers'), where('customerMobile', '==', mobile));
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-      const doc = querySnapshot.docs[0];
-      return { id: doc.id, ...doc.data() } as CustomerType;
-    }
-    return null;
-  } catch (error) {
-    console.error('Error fetching customer for sales logic:', error);
-    return null;
-  }
 };
 
 // --- Sales Logic ---
@@ -340,8 +327,8 @@ export const processSaleTransaction = async (params: {
 
     // 8. Handle Referrer
     if (customer.referredBy && saleCalculation.referrerSurabhiCoinsEarned > 0) {
-        const referrer = await fetchCustomerByMobile(customer.referredBy);
-        if (referrer) {
+        const referrer = await fetchReferrerCustomer(customer.referredBy);
+        if (referrer && referrer.id) {
              const referralAmount = saleCalculation.referrerSurabhiCoinsEarned;
              const referrerRef = doc(db, 'Customers', referrer.id);
              
@@ -408,6 +395,15 @@ export const processSaleTransaction = async (params: {
                  customerMobile: referrer.customerMobile,
                  createdAt: Timestamp.fromDate(new Date())
              });
+
+             if (!storeDetails.demoStore && referrer.customerMobile) {
+                 void notifyReferrerCreditedSms({
+                     referrerPhone: referrer.customerMobile,
+                     surabhiCoinsEarned: referralAmount,
+                     newSurabhiBalance: (referrer.surabhiBalance || 0) + referralAmount,
+                     refereePhone: customer.customerMobile,
+                 });
+             }
         }
     }
     

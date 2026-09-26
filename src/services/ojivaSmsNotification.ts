@@ -39,6 +39,13 @@ type OjivaResponse = {
 
 async function sendOjiva(payload: OjivaPayload): Promise<OjivaResponse | undefined> {
   if (!auth.currentUser) {
+    try {
+      await auth.authStateReady();
+    } catch {
+      // ignore
+    }
+  }
+  if (!auth.currentUser) {
     console.warn('[ojivaSms] skipped: no Firebase signed-in user');
     return undefined;
   }

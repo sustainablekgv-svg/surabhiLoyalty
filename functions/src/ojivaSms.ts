@@ -292,7 +292,7 @@ type OjivaSmsResponse = {
  * later verification and applies rate limiting.
  */
 export const sendOjivaNotification = functions.https.onCall(
-  { region: 'us-central1' },
+  { region: 'us-central1', cors: true },
   async (request): Promise<OjivaSmsResponse> => {
     if (!request.auth) {
       throw new functions.https.HttpsError(
@@ -388,7 +388,7 @@ async function isCustomerRegistered(tenDigit: string): Promise<boolean> {
  *   - 'generic'        : phone-verification template (signup-style body).
  */
 export const sendPhoneOtp = functions.https.onCall(
-  { region: 'us-central1' },
+  { region: 'us-central1', cors: true },
   async (request): Promise<SendOtpResponse> => {
     const data = request.data as SendOtpRequest;
     const tenDigit = rawTenDigit(data?.phone);
@@ -525,7 +525,7 @@ type VerifyOtpResponse = {
  * issued OTP before forcing a re-send.
  */
 export const verifyPhoneOtp = functions.https.onCall(
-  { region: 'us-central1' },
+  { region: 'us-central1', cors: true },
   async (request): Promise<VerifyOtpResponse> => {
     const data = request.data as VerifyOtpRequest;
     const tenDigit = rawTenDigit(data?.phone);
@@ -640,7 +640,7 @@ type ResetPasswordRequest = {
  * syncs Firebase Auth, so the user can immediately login with the new password.
  */
 export const resetCustomerPassword = functions.https.onCall(
-  { region: 'us-central1' },
+  { region: 'us-central1', cors: true },
   async (request) => {
     const data = request.data as ResetPasswordRequest;
     const tenDigit = rawTenDigit(data?.phone);
@@ -729,7 +729,7 @@ export const resetCustomerPassword = functions.https.onCall(
 /* -------------------------------------------------------------------------- */
 
 export const checkOjivaBalance = functions.https.onCall(
-  { region: 'us-central1' },
+  { region: 'us-central1', cors: true },
   async (request) => {
     if (!request.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'Sign in required.');

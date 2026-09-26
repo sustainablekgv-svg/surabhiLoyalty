@@ -31,8 +31,10 @@ service cloud.firestore {
     match /staff/{staffId} {
       // Staff and Admin can view staff profiles for store operations
       allow read: if isStaff();
-      // Only Admin can create, modify, or delete staff records
-      allow write: if isAdmin();
+      // Only Admin can create or delete staff records
+      allow create, delete: if isAdmin();
+      // Staff and Admin can update operational metrics (sales count, lastActive, store settings)
+      allow update: if isStaff();
     }
 
     // Users collection
