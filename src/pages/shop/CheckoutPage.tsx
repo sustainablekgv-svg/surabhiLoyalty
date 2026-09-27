@@ -1891,9 +1891,7 @@ const customerSurabhiBalance =
                                   <span className="text-[9px] text-indigo-500 font-medium leading-none mt-1">Total Weight: {group.displayWeight.toFixed(2)}kg</span>
                               </div>
                               <div className="text-right">
-                                  <span className="text-xs font-black text-slate-900">
-  ₹{Math.ceil(group.displayWeight) * 25}
-</span>
+                                  <span className="text-xs font-black text-slate-900">₹{group.shipping.toFixed(2)}</span>
                               </div>
                           </div>
                       ))}

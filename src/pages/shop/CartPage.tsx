@@ -16,7 +16,6 @@ import {
   Plus,
   RotateCcw,
   Scale,
-  ShieldCheck,
   ShoppingBag,
   ShoppingCart,
   Trash2,
@@ -137,14 +136,14 @@ const CartPage = () => {
                   </div>
                   <div>
                     <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                      Sustainable Direct-from-Farm Delivery
+                      Thank You for shopping at Sustainable KGV
                     </h2>
                     <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl leading-relaxed">
                       Your purchase directly supports{' '}
                       <span className="font-semibold text-emerald-800">
                         {brandCount} artisanal brand{brandCount > 1 ? 's' : ''}
                       </span>
-                      . Items are shipped directly from origin farms and makers for peak freshness.
+                      .
                     </p>
                   </div>
                 </div>
@@ -461,10 +460,6 @@ const CartPage = () => {
 
                     {/* Trust badges */}
                     <div className="pt-2 border-t border-slate-100 space-y-2">
-                      <div className="flex items-center gap-2 text-xs text-slate-600">
-                        <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-                        <span>100% Genuine, chemical-free direct farm sourcing</span>
-                      </div>
                       <div className="flex items-center gap-2 text-xs text-slate-600">
                         <RotateCcw className="h-4 w-4 text-slate-500 shrink-0" />
                         <span>Transparent weight adjustment guarantee</span>
