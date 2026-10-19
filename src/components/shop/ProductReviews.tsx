@@ -181,7 +181,7 @@ export const ProductReviews = ({ productId, productName, onReviewAdded }: Produc
   };
 
   return (
-    <div className="mt-16 border-t border-slate-100 pt-12">
+    <section className="relative min-w-0 border-t border-slate-100 pt-10 sm:pt-12">
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
         <div>
           <h3 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Customer Experience</h3>
@@ -194,10 +194,10 @@ export const ProductReviews = ({ productId, productName, onReviewAdded }: Produc
         )}
       </div>
       
-      <div className="grid lg:grid-cols-[380px_1fr] gap-12 items-start">
+      <div className="grid min-w-0 grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(280px,380px)_minmax(0,1fr)] lg:gap-12">
         
         {/* Write a Review Section */}
-        <div className="sticky top-24">
+        <div className="min-w-0 lg:sticky lg:top-24">
             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden transition-all hover:shadow-md">
                 <div className="bg-slate-50 border-b border-slate-100 p-6">
                     <h4 className="font-bold text-slate-900 flex items-center gap-2">
@@ -352,6 +352,6 @@ export const ProductReviews = ({ productId, productName, onReviewAdded }: Produc
           )}
         </div>
       </div>
-    </div>
+    </section>
   );
 };

@@ -22,6 +22,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { formatRichText, stripHtml } from '@/lib/utils';
 import { RichTextRenderer } from '@/components/ui/rich-text-renderer';
+import { ResilientImage } from '@/components/ui/resilient-image';
 
 const ProductDetailsPage = () => {
     const { id: slug } = useParams<{ id: string }>();
@@ -249,22 +250,19 @@ const isVariantOutOfStock = (variant: Product) =>
                     }
                 ]}
             />
-            <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
+            <div className="grid min-w-0 items-start gap-8 md:grid-cols-2 lg:gap-12">
                 {/* Image Gallery */}
-                <div className="space-y-4">
+                <div className="min-w-0 space-y-4">
                     <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
                         <DialogTrigger asChild>
                             <div className="aspect-square bg-white rounded-2xl overflow-hidden border flex items-center justify-center cursor-pointer hover:opacity-95 transition-opacity relative group">
                                 {selectedImage ? (
                                     <>
-                                    <img 
+                                    <ResilientImage 
                                         src={selectedImage} 
                                         alt={product.name} 
                                         className="max-h-full max-w-full object-contain" 
-                                        onError={(e) => {
-                                            e.currentTarget.src = 'https://placehold.co/600x600?text=No+Image';
-                                            e.currentTarget.onerror = null; // Prevent infinite loop
-                                        }}
+                                        fallbackSrc="https://placehold.co/600x600?text=No+Image"
                                     />
                                     <div className="absolute inset-0 flex items-center justify-center bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <span className="bg-white/90 text-xs px-2 py-1 rounded shadow-sm">Click to expand</span>
@@ -277,11 +275,12 @@ const isVariantOutOfStock = (variant: Product) =>
                         </DialogTrigger>
                         <DialogContent hideClose className="max-w-7xl w-full h-[95vh] p-0 bg-transparent border-0 shadow-none flex flex-col items-center justify-center outline-none">
                              <div className="relative w-full h-full flex items-center justify-center p-4 sm:p-8" onClick={() => setIsImageModalOpen(false)}>
-                                <img
+                                <ResilientImage
                                     src={selectedImage}
                                     alt={product.name}
                                     className="max-w-full max-h-full object-contain drop-shadow-2xl select-none cursor-default"
                                     onClick={(e) => e.stopPropagation()}
+                                    fallbackSrc="https://placehold.co/600x600?text=No+Image"
                                 />
                                 <Button
                                     variant="secondary"
@@ -312,15 +311,12 @@ const isVariantOutOfStock = (variant: Product) =>
                                             : 'border-gray-200 hover:border-gray-300'
                                     }`}
                                 >
-                                    <img
+                                    <ResilientImage
                                         src={img}
                                         alt={`${product.name} view ${idx + 1}`}
                                         className="absolute inset-0 w-full h-full object-cover"
                                         loading="lazy"
-                                        onError={(e) => {
-                                            e.currentTarget.src = 'https://placehold.co/160x160?text=No+Image';
-                                            e.currentTarget.onerror = null;
-                                        }}
+                                        fallbackSrc="https://placehold.co/160x160?text=No+Image"
                                     />
                                 </button>
                             ))}
@@ -329,7 +325,7 @@ const isVariantOutOfStock = (variant: Product) =>
                 </div>
 
                 {/* Product Info */}
-                <div className="space-y-6">
+                <div className="min-w-0 space-y-6">
                     <div>
                         <div className="flex justify-between items-start">
                             <div>
@@ -403,7 +399,7 @@ const isVariantOutOfStock = (variant: Product) =>
                             </Button>
                         </div>
                         
-                        <div className="mt-4 flex items-end gap-3">
+                        <div className="mt-4 flex flex-wrap items-end gap-3">
                             <span className="text-3xl font-bold text-primary">
                                 ₹{product.sellingPrice || product.price}
                             </span>
@@ -577,7 +573,7 @@ const isVariantOutOfStock = (variant: Product) =>
                         </div>
                     )}
                     
-                    <div className="pt-6 border-t flex flex-col sm:flex-row gap-4">
+                    <div className="flex flex-col gap-4 border-t pt-6 sm:flex-row">
                         <div className="flex items-center border rounded-full w-fit">
                             <Button 
                                 variant="ghost" 
@@ -600,7 +596,7 @@ const isVariantOutOfStock = (variant: Product) =>
                             </Button>
                         </div>
                         
-                        <div className="flex-1 flex gap-3">
+                        <div className="flex min-w-0 flex-1 gap-3">
                              <Button 
                                 className={`flex-1 gap-2 rounded-full h-10 ${isPaused ? 'bg-gray-100 text-gray-400 cursor-not-allowed hover:bg-gray-100' : ''}`} 
                                 size="lg"
@@ -624,6 +620,7 @@ const isVariantOutOfStock = (variant: Product) =>
             </div>
 
             {/* Social Reviews Section */}
+            <div className="relative z-0 mt-12 min-w-0 lg:mt-16">
             <SocialReviews productId={product.id} />
 
             {/* Product Reviews Section */}
@@ -634,6 +631,7 @@ const isVariantOutOfStock = (variant: Product) =>
                     setProduct(prev => prev ? { ...prev, averageRating: newAverage, totalReviews: newTotal } : null);
                 }}
             />
+            </div>
         </ShopLayout>
     );
 };

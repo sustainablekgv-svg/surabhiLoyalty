@@ -24,7 +24,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({ children, title = 'Shop'
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="flex min-h-screen min-w-0 flex-col overflow-x-hidden bg-gray-100">
       <SEO title={title} description="Browse our collection of premium products." />
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 md:h-16 items-center justify-between px-3 md:px-4">
@@ -84,7 +84,7 @@ export const ShopLayout: React.FC<ShopLayoutProps> = ({ children, title = 'Shop'
           </div>
         </div>
       </header>
-      <main className="container py-4 md:py-8 flex-1 px-3 md:px-4">
+      <main className="container min-w-0 flex-1 overflow-x-clip px-3 py-4 md:px-4 md:py-8">
         {children}
       </main>
       <Footer />
