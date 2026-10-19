@@ -4,6 +4,7 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { useAuth } from '@/hooks/auth-context';
 import { useShop } from '@/hooks/shop-context';
 import { isValidImageUrl } from '@/lib/image-utils';
+import { ResilientImage } from '@/components/ui/resilient-image';
 import { cn } from '@/lib/utils';
 import { Product } from '@/types/shop';
 import {
@@ -271,7 +272,7 @@ const hasManyVariants =
   }}
 >
         {isValidImageUrl(selectedProduct.images?.[0]) ? (
-          <img
+          <ResilientImage
             src={selectedProduct.images[0]}
             alt={selectedProduct.name}
             className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105 will-change-transform transform-gpu"

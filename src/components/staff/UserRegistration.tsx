@@ -1,21 +1,5 @@
 import { format } from 'date-fns';
-import {
-  createUserWithEmailAndPassword,
-  fetchSignInMethodsForEmail,
-  User as FirebaseUser,
-  onAuthStateChanged,
-} from 'firebase/auth';
-import {
-  arrayUnion,
-  collection,
-  doc,
-  getDocs,
-  query,
-  setDoc,
-  Timestamp,
-  updateDoc,
-  where,
-} from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import {
   CheckCircle,
   Eye,
@@ -35,8 +19,8 @@ import { toast } from 'sonner';
 import { Badge } from '../ui/badge';
 import { DatePicker } from '../ui/date-picker';
 
-import { encryptText } from '@/lib/encryption';
-import { auth, db } from '@/lib/firebase';
+import { registerCustomer } from '@/lib/authService';
+import { db } from '@/lib/firebase';
 import { CustomerType, UserRegistrationProps } from '@/types/types';
 import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 
@@ -62,18 +46,6 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
   });
 
   const { settings } = useGlobalSettings();
-
-  // Initialize auth state
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user: FirebaseUser | null) => {
-      // setIsAuthReady(true);
-      if (user) {
-        toast.success('Authentication ready');
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
 
   // Fetch referral name when mobile number is entered
   useEffect(() => {
@@ -202,134 +174,22 @@ export const UserRegistration = ({ storeLocation, demoStore }: UserRegistrationP
     const toastId = toast.loading('Checking details...');
 
     try {
-      // console.log('Starting registration process...');
-      const customersCollection = collection(db, 'Customers');
-      // console.log('Customers collection initialized');
-
-      // Check if email already exists (only if email is provided)
-      if (formData.customerEmail && formData.customerEmail.trim() !== '') {
-        const emailQuery = query(
-          customersCollection,
-          where('customerEmail', '==', formData.customerEmail)
-        );
-        const emailSnap = await getDocs(emailQuery);
-        if (!emailSnap.empty) {
-          toast.error('This email is already registered.', { id: toastId });
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // Check if mobile number already exists
-      const mobileQuery = query(
-        customersCollection,
-        where('customerMobile', '==', formData.customerMobile)
-      );
-      const mobileSnap = await getDocs(mobileQuery);
-      if (!mobileSnap.empty) {
-        toast.error('This mobile number is already registered.', { id: toastId });
-        setIsLoading(false);
-        return;
-      }
-
-      // Proceed with registration
-      // Generate email for Firebase auth if not provided
-      const authEmail = formData.customerEmail || `${formData.customerMobile}@loyalty.local`;
-      const existingMethods = await fetchSignInMethodsForEmail(auth, authEmail);
-      if (existingMethods.length > 0) {
-        toast.error('This email is already registered in Firebase Auth.', { id: toastId });
-        setIsLoading(false);
-        return;
-      }
-      // console.log('Creating Firebase user with email:', authEmail);
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        authEmail,
-        formData.customerPassword
-      );
-      // console.log('Firebase user created successfully, UID:', userCredential.user.uid);
-      const newUserUid = userCredential.user.uid;
-
-      const walletId = `WALLET-${newUserUid.substring(0, 8).toUpperCase()}`;
-      const newUserData: CustomerType = {
-        role: 'customer',
+      await registerCustomer({
         customerName: formData.customerName,
-        gender: formData.gender,
-        isStudent: formData.isStudent,
-        ...(formData.dateOfBirth && { dateOfBirth: format(formData.dateOfBirth, 'yyyy-MM-dd') }),
         customerMobile: formData.customerMobile,
-        ...(formData.customerEmail && { customerEmail: formData.customerEmail }),
+        customerEmail: formData.customerEmail || undefined,
+        customerPassword: formData.customerPassword,
+        gender: formData.gender,
+        dateOfBirth: formData.dateOfBirth ? format(formData.dateOfBirth, 'yyyy-MM-dd') : undefined,
         storeLocation,
         demoStore: demoStore || false,
-        district: formData.district.trim() !== '' ? formData.district : null,
-        city: formData.city.trim() !== '' ? formData.city : null,
-        referredBy: formData.referredBy.trim() !== '' ? formData.referredBy : null,
-        referredUsers: null,
-        customerPassword: encryptText(formData.customerPassword),
+        district: formData.district.trim() || null,
+        city: formData.city.trim() || null,
+        referredBy: formData.referredBy.trim() || null,
+        isStudent: formData.isStudent,
+      }, { signIn: false });
 
-        createdAt: Timestamp.now(),
-        walletRechargeDone: false,
-        saleElgibility: false,
-        walletId,
-        walletBalance: 0,
-        // walletCredit: 0,
-        // walletDebit: 0,
-        walletBalanceCurrentMonth: 0,
-        cumTotal: 0,
-        surbhiTotal: 0,
-        surabhiBalance: 0,
-        surabhiCredit: 0,
-        surabhiDebit: 0,
-        surabhiReferral: 0,
-        surabhiBalanceCurrentMonth: 0,
-        sevaBalance: 0,
-        sevaCredit: 0,
-        sevaDebit: 0,
-        sevaTotal: 0,
-        sevaBalanceCurrentMonth: 0,
-        lastTransactionDate: null,
-        lastQuarterCheck: null,
-        coinsFrozen: false,
-        currentQuarterStart: null,
-        cummulativeTarget: 0,
-        joinedDate: Timestamp.now(),
-        quartersPast: 0,
-        shippingBalance: 0,
-        shippingCredit: 0,
-        shippingDebit: 0,
-        shippingTotal: 0,
-        shippingBalanceCurrentMonth: 0,
-      };
-
-      // console.log('Creating customer document with data:', newUserData);
-      await setDoc(doc(customersCollection, newUserUid), newUserData);
-      // console.log('Customer document created successfully');
-
-      // Handle referral if exists
-      if (formData.referredBy && referralName && isElgibleForReferral) {
-        const referrerQuery = query(
-          customersCollection,
-          where('customerMobile', '==', formData.referredBy)
-        );
-        const referrerSnapshot = await getDocs(referrerQuery);
-
-        if (!referrerSnapshot.empty) {
-          const referrerDoc = referrerSnapshot.docs[0];
-
-          // Only record the referral relationship during registration
-          await updateDoc(doc(customersCollection, referrerDoc.id), {
-            referredUsers: arrayUnion({
-              customerMobile: formData.customerMobile,
-              customerName: formData.customerName,
-              createdAt: Timestamp.now(),
-            }),
-          });
-
-          toast.success(`User registered! Referral recorded.`, { id: toastId });
-        }
-      } else {
-        toast.success('User registered successfully!', { id: toastId });
-      }
+      toast.success('User registered successfully!', { id: toastId });
 
       // Reset form
       setFormData({

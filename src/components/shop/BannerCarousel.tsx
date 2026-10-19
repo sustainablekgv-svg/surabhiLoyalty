@@ -2,6 +2,7 @@ import React, { useEffect, useCallback, useState } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import { Banner } from '@/types/shop';
 import { getActiveBanners } from '@/services/banner';
+import { ResilientImage } from '@/components/ui/resilient-image';
 
 export const BannerCarousel = () => {
     const [banners, setBanners] = useState<Banner[]>([]);
@@ -74,23 +75,17 @@ export const BannerCarousel = () => {
                     <div className="flex-[0_0_100%] min-w-0 h-full relative flex items-center justify-center" key={banner.id}>
                         {banner.linkUrl ? (
                             <a href={banner.linkUrl} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
-                                <img 
+                                <ResilientImage 
                                     src={banner.imageUrl} 
                                     alt="Banner" 
                                     className="w-full h-full object-contain" 
-                                    onError={(e) => {
-                                        (e.target as HTMLImageElement).src = '/kgv.png'; // Fallback
-                                    }}
                                 />
                             </a>
                         ) : (
-                            <img 
+                            <ResilientImage 
                                 src={banner.imageUrl} 
                                 alt="Banner" 
                                 className="w-full h-full object-contain" 
-                                onError={(e) => {
-                                    (e.target as HTMLImageElement).src = '/kgv.png'; // Fallback
-                                }}
                             />
                         )}
                     </div>

@@ -426,6 +426,17 @@ export const registerCustomerAccount = functions.https.onCall(
       );
     }
 
+    const requestedEmail = String(data.customerEmail || '').trim().toLowerCase();
+    if (requestedEmail) {
+      const emailExisting = await db.collection('Customers')
+        .where('customerEmail', '==', requestedEmail)
+        .limit(1)
+        .get();
+      if (!emailExisting.empty) {
+        throw new functions.https.HttpsError('already-exists', 'This email is already registered.');
+      }
+    }
+
     let realReferredByMobile: string | null = null;
     let referrerDocId: string | null = null;
 
@@ -466,12 +477,15 @@ export const registerCustomerAccount = functions.https.onCall(
       role: 'customer',
       customerName: name,
       customerMobile: cleanMobile,
+      ...(requestedEmail && { customerEmail: requestedEmail }),
       customerPassword: passwordHash,
       gender: data.gender || '',
       dateOfBirth: data.dateOfBirth || '',
       isStudent: !!data.isStudent,
       storeLocation: data.storeLocation || 'Sustainable KGV Online',
       demoStore: !!data.demoStore,
+      district: data.district || null,
+      city: data.city || null,
       referredBy: realReferredByMobile,
       referralCode: uniqueCode,
       referredUsers: null,
@@ -509,25 +523,12 @@ export const registerCustomerAccount = functions.https.onCall(
       shippingBalanceCurrentMonth: 0,
     };
 
-    const docRef = await db.collection('Customers').add(newCustomer);
-
-    if (referrerDocId) {
-      try {
-        await db.collection('Customers').doc(referrerDocId).update({
-          referredUsers: admin.firestore.FieldValue.arrayUnion({
-            customerMobile: cleanMobile,
-            customerName: name,
-            createdAt: admin.firestore.Timestamp.now(),
-          }),
-        });
-      } catch (e) {
-        logger.error('Failed to update referrer doc:', e);
-      }
-    }
-
+    // Reserve the customer ID without writing a customer document yet. This
+    // prevents failed Auth provisioning from leaving an unusable backend row.
+    const docRef = db.collection('Customers').doc();
     const authUid = docRef.id;
     let targetUid = authUid;
-    const email = data.customerEmail || `${cleanMobile}@surabhiloyalty.local`;
+    const email = requestedEmail || `${cleanMobile}@surabhiloyalty.local`;
     try {
       await admin.auth().createUser({
         uid: authUid,
@@ -557,6 +558,22 @@ export const registerCustomerAccount = functions.https.onCall(
     const claims = { role: 'customer', docId: authUid, customerMobile: cleanMobile };
     await admin.auth().setCustomUserClaims(targetUid, claims);
     const customToken = await admin.auth().createCustomToken(targetUid, claims);
+
+    await docRef.set(newCustomer);
+
+    if (referrerDocId) {
+      try {
+        await db.collection('Customers').doc(referrerDocId).update({
+          referredUsers: admin.firestore.FieldValue.arrayUnion({
+            customerMobile: cleanMobile,
+            customerName: name,
+            createdAt: admin.firestore.Timestamp.now(),
+          }),
+        });
+      } catch (e) {
+        logger.error('Failed to update referrer doc:', e);
+      }
+    }
 
     const safeUser = { ...newCustomer, id: authUid };
     delete safeUser.customerPassword;

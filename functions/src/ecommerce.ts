@@ -93,7 +93,7 @@ export const verifyRazorpayPayment = functions.https.onCall(async (request) => {
         );
     }
 
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = request.data || {};
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, firebaseOrderId } = request.data || {};
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
          throw new functions.https.HttpsError(
@@ -127,6 +127,28 @@ export const verifyRazorpayPayment = functions.https.onCall(async (request) => {
             razorpaySignature: razorpay_signature,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
+
+        // Finalize the order from the trusted server. Customer clients are
+        // intentionally not allowed to change paymentStatus/paymentDetails.
+        if (firebaseOrderId) {
+            const orderRef = db.collection('orders').doc(String(firebaseOrderId));
+            const orderSnap = await orderRef.get();
+            if (!orderSnap.exists || orderSnap.data()?.userId !== request.auth.uid) {
+                throw new functions.https.HttpsError('permission-denied', 'Order does not belong to this account.');
+            }
+            await orderRef.update({
+                paymentStatus: 'paid',
+                status: 'received',
+                'paymentDetails.razorpay_payment_id': razorpay_payment_id,
+                'paymentDetails.razorpay_signature': razorpay_signature,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                timeline: admin.firestore.FieldValue.arrayUnion({
+                    status: 'paid',
+                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                    note: `Online Payment Successful (ID: ${razorpay_payment_id})`,
+                }),
+            });
+        }
         return { success: true, message: 'Payment verified successfully' };
     } else {
         throw new functions.https.HttpsError('invalid-argument', 'Invalid signature');

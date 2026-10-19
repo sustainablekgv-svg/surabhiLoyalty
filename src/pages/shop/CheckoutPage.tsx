@@ -841,6 +841,7 @@ const customerSurabhiBalance =
         
         toast.dismiss('razorpay-loading');
 
+        let paymentWasVerified = false;
         const options = {
           key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_live_SOni1mJSdqmGsc',
           amount: orderDetails.amount,
@@ -854,20 +855,12 @@ const customerSurabhiBalance =
               const verifyRes = await verifyRazorpayPaymentFn({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature
+                razorpay_signature: response.razorpay_signature,
+                firebaseOrderId,
               });
 
               if ((verifyRes.data as any).success) {
-                const { updateDoc, doc } = await import('firebase/firestore');
-                const orderRef = doc(db, 'orders', firebaseOrderId!);
-                await updateDoc(orderRef, {
-                  paymentStatus: 'paid',
-                  status: 'received',
-                  'paymentDetails.razorpay_payment_id': response.razorpay_payment_id,
-                  'paymentDetails.razorpay_signature': response.razorpay_signature,
-                  updatedAt: Timestamp.now()
-                });
-
+                paymentWasVerified = true;
                 await addDoc(collection(db, 'Activity'), {
                   type: 'order_placed',
                   remarks: `Online Payment Success for Order ₹${totalPayableAmount.toFixed(2)}`,
@@ -913,7 +906,13 @@ const customerSurabhiBalance =
               }
             } catch (err) {
               console.error(err);
-              toast.error("Payment Verification Error");
+              if (paymentWasVerified) {
+                clearCart();
+                toast.success("Payment Successful! Order placed.");
+                navigate('/shop');
+              } else {
+                toast.error("Payment verification failed. If money was deducted, please contact support with your payment ID.");
+              }
             } finally {
               setLoading(false);
             }

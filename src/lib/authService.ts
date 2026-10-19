@@ -285,19 +285,25 @@ interface RegisterCustomerData {
   customerName: string;
   customerMobile: string;
   customerPassword: string;
+  customerEmail?: string;
   gender: string;
   dateOfBirth?: string;
   storeLocation: string;
   referredBy?: string | null;
   isStudent: boolean;
   demoStore: boolean;
+  district?: string | null;
+  city?: string | null;
   tpin?: string;
 }
 
-export const registerCustomer = async (data: RegisterCustomerData): Promise<CustomerType> => {
+export const registerCustomer = async (
+  data: RegisterCustomerData,
+  options: { signIn?: boolean } = {}
+): Promise<CustomerType> => {
   try {
     const res = await callRegisterCustomerAccount(data);
-    if (res.data?.customToken) {
+    if (options.signIn !== false && res.data?.customToken) {
       try {
         await signInWithCustomToken(auth, res.data.customToken);
       } catch (authErr) {
