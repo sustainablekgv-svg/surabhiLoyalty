@@ -35,6 +35,7 @@ const CheckoutPage = () => {
   const location = useLocation();
   
   const [loading, setLoading] = useState(false);
+  const [paymentConfirmationPending, setPaymentConfirmationPending] = useState(false);
   const [mobileStep, setMobileStep] = useState<1 | 2 | 3>(1);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -590,6 +591,10 @@ const shippingDueAmount = useMemo(() => {
 
   const handlePlaceOrder = async (e?: React.BaseSyntheticEvent) => {
     if (e) e.preventDefault();
+    if (paymentConfirmationPending) {
+      toast.info('Payment confirmation is pending. Please do not submit another payment.');
+      return;
+    }
     if (cart.length === 0) {
       toast.error("Your cart is empty");
       return;
@@ -852,15 +857,36 @@ const customerSurabhiBalance =
           handler: async function (response: any) {
             try {
               setLoading(true);
-              const verifyRes = await verifyRazorpayPaymentFn({
+              const verificationData = {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
                 firebaseOrderId,
-              });
+              };
+              let verifyRes: any;
+              let verificationError: unknown;
+
+              // A callable response can time out after the server commits the
+              // payment. Retry the same idempotent verification once so the
+              // customer does not see a false failure in that case.
+              for (let attempt = 0; attempt < 2; attempt += 1) {
+                try {
+                  verifyRes = await verifyRazorpayPaymentFn(verificationData);
+                  verificationError = undefined;
+                  break;
+                } catch (err) {
+                  verificationError = err;
+                  if (attempt === 0) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                  }
+                }
+              }
+
+              if (verificationError) throw verificationError;
 
               if ((verifyRes.data as any).success) {
                 paymentWasVerified = true;
+                setPaymentConfirmationPending(false);
                 await addDoc(collection(db, 'Activity'), {
                   type: 'order_placed',
                   remarks: `Online Payment Success for Order ₹${totalPayableAmount.toFixed(2)}`,
@@ -902,7 +928,8 @@ const customerSurabhiBalance =
                 toast.success("Payment Successful! Order placed.");
                 navigate('/shop');
               } else {
-                toast.error("Payment Verification Failed");
+                setPaymentConfirmationPending(true);
+                toast.error(`Payment confirmation is still processing. Do not pay again. Contact support with Order ID ${firebaseOrderId || 'unavailable'} and Payment ID ${response.razorpay_payment_id}.`);
               }
             } catch (err) {
               console.error(err);
@@ -911,7 +938,8 @@ const customerSurabhiBalance =
                 toast.success("Payment Successful! Order placed.");
                 navigate('/shop');
               } else {
-                toast.error("Payment verification failed. If money was deducted, please contact support with your payment ID.");
+                setPaymentConfirmationPending(true);
+                toast.error(`Payment confirmation is still processing. Do not pay again. Contact support with Order ID ${firebaseOrderId || 'unavailable'} and Payment ID ${response.razorpay_payment_id}.`);
               }
             } finally {
               setLoading(false);
@@ -1739,7 +1767,7 @@ const customerSurabhiBalance =
 
                         <Button 
                             onClick={() => handlePlaceOrder()}
-                            disabled={loading || cart.length === 0 || !paymentMethod}
+                            disabled={loading || paymentConfirmationPending || cart.length === 0 || !paymentMethod}
                             className="w-full h-14 bg-slate-900 hover:bg-black text-white rounded-xl font-bold text-lg transition-all shadow-lg active:scale-[0.98]"
                         >
                             {loading ? (
@@ -1747,7 +1775,7 @@ const customerSurabhiBalance =
                                     <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                     Processing Order...
                                 </span>
-                            ) : !paymentMethod ? 'Select Payment Method' : 'Place Order'}
+                            ) : paymentConfirmationPending ? 'Payment Confirmation Pending' : !paymentMethod ? 'Select Payment Method' : 'Place Order'}
                         </Button>
                         <p className="text-[9px] text-slate-400 font-black text-center uppercase tracking-[0.2em] pt-2">
                              Verified Secure Transaction
@@ -2290,7 +2318,7 @@ const customerSurabhiBalance =
             </Card>
             <Button 
                 onClick={() => handlePlaceOrder()} 
-                disabled={loading || cart.length === 0 || !paymentMethod} 
+                disabled={loading || paymentConfirmationPending || cart.length === 0 || !paymentMethod} 
                 className="w-full h-14 bg-slate-900 hover:bg-black text-white rounded-2xl font-black text-lg shadow-lg active:scale-95 transition-all"
             >
                 {loading ? (
@@ -2298,7 +2326,7 @@ const customerSurabhiBalance =
                         <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         Processing...
                     </span>
-                ) : !paymentMethod ? 'Select Payment Method' : 'Place Order'}
+                ) : paymentConfirmationPending ? 'Payment Confirmation Pending' : !paymentMethod ? 'Select Payment Method' : 'Place Order'}
             </Button>
             <p className="text-[9px] text-slate-400 font-medium text-center uppercase tracking-wider">Secure End-to-End Encryption</p>
           </div>

@@ -29,7 +29,8 @@ service cloud.firestore {
 
     // Staff accounts
     match /staff/{staffId} {
-      // Staff and Admin can view staff profiles for store operations
+      // Staff and Admin can view staff profiles for store operati
+      ons
       allow read: if isStaff();
       // Only Admin can create or delete staff records
       allow create, delete: if isAdmin();
