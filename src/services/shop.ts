@@ -1,5 +1,5 @@
 
-import { db } from '@/lib/firebase';
+import { db, functions } from '@/lib/firebase';
 import { Brand, Category, Order, Product } from '@/types/shop';
 import { CustomerTxType, CustomerType, StoreType } from '@/types/types';
 import {
@@ -28,6 +28,7 @@ import {
 import { notifyCustomerSaleSms } from '@/services/saleSmsNotification';
 import { processSaleTransaction } from './sales';
 import { getUserName } from '@/lib/userUtils';
+import { httpsCallable } from 'firebase/functions';
 
 // --- Slug Utilities ---
 export const generateSlug = (name: string): string => {
@@ -836,116 +837,12 @@ export const createOrder = async (
   'status' |
   'timeline'>
 ) => {
-
-  const timestamp = new Date();
-
-  return await runTransaction(db, async (transaction) => {
-
-    // =========================
-    // CUSTOMER VALIDATION
-    // =========================
-
-    if (!order.userId) {
-      throw new Error("User ID required");
-    }
-
-    const customerRef = doc(db, 'Customers', order.userId);
-
-    const customerSnap = await transaction.get(customerRef);
-
-    if (!customerSnap.exists()) {
-      throw new Error("Customer not found");
-    }
-
-    const customerData = customerSnap.data();
-
-// =========================
-// SURABHI VALIDATION
-// =========================
-
-const surabhiUsed =
-  Number(order.surabhiCoinsUsed || 0);
-
-if (surabhiUsed > 0) {
-
-  const actualSurabhi =
-    Number(customerData.surabhiBalance || 0);
-
-  const pendingSurabhi =
-    Number(customerData.pendingSurabhiCoins || 0);
-
-  const availableSurabhi =
-    Math.max(0, actualSurabhi - pendingSurabhi);
-
-  if (surabhiUsed > availableSurabhi) {
-    throw new Error(
-      "Invalid Surabhi usage: exceeds available balance"
-    );
-  }
-
-  // LOCK SURABHI
-  transaction.update(customerRef, {
-    pendingSurabhiCoins: increment(surabhiUsed)
-  });
-}
-
-
-
-    // =========================
-    // SHIPPING VALIDATION
-    // =========================
-
-    const shippingUsed =
-      Number(order.shippingPointsUsed || 0);
-
-    if (shippingUsed > 0) {
-
-      const actualShipping =
-        Number(customerData.shippingBalance || 0);
-
-      const pendingShipping =
-        Number(customerData.pendingShippingBalance || 0);
-
-      const availableShipping =
-        Math.max(0, actualShipping - pendingShipping);
-
-      if (shippingUsed > availableShipping) {
-        throw new Error(
-          "Invalid shipping usage: exceeds available balance"
-        );
-      }
-
-      // LOCK SHIPPING
-      transaction.update(customerRef, {
-        pendingShippingBalance: increment(shippingUsed)
-      });
-    }
-
-    // =========================
-    // CREATE ORDER
-    // =========================
-
-    const orderRef = doc(collection(db, 'orders'));
-
-    transaction.set(orderRef, {
-      ...order,
-
-      status: 'received',
-
-      timeline: [
-        {
-          status: 'received',
-          timestamp,
-          note: 'Order placed successfully'
-        }
-      ],
-
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-
-    return orderRef.id;
-  });
+  const createCheckoutOrderFn = httpsCallable<
+    { order: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'timeline'> },
+    { success: boolean; firebaseOrderId: string }
+  >(functions, 'createCheckoutOrder');
+  const result = await createCheckoutOrderFn({ order });
+  return result.data.firebaseOrderId;
 };
 
 

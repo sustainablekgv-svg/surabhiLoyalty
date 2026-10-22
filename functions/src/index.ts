@@ -52,6 +52,7 @@ import { syncFirebaseAuthForUpload as syncFirebaseAuthForUploadFn } from './sync
 export const checkQuarterlyCriteria = quarterly.checkQuarterlyCriteria;
 export const createRazorpayOrder = ecommerce.createRazorpayOrder;
 export const linkRazorpayOrderToFirebaseOrder = ecommerce.linkRazorpayOrderToFirebaseOrder;
+export const createCheckoutOrder = ecommerce.createCheckoutOrder;
 export const verifyRazorpayPayment = ecommerce.verifyRazorpayPayment;
 export const razorpayWebhook = ecommerce.razorpayWebhook;
 export const createR2UploadUrl = cloudflare.createR2UploadUrl;

@@ -863,7 +863,6 @@ const customerSurabhiBalance =
         const { functions } = await import('@/lib/firebase');
         const { httpsCallable } = await import('firebase/functions');
         const createRazorpayOrderFn = httpsCallable(functions, 'createRazorpayOrder');
-        const linkRazorpayOrderFn = httpsCallable(functions, 'linkRazorpayOrderToFirebaseOrder');
         const verifyRazorpayPaymentFn = httpsCallable(functions, 'verifyRazorpayPayment');
 
         let orderDetails: any;
@@ -911,26 +910,6 @@ const customerSurabhiBalance =
             toast.error("Failed to record order details. Please try again.", { id: 'razorpay-loading' });
             setLoading(false);
             return;
-        }
-
-        let orderLinked = false;
-        for (let attempt = 0; attempt < 2; attempt += 1) {
-          try {
-            await linkRazorpayOrderFn({
-              razorpay_order_id: orderDetails.id,
-              firebaseOrderId,
-            });
-            orderLinked = true;
-            break;
-          } catch (linkError) {
-            console.error('Failed to link payment to checkout order:', linkError);
-            if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 500));
-          }
-        }
-        if (!orderLinked) {
-          toast.error('Could not securely prepare your order for payment. Please try again.', { id: 'razorpay-loading' });
-          setLoading(false);
-          return;
         }
 
         if (typeof orderDetails.keyId !== 'string' || !orderDetails.keyId) {

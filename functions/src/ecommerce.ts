@@ -231,6 +231,132 @@ export const linkRazorpayOrderToFirebaseOrder = functions.https.onCall(async (re
     return { success: true };
 });
 
+/**
+ * Creates customer checkout orders and reserves redeemed credits atomically.
+ * Customer documents are intentionally client-write protected by Firestore
+ * rules, so checkout must perform these related writes through Admin SDK.
+ */
+export const createCheckoutOrder = functions.https.onCall(async (request) => {
+    if (!request.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Sign in before placing an order.');
+    }
+
+    const order = request.data?.order;
+    if (!order || typeof order !== 'object' || Array.isArray(order)) {
+        throw new functions.https.HttpsError('invalid-argument', 'Order details are required.');
+    }
+    if (typeof order.userId !== 'string' || !ownsAccount(request, order.userId)) {
+        throw new functions.https.HttpsError('permission-denied', 'You may only place orders for your own account.');
+    }
+    if (!['cod', 'online'].includes(order.paymentMethod) || order.paymentStatus !== 'pending' ||
+        !Array.isArray(order.items) || order.items.length === 0 ||
+        !Number.isFinite(Number(order.totalAmount)) || Number(order.totalAmount) < 0 ||
+        !order.shippingAddress || typeof order.shippingAddress !== 'object') {
+        throw new functions.https.HttpsError('invalid-argument', 'Order details are incomplete or invalid.');
+    }
+    if (order.paymentMethod === 'online' && Number(order.totalAmount) < 1) {
+        throw new functions.https.HttpsError('invalid-argument', 'Online payments must be at least ₹1.');
+    }
+
+    const surabhiUsed = Number(order.surabhiCoinsUsed || 0);
+    const shippingUsed = Number(order.shippingPointsUsed || 0);
+    if (!Number.isFinite(surabhiUsed) || surabhiUsed < 0 ||
+        !Number.isFinite(shippingUsed) || shippingUsed < 0) {
+        throw new functions.https.HttpsError('invalid-argument', 'Redeemed credit amounts are invalid.');
+    }
+
+    const paymentDetails = order.paymentDetails && typeof order.paymentDetails === 'object'
+        ? order.paymentDetails
+        : {};
+    const razorpayOrderId = order.paymentMethod === 'online' ? paymentDetails.razorpay_order_id : undefined;
+    if (order.paymentMethod === 'online' && (typeof razorpayOrderId !== 'string' || !razorpayOrderId)) {
+        throw new functions.https.HttpsError('invalid-argument', 'Razorpay order reference is missing.');
+    }
+
+    const customerRef = db.collection('Customers').doc(order.userId);
+    const orderRef = db.collection('orders').doc();
+    const paymentRef = razorpayOrderId ? db.collection('payments').doc(razorpayOrderId) : undefined;
+
+    await db.runTransaction(async (transaction) => {
+        const customerSnap = await transaction.get(customerRef);
+        if (!customerSnap.exists) {
+            throw new functions.https.HttpsError('not-found', 'Customer account was not found.');
+        }
+        const paymentSnap = paymentRef ? await transaction.get(paymentRef) : undefined;
+        const customerData = customerSnap.data()!;
+
+        if (surabhiUsed > 0) {
+            const balance = Number(customerData.surabhiBalance || 0);
+            const pending = Number(customerData.pendingSurabhiCoins || 0);
+            if (!Number.isFinite(balance) || !Number.isFinite(pending) || balance < 0 || pending < 0 || surabhiUsed > balance - pending) {
+                throw new functions.https.HttpsError('failed-precondition', 'Surabhi credit balance changed. Refresh and try again.');
+            }
+        }
+        if (shippingUsed > 0) {
+            const balance = Number(customerData.shippingBalance || 0);
+            const pending = Number(customerData.pendingShippingBalance || 0);
+            if (!Number.isFinite(balance) || !Number.isFinite(pending) || balance < 0 || pending < 0 || shippingUsed > balance - pending) {
+                throw new functions.https.HttpsError('failed-precondition', 'Shipping credit balance changed. Refresh and try again.');
+            }
+        }
+
+        if (paymentRef) {
+            const paymentData = paymentSnap?.data();
+            const amountPaise = Number(paymentData?.amountPaise ?? Math.round(Number(paymentData?.amount) * 100));
+            if (!paymentSnap?.exists || !ownsAccount(request, paymentData?.userId) ||
+                paymentData?.razorpayOrderId !== razorpayOrderId || paymentData?.currency !== 'INR' ||
+                amountPaise !== Math.round(Number(order.totalAmount) * 100) ||
+                (paymentData?.firebaseOrderId && paymentData.firebaseOrderId !== orderRef.id)) {
+                throw new functions.https.HttpsError('failed-precondition', 'Razorpay payment does not match this order.');
+            }
+
+            transaction.set(paymentRef, {
+                firebaseOrderId: orderRef.id,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+        }
+
+        const customerUpdates: Record<string, number> = {};
+        if (surabhiUsed > 0) {
+            customerUpdates.pendingSurabhiCoins = Number(customerData.pendingSurabhiCoins || 0) + surabhiUsed;
+        }
+        if (shippingUsed > 0) {
+            customerUpdates.pendingShippingBalance = Number(customerData.pendingShippingBalance || 0) + shippingUsed;
+        }
+        if (Object.keys(customerUpdates).length > 0) transaction.update(customerRef, customerUpdates);
+
+        const checkoutOrder = {
+            userId: order.userId,
+            items: order.items,
+            totalAmount: Number(order.totalAmount),
+            totalTax: Number(order.totalTax || 0),
+            shippingAddress: order.shippingAddress,
+            paymentMethod: order.paymentMethod,
+            paymentStatus: 'pending',
+            shippingPointsEarned: Number(order.shippingPointsEarned || 0),
+            shippingPointsUsed: shippingUsed,
+            netShippingCharges: Number(order.netShippingCharges || 0),
+            surabhiCoinsUsed: surabhiUsed,
+            surabhiCoinsEarned: Number(order.surabhiCoinsEarned || 0),
+            sevaCoinsEarned: Number(order.sevaCoinsEarned || 0),
+            referralBonusEarned: Number(order.referralBonusEarned || 0),
+            demoStore: order.demoStore === true,
+            ...(paymentRef ? { paymentDetails: { razorpay_order_id: razorpayOrderId, status: 'created' } } : {}),
+            status: 'received',
+            timeline: [{
+                status: 'received',
+                timestamp: admin.firestore.Timestamp.now(),
+                note: 'Order placed successfully',
+            }],
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+        transaction.create(orderRef, checkoutOrder);
+    });
+
+    return { success: true, firebaseOrderId: orderRef.id };
+});
+
 export const verifyRazorpayPayment = functions.https.onCall(async (request) => {
     if (!request.auth) {
         throw new functions.https.HttpsError(
