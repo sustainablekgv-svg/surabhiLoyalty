@@ -21,10 +21,11 @@ import {
   getDocs,
   Timestamp,
   doc,
-  getDoc
+  getDoc,
+  onSnapshot
 } from 'firebase/firestore';
 import { Check, ChevronRight, Copy, MessageSquare, Phone, Shield, ShoppingCart } from 'lucide-react';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -36,6 +37,9 @@ const CheckoutPage = () => {
   
   const [loading, setLoading] = useState(false);
   const [paymentConfirmationPending, setPaymentConfirmationPending] = useState(false);
+  const [razorpayCheckoutOpen, setRazorpayCheckoutOpen] = useState(false);
+  const [pendingFirebaseOrderId, setPendingFirebaseOrderId] = useState<string | null>(null);
+  const completedOnlineOrderIds = useRef(new Set<string>());
   const [mobileStep, setMobileStep] = useState<1 | 2 | 3>(1);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -334,6 +338,8 @@ const shippingCost = Object.values(productsByGroup).reduce(
 
 }, [availableShippingBalance, shippingCost]);
 
+const finalShippingCreditsUsed = shippingCreditsUsed;
+
 
 const shippingDueAmount = useMemo(() => {
     return availableShippingBalance < 0
@@ -589,8 +595,78 @@ const shippingDueAmount = useMemo(() => {
     }
   };
 
+  const completeOnlineOrderRef = useRef<(orderId: string) => Promise<void>>(async () => {});
+  completeOnlineOrderRef.current = async (orderId: string) => {
+    if (completedOnlineOrderIds.current.has(orderId)) return;
+    completedOnlineOrderIds.current.add(orderId);
+
+    setPaymentConfirmationPending(false);
+    setRazorpayCheckoutOpen(false);
+    setPendingFirebaseOrderId(null);
+
+    try {
+      await addDoc(collection(db, 'Activity'), {
+        type: 'order_placed',
+        remarks: `Online Payment Success for Order ₹${totalPayableAmount.toFixed(2)}`,
+        amount: totalPayableAmount,
+        customerName: formData.fullName,
+        customerMobile: formData.mobile,
+        storeLocation: currentStore?.storeName || 'Online',
+        paymentMethod: 'online',
+        createdAt: Timestamp.now(),
+        demoStore: (user as any)?.demoStore || false,
+      });
+    } catch (activityError) {
+      console.error('Payment was confirmed, but order activity logging failed:', activityError);
+    }
+
+    await processAddressSave(formData);
+
+    if (!(user as any)?.demoStore) {
+      void notifyOrderPlacedSms({
+        phone: formData.mobile,
+        customerName: formData.fullName,
+        orderId,
+        amount: totalPayableAmount,
+        storeName: currentStore?.storeName || 'Online',
+      });
+
+      if (redeemedCoinsTotal > 0 || finalShippingCreditsUsed > 0) {
+        const customerSurabhiBalance = Number(customerData?.surabhiBalance || 0);
+        void notifyCoinsRedeemedSms({
+          phone: formData.mobile,
+          customerName: formData.fullName,
+          orderOrInvoiceId: orderId,
+          amount: totalPayableAmount,
+          surabhiCoinsUsed: redeemedCoinsTotal,
+          shippingCreditsUsed: finalShippingCreditsUsed,
+          balance: customerSurabhiBalance,
+        });
+      }
+    }
+
+    clearCart();
+    toast.success('Payment confirmed! Order placed.');
+    navigate('/shop');
+  };
+
+  useEffect(() => {
+    if (!pendingFirebaseOrderId) return;
+
+    return onSnapshot(doc(db, 'orders', pendingFirebaseOrderId), (orderSnap) => {
+      if (orderSnap.data()?.paymentStatus !== 'paid') return;
+      void completeOnlineOrderRef.current(pendingFirebaseOrderId);
+    }, (error) => {
+      console.error('Unable to listen for payment confirmation:', error);
+    });
+  }, [pendingFirebaseOrderId]);
+
   const handlePlaceOrder = async (e?: React.BaseSyntheticEvent) => {
     if (e) e.preventDefault();
+    if (razorpayCheckoutOpen) {
+      toast.info('Finish or close the payment window before starting another payment.');
+      return;
+    }
     if (paymentConfirmationPending) {
       toast.info('Payment confirmation is pending. Please do not submit another payment.');
       return;
@@ -679,14 +755,6 @@ try {
 }
 
     
-
-    const finalShippingCreditsUsed =
-    availableShippingBalance > 0
-        ? Math.min(
-              availableShippingBalance,
-              shippingCost
-          )
-        : 0;
 
     try {
       if (paymentMethod === 'online') {
@@ -795,6 +863,7 @@ const customerSurabhiBalance =
         const { functions } = await import('@/lib/firebase');
         const { httpsCallable } = await import('firebase/functions');
         const createRazorpayOrderFn = httpsCallable(functions, 'createRazorpayOrder');
+        const linkRazorpayOrderFn = httpsCallable(functions, 'linkRazorpayOrderToFirebaseOrder');
         const verifyRazorpayPaymentFn = httpsCallable(functions, 'verifyRazorpayPayment');
 
         let orderDetails: any;
@@ -843,18 +912,49 @@ const customerSurabhiBalance =
             setLoading(false);
             return;
         }
+
+        let orderLinked = false;
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          try {
+            await linkRazorpayOrderFn({
+              razorpay_order_id: orderDetails.id,
+              firebaseOrderId,
+            });
+            orderLinked = true;
+            break;
+          } catch (linkError) {
+            console.error('Failed to link payment to checkout order:', linkError);
+            if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
+        if (!orderLinked) {
+          toast.error('Could not securely prepare your order for payment. Please try again.', { id: 'razorpay-loading' });
+          setLoading(false);
+          return;
+        }
+
+        if (typeof orderDetails.keyId !== 'string' || !orderDetails.keyId) {
+          toast.error('Payment service configuration is incomplete. Please try again later.', { id: 'razorpay-loading' });
+          setLoading(false);
+          return;
+        }
+
+        // Listen before Checkout opens so webhooks can complete the order even
+        // if the browser callback is interrupted.
+        setPendingFirebaseOrderId(firebaseOrderId);
         
         toast.dismiss('razorpay-loading');
 
         let paymentWasVerified = false;
         const options = {
-          key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_live_SOni1mJSdqmGsc',
+          key: orderDetails.keyId,
           amount: orderDetails.amount,
           currency: orderDetails.currency,
           name: 'Surabhi Loyalty',
           description: 'Order Payment',
           order_id: orderDetails.id,
           handler: async function (response: any) {
+            setRazorpayCheckoutOpen(false);
             try {
               setLoading(true);
               const verificationData = {
@@ -864,82 +964,60 @@ const customerSurabhiBalance =
                 firebaseOrderId,
               };
               let verifyRes: any;
-              let verificationError: unknown;
+              let paymentConfirmed = false;
 
-              // A callable response can time out after the server commits the
-              // payment. Retry the same idempotent verification once so the
-              // customer does not see a false failure in that case.
-              for (let attempt = 0; attempt < 2; attempt += 1) {
+              // Razorpay may briefly report an authorized payment before it
+              // finishes capture. Re-fetch through the server a few times;
+              // each call verifies the signature and reconciles with Razorpay.
+              for (let attempt = 0; attempt < 4; attempt += 1) {
                 try {
                   verifyRes = await verifyRazorpayPaymentFn(verificationData);
-                  verificationError = undefined;
-                  break;
-                } catch (err) {
-                  verificationError = err;
-                  if (attempt === 0) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                  if ((verifyRes.data as any)?.success === true) {
+                    paymentConfirmed = true;
+                    break;
                   }
+                  if ((verifyRes.data as any)?.status !== 'authorized') break;
+                } catch (err) {
+                  console.warn('Razorpay payment confirmation is still being reconciled:', err);
+                }
+
+                if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 1500));
+              }
+
+              // The browser callback and Razorpay webhook can reach Firebase
+              // at nearly the same time. If the callable response is lost,
+              // give the webhook a moment to confirm the same order.
+              if (!paymentConfirmed && firebaseOrderId) {
+                for (let attempt = 0; attempt < 10; attempt += 1) {
+                  try {
+                    const orderSnap = await getDoc(doc(db, 'orders', firebaseOrderId));
+                    if (orderSnap.data()?.paymentStatus === 'paid') {
+                      paymentConfirmed = true;
+                      break;
+                    }
+                  } catch (statusError) {
+                    console.warn('Unable to read payment confirmation status:', statusError);
+                  }
+                  await new Promise(resolve => setTimeout(resolve, 1000));
                 }
               }
 
-              if (verificationError) throw verificationError;
-
-              if ((verifyRes.data as any).success) {
+              if (paymentConfirmed) {
                 paymentWasVerified = true;
-                setPaymentConfirmationPending(false);
-                await addDoc(collection(db, 'Activity'), {
-                  type: 'order_placed',
-                  remarks: `Online Payment Success for Order ₹${totalPayableAmount.toFixed(2)}`,
-                  amount: totalPayableAmount,
-                  customerName: formData.fullName,
-                  customerMobile: formData.mobile,
-                  storeLocation: currentStore?.storeName || 'Online',
-                  paymentMethod: 'online',
-                  createdAt: Timestamp.now(),
-                  demoStore: (user as any)?.demoStore || false
-                });
-
-                await processAddressSave(formData);
-
-                if (!(user as any)?.demoStore && firebaseOrderId) {
-                  void notifyOrderPlacedSms({
-                    phone: formData.mobile,
-                    customerName: formData.fullName,
-                    orderId: firebaseOrderId,
-                    amount: totalPayableAmount,
-                    storeName: currentStore?.storeName || 'Online',
-                  });
-
-                 if (redeemedCoinsTotal > 0 || finalShippingCreditsUsed > 0) {
-const customerSurabhiBalance =
-    Number(customerData?.surabhiBalance || 0);                    void notifyCoinsRedeemedSms({
-                      phone: formData.mobile,
-                      customerName: formData.fullName,
-                      orderOrInvoiceId: firebaseOrderId,
-                      amount: totalPayableAmount,
-                      surabhiCoinsUsed: redeemedCoinsTotal,
-                      shippingCreditsUsed: finalShippingCreditsUsed,
-                      balance: customerSurabhiBalance,
-                    });
-                  }
-                }
-
-                clearCart();
-                toast.success("Payment Successful! Order placed.");
-                navigate('/shop');
+                if (firebaseOrderId) await completeOnlineOrderRef.current(firebaseOrderId);
               } else {
                 setPaymentConfirmationPending(true);
-                toast.error(`Payment confirmation is still processing. Do not pay again. Contact support with Order ID ${firebaseOrderId || 'unavailable'} and Payment ID ${response.razorpay_payment_id}.`);
+                setPendingFirebaseOrderId(firebaseOrderId);
+                toast.info(`We’re checking your payment with Razorpay. Please do not pay again; this order will update automatically. Order ID: ${firebaseOrderId || 'unavailable'}.`);
               }
             } catch (err) {
               console.error(err);
               if (paymentWasVerified) {
-                clearCart();
-                toast.success("Payment Successful! Order placed.");
-                navigate('/shop');
+                if (firebaseOrderId) await completeOnlineOrderRef.current(firebaseOrderId);
               } else {
                 setPaymentConfirmationPending(true);
-                toast.error(`Payment confirmation is still processing. Do not pay again. Contact support with Order ID ${firebaseOrderId || 'unavailable'} and Payment ID ${response.razorpay_payment_id}.`);
+                setPendingFirebaseOrderId(firebaseOrderId);
+                toast.info(`We’re checking your payment with Razorpay. Please do not pay again; this order will update automatically. Order ID: ${firebaseOrderId || 'unavailable'}.`);
               }
             } finally {
               setLoading(false);
@@ -954,13 +1032,25 @@ const customerSurabhiBalance =
           },
           modal: {
             ondismiss: function () {
+              setRazorpayCheckoutOpen(false);
               setLoading(false);
             }
           }
         };
 
         const paymentObject = new (window as any).Razorpay(options);
-        paymentObject.open();
+        paymentObject.on('payment.failed', (failure: any) => {
+          const description = failure?.error?.description;
+          toast.error(description || 'Payment was not completed. You can retry in the payment window.');
+        });
+        setRazorpayCheckoutOpen(true);
+        try {
+          paymentObject.open();
+        } catch (openError) {
+          setRazorpayCheckoutOpen(false);
+          setPendingFirebaseOrderId(null);
+          throw openError;
+        }
       }
     } catch (error) {
       console.error(error);
@@ -1767,7 +1857,7 @@ const customerSurabhiBalance =
 
                         <Button 
                             onClick={() => handlePlaceOrder()}
-                            disabled={loading || paymentConfirmationPending || cart.length === 0 || !paymentMethod}
+                            disabled={loading || razorpayCheckoutOpen || paymentConfirmationPending || cart.length === 0 || !paymentMethod}
                             className="w-full h-14 bg-slate-900 hover:bg-black text-white rounded-xl font-bold text-lg transition-all shadow-lg active:scale-[0.98]"
                         >
                             {loading ? (
@@ -2318,7 +2408,7 @@ const customerSurabhiBalance =
             </Card>
             <Button 
                 onClick={() => handlePlaceOrder()} 
-                disabled={loading || paymentConfirmationPending || cart.length === 0 || !paymentMethod} 
+                disabled={loading || razorpayCheckoutOpen || paymentConfirmationPending || cart.length === 0 || !paymentMethod}
                 className="w-full h-14 bg-slate-900 hover:bg-black text-white rounded-2xl font-black text-lg shadow-lg active:scale-95 transition-all"
             >
                 {loading ? (

@@ -17,6 +17,8 @@ $functions = @(
     "razorpayWebhook",
     "verifyPhoneOtp",
     "verifyRazorpayPayment",
+    "createRazorpayOrder",
+    "linkRazorpayOrderToFirebaseOrder",
     "resetCustomerPassword",
     "onStaffUpdate",
     "checkOjivaBalance",
