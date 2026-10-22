@@ -183,6 +183,22 @@ service cloud.firestore {
       allow delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
     }
 
+    // Product feedback is public; customers may manage only their own reviews.
+    match /product_reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated() &&
+        (request.resource.data.customerId == request.auth.uid ||
+         (request.auth.token.docId != null && request.resource.data.customerId == request.auth.token.docId));
+      allow update: if isAuthenticated() &&
+        (resource.data.customerId == request.auth.uid ||
+         (request.auth.token.docId != null && resource.data.customerId == request.auth.token.docId)) &&
+        request.resource.data.customerId == resource.data.customerId &&
+        request.resource.data.productId == resource.data.productId;
+      allow delete: if isAdmin() || (isAuthenticated() &&
+        (resource.data.customerId == request.auth.uid ||
+         (request.auth.token.docId != null && resource.data.customerId == request.auth.token.docId)));
+    }
+
     // E-commerce orders
     match /orders/{orderId} {
       // Customer IDs are stored in the `docId` auth claim for accounts whose

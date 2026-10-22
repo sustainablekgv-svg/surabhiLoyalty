@@ -1,15 +1,8 @@
 
-import { useAuth } from '@/hooks/auth-context';
 import { useCart } from '@/hooks/useCart';
 import { useWishlist } from '@/hooks/useWishlist';
-import { db } from '@/lib/firebase';
 import { createOrder as createOrderService } from '@/services/shop';
 import { CartItem, Order, Product } from '@/types/shop';
-import {
-  doc,
-  setDoc,
-  Timestamp
-} from 'firebase/firestore';
 import React, { createContext, useContext } from 'react';
 import { toast } from 'sonner';
 
@@ -32,50 +25,6 @@ const ShopContext = createContext<ShopContextType | undefined>(undefined);
 export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { cart, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, itemCount } = useCart();
   const { wishlist, addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
-  const { user } = useAuth();
-  const syncCartToFirebase = async (
-  userId: string,
-  cartItems: CartItem[]
-) => {
-
-  try {
-
-    const totalItems = cartItems.reduce(
-      (sum, item) => sum + item.quantity,
-      0
-    );
-
-    const totalAmount = cartItems.reduce(
-      (sum, item) =>
-        sum + (item.price * item.quantity),
-      0
-    );
-
-    await setDoc(
-      doc(db, 'carts', userId),
-      {
-        userId,
-
-        items: cartItems,
-
-        totalItems,
-
-        totalAmount,
-
-        updatedAt: Timestamp.now(),
-
-        abandoned: true
-      },
-      { merge: true }
-    );
-
-  } catch (error) {
-
-    console.error('Cart sync failed', error);
-
-  }
-};
-
   // Helper to match the toggleWishlist signature expected by UI (id only) 
   // But useWishlist.addToWishlist needs PRODUCT. 
   // UI in ProductCard passes 'product.id' to toggleWishlist? No, ProductCard passes 'product.id' to toggleWishlist in the OLD code. 
@@ -206,68 +155,21 @@ if (
     toast.info("Moved to cart from wishlist");
   }
 
-    // ✅ FIREBASE SYNC
-    const userId = user?.id || (user as any)?.uid;
-    if (userId) {
-      console.log("USER ID:", userId);
-
-      const updatedCart = [
-        ...cart,
-        {
-          ...product,
-          productId: product.id,
-          quantity: quantity || 1
-        }
-      ];
-
-      console.log("UPDATED CART:", updatedCart);
-
-      await syncCartToFirebase(
-        userId,
-        updatedCart as CartItem[]
-      );
-    }
   };
 
-  // ✅ UPDATED REMOVE FROM CART WITH FIREBASE SYNC
   const handleRemoveFromCart = async (
     productId: string
   ) => {
     await removeFromCart(productId);
 
-    const userId = user?.id || (user as any)?.uid;
-    if (userId) {
-      const updatedCart = cart.filter(
-        item => item.productId !== productId
-      );
-
-      await syncCartToFirebase(
-        userId,
-        updatedCart
-      );
-    }
   };
 
-  // ✅ UPDATED QUANTITY UPDATE WITH FIREBASE SYNC
   const handleUpdateQuantity = async (
     productId: string,
     quantity: number
   ) => {
     await updateQuantity(productId, quantity);
 
-    const userId = user?.id || (user as any)?.uid;
-    if (userId) {
-      const updatedCart = cart.map(item =>
-        item.productId === productId
-          ? { ...item, quantity }
-          : item
-      );
-
-      await syncCartToFirebase(
-        userId,
-        updatedCart
-      );
-    }
   };
   return (
     <ShopContext.Provider
